@@ -111,7 +111,7 @@ public final class Constants {
     public static final double kI = 0.01; // TODO: tune
     public static final double kD = 0.2; // TODO: tune
 
-    public static final double FLYWHEEL_GEAR_RATIO = 2 / 1; // TODO: this is a reduction, 2 rotations of motor is 1 rotation flywheel
+    public static final double FLYWHEEL_GEAR_RATIO = 2.0; // TODO: this is a reduction, 2 rotations of motor is 1 rotation flywheel
     public static final double FLYWHEEL_IDLE_RPM = 600.0; //kraken x60 
     public static final double FLYWHEEL_RPM_TOLERANCE = 100.0;
     public static final double FLYWHEEL_MAX_RPM = 3200.0;

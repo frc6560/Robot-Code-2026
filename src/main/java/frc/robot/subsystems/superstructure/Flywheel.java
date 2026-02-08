@@ -116,6 +116,17 @@ public class Flywheel extends SubsystemBase {
     // Average both motors for robustness
     double leftVel = leftFlywheelMotor.getRotorVelocity().getValueAsDouble();
     double rightVel = rightFlywheelMotor.getRotorVelocity().getValueAsDouble();
+
+    // Check if motors are spinning in opposite directions (wiring issue)
+    if (Math.abs(leftVel) > 1.0 && Math.abs(rightVel) > 1.0) {
+      if (Math.signum(leftVel) != Math.signum(rightVel)) {
+        SmartDashboard.putBoolean("Flywheel/MOTOR DIRECTION ERROR", true);
+        System.err.println("WARNING: Flywheel motors spinning in opposite directions!");
+      } else {
+        SmartDashboard.putBoolean("Flywheel/MOTOR DIRECTION ERROR", false);
+      }
+    }
+
     double avgMotorRPS = (Math.abs(leftVel) + Math.abs(rightVel)) / 2.0;
 
     // Convert motor RPS to flywheel RPM
