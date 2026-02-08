@@ -1,126 +1,94 @@
 package frc.robot;
 
-import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.XboxController;
 
 public class ManualControls {
 
-    // private final XboxController secondXbox;
     private final XboxController secondXbox;
     private final XboxController firstXbox;
 
-    
-    private static double deadband(double value, double deadband) {
-        if (Math.abs(value) > deadband) {
-          if (value > 0.0) {
-            return (value - deadband) / (1.0 - deadband);
-          } else {
-            return (value + deadband) / (1.0 - deadband);
-          }
-        } else {
-          return 0.0;
-        }
-      }
-
-      private static double modifyAxis(double value) {
-        // Deadband
-        value = deadband(value, 0.01);
-    
-        // Square the axis
-        value = Math.copySign(value * value, value);
-    
-        return value;
-      }
     public ManualControls(XboxController firstXbox, XboxController secondXbox) {
         this.secondXbox = secondXbox;
         this.firstXbox = firstXbox;
-        
     }
 
-    // slow down
+    /* ================= UTILS ================= */
 
-    // public boolean slowDown() {
-    //   return (firstXbox.getLeftTriggerAxis() > 0.25);
-    // }
+    private static double deadband(double value, double deadband) {
+        if (Math.abs(value) > deadband) {
+            return (value > 0.0)
+                ? (value - deadband) / (1.0 - deadband)
+                : (value + deadband) / (1.0 - deadband);
+        }
+        return 0.0;
+    }
 
-    // climb
+    private static double modifyAxis(double value) {
+        value = deadband(value, 0.01);
+        return Math.copySign(value * value, value);
+    }
+
+    /* ================= CLIMB ================= */
 
     public boolean getClimbDown() {
-      return secondXbox.getRightY() > 0.7; 
-        // return secondXbox.getLeftStickButton(); 
+        return secondXbox.getRightY() > 0.7;
     }
 
     public boolean getClimbUp() {
-      return secondXbox.getRightY() < -0.7;
-        // return secondXbox.getRightStickButton(); 
+        return secondXbox.getRightY() < -0.7;
     }
 
-    // elevator
+    /* ================= ELEVATOR ================= */
 
-    public boolean goToStow(){
-      return secondXbox.getPOV() == 180;
+    public boolean goToStow() {
+        return secondXbox.getPOV() == 180;
     }
-    
-    public boolean goToL2Ball(){
+
+    public boolean goToL2Ball() {
         return secondXbox.getXButton();
     }
 
-    public boolean goToL3Ball(){
+    public boolean goToL3Ball() {
         return secondXbox.getBButton();
     }
 
-    // public boolean goToShootBall(){
-    //     return secondXbox.getYButton();
-    // }
-
-    public boolean shiftedControls(){
-      return secondXbox.getRightBumperButton();
+    public boolean shiftedControls() {
+        return secondXbox.getRightBumperButton();
     }
 
-    // public boolean goToGroundBall() {
-    //   return secondXbox.getAButton();
-    // }
+    /* ================= INTAKE ================= */
 
-
-    // pipe and ball grabber 
-
-    // shifted for ball
-    public boolean runIntake(){
-      return secondXbox.getLeftBumperButton();
+    public boolean runIntake() {
+        return secondXbox.getLeftBumperButton();
     }
 
-    // public boolean runOuttake() {
-    //   return secondXbox.getRightBumperButton();
-    // }
+    /* ================= FLYWHEEL ================= */
+
+    public boolean shootWithLimelight() {
+        return secondXbox.getRightBumperButton();
+    }
+
+    /* ================= REVOLVER ================= */
+    // These are what RobotContainer should bind to commands
+
+    /** Y button: start feeding (state machine handles rest) */
+    public boolean revolverFeed() {
+        return secondXbox.getYButton();
+    }
+
+    /** A button: emergency stop */
+    public boolean revolverStop() {
+        return secondXbox.getAButton();
+    }
+
+    /** Left bumper: beam break override */
+    public boolean revolverOverride() {
+        return secondXbox.getLeftBumperButton();
+    }
+
+    /* ================= MISC ================= */
 
     public boolean zeroNoAprilTagsGyro() {
-      return secondXbox.getStartButton();
+        return secondXbox.getStartButton();
     }
-  
-    // flywheel
-    public boolean shootWithLimelight(){
-      return secondXbox.getRightBumperButton();
-    }
-
-    //hood
-    public boolean hoodManualUp(){
-      return secondXbox.getYButton();
-    }
-    public boolean hoodManualDown(){
-      return secondXbox.getAButton();
-    }
-
-
-
-    // tests 
-
-    // public double testWrist(){
-    //   return deadband(secondXbox.getRightX(), 0.1);
-    // }
-    // public double testEle(){
-    //   return secondXbox.getLeftX();
-    // }
-    // public boolean resetWrist(){
-    //   return secondXbox.getRightBumperButton();
-    // }
 }
