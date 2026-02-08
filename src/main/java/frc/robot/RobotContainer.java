@@ -15,6 +15,7 @@ import frc.robot.subsystems.vision.VisionSubsystem;
 import frc.robot.subsystems.Hood;
 import frc.robot.subsystems.ShotCalculator;
 import frc.robot.subsystems.Flywheel;
+import frc.robot.subsystems.intake;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -33,6 +34,7 @@ public class RobotContainer {
 
     // Controllers
     private final CommandXboxController driverXbox = new CommandXboxController(0);
+    private final CommandXboxController operatorXbox = new CommandXboxController(1);
     private final XboxController firstXbox = new XboxController(0);
     private final XboxController secondXbox = new XboxController(1);
     private final ManualControls controls = new ManualControls(firstXbox, secondXbox);
@@ -45,6 +47,7 @@ public class RobotContainer {
 
     private final Flywheel flywheel = new Flywheel(() -> drivebase.getPose()); 
     private final Hood hood = new Hood(() -> drivebase.getPose());
+  private final intake intakeSubsystem = new intake();
 
     SwerveInputStream driveAngularVelocity = SwerveInputStream.of(drivebase.getSwerveDrive(),
       () -> driverXbox.getLeftY() * -1,
@@ -100,5 +103,10 @@ public class RobotContainer {
         
         // Y Button: Fast Step Down (Dynamic Reverse)
         driverXbox.y().whileTrue(flywheel.sysIdDynamic(SysIdRoutine.Direction.kReverse));
+
+        // --- INTAKE (Operator X) ---
+        operatorXbox.x()
+            .onTrue(Commands.runOnce(intakeSubsystem::setExtensionMode, intakeSubsystem))
+            .onFalse(Commands.runOnce(intakeSubsystem::setIdleMode, intakeSubsystem));
     }
 }
