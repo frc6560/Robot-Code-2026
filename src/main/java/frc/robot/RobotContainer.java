@@ -13,6 +13,7 @@ import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.commands.SnotmCommand;
 import frc.robot.commands.FeederCommand;
 import frc.robot.commands.GroundIntakeCommand;
+import frc.robot.commands.SimpleFlywheelTest;
 
 import frc.robot.subsystems.vision.LimelightVision;
 import frc.robot.subsystems.vision.VisionSubsystem;
@@ -148,6 +149,16 @@ public class RobotContainer {
         // D-Pad Left: Reset flywheel to idle speed
         new Trigger(controls::resetFlywheelSpeed)
             .onTrue(Commands.runOnce(() -> flywheel.setIdle(), flywheel));
+
+        // Simple flywheel testing (driver controller)
+        // B button: Test at 800 RPM (low speed test)
+        driverXbox.b().whileTrue(new SimpleFlywheelTest(flywheel, 800));
+
+        // X button: Test at 1500 RPM (medium speed test)
+        driverXbox.x().whileTrue(new SimpleFlywheelTest(flywheel, 1500));
+
+        // Y button: Test at 2500 RPM (high speed test)
+        driverXbox.y().whileTrue(new SimpleFlywheelTest(flywheel, 2500));
     }
 
     public Command getAutonomousCommand() {
