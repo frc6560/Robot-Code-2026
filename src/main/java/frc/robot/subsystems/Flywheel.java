@@ -4,6 +4,13 @@
 
 package frc.robot.subsystems;
 
+// --- SYSID IMPORTS ---
+import static edu.wpi.first.units.Units.Volts;
+import com.ctre.phoenix6.SignalLogger;
+import com.ctre.phoenix6.controls.VoltageOut;
+import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
+
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.Follower;
 import com.ctre.phoenix6.controls.VelocityVoltage;
@@ -22,246 +29,204 @@ import edu.wpi.first.wpilibj.smartdashboard.MechanismRoot2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.FlywheelConstants;
-import frc.robot.subsystems.ShotCalculator;
 
 public class Flywheel extends SubsystemBase {
-    // Mechanism2D visualization components
+    // --- VISUALIZATION ---
     private final Mechanism2d mech2d;
     private final MechanismRoot2d flywheelRoot;
     private final MechanismLigament2d leftFlywheelVisual;
     private final MechanismLigament2d rightFlywheelVisual;
+    private double visualAngle = 0.0;
 
-    // Motors - leader and follower
+    // --- HARDWARE ---
     private final TalonFX leaderMotor;
     private final TalonFX followerMotor;
-
-    // Control
-    private final VelocityVoltage velocityControl;
     private final NetworkTable limelightTable;
 
-    // Pose supplier
+    // --- CONTROL ---
+    private final VelocityVoltage velocityControl = new VelocityVoltage(0).withSlot(0);
+    
+    // --- SYSID COMPONENTS ---
+    private final VoltageOut sysIdControl = new VoltageOut(0);
+    private final SysIdRoutine sysIdRoutine;
+
+    // --- STATE ---
+    private double targetRPS = 0.0; // We store target in RPS now to be precise
     private final PoseSupplier poseSupplier;
 
-    // Get pose from swerve subsystem
-    public interface PoseSupplier {
-        Pose2d getPose();
-    }
-
-    // State
-    private double targetRPM = 0.0;
-    private double visualAngle = 0.0;
+    public interface PoseSupplier { Pose2d getPose(); }
 
     /** Creates a new Flywheel. */
     public Flywheel(PoseSupplier poseSupplier) {
         this.poseSupplier = poseSupplier;
-
-        // Initialize limelight network table
         limelightTable = NetworkTableInstance.getDefault().getTable("limelight");
 
-        // Initialize motors - left is leader, right is follower
+        // 1. Initialize Motors
         leaderMotor = new TalonFX(FlywheelConstants.LEFT_FLYWHEEL_ID, "rio");
         followerMotor = new TalonFX(FlywheelConstants.RIGHT_FLYWHEEL_ID, "rio");
 
-        // Configure motors
         configureLeaderMotor();
         configureFollowerMotor();
 
-        // Initialize Mechanism2D (200x200 px)
+        // 2. SysId Setup
+        sysIdRoutine = new SysIdRoutine(
+            new SysIdRoutine.Config(
+                null,           // Default Ramp Rate
+                Volts.of(4),    // Step Voltage (4V is safe)
+                null,           // Default Timeout
+                (state) -> SignalLogger.writeString("SysIdState", state.toString())
+            ),
+            new SysIdRoutine.Mechanism(
+                (voltage) -> leaderMotor.setControl(sysIdControl.withOutput(voltage.in(Volts))),
+                null, // Phoenix 6 logs data automatically
+                this
+            )
+        );
+
+        // 3. Visualization Setup
         mech2d = new Mechanism2d(200, 200);
-
-        // Add a root point for the flywheel at the center
         flywheelRoot = mech2d.getRoot("Flywheel Root", 100, 100);
-
-        // Create ligaments representing the flywheels
-        leftFlywheelVisual = flywheelRoot.append(
-            new MechanismLigament2d("Left Flywheel", 50, 0));
+        leftFlywheelVisual = flywheelRoot.append(new MechanismLigament2d("Left Flywheel", 50, 0));
         leftFlywheelVisual.setColor(new Color8Bit(0, 0, 255));
-
-        rightFlywheelVisual = flywheelRoot.append(
-            new MechanismLigament2d("Right Flywheel", 50, 0));
+        rightFlywheelVisual = flywheelRoot.append(new MechanismLigament2d("Right Flywheel", 50, 0));
         rightFlywheelVisual.setColor(new Color8Bit(255, 0, 0));
-
-        // Push the Mechanism2D to SmartDashboard
         SmartDashboard.putData("Flywheel Mechanism", mech2d);
-
-        // Initialize control
-        velocityControl = new VelocityVoltage(0.0).withSlot(0);
     }
 
-    /**
-     * Configure the leader motor with PID, inversion, and current limits
-     */
     private void configureLeaderMotor() {
         TalonFXConfiguration config = new TalonFXConfiguration();
-
-        // PID configuration
         config.Slot0.kP = FlywheelConstants.kP;
         config.Slot0.kI = FlywheelConstants.kI;
         config.Slot0.kD = FlywheelConstants.kD;
         config.Slot0.kV = FlywheelConstants.kV;
-        config.Slot0.kS = FlywheelConstants.kS; // Add kS if you have it in constants
+        config.Slot0.kS = FlywheelConstants.kS;
 
-        // Motor output configuration
         config.MotorOutput.NeutralMode = NeutralModeValue.Coast;
-
-        // Set inversion ONCE in configuration
         config.MotorOutput.Inverted = FlywheelConstants.LEFT_FLYWHEEL_INVERTED
-            ? InvertedValue.Clockwise_Positive
-            : InvertedValue.CounterClockwise_Positive;
+            ? InvertedValue.Clockwise_Positive : InvertedValue.CounterClockwise_Positive;
 
-        // Current limits - both stator and supply
-        config.CurrentLimits.StatorCurrentLimitEnable = FlywheelConstants.FLYWHEEL_STATOR_CURRENT_LIMIT > 0;
+        config.CurrentLimits.StatorCurrentLimitEnable = true;
         config.CurrentLimits.StatorCurrentLimit = FlywheelConstants.FLYWHEEL_STATOR_CURRENT_LIMIT;
-        config.CurrentLimits.SupplyCurrentLimitEnable = FlywheelConstants.FLYWHEEL_SUPPLY_CURRENT_LIMIT > 0;
+        config.CurrentLimits.SupplyCurrentLimitEnable = true;
         config.CurrentLimits.SupplyCurrentLimit = FlywheelConstants.FLYWHEEL_SUPPLY_CURRENT_LIMIT;
 
         config.ClosedLoopRamps.VoltageClosedLoopRampPeriod = 0.5;
 
-        // Apply configuration
         leaderMotor.getConfigurator().apply(config);
     }
 
-    /**
-     * Configure the follower motor to follow the leader
-     */
     private void configureFollowerMotor() {
         TalonFXConfiguration config = new TalonFXConfiguration();
-
-        // Motor output configuration
         config.MotorOutput.NeutralMode = NeutralModeValue.Coast;
-
-        // Current limits (same as leader)
-        config.CurrentLimits.StatorCurrentLimitEnable = FlywheelConstants.FLYWHEEL_STATOR_CURRENT_LIMIT > 0;
+        // Apply same current limits
+        config.CurrentLimits.StatorCurrentLimitEnable = true;
         config.CurrentLimits.StatorCurrentLimit = FlywheelConstants.FLYWHEEL_STATOR_CURRENT_LIMIT;
-        config.CurrentLimits.SupplyCurrentLimitEnable = FlywheelConstants.FLYWHEEL_SUPPLY_CURRENT_LIMIT > 0;
+        config.CurrentLimits.SupplyCurrentLimitEnable = true;
         config.CurrentLimits.SupplyCurrentLimit = FlywheelConstants.FLYWHEEL_SUPPLY_CURRENT_LIMIT;
-
-        config.ClosedLoopRamps.VoltageClosedLoopRampPeriod = 0.5;
-
-        // Apply configuration
+        
         followerMotor.getConfigurator().apply(config);
-
-        // Set follower to follow leader (opposed means it spins opposite direction)
         followerMotor.setControl(new Follower(leaderMotor.getDeviceID(), MotorAlignmentValue.Opposed));
     }
 
-    /**
-     * Set flywheel RPM from ShotCalculator
-     * @param calculator The ShotCalculator instance
-     */
-    public void setRPMFromCalculator(ShotCalculator calculator) {
-        setRPM(calculator.getFlywheelRPM());
+    // --- SYSID METHODS ---
+    public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
+        return sysIdRoutine.quasistatic(direction);
     }
 
-    /**
-     * Set flywheel to idle speed
-     */
-    public void setIdle() {
-        setRPM(FlywheelConstants.FLYWHEEL_IDLE_RPM);
+    public Command sysIdDynamic(SysIdRoutine.Direction direction) {
+        return sysIdRoutine.dynamic(direction);
     }
 
-    /**
-     * Set target RPM for the flywheel
-     * @param rpm Target RPM (flywheel output speed, not motor speed)
-     */
-    public void setRPM(double rpm) {
-        targetRPM = rpm;
-        // Convert to motor velocity accounting for gear ratio
-        // DIRECT RPS: We want 70 input -> 70 output
-  double motorRPS = rpm * FlywheelConstants.FLYWHEEL_GEAR_RATIO;
+    // --- CONTROL METHODS ---
 
-        // Send command to leader motor only - follower automatically follows
+    /**
+     * Set target velocity in RPS (Rotations Per Second).
+     * Use this for Lookup Tables (e.g. 70.0).
+     */
+    public void setRPS(double rps) {
+        targetRPS = rps;
+        // No division here! 70 input = 70 RPS output.
+        double motorRPS = rps * FlywheelConstants.FLYWHEEL_GEAR_RATIO;
         leaderMotor.setControl(velocityControl.withVelocity(motorRPS));
     }
 
     /**
-     * Set flywheel to direct percent output (for testing)
-     * @param percent Percent output (-1.0 to 1.0)
+     * Set target velocity in RPM (Rotations Per Minute).
+     * Use this for ShotCalculator (e.g. 4200.0).
      */
-    public void setPercent(double percent) {
-        leaderMotor.set(percent);
+    public void setRPM(double rpm) {
+        // Convert 4200 RPM -> 70 RPS and call the main function
+        setRPS(rpm / 60.0);
     }
 
     /**
-     * Stop the flywheel
+     * Set flywheel speed from ShotCalculator
      */
+    public void setRPMFromCalculator(ShotCalculator calculator) {
+        // Assuming calculator returns RPM (e.g. 4000)
+        setRPM(calculator.getFlywheelRPM());
+    }
+
+    public void setIdle() {
+        setRPM(FlywheelConstants.FLYWHEEL_IDLE_RPM);
+    }
+
     public void stop() {
-        targetRPM = 0.0;
+        targetRPS = 0.0;
         leaderMotor.stopMotor();
-        // Re-establish follower relationship after stop
-        followerMotor.setControl(new Follower(leaderMotor.getDeviceID(), MotorAlignmentValue.Opposed));
     }
 
     /**
-     * Get current flywheel RPM (output speed, not motor speed)
+     * Get current velocity in RPS
      */
-    public double getCurrentRPM() {
+    public double getCurrentRPS() {
         double motorRPS = leaderMotor.getVelocity().getValueAsDouble();
         return motorRPS / FlywheelConstants.FLYWHEEL_GEAR_RATIO;
     }
 
     /**
-     * Get target flywheel RPM
+     * Get current velocity in RPM (for dashboard/debugging)
      */
-    public double getTargetRPM() {
-        return targetRPM;
+    public double getCurrentRPM() {
+        return getCurrentRPS() * 60.0;
     }
 
-    /**
-     * Check if flywheel is at target speed
-     */
-    public boolean atTargetRPM() {
-        double currentRPM = getCurrentRPM();
-        return Math.abs(currentRPM - targetRPM) < FlywheelConstants.FLYWHEEL_RPM_TOLERANCE;
+    public boolean atTarget() {
+        return Math.abs(getCurrentRPS() - targetRPS) < (FlywheelConstants.FLYWHEEL_RPM_TOLERANCE / 60.0);
     }
 
-    /**
-     * Gets current robot pose (for debugging)
-     */
-    public Pose2d getRobotPose() {
-        return poseSupplier.getPose();
-    }
-
-    /**
-     * Check if limelight has a valid target
-     */
     public boolean hasTarget() {
         return limelightTable.getEntry("tv").getDouble(0.0) == 1.0;
     }
 
+    public Pose2d getRobotPose() {
+        return poseSupplier.getPose();
+    }
+
     @Override
     public void periodic() {
-        // Debug: Verify periodic is being called
         SmartDashboard.putBoolean("Flywheel/Periodic Running", true);
-
-        // Telemetry for AdvantageScope and SmartDashboard
+        
+        // Dashboard: Show both units so you are never confused
+        SmartDashboard.putNumber("Flywheel/Current RPS", getCurrentRPS());
         SmartDashboard.putNumber("Flywheel/Current RPM", getCurrentRPM());
-        SmartDashboard.putNumber("Flywheel/Target RPM", targetRPM);
-        SmartDashboard.putBoolean("Flywheel/At Target", atTargetRPM());
-        SmartDashboard.putBoolean("Flywheel/Has Target", hasTarget());
+        SmartDashboard.putNumber("Flywheel/Target RPS", targetRPS);
+        SmartDashboard.putBoolean("Flywheel/At Target", atTarget());
+
         SmartDashboard.putNumber("Flywheel/Leader Voltage", leaderMotor.getMotorVoltage().getValueAsDouble());
-        SmartDashboard.putNumber("Flywheel/Leader Output", leaderMotor.get());
-        SmartDashboard.putNumber("Flywheel/Follower Output", followerMotor.get());
         SmartDashboard.putNumber("Flywheel/Leader Current", leaderMotor.getSupplyCurrent().getValueAsDouble());
-        SmartDashboard.putNumber("Flywheel/Follower Current", followerMotor.getSupplyCurrent().getValueAsDouble());
 
-        // Automatic demo spin for visualization
-        double rpmToUse = targetRPM;
-        // If targetRPM is zero, use demo RPM for visualization
-        if (Math.abs(rpmToUse) < 1e-6) {
-            rpmToUse = 1000.0;
-        }
-
-        // Compute incremental rotation (periodic runs ~20ms per tick)
-        double degPerSec = rpmToUse * 360.0 / 60.0; // 360° per revolution
-        double degPerTick = degPerSec * 0.02; // 20ms tick
+        // Visualization (Logic is cleaner now)
+        double rpmToUse = targetRPS * 60.0; 
+        if (Math.abs(rpmToUse) < 1.0) rpmToUse = 1000.0;
+        
+        double degPerSec = rpmToUse * 360.0 / 60.0; 
+        double degPerTick = degPerSec * 0.02;
         visualAngle += degPerTick;
         visualAngle %= 360.0;
 
         leftFlywheelVisual.setAngle(visualAngle);
-        rightFlywheelVisual.setAngle(-visualAngle); // opposite for variety
-
-        // Debug: expose visual angle
+        rightFlywheelVisual.setAngle(-visualAngle);
         SmartDashboard.putNumber("Flywheel/Visual Angle", visualAngle);
     }
 }
