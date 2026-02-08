@@ -97,8 +97,8 @@ public final class Constants {
 
     /** PID Gains */
     public static final double kP = 0.2;
-    public static final double kI = 0.0;
-    public static final double kD = 0.0;
+    public static final double kI = 0.005;
+    public static final double kD = 0.0008;
     public static final double kV = 0.12; // TODO: tune
      public static final double kS = 0.25;
 
