@@ -167,7 +167,8 @@ public class Flywheel extends SubsystemBase {
     public void setRPM(double rpm) {
         targetRPM = rpm;
         // Convert to motor velocity accounting for gear ratio
-        double motorRPS = rpm / 60.0 * FlywheelConstants.FLYWHEEL_GEAR_RATIO;
+        // DIRECT RPS: We want 70 input -> 70 output
+  double motorRPS = rpm * FlywheelConstants.FLYWHEEL_GEAR_RATIO;
 
         // Send command to leader motor only - follower automatically follows
         leaderMotor.setControl(velocityControl.withVelocity(motorRPS));
@@ -196,7 +197,7 @@ public class Flywheel extends SubsystemBase {
      */
     public double getCurrentRPM() {
         double motorRPS = leaderMotor.getVelocity().getValueAsDouble();
-        return motorRPS * 60.0 / FlywheelConstants.FLYWHEEL_GEAR_RATIO;
+        return motorRPS / FlywheelConstants.FLYWHEEL_GEAR_RATIO;
     }
 
     /**
