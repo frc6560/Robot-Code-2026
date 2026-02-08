@@ -38,11 +38,6 @@ public class Robot extends TimedRobot {
     public void robotPeriodic() {
         // Run the CommandScheduler
         CommandScheduler.getInstance().run();
-
-        // ===== Update Revolver Mechanism2d sticks =====
-        if (m_robotContainer != null) {
-            m_robotContainer.updateVisualization(); // updates both pan and pusher sticks
-        }
     }
 
     @Override
