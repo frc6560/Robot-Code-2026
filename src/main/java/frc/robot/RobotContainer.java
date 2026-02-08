@@ -10,7 +10,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.subsystems.vision.LimelightVision;
 import frc.robot.subsystems.vision.VisionSubsystem;
-import frc.robot.subsystems.Hood;
+import frc.robot.subsystems.RevolverSubsystem;
 import frc.robot.subsystems.ShotCalculator;
 import frc.robot.subsystems.Flywheel;
 
@@ -53,7 +53,7 @@ public class RobotContainer {
    // private final AutoCommands factory;
     //private final AutoModeChooser autoChooser;
     private final Flywheel flywheel = new Flywheel(() -> drivebase.getPose()); 
-    private final Hood hood = new Hood(() -> drivebase.getPose());
+    private final RevolverSubsystem hood = new RevolverSubsystem(() -> drivebase.getPose());
 
     SwerveInputStream driveAngularVelocity = SwerveInputStream.of(drivebase.getSwerveDrive(),
       () -> driverXbox.getLeftY() * -1,
