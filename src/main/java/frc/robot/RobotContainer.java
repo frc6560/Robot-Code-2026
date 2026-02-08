@@ -1,15 +1,13 @@
 package frc.robot;
 
 import edu.wpi.first.wpilibj.Filesystem;
-import edu.wpi.first.wpilibj.XboxController;
-
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import edu.wpi.first.wpilibj2.command.button.Trigger;
 
 import frc.robot.subsystems.RevolverSubsystem;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
-
 import frc.robot.Constants.OperatorConstants;
 
 import swervelib.SwerveInputStream;
@@ -19,7 +17,18 @@ import java.io.File;
 public class RobotContainer {
 
     /* ================= CONTROLLERS ================= */
-    private final CommandXboxController driverXbox = new CommandXboxController(0);
+    private final CommandXboxController driverXbox =
+        new CommandXboxController(0);
+
+    // RAW xbox controllers for ManualControls
+    private final edu.wpi.first.wpilibj.XboxController firstXbox =
+        new edu.wpi.first.wpilibj.XboxController(0);
+
+    private final edu.wpi.first.wpilibj.XboxController secondXbox =
+        new edu.wpi.first.wpilibj.XboxController(1);
+
+    private final ManualControls controls =
+        new ManualControls(firstXbox, secondXbox);
 
     /* ================= DRIVEBASE ================= */
     private final SwerveSubsystem drivebase =
@@ -69,9 +78,18 @@ public class RobotContainer {
         );
 
         /* ================= REVOLVER ================= */
-        // X button: feed while held, stop when released
-        driverXbox.x()
+        // Y button (operator): FEED while held
+        new Trigger(controls::revolverFeed)
             .onTrue(Commands.runOnce(revolver::requestFeed, revolver))
             .onFalse(Commands.runOnce(revolver::requestStop, revolver));
+
+        // A button (operator): HARD STOP
+        new Trigger(controls::revolverStop)
+            .onTrue(Commands.runOnce(revolver::requestStop, revolver));
+
+        // Left bumper (operator): BEAM BREAK OVERRIDE
+        new Trigger(controls::revolverOverride)
+            .onTrue(Commands.runOnce(revolver::enableBeamBreakOverride, revolver))
+            .onFalse(Commands.runOnce(revolver::disableBeamBreakOverride, revolver));
     }
 }

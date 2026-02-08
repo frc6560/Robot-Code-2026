@@ -89,6 +89,44 @@ public final class Constants {
     public static final double kStdvThetaBase = 1.0;
     public static final double JUMP_TOLERANCE = 0.6; // meters
   }
+  public static final class RevolverConstants {
+    /** CAN IDs - Kraken X44 Motors */
+    public static final int PAN_MOTOR_ID = 14;      // TODO: Set to your pan motor CAN ID
+    public static final int PUSHER_MOTOR_ID = 23;   // TODO: Set to your pusher motor CAN ID
+
+    /** Target Speeds (RPM) */
+    public static final double PAN_TARGET_RPM = 180.0;      // Pan rotation speed
+    public static final double PUSHER_TARGET_RPM = 2500.0;  // Pusher speed
+
+    /** Gear Ratios */
+    public static final double PAN_GEAR_RATIO = 1.0;     // Motor rotations per mechanism rotation
+    public static final double PUSHER_GEAR_RATIO = 1.0;  // Motor rotations per mechanism rotation
+    // TODO: Measure and update these if you have gearing
+
+    /** PID Gains (if using closed-loop velocity control) */
+    public static final double PAN_KP = 0.1;
+    public static final double PAN_KI = 0.0;
+    public static final double PAN_KD = 0.0;
+    public static final double PAN_KS = 0.0;
+    public static final double PAN_KV = 0.12;  // Feedforward velocity gain
+
+    public static final double PUSHER_KP = 0.1;
+    public static final double PUSHER_KI = 0.0;
+    public static final double PUSHER_KD = 0.0;
+    public static final double PUSHER_KS = 0.0;
+    public static final double PUSHER_KV = 0.12;
+
+    /** Tolerances */
+    public static final double RPM_TOLERANCE = 50.0;  // RPM tolerance for "at speed" checking
+
+    /** Current Limits (Amps) */
+    public static final int PAN_CURRENT_LIMIT = 40;
+    public static final int PUSHER_CURRENT_LIMIT = 60;
+
+    /** Invert Flags */
+    public static final boolean PAN_INVERTED = false;     // TODO: Test and set if motor runs backwards
+    public static final boolean PUSHER_INVERTED = false;  // TODO: Test and set if motor runs backwards
+  }
 
   public static final class FlywheelConstants {
     /** CAN IDs */
