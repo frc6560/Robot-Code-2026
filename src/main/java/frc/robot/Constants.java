@@ -106,7 +106,7 @@ public final class Constants {
        public static final double MAX_RPM = 5000; // Example value for Falcon 500
     public static final double TARGET_RPM_HARDSET = 2000.0; 
     public static final double FLYWHEEL_GEAR_RATIO = 1.25; // TODO: set correct gear ratio
-    public static final double FLYWHEEL_IDLE_RPM = 50.0; //kraken x60 
+    public static final double FLYWHEEL_IDLE_RPM = 60.0; //kraken x60 
     public static final double FLYWHEEL_RPM_TOLERANCE = 100.0;
 
     /** Current Limits */
@@ -122,7 +122,7 @@ public final class Constants {
 
     /** Distance to RPM Lookup Table */
     public static final double[][] DISTANCE_RPM_TABLE = {
-      {0.0, 70.0},
+      {0.0, 120.0},
       {1.0, 80.0},
       {2.0, 100.0},
       {3.0, 150.0},
