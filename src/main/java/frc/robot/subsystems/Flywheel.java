@@ -5,6 +5,7 @@
 package frc.robot.subsystems;
 
 // --- SYSID IMPORTS ---
+import static edu.wpi.first.units.Units.Second;
 import static edu.wpi.first.units.Units.Volts;
 import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.controls.VoltageOut;
@@ -13,6 +14,7 @@ import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.Follower;
+import com.ctre.phoenix6.controls.NeutralOut; // Import for Coasting
 import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
@@ -45,13 +47,14 @@ public class Flywheel extends SubsystemBase {
 
     // --- CONTROL ---
     private final VelocityVoltage velocityControl = new VelocityVoltage(0).withSlot(0);
+    private final NeutralOut coastControl = new NeutralOut(); // Logic for smooth stops
     
     // --- SYSID COMPONENTS ---
     private final VoltageOut sysIdControl = new VoltageOut(0);
     private final SysIdRoutine sysIdRoutine;
 
     // --- STATE ---
-    private double targetRPS = 0.0; // We store target in RPS now to be precise
+    private double targetRPS = 0.0;
     private final PoseSupplier poseSupplier;
 
     public interface PoseSupplier { Pose2d getPose(); }
@@ -68,17 +71,17 @@ public class Flywheel extends SubsystemBase {
         configureLeaderMotor();
         configureFollowerMotor();
 
-        // 2. SysId Setup
+        // 2. SysId Setup (UPDATED: Slower Ramp Rate of 0.5 V/s)
         sysIdRoutine = new SysIdRoutine(
             new SysIdRoutine.Config(
-                null,           // Default Ramp Rate
-                Volts.of(4),    // Step Voltage (4V is safe)
+                Volts.of(0.5).per(Second), // Slower Ramp (Less Scary)
+                Volts.of(4),    // Step Voltage
                 null,           // Default Timeout
                 (state) -> SignalLogger.writeString("SysIdState", state.toString())
             ),
             new SysIdRoutine.Mechanism(
                 (voltage) -> leaderMotor.setControl(sysIdControl.withOutput(voltage.in(Volts))),
-                null, // Phoenix 6 logs data automatically
+                null,
                 this
             )
         );
@@ -110,7 +113,8 @@ public class Flywheel extends SubsystemBase {
         config.CurrentLimits.SupplyCurrentLimitEnable = true;
         config.CurrentLimits.SupplyCurrentLimit = FlywheelConstants.FLYWHEEL_SUPPLY_CURRENT_LIMIT;
 
-        config.ClosedLoopRamps.VoltageClosedLoopRampPeriod = 0.5;
+        // UPDATED: Slower Ramp (1.0s) to prevent abrupt braking
+        config.ClosedLoopRamps.VoltageClosedLoopRampPeriod = 1.0; 
 
         leaderMotor.getConfigurator().apply(config);
     }
@@ -118,7 +122,6 @@ public class Flywheel extends SubsystemBase {
     private void configureFollowerMotor() {
         TalonFXConfiguration config = new TalonFXConfiguration();
         config.MotorOutput.NeutralMode = NeutralModeValue.Coast;
-        // Apply same current limits
         config.CurrentLimits.StatorCurrentLimitEnable = true;
         config.CurrentLimits.StatorCurrentLimit = FlywheelConstants.FLYWHEEL_STATOR_CURRENT_LIMIT;
         config.CurrentLimits.SupplyCurrentLimitEnable = true;
@@ -140,30 +143,27 @@ public class Flywheel extends SubsystemBase {
     // --- CONTROL METHODS ---
 
     /**
-     * Set target velocity in RPS (Rotations Per Second).
-     * Use this for Lookup Tables (e.g. 70.0).
+     * Set target velocity in RPS.
+     * UPDATED: Uses Coast control if target is 0 for smooth stopping.
      */
     public void setRPS(double rps) {
         targetRPS = rps;
-        // No division here! 70 input = 70 RPS output.
-        double motorRPS = rps * FlywheelConstants.FLYWHEEL_GEAR_RATIO;
-        leaderMotor.setControl(velocityControl.withVelocity(motorRPS));
+        
+        if (Math.abs(rps) < 0.1) {
+            // Smart Stop: If we want 0 speed, just COAST. Don't brake hard.
+            leaderMotor.setControl(coastControl);
+        } else {
+            // Normal Run
+            double motorRPS = rps * FlywheelConstants.FLYWHEEL_GEAR_RATIO;
+            leaderMotor.setControl(velocityControl.withVelocity(motorRPS));
+        }
     }
 
-    /**
-     * Set target velocity in RPM (Rotations Per Minute).
-     * Use this for ShotCalculator (e.g. 4200.0).
-     */
     public void setRPM(double rpm) {
-        // Convert 4200 RPM -> 70 RPS and call the main function
         setRPS(rpm / 60.0);
     }
 
-    /**
-     * Set flywheel speed from ShotCalculator
-     */
     public void setRPMFromCalculator(ShotCalculator calculator) {
-        // Assuming calculator returns RPM (e.g. 4000)
         setRPM(calculator.getFlywheelRPM());
     }
 
@@ -173,20 +173,14 @@ public class Flywheel extends SubsystemBase {
 
     public void stop() {
         targetRPS = 0.0;
-        leaderMotor.stopMotor();
+        leaderMotor.setControl(coastControl); // Explicitly Coast
     }
 
-    /**
-     * Get current velocity in RPS
-     */
     public double getCurrentRPS() {
         double motorRPS = leaderMotor.getVelocity().getValueAsDouble();
         return motorRPS / FlywheelConstants.FLYWHEEL_GEAR_RATIO;
     }
 
-    /**
-     * Get current velocity in RPM (for dashboard/debugging)
-     */
     public double getCurrentRPM() {
         return getCurrentRPS() * 60.0;
     }
@@ -207,7 +201,6 @@ public class Flywheel extends SubsystemBase {
     public void periodic() {
         SmartDashboard.putBoolean("Flywheel/Periodic Running", true);
         
-        // Dashboard: Show both units so you are never confused
         SmartDashboard.putNumber("Flywheel/Current RPS", getCurrentRPS());
         SmartDashboard.putNumber("Flywheel/Current RPM", getCurrentRPM());
         SmartDashboard.putNumber("Flywheel/Target RPS", targetRPS);
@@ -216,7 +209,7 @@ public class Flywheel extends SubsystemBase {
         SmartDashboard.putNumber("Flywheel/Leader Voltage", leaderMotor.getMotorVoltage().getValueAsDouble());
         SmartDashboard.putNumber("Flywheel/Leader Current", leaderMotor.getSupplyCurrent().getValueAsDouble());
 
-        // Visualization (Logic is cleaner now)
+        // Visualization
         double rpmToUse = targetRPS * 60.0; 
         if (Math.abs(rpmToUse) < 1.0) rpmToUse = 1000.0;
         

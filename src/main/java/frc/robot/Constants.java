@@ -99,7 +99,7 @@ public final class Constants {
     public static final double kP = 0.2;
     public static final double kI = 0.005;
     public static final double kD = 0.0008;
-    public static final double kV = 0.12; // TODO: tune
+    public static final double kV = 0.1183; // TODO: tune
      public static final double kS = 0.25;
 
     /** Flywheel Geometry */
@@ -122,12 +122,12 @@ public final class Constants {
 
     /** Distance to RPM Lookup Table */
     public static final double[][] DISTANCE_RPM_TABLE = {
-      {0.0, 1000.0},
-      {1.0, 1200.0},
-      {2.0, 1400.0},
-      {3.0, 1600.0},
-      {4.0, 1800.0},
-      {5.0, 2000.0}
+      {0.0, 70.0},
+      {1.0, 80.0},
+      {2.0, 100.0},
+      {3.0, 150.0},
+      {4.0, 180.0},
+      {5.0, 200.0}
       // TODO: Fill in with actual measured values
     };
    

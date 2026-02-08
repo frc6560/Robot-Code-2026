@@ -77,7 +77,7 @@ public class RobotContainer {
         driverXbox.leftBumper().whileTrue(Commands.runOnce(drivebase::lock, drivebase).repeatedly());
 
         // --- COMMENTED OUT FOR SYSID TESTING ---
-        /*
+        
         driverXbox.a().onTrue(
           Commands.defer(() -> {
             return Commands.runOnce(() -> vision.hardReset("limelight"), vision);
@@ -86,19 +86,19 @@ public class RobotContainer {
         driverXbox.y().onTrue(Commands.runOnce(() -> CommandScheduler.getInstance().cancelAll()));
         driverXbox.x().onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
         driverXbox.b().onTrue(Commands.runOnce(() -> CommandScheduler.getInstance().schedule(drivebase.sysIdDriveMotorCommand()), drivebase));
-        */
+        
 
-        // --- FLYWHEEL SYSID CONTROLS (ACTIVE) ---
-        // A Button: Slow Ramp Up (Quasistatic Forward)
-        driverXbox.a().whileTrue(flywheel.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
+        // // --- FLYWHEEL SYSID CONTROLS (ACTIVE) ---
+        // // A Button: Slow Ramp Up (Quasistatic Forward)
+        // driverXbox.a().whileTrue(flywheel.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
         
-        // B Button: Slow Ramp Down (Quasistatic Reverse)
-        driverXbox.b().whileTrue(flywheel.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
+        // // B Button: Slow Ramp Down (Quasistatic Reverse)
+        // driverXbox.b().whileTrue(flywheel.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
         
-        // X Button: Fast Step Up (Dynamic Forward)
-        driverXbox.x().whileTrue(flywheel.sysIdDynamic(SysIdRoutine.Direction.kForward));
+        // // X Button: Fast Step Up (Dynamic Forward)
+        // driverXbox.x().whileTrue(flywheel.sysIdDynamic(SysIdRoutine.Direction.kForward));
         
-        // Y Button: Fast Step Down (Dynamic Reverse)
-        driverXbox.y().whileTrue(flywheel.sysIdDynamic(SysIdRoutine.Direction.kReverse));
+        // // Y Button: Fast Step Down (Dynamic Reverse)
+        // driverXbox.y().whileTrue(flywheel.sysIdDynamic(SysIdRoutine.Direction.kReverse));
     }
 }
