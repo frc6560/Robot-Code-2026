@@ -14,6 +14,7 @@ import frc.robot.commands.SnotmCommand;
 import frc.robot.commands.FeederCommand;
 import frc.robot.commands.GroundIntakeCommand;
 import frc.robot.commands.SimpleFlywheelTest;
+import frc.robot.commands.FlywheelRawTest;
 
 import frc.robot.subsystems.vision.LimelightVision;
 import frc.robot.subsystems.vision.VisionSubsystem;
@@ -159,6 +160,9 @@ public class RobotContainer {
 
         // Y button: Test at 2500 RPM (high speed test)
         driverXbox.y().whileTrue(new SimpleFlywheelTest(flywheel, 2500));
+
+        // Left bumper: Raw motor test at 20% power (bypasses PID to verify motors work)
+        driverXbox.leftBumper().whileTrue(new FlywheelRawTest(0.2));
     }
 
     public Command getAutonomousCommand() {
