@@ -2,6 +2,8 @@ package frc.robot.subsystems.vision;
 
 import java.util.List;
 
+import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 // TODO: add disabling cameras individually

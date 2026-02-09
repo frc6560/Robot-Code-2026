@@ -111,7 +111,65 @@ public final class Constants {
 
   public static final class TurretConstants{
     public static final Transform3d ROBOT_RELATIVE_TURRET = new Transform3d(-0.275, 0, 0, new Rotation3d()); // update when turret constants come out
-    // MAKE SURE THIS IS UP LEFT. NOT UP RIGHT.
+
+    /** CAN IDs */
+    public static final int MOTOR_ID = 17;      // TODO: set correct ID
+    public static final int ENCODER_ID = 0;    // TODO: set correct ID
+
+    /** Characterization Gains */
+    public static final double kS = 0.1;
+    public static final double kV = 0.2;
+    public static final double kA = 0.01;
+    public static final double kG = 0.0;
+
+    /** PID Gains */
+    public static final double kP = 5;
+    public static final double kI = 0.01;
+    public static final double kD = 0.2;
+
+    /** Motion Constraints */
+    public static final double kMaxV = 35; // m/s
+    public static final double kMaxA = 45; // m/s^2
+
+    /** Turret Geometry */
+    public static final double MOTOR_GEAR_RATIO = 1; // Motor reduction ratio
+    public static final double ENCODER_GEAR_RATIO = 1; // Encoder reduction ratio
+    
+
+  // Absolute encoder setup
+  public static final int ABS_ENCODER_DIO_PORT = 0;   // change to your wiring
+  public static final double ABS_ENCODER_OFFSET_DEG = 0.0; // tune so stow = 0°
+  public static final boolean ABS_ENCODER_REVERSED = false; 
   }
 
+  public static final class IntakeConstants{
+    public static final boolean EXTENSION_ENABLED = false; // temp: set true once extension + limit switch are wired
+    public static final int EXTEND_MOTOR_ID = 15; 
+    public static final int SPIN_MOTOR_ID = 16; 
+    public static final String CAN_BUS = "Canivore";
+
+    public static final int RETRACT_LIMIT_SWITCH_ID = 5; // TODO: set correct DIO port
+    public static final boolean RETRACT_LIMIT_SWITCH_INVERTED = false; // toDo: confirm if this needs to be true or false based on wiring and testing; eg, does it start as true or false when stowed.
+
+    public static final boolean EXTEND_MOTOR_INVERTED = false; //TODO
+    public static final boolean SPIN_MOTOR_INVERTED = false; //TODO
+
+    public static final double EXTEND_SPEED = 0.65; //tune
+  public static final double RETRACT_SPEED = -0.5; //tune
+    public static final double SPIN_SPEED = 0.7; //tune
+    public static final double SPRINGY_EXTEND_SPEED = 0.12; //tune
+    public static final double SPRINGY_SPIN_SPEED = 0.7; //tune
+
+  public static final double MAX_EXTENSION_ROTATIONS = 60.0; // TODO: tune
+  public static final double SPRINGY_TRIGGER_ROTATIONS = 55.0; // TODO: tune
+
+    public static final double EXTEND_SUPPLY_CURRENT_LIMIT = 35;
+    public static final double EXTEND_STATOR_CURRENT_LIMIT = 60;
+
+    public static final double EXTEND_SPRINGY_SUPPLY_CURRENT_LIMIT = 12;
+    public static final double EXTEND_SPRINGY_STATOR_CURRENT_LIMIT = 20;
+
+    public static final double SPIN_SUPPLY_CURRENT_LIMIT = 30;
+    public static final double SPIN_STATOR_CURRENT_LIMIT = 50;
+  }
 }
