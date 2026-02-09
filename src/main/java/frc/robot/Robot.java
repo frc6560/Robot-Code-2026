@@ -4,18 +4,27 @@
 
 package frc.robot;
 
+import org.littletonrobotics.junction.LogFileUtil;
+import org.littletonrobotics.junction.LoggedRobot;
+import org.littletonrobotics.junction.Logger;
+import org.littletonrobotics.junction.networktables.NT4Publisher;
+import org.littletonrobotics.junction.wpilog.WPILOGReader;
+import org.littletonrobotics.junction.wpilog.WPILOGWriter;
+
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import frc.robot.Constants.LimelightConstants;
+import frc.robot.utility.LimelightHelpers;
 
 /**
  * The VM is configured to automatically run this class, and to call the functions corresponding to each mode, as
  * described in the TimedRobot documentation. If you change the name of this class or the package after creating this
  * project, you must also update the build.gradle file in the project.
  */
-public class Robot extends TimedRobot
+public class Robot extends LoggedRobot
 {
 
   private static Robot   instance;
@@ -27,6 +36,18 @@ public class Robot extends TimedRobot
 
   public Robot()
   {
+    Logger.recordMetadata("Robot", "2026 Alpha");
+    if (isReal()) {
+      Logger.addDataReceiver(new WPILOGWriter());
+      Logger.addDataReceiver(new NT4Publisher());
+    } else {
+      setUseTiming(false); // Run as fast as possible
+      String logPath = LogFileUtil.findReplayLog(); 
+      Logger.setReplaySource(new WPILOGReader(logPath)); 
+      Logger.addDataReceiver(new WPILOGWriter(LogFileUtil.addPathSuffix(logPath, "_sim"))); 
+    }
+
+    Logger.start(); 
     instance = this;
   }
 
@@ -90,6 +111,9 @@ public class Robot extends TimedRobot
       disabledTimer.stop();
       disabledTimer.reset();
     }
+    for(String limelightName : LimelightConstants.LIMELIGHT_NAMES){
+      LimelightHelpers.SetIMUMode(limelightName, 1);
+    }
   }
 
   /**
@@ -98,6 +122,10 @@ public class Robot extends TimedRobot
   @Override
   public void autonomousInit()
   {
+    for(String limelightName : LimelightConstants.LIMELIGHT_NAMES){
+      LimelightHelpers.SetIMUMode(limelightName, 4);
+    }
+
     m_autonomousCommand = m_robotContainer.getAutonomousCommand();
 
     // schedule the autonomous command (example)
@@ -127,6 +155,10 @@ public class Robot extends TimedRobot
     } else
     {
       CommandScheduler.getInstance().cancelAll();
+    }
+
+    for(String limelightName : LimelightConstants.LIMELIGHT_NAMES){
+      LimelightHelpers.SetIMUMode(limelightName, 4);
     }
   }
 
