@@ -93,19 +93,6 @@ public class ShotCalculator {
         return hoodAzimuth;
     }
 
-    /** Hack method for alpha bot testing. DNU on main bot.*/
-    public double getStationaryRPM(Pose2d currentRobotPose){
-        Transform2d turretTransform = new Transform2d(
-            TurretConstants.ROBOT_RELATIVE_TURRET.getX(), 
-            TurretConstants.ROBOT_RELATIVE_TURRET.getY(),
-            new Rotation2d()
-        );
-        Pose2d turretPose = currentRobotPose.transformBy(turretTransform);
-
-        double distanceToTarget = turretPose.getTranslation().getDistance(FieldConstants.BLUE_HUB_CENTER);
-        return flywheelRPMMap.get(distanceToTarget);
-    }
-
     public double getTurretAngle() {
         return turretAngle;
     }
