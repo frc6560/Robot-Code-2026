@@ -96,77 +96,9 @@ public final class Constants {
       }
       return limelightPose;
     }
-    public static final double kStdvXYBase = 0.15; // No idea how to tune these base values.
-    public static final double kStdvThetaBase = 1.0; // See above
-    public static final double JUMP_TOLERANCE = 0.6; // meters. again, needs tuning.
-  }
-
-  public static final class ElevatorConstants {
-    
-    //unknown
-    public static int ElevLeftCanID = 15;
-    public static int ElevRightCanID = 16;
-    
-    public static final int TopLimitSwitchID = 3;
-    public static final int BotLimitSwitchID = 4;
-    
-
-    public static final double kS = 0;
-    public static final double kV = 0;
-    public static final double kA = 0;
-
-    public static final double kP = 3.5;
-    public static final double kI = 0.1;
-    public static final double kD = 0.1;
-
-    public static final double kMaxV = 30;
-    public static final double kMaxA = 23;
-
-    public static final double kG = 0.4;
-    
-      
-        
-        public static enum ElevState {
-          L2BALL(HeightToRotations(32 + 8.125)),
-          L3BALL(HeightToRotations(47.625 + 8.125)),
-          SHOOTBALL(HeightToRotations(76 + 8.125)),
-          STOW(HeightToRotations(18)),
-          GROUNDBALL(HeightToRotations(20));
-        
-
-          public final double elevatorSetPoint;
-          
-          private ElevState(double elevatorSetpoint) {
-            this.elevatorSetPoint = elevatorSetpoint;
-          }
-
-          public double getValue() {
-            return elevatorSetPoint;
-          }
-
-        }
-
-        public static double HeightToRotations(double TargetHeight) {
-          return ((TargetHeight-WristHeightOffGround)/NumInPerRot);
-        } 
-
-        //placeholder
-        public static final double NumInPerRot = 13.4962820398;
-        public static final double WristHeightOffGround = 17;
-        //need to be tested
-
-
-        public static final double L2 = 5;///*5*/ HeightToRotations(32);
-        public static final double L3 = 10;///*10*/HeightToRotations(47.625);
-        public static final double L4 = 15;///*15*/ HeightToRotations(72);
-        public static final double REMOVEBALLL2 = 0.2;///*4*/ HeightToRotations(32 + 8.125);
-        public static final double REMOVEBALLL3 = 14;///*8*/ HeightToRotations(47.625 + 8.125);
-        public static final double SHOOTBALL = 20.22;///*18*/ HeightToRotations(76 + 8.125);
-        public static final double L2BALL = 1.8;//HeightToRotations(32 + 8.125);
-        public static final double L3BALL = 6.7;//HeightToRotations(47.625 + 8.125); 677777777777 haahahahahahahahahahhahahahahaha
-        public static final double STOW = 0.2;//HeightToRotations(18);
-        public static final double GROUNDBALL = 0.2;//HeightToRotations(20);
-    
+    public static final double kStdvXYBase = 0.15; 
+    public static final double kStdvThetaBase = 1.0; 
+    public static final double JUMP_TOLERANCE = 0.6;
   }
 
   public static final class ShooterConstants{
@@ -180,84 +112,6 @@ public final class Constants {
   public static final class TurretConstants{
     public static final Transform3d ROBOT_RELATIVE_TURRET = new Transform3d(-0.275, 0, 0, new Rotation3d()); // update when turret constants come out
     // MAKE SURE THIS IS UP LEFT. NOT UP RIGHT.
-  }
-
-  public static final class ArmConstants
-  {
-    /** CAN IDs */
-    public static final int MOTOR_ID = 40;      // TODO: set correct ID
-    public static final int ENCODER_ID = 0;    // TODO: set correct ID
-
-    /** Characterization Gains */
-    public static final double kS = 0.0;
-    public static final double kV = 0.0;
-    public static final double kA = 0.0;
-    public static final double kG = 0.0;
-
-    /** PID Gains */
-    public static final double kP = 4;
-    public static final double kI = 0.0;
-    public static final double kD = 0.0;
-
-    /** Motion Constraints */
-    public static final double kMaxV = 128000; // m/s
-    public static final double kMaxA = 128000; // m/s^2
-
-    /** Arm PID Gains */
-    public static final double ARM_KP = 3.5;
-    public static final double ARM_KI = 0.1;
-    public static final double ARM_KD = 0.1;
-    public static final double ARM_KS = 0.1;
-    public static final double ARM_KG = 0.0;
-    public static final double ARM_KV = 0.0;
-    public static final double ARM_KA = 0.0;
-
-    /** Arm Geometry */
-    public static final double MOTOR_GEAR_RATIO = 108.0; // Motor reduction ratio
-    public static final double ENCODER_GEAR_RATIO = 81.0; // Encoder reduction ratio
-    public static final double ARM_LENGTH_METERS = 0.5; // TODO: measure (m)
-    public static final double ARM_MASS_KG = 5.0;       // TODO: measure (kg)
-    public static final double MAX_ANGLE_DEG = 0.0;
-    public static final double MIN_ANGLE_DEG = -70.0;
-    
-
-    /** Gravity constant */
-    public static final double GRAVITY = 9.81; // m/s^2
-
-    /** Arm Setpoints (Degrees) */
-    public static final double STOW_POSITION_DEG = -8.0;
-    public static final double PICKUP_POSITION_DEG = -95;
-    public static final double REEF_POSITION_DEG_low = -19; //11.0+90.0;
-    public static final double REEF_POSITION_DEG_high = -19; //11.0+90.0;
-    public static final double BARGE = -8.0; //31.0+90.0;
-    public static final double PROCESSOR_DEG = 0.0;
-    
-
-    // Absolute encoder setup
-  public static final int ABS_ENCODER_DIO_PORT = 0;   // change to your wiring
-  public static final double ABS_ENCODER_OFFSET_DEG = 0.0; // tune so stow = 0°
-  public static final boolean ABS_ENCODER_REVERSED = false; 
-
-
-    /** Arm Setpoints (Radians) */
-    public static final double STOW_POSITION_RAD = Math.toRadians(STOW_POSITION_DEG);
-    public static final double PICKUP_POSITION_RAD = Math.toRadians(PICKUP_POSITION_DEG);
-    public static final double REEF_POSITION_RAD_high = Math.toRadians(REEF_POSITION_DEG_high);
-    public static final double REEF_POSITION_RAD_low = Math.toRadians(REEF_POSITION_DEG_low);
-
-    /** Arm State Enum */
-    public enum ArmState {
-      STOW(STOW_POSITION_DEG),
-      PICKUP(PICKUP_POSITION_DEG),
-      REEF_high(REEF_POSITION_DEG_high),
-      REEF_low(REEF_POSITION_DEG_low);
-
-      public final double angleDeg;
-
-      ArmState(double angleDeg) {
-        this.angleDeg = angleDeg;
-      }
-    }
   }
 
 }
