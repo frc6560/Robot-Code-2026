@@ -44,10 +44,14 @@ public class PathGroup{
     }
 
 
-    /** We don't really need any of the other functions. A modified calculation function. */
-    public Setpoint calculate(double currentRotation){
+    /** We don't really need any of the other functions. A modified calculation function.
+     * @param currentRotation the current rotation of the robot
+     * @param dt the timestep in seconds (typically 0.02 for 50Hz control loops)
+     * @return the next setpoint for the robot to follow
+     */
+    public Setpoint calculate(double currentRotation, double dt){
         // Translation
-        TrapezoidProfile.State translationalSetpoint = profile.calculate(0.02, currentState, endState);
+        TrapezoidProfile.State translationalSetpoint = profile.calculate(dt, currentState, endState);
 
         Translation2d normalizedVelocity;
         double timeParam;
@@ -65,8 +69,8 @@ public class PathGroup{
         endRotation.position = rotationalPose + errorToGoal;
         currentRotationState.position = rotationalPose + errorToSetpoint;
 
-        // finally computes next rotation state 
-        State rotationalSetpoint = rotationProfile.calculate(0.02, currentRotationState, endRotation);
+        // finally computes next rotation state
+        State rotationalSetpoint = rotationProfile.calculate(dt, currentRotationState, endRotation);
         currentRotationState.position = rotationalSetpoint.position;
         currentRotationState.velocity = rotationalSetpoint.velocity;
 

@@ -183,42 +183,6 @@ public class SwerveSubsystem extends SubsystemBase {
   double tx;
 
 
-  /** Tracks an april tag using the drivetrain! */
-  public Command trackAprilTag(){
-    LinearFilter filter = LinearFilter.movingAverage(5);
-    Command trackAprilTagCommand = new FunctionalCommand(
-      () -> {
-      },
-      () -> {
-        double thetaError;
-        m_pidControllerTheta.enableContinuousInput(-Math.PI, Math.PI);
-        // If it sees the tag, use the limelight raw tx value over a linear filter. Otherwise, use pose estimator.
-        if(LimelightHelpers.getTV("limelight-right") && LimelightHelpers.getTX("limelight-right") != 0){
-          tx = LimelightHelpers.getTX("limelight-right");
-          double tx_rad = Units.degreesToRadians(tx);
-          thetaError = (-1) * filter.calculate(tx_rad);
-        }  
-        else{
-          Translation2d targetVector = FieldConstants.TARGET_POSE.getTranslation().minus(getPose().getTranslation());
-          double targetAngle = Math.atan2(targetVector.getY(), targetVector.getX());
-          thetaError = MathUtil.angleModulus(targetAngle - getPose().getRotation().getRadians());
-        }
-        double thetaOutput = m_pidControllerTheta.calculate(thetaError, 0);
-        SmartDashboard.getEntry("Theta Error").setDouble(m_pidControllerTheta.getError());
-        swerveDrive.driveFieldOriented(new ChassisSpeeds(
-            0,
-            0,
-            thetaOutput
-        ));
-      },
-      (interrupted) -> {
-        drive(new ChassisSpeeds());
-      },
-      () -> Math.abs(tx) < 1.0 && LimelightHelpers.getTV("limelight-right"));
-      return trackAprilTagCommand;
-    }
-
-
     /** Aligns the robot to face the trench while driving*/
     public Command alignToTrenchCommand(){
       m_pidControllerTheta.enableContinuousInput(-Math.PI, Math.PI);
