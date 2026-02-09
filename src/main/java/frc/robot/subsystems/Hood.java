@@ -12,6 +12,7 @@ import com.ctre.phoenix6.signals.SensorDirectionValue;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.trajectory.TrapezoidProfile;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.Mechanism2d;
 import edu.wpi.first.wpilibj.smartdashboard.MechanismLigament2d;
 import edu.wpi.first.wpilibj.smartdashboard.MechanismRoot2d;
@@ -55,6 +56,20 @@ public class Hood extends SubsystemBase {
     configureAbsoluteEncoder();
     configureMotor();
 
+    // --- CRITICAL FIX: SEEDING ---
+    // Wait briefly for CANcoder to boot up
+    Timer.delay(0.25); 
+    
+    // 1. Read the real angle (Rotations) from the Absolute Encoder
+    double absPositionRotations = absoluteEncoder.getAbsolutePosition().getValueAsDouble();
+    
+    // 2. Tell the Motor "This is your current position"
+    // (This syncs the internal soft limits to reality)
+    hoodMotor.setPosition(absPositionRotations);
+
+    // 3. Reset the motion profile so it doesn't jump
+    resetProfileToCurrent();
+
     // Visualization
     hoodMech = new Mechanism2d(200, 200);
     MechanismRoot2d hoodRoot = hoodMech.getRoot("Hood Root", 100, 100);
@@ -66,7 +81,7 @@ public class Hood extends SubsystemBase {
   private void configureAbsoluteEncoder() {
     CANcoderConfiguration config = new CANcoderConfiguration();
     config.MagnetSensor.SensorDirection = SensorDirectionValue.CounterClockwise_Positive;
-    config.MagnetSensor.MagnetOffset = 0.0; 
+    config.MagnetSensor.MagnetOffset = 0.0; // TODO: Calibrate this if 0 is not 0
     absoluteEncoder.getConfigurator().apply(config);
   }
 
@@ -88,11 +103,14 @@ public class Hood extends SubsystemBase {
     config.CurrentLimits.SupplyCurrentLimit = HoodConstants.HOOD_CURRENT_LIMIT;
     config.CurrentLimits.SupplyCurrentLimitEnable = true;
 
-    // --- GEARING CONFIGURATION (Matches your specific hardware) ---
+    // --- GEARING ---
+    // Combining the ratios into one "SensorToMechanismRatio" is usually safer,
+    // but if this math worked for you before, we keep it.
+    // Ideally: SensorToMechanismRatio = TotalGearRatio
     config.Feedback.SensorToMechanismRatio = 2 * (HoodConstants.ABSOLUTE_HOOD_ENCODER_GEAR_RATIO);
     config.Feedback.RotorToSensorRatio = (44.0/9.0); 
 
-    // Soft limits (0 to 37 degrees)
+    // Soft limits (0 to 37 degrees converted to Rotations)
     config.SoftwareLimitSwitch.ForwardSoftLimitEnable = true;
     config.SoftwareLimitSwitch.ForwardSoftLimitThreshold = 37.0 / 360.0; 
     config.SoftwareLimitSwitch.ReverseSoftLimitEnable = true; 
@@ -106,36 +124,39 @@ public class Hood extends SubsystemBase {
   }
 
   public void manualUp() {
-    setGoal(targetAngle + 0.5); // Nudge up
+    setGoal(targetAngle + 0.5); // Nudge up 0.5 deg
   }
 
   public void manualDown() {
-    setGoal(targetAngle - 0.5); // Nudge down
+    setGoal(targetAngle - 0.5); // Nudge down 0.5 deg
   }
 
   public void setGoal(double goalDeg) {
+    // Clamp the target so we never ask the profile to go outside safe limits
     targetAngle = MathUtil.clamp(goalDeg, HoodConstants.HOOD_MIN_ANGLE, HoodConstants.HOOD_MAX_ANGLE);
     hoodGoalState = new TrapezoidProfile.State(targetAngle / 360.0, 0);
   }
 
   /**
-   * SAFETY FIX: Syncs software to reality.
-   * Prevents the hood from snapping if it fell while disabled.
+   * SAFETY FIX: Syncs software profile to the real hood angle.
+   * Call this in Command.initialize()
    */
   public void resetProfileToCurrent() {
     double currentRotations = getCurrentAngle() / 360.0;
+    
+    // Reset both states to where we are NOW
     hoodSetpointState = new TrapezoidProfile.State(currentRotations, 0);
-    // Also reset the target to where we are now, so it holds position
-    targetAngle = getCurrentAngle();
     hoodGoalState = new TrapezoidProfile.State(currentRotations, 0);
+    
+    // Update targetAngle so manual nudge works correctly from here
+    targetAngle = currentRotations * 360.0;
   }
 
   /**
-   * SAFETY FIX: Calculates the profile and moves the motor.
-   * Only called when the command is running.
+   * Call this in Command.execute()
    */
   public void runControlLoop() {
-    // 1. Calculate next step
+    // 1. Calculate next step in the profile
     hoodSetpointState = hoodTrapezoidProfile.calculate(0.02, hoodSetpointState, hoodGoalState);
 
     // 2. Send to motor
@@ -162,7 +183,6 @@ public class Hood extends SubsystemBase {
 
   @Override
   public void periodic() {
-    // Only update Telemetry here. No movement.
     SmartDashboard.putNumber("Hood/Current Angle", getCurrentAngle());
     SmartDashboard.putNumber("Hood/Target Angle", targetAngle);
     SmartDashboard.putBoolean("Hood/At Target", atTarget());

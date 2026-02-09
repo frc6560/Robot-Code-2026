@@ -5,10 +5,9 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
-import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine; // IMPORTED SYSID
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine; 
 
 import frc.robot.subsystems.vision.LimelightVision;
 import frc.robot.subsystems.vision.VisionSubsystem;
@@ -31,21 +30,26 @@ import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 
 public class RobotContainer {
 
-    // Controllers
+    // --- CONTROLLERS ---
+    // FIXED: Only define the controllers once!
+    // Driver on Port 0, Operator on Port 1
     private final CommandXboxController driverXbox = new CommandXboxController(0);
-    private final XboxController firstXbox = new XboxController(0);
-    private final XboxController secondXbox = new XboxController(1);
-    private final ManualControls controls = new ManualControls(firstXbox, secondXbox);
+    private final CommandXboxController operatorXbox = new CommandXboxController(1);
+
+    // Pass the underlying HID (Hardware Interface) to your manual controls
+    private final ManualControls controls = new ManualControls(driverXbox.getHID(), operatorXbox.getHID());
     
-    // Subsystems
-    private final SwerveSubsystem drivebase  = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(), "swerve/falcon"));
+    // --- SUBSYSTEMS ---
+    private final SwerveSubsystem drivebase = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(), "swerve/falcon"));
     
     private final VisionSubsystem vision;
-    private final ShotCalculator shotCalc = new ShotCalculator(() -> drivebase.getPose());
+    
+    // Pass the Pose Supplier directly (Method Reference)
+    private final ShotCalculator shotCalc = new ShotCalculator(drivebase::getPose);
+    private final Flywheel flywheel = new Flywheel(drivebase::getPose); 
+    private final Hood hood = new Hood(drivebase::getPose);
 
-    private final Flywheel flywheel = new Flywheel(() -> drivebase.getPose()); 
-    private final Hood hood = new Hood(() -> drivebase.getPose());
-
+    // Drive Input Stream
     SwerveInputStream driveAngularVelocity = SwerveInputStream.of(drivebase.getSwerveDrive(),
       () -> driverXbox.getLeftY() * -1,
       () -> driverXbox.getLeftX() * -1)
@@ -55,50 +59,44 @@ public class RobotContainer {
       .allianceRelativeControl(true);
 
     public RobotContainer() {
-        flywheel.setDefaultCommand(new FlywheelCommand(flywheel, shotCalc, controls));
-        hood.setDefaultCommand(new HoodCommand(hood, controls, shotCalc));
-
-        List<LimelightVision> limelights = new ArrayList<LimelightVision>();
+        // Initialize Vision
+        List<LimelightVision> limelights = new ArrayList<>();
         for(String name : LimelightConstants.LIMELIGHT_NAMES) {
             Pose3d cameraPose = LimelightConstants.getLimelightPose(name);
             limelights.add(new LimelightVision(drivebase, name, cameraPose));
         }
-
         vision = new VisionSubsystem(limelights);
+
+        // Set Default Commands
+        // These commands run logic 100% of the time (checking for button presses inside)
+        flywheel.setDefaultCommand(new FlywheelCommand(flywheel, shotCalc, controls));
+        hood.setDefaultCommand(new HoodCommand(hood, controls, shotCalc));
+        
+        // Configure Buttons
         configureBindings();
     }
 
     private void configureBindings() {
+        // Default Drive Command
         Command driveFieldOrientedAnglularVelocity = drivebase.driveFieldOriented(driveAngularVelocity);
         drivebase.setDefaultCommand(driveFieldOrientedAnglularVelocity);
 
-        // --- DRIVER CONTROLS (Standard) ---
+        // --- DRIVER CONTROLS ---
         driverXbox.start().onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
         driverXbox.leftBumper().whileTrue(Commands.runOnce(drivebase::lock, drivebase).repeatedly());
 
-        // --- COMMENTED OUT FOR SYSID TESTING ---
-        
+        // --- TEST BINDINGS ---
         driverXbox.a().onTrue(
           Commands.defer(() -> {
             return Commands.runOnce(() -> vision.hardReset("limelight"), vision);
           }, Set.of(vision))
         );
-        driverXbox.y().onTrue(Commands.runOnce(() -> CommandScheduler.getInstance().cancelAll()));
-        driverXbox.x().onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
-        driverXbox.b().onTrue(Commands.runOnce(() -> CommandScheduler.getInstance().schedule(drivebase.sysIdDriveMotorCommand()), drivebase));
-        
 
-        // // --- FLYWHEEL SYSID CONTROLS (ACTIVE) ---
-        // // A Button: Slow Ramp Up (Quasistatic Forward)
-        // driverXbox.a().whileTrue(flywheel.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
+        driverXbox.y().onTrue(Commands.runOnce(() -> CommandScheduler.getInstance().cancelAll()));
         
-        // // B Button: Slow Ramp Down (Quasistatic Reverse)
-        // driverXbox.b().whileTrue(flywheel.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
+        driverXbox.x().onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
         
-        // // X Button: Fast Step Up (Dynamic Forward)
-        // driverXbox.x().whileTrue(flywheel.sysIdDynamic(SysIdRoutine.Direction.kForward));
-        
-        // // Y Button: Fast Step Down (Dynamic Reverse)
-        // driverXbox.y().whileTrue(flywheel.sysIdDynamic(SysIdRoutine.Direction.kReverse));
+        // SYSID (Keep commented out for matches)
+        // driverXbox.b().onTrue(Commands.runOnce(() -> CommandScheduler.getInstance().schedule(drivebase.sysIdDriveMotorCommand()), drivebase));
     }
 }
