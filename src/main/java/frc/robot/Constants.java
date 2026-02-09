@@ -91,8 +91,8 @@ public final class Constants {
   }
   public static final class RevolverConstants {
     /** CAN IDs - Kraken X44 Motors */
-    public static final int PAN_MOTOR_ID = 14;      // TODO: Set to your pan motor CAN ID
-    public static final int PUSHER_MOTOR_ID = 23;   // TODO: Set to your pusher motor CAN ID
+    public static final int PAN_MOTOR_ID = 14;   
+    public static final int PUSHER_MOTOR_ID = 23;  
 
     /** Target Speeds (RPM) */
     public static final double PAN_TARGET_RPM = 180.0;      // Pan rotation speed

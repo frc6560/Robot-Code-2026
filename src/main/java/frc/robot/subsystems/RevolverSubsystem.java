@@ -17,8 +17,8 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 public class RevolverSubsystem extends SubsystemBase {
 
     /* ======================= Hardware ======================= */
-    private final TalonFX panMotor = new TalonFX(10);
-    private final TalonFX pusherMotor = new TalonFX(11);
+    private final TalonFX panMotor = new TalonFX(14);
+    private final TalonFX pusherMotor = new TalonFX(23);
     private final DigitalInput beamBreaker = new DigitalInput(0); // DIO 0
 
     /* ======================= RPM Targets ======================= */
