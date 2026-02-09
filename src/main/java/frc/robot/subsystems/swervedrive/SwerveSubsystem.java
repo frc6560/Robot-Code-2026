@@ -24,8 +24,10 @@ import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.math.filter.LinearFilter;
+import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
@@ -44,6 +46,7 @@ import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Config;
 import frc.robot.Constants;
 import frc.robot.Constants.DrivebaseConstants;
 import frc.robot.Constants.FieldConstants;
+import frc.robot.Constants.TurretConstants;
 import frc.robot.utility.LimelightHelpers;
 import frc.robot.utility.LimelightHelpers.PoseEstimate;
 
@@ -107,7 +110,7 @@ public class SwerveSubsystem extends SubsystemBase {
       throw new RuntimeException(e);
     }
     swerveDrive.setHeadingCorrection(false); 
-    swerveDrive.setCosineCompensator(false);
+    swerveDrive.setCosineCompensator(true);
     swerveDrive.setAngularVelocityCompensation(true,
                                                true,
                                                0.1);
@@ -137,9 +140,19 @@ public class SwerveSubsystem extends SubsystemBase {
 
   @Override
   public void periodic() {
+    // Update distance to hub on SmartDashboard for debugging
+    Transform2d turretTransform = new Transform2d(
+            TurretConstants.ROBOT_RELATIVE_TURRET.getX(), 
+            TurretConstants.ROBOT_RELATIVE_TURRET.getY(),
+            new Rotation2d()
+        );
+    Pose2d robotRelativeTurret = getPose().transformBy( turretTransform );
+    swerveDrive.field.getObject("TurretPose").setPose(robotRelativeTurret);
+    SmartDashboard.getEntry("DistToBlueHub").setDouble(
+      robotRelativeTurret.getTranslation().getDistance(FieldConstants.BLUE_HUB_CENTER));
   }
 
-  /** 
+  /**
    * Path following command using SwerveSample from Choreo
    * @param setpoint SwerveSample setpoint to follow, representing the robot state.
    */
@@ -156,8 +169,8 @@ public class SwerveSubsystem extends SubsystemBase {
 
     Pose2d pose = getPose();
 
-    ChassisSpeeds targetSpeeds = new ChassisSpeeds( 
-      setpoint.vx + m_pidControllerX.calculate(pose.getX(), setpoint.x), 
+    ChassisSpeeds targetSpeeds = new ChassisSpeeds(
+      setpoint.vx + m_pidControllerX.calculate(pose.getX(), setpoint.x),
       setpoint.vy + m_pidControllerY.calculate(pose.getY(), setpoint.y),
       setpoint.omega + m_pidControllerTheta.calculate(pose.getRotation().getRadians(), setpoint.heading)
     );
@@ -168,6 +181,8 @@ public class SwerveSubsystem extends SubsystemBase {
 
   /** Rotates to a specified angle while inheriting the chassis's original translational velocity */
   public void rotateToAngle(double targetInRadians){
+    m_pidControllerTheta.enableContinuousInput(-Math.PI, Math.PI);
+
     SmartDashboard.getEntry("Yaw error").setDouble(m_pidControllerTheta.getError());
     SmartDashboard.getEntry("Pose in radians").setDouble(getPose().getRotation().getRadians());
 
@@ -180,10 +195,7 @@ public class SwerveSubsystem extends SubsystemBase {
     swerveDrive.driveFieldOriented(targetSpeeds);
   }
 
-  double tx;
-
-
-    /** Aligns the robot to face the trench while driving*/
+    /** Aligns the robot to face the trench while driving */
     public Command alignToTrenchCommand(){
       m_pidControllerTheta.enableContinuousInput(-Math.PI, Math.PI);
 
