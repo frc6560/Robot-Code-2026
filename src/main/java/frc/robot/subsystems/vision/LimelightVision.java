@@ -17,8 +17,6 @@ public class LimelightVision{
     private Pose2d robotPose2d = new Pose2d();
     private double latency = 0.0;
     private final String name;
-    private final Pose3d cameraPose;
-
     private double kStdvXY = Double.POSITIVE_INFINITY;
     private double kStdvTheta = Double.POSITIVE_INFINITY;
 
@@ -27,8 +25,6 @@ public class LimelightVision{
     public LimelightVision(SwerveSubsystem drivebase, String name, Pose3d cameraPose) {
         this.name = name;
         this.drivebase = drivebase;
-        this.cameraPose = cameraPose;
-
         // Sets the camera's position on the robot. The actual Pose3d this originates from comes from the camera.
         LimelightHelpers.setCameraPose_RobotSpace(
             name, 
@@ -58,14 +54,14 @@ public class LimelightVision{
         SmartDashboard.putNumber(this.name + "/TagCount", poseEstimate.tagCount);
         SmartDashboard.putNumber(this.name + "/AvgTagDist", poseEstimate.avgTagDist);
         SmartDashboard.putNumber(this.name + "/Latency", latency);
-        SmartDashboard.putNumber(this.name + "/STDVX", kStdvXY);
+        SmartDashboard.putNumber(this.name + "/STDVX", kStdvXY * LimelightConstants.kStdvXYBase);
 
         if(!Double.isNaN(poseEstimate.pose.getX()) && poseEstimate.tagCount > 0){
             drivebase.getSwerveDrive().field.getObject(this.name + "/LimelightPose").setPose(robotPose2d);
         }
 
         // Rejects null measurements
-        if(robotPose2d == null || robotPose2d == nullPose){
+        if(robotPose2d == null || robotPose2d.equals(nullPose)){
             return;
         }
 
@@ -104,7 +100,7 @@ public class LimelightVision{
         PoseEstimate poseEstimate = LimelightHelpers.getBotPoseEstimate_wpiBlue(this.name);
         if(poseEstimate != null){
             robotPose2d = poseEstimate.pose;
-            if(robotPose2d!= null && robotPose2d != new Pose2d()) drivebase.resetOdometry(robotPose2d);
+            if(robotPose2d!= null && !robotPose2d.equals(new Pose2d())) drivebase.resetOdometry(robotPose2d);
         }
     }
 
