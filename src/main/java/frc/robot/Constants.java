@@ -96,11 +96,11 @@ public final class Constants {
     public static final int RIGHT_FLYWHEEL_ID = 20;
 
     /** PID Gains */
-    public static final double kP = 0.2;
-    public static final double kI = 0.005;
-    public static final double kD = 0.0008;
+    public static final double kP = 0.5;
+    public static final double kI = 0.00;
+    public static final double kD = 0.00;
     public static final double kV = 0.1183; // TODO: tune
-     public static final double kS = 0.25;
+     public static final double kS = 0.00;
 
     /** Flywheel Geometry */
        public static final double MAX_RPM = 5000; // Example value for Falcon 500
@@ -122,7 +122,7 @@ public final class Constants {
 
     /** Distance to RPM Lookup Table */
     public static final double[][] DISTANCE_RPM_TABLE = {
-      {0.0, 120.0},
+      {0.0, 1000.0},
       {1.0, 80.0},
       {2.0, 100.0},
       {3.0, 150.0},
