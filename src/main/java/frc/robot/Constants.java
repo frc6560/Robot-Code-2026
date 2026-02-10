@@ -102,7 +102,32 @@ public final class Constants {
   }
 
   public static final class ShooterConstants{
-    public static final double FLYWHEEL_RPM = -1750;
+    /** CAN IDs */
+    public static final int LEFT_FLYWHEEL_ID = 19;
+    public static final int RIGHT_FLYWHEEL_ID = 20;
+
+    /** PID Gains */
+    public static final double kP = 0.5;
+    public static final double kI = 0.00;
+    public static final double kD = 0.00;
+    public static final double kV = 0.1183; 
+     public static final double kS = 0.00;
+
+    /** Flywheel Geometry */
+       public static final double MAX_RPM = 5000; 
+    public static final double TARGET_RPM_HARDSET = 2000.0; 
+    public static final double FLYWHEEL_GEAR_RATIO = 1.25; 
+    public static final double FLYWHEEL_IDLE_RPM = 60.0; //kraken x60 
+    public static final double FLYWHEEL_RPM_TOLERANCE = 100.0;
+
+    /** Current Limits */
+    public static final double FLYWHEEL_SUPPLY_CURRENT_LIMIT = 60.0; // Amps
+
+    /** Motor Inversion Settings */
+    public static final boolean LEFT_FLYWHEEL_INVERTED = false; 
+    public static final boolean RIGHT_FLYWHEEL_OPPOSED = true; 
+
+    public static final int FLYWHEEL_STATOR_CURRENT_LIMIT = 80;
   }
 
   public static final class FeederConstants{
