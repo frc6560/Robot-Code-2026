@@ -101,6 +101,43 @@ public final class Constants {
     public static final double JUMP_TOLERANCE = 0.6;
   }
 
+  public static final class HoodConstants{
+    /** CAN IDs */
+    public static final int HOOD_MOTOR_ID = 21;
+
+    /** Feedforward Gains (for TalonFX Slot0) */
+    public static final double kS = 0.2;   // Static friction voltage
+    public static final double kV = 0.12;  // Velocity feedforward
+    public static final double kA = 0.0;   // Acceleration feedforward
+
+    /** PID Gains */
+    public static final double kP = 0.5;   // Proportional gain
+    public static final double kI = 0.0;   // Integral gain
+    public static final double kD = 0.0;   // Derivative gain
+
+    /** Motion Profile Constraints */
+    public static final double kMaxV = 360.0;  // Max velocity (degrees/second)
+    public static final double kMaxA = 720.0;  // Max acceleration (degrees/second²)
+
+    /** Hood Geometry */
+    public static final double HOOD_GEAR_RATIO = 40.0; // 40:1 total gear reduction
+    public static final double ABSOLUTE_HOOD_ENCODER_GEAR_RATIO = 44.0 / 18.0; // 2.44:1
+
+    /** Motor Inversion */
+    public static final boolean HOOD_MOTOR_INVERTED = false; // TODO: Test and adjust
+
+    /** Current Limits */
+    public static final double HOOD_CURRENT_LIMIT = 30.0; // Amps
+
+    /** Hood Angle Limits */
+    public static final double HOOD_MIN_ANGLE = 0.0;   // degrees
+    public static final double HOOD_MAX_ANGLE = 37.0;  // degrees
+
+    public static final int HOOD_ABSOLUTE_ENCODER_ID = 22;
+
+    public static final double HOOD_ABSOLUTE_ENCODER_OFFSET = 0;
+  }
+
   public static final class ShooterConstants{
     /** CAN IDs */
     public static final int LEFT_FLYWHEEL_ID = 19;

@@ -23,6 +23,8 @@ import frc.robot.Constants.OperatorConstants;
 import frc.robot.autonomous.AutoModeChooser;
 import frc.robot.autonomous.AutoCommands;
 import frc.robot.autonomous.AutoNames;
+import frc.robot.subsystems.superstructure.Hood;
+import frc.robot.subsystems.superstructure.Shooter;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 
 
@@ -37,8 +39,9 @@ public class RobotContainer {
      // The robot's subsystems and commands are defined here...
     private final SwerveSubsystem drivebase  = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(),
     "swerve/falcon"));
-    
     private final VisionSubsystem vision;
+    private final Hood hood = new Hood(drivebase::getPose);
+    private final Shooter shooter = new Shooter(drivebase::getPose);
 
     // Subsystems
 
