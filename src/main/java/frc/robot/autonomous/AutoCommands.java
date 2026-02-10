@@ -51,7 +51,7 @@ public class AutoCommands {
 
     public Command spinUpShooter(){
     //     return Commands.runOnce(() -> shooter.setRPM(ShooterConstants.FLYWHEEL_RPM), shooter);
-        return Commands.idle(null);
+        return Commands.idle();
     }
 
     public Command shoot(){
@@ -61,7 +61,7 @@ public class AutoCommands {
         //         shooter.setRPM(0);
         //         feeder.setRPM(0);
         //     });
-        return Commands.idle(null);
+        return Commands.idle();
     }
 
     /** Test auto on HP side. Should be comp level accuracy. */
