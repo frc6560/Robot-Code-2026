@@ -61,13 +61,13 @@ public class ManualControls {
       return secondXbox.getPOV() == 180;
     }
     
-    public boolean goToL2Ball(){
-        return secondXbox.getXButton();
-    }
+    // public boolean goToL2Ball(){
+    //     return secondXbox.getXButton();
+    // }
 
-    public boolean goToL3Ball(){
-        return secondXbox.getBButton();
-    }
+    // public boolean goToL3Ball(){
+    //     return secondXbox.getBButton();
+    // }
 
     // public boolean goToShootBall(){
     //     return secondXbox.getYButton();

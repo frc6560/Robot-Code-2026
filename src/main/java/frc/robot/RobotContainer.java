@@ -95,6 +95,17 @@ public class RobotContainer {
         driverXbox.y().onTrue(Commands.runOnce(() -> CommandScheduler.getInstance().cancelAll()));
         
         driverXbox.x().onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
+
+        // In RobotContainer.java -> configureBindings()
+
+// B Button -> Go to 20 Degrees (Middle)
+operatorXbox.b().onTrue(Commands.runOnce(() -> hood.setGoal(20.0), hood));
+
+// X Button -> Go to 0 Degrees (Bottom)
+operatorXbox.x().onTrue(Commands.runOnce(() -> hood.setGoal(0.0), hood));
+
+// // Y Button -> Go to 35 Degrees (Top)
+// operatorXbox.y().onTrue(Commands.runOnce(() -> hood.setGoal(35.0), hood));
         
         // SYSID (Keep commented out for matches)
         // driverXbox.b().onTrue(Commands.runOnce(() -> CommandScheduler.getInstance().schedule(drivebase.sysIdDriveMotorCommand()), drivebase));

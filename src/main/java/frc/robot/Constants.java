@@ -139,7 +139,7 @@ public final class Constants {
     public static final int HOOD_MOTOR_ID = 21;
 
     /** Feedforward Gains (for TalonFX Slot0) */
-    public static final double kS = 0.2;   // Static friction voltage
+    public static final double kS = 0.5;   // Static friction voltage
     public static final double kV = 0.12;  // Velocity feedforward
     public static final double kA = 0.0;   // Acceleration feedforward
 
@@ -160,7 +160,7 @@ public final class Constants {
     public static final boolean HOOD_MOTOR_INVERTED = false; // TODO: Test and adjust
 
     /** Current Limits */
-    public static final double HOOD_CURRENT_LIMIT = 30.0; // Amps
+    public static final double HOOD_CURRENT_LIMIT = 60.0; // Amps
 
     /** Hood Angle Limits */
     public static final double HOOD_MIN_ANGLE = 0.0;   // degrees
@@ -179,7 +179,7 @@ public final class Constants {
 
     public static final int HOOD_ABSOLUTE_ENCODER_ID = 22;
 
-    public static final double HOOD_ABSOLUTE_ENCODER_OFFSET = 0;
+    public static final double HOOD_ABSOLUTE_ENCODER_OFFSET = -0.225;
   }
 
   public static final class ElevatorConstants {
