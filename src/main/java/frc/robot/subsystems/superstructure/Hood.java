@@ -125,11 +125,11 @@ public class Hood extends SubsystemBase {
   }
 
   public void manualUp() {
-    setGoal(targetAngle + 0.05); // Nudge up 0.5 deg
+    setGoal(targetAngle + 0.5); // Nudge up 0.5 deg
   }
 
   public void manualDown() {
-    setGoal(targetAngle - 0.05); // Nudge down 0.5 deg
+    setGoal(targetAngle - 0.5); // Nudge down 0.5 deg
   }
 
   public void setGoal(double goalDeg) {
