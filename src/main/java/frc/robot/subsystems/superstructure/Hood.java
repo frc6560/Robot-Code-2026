@@ -42,8 +42,8 @@ public class Hood extends SubsystemBase {
   private double targetAngle = 0.0;
 
   public Hood(PoseSupplier poseSupplier) {
-    hoodMotor = new TalonFX(HoodConstants.HOOD_MOTOR_ID);
-    absoluteEncoder = new CANcoder(HoodConstants.HOOD_ABSOLUTE_ENCODER_ID);
+    hoodMotor = new TalonFX(HoodConstants.HOOD_MOTOR_ID, "rio");
+    absoluteEncoder = new CANcoder(HoodConstants.HOOD_ABSOLUTE_ENCODER_ID, "rio");
 
     positionControl = new PositionVoltage(0.0).withSlot(0);
 
