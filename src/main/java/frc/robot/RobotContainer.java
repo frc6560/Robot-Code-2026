@@ -6,8 +6,8 @@ import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj.XboxController;
-import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+
 import frc.robot.subsystems.vision.LimelightVision;
 import frc.robot.subsystems.vision.VisionSubsystem;
 
@@ -22,7 +22,6 @@ import frc.robot.Constants.LimelightConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.autonomous.AutoModeChooser;
 import frc.robot.autonomous.AutoCommands;
-import frc.robot.autonomous.AutoNames;
 import frc.robot.subsystems.superstructure.Hood;
 import frc.robot.subsystems.superstructure.Shooter;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
@@ -32,9 +31,7 @@ public class RobotContainer {
 
     // Controllers
     private final CommandXboxController driverXbox = new CommandXboxController(0);
-    private final XboxController firstXbox = new XboxController(0);
-    private final XboxController secondXbox = new XboxController(1);
-    private final ManualControls controls = new ManualControls(firstXbox, secondXbox);
+    private final CommandXboxController operatorXbox = new CommandXboxController(1);
 
      // The robot's subsystems and commands are defined here...
     private final SwerveSubsystem drivebase  = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(),
@@ -86,6 +83,12 @@ public class RobotContainer {
         driverXbox.b().onTrue(Commands.runOnce(() -> CommandScheduler.getInstance().schedule(drivebase.sysIdDriveMotorCommand()), drivebase));
         driverXbox.start().onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
         driverXbox.leftBumper().whileTrue(Commands.runOnce(drivebase::lock, drivebase).repeatedly());
+
+        // B Button -> Go to 20 Degrees (Middle)
+        operatorXbox.b().onTrue(Commands.runOnce(() -> hood.setGoal(20.0), hood));
+
+        // X Button -> Go to 0 Degrees (Bottom)
+        operatorXbox.x().onTrue(Commands.runOnce(() -> hood.setGoal(0.0), hood));
     }
 
     public Command getAutonomousCommand() {
