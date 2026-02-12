@@ -172,7 +172,7 @@ public final class Constants {
   }
 
   public static final class TurretConstants{
-    public static final Transform3d ROBOT_RELATIVE_TURRET = new Transform3d(-0.275, 0, 0, new Rotation3d()); // update when turret constants come out
+    public static final Transform3d ROBOT_RELATIVE_TURRET = new Transform3d(0, 0, 0, new Rotation3d()); // update when turret constants come out
 
     /** CAN IDs */
     public static final int MOTOR_ID = 17;      // TODO: set correct ID
