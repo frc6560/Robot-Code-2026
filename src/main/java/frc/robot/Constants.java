@@ -176,7 +176,7 @@ public final class Constants {
 
     /** CAN IDs */
     public static final int MOTOR_ID = 17;      // TODO: set correct ID
-    public static final int ENCODER_ID = 0;    // TODO: set correct ID
+    public static final int ENCODER_ID = 18;    // TODO: set correct ID
 
     /** Characterization Gains */
     public static final double kS = 0.1;
@@ -189,19 +189,24 @@ public final class Constants {
     public static final double kI = 0.01;
     public static final double kD = 0.2;
 
-    /** Motion Constraints */
+    /** Motion Constraints. IN DEGREES PER SECOND */
     public static final double kMaxV = 35; // m/s
     public static final double kMaxA = 45; // m/s^2
 
+    public static final boolean MOTOR_INVERTED = true; // TODO: test and set
+
     /** Turret Geometry */
-    public static final double MOTOR_GEAR_RATIO = 1; // Motor reduction ratio
-    public static final double ENCODER_GEAR_RATIO = 1; // Encoder reduction ratio
+    public static final double MOTOR_GEAR_RATIO = 10.0; // Motor reduction ratio
+    public static final double ENCODER_GEAR_RATIO =  150.0 / 259.0 ; // Encoder reduction ratio
     
 
-  // Absolute encoder setup
-  public static final int ABS_ENCODER_DIO_PORT = 0;   // change to your wiring
-  public static final double ABS_ENCODER_OFFSET_DEG = 0.0; // tune so stow = 0°
-  public static final boolean ABS_ENCODER_REVERSED = false; 
+    // Absolute encoder setup
+    public static final double ABSOLUTE_ENCODER_OFFSET = 0.199; 
+    public static final boolean ABSOLUTE_ENCODER_REVERSED = true; 
+
+    // soft limits
+    public static final double LOWER_SOFT_LIMIT = -135;
+    public static final double UPPER_SOFT_LIMIT = 135;
   }
 
   public static final class IntakeConstants{
