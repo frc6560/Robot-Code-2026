@@ -126,6 +126,7 @@ public class Turret extends SubsystemBase {
 
     @Override
     public void periodic() {
+        // logs!
         SmartDashboard.putNumber("Turret/Current Angle (deg)", getTurretAngle());
         SmartDashboard.putNumber("Turret/Goal Angle (deg)", m_goalDegrees);
         SmartDashboard.putNumber("Turret/Velocity (deg per s)", getTurretVelocity());
