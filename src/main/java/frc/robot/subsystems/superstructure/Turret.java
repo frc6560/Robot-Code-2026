@@ -1,53 +1,30 @@
 package frc.robot.subsystems.superstructure;
 
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.configs.CANcoderConfiguration;
+import com.ctre.phoenix6.configs.MotionMagicConfigs;
 import com.ctre.phoenix6.configs.Slot0Configs;
-import com.ctre.phoenix6.controls.PositionVoltage;
+import com.ctre.phoenix6.controls.MotionMagicVoltage;
+import com.ctre.phoenix6.hardware.CANcoder;
 import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
-import edu.wpi.first.math.controller.ArmFeedforward;
-
-import edu.wpi.first.math.trajectory.TrapezoidProfile;
-import edu.wpi.first.networktables.NetworkTable;
-import edu.wpi.first.networktables.NetworkTableEntry;
-import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import frc.robot.Constants.*;
 
 public class Turret extends SubsystemBase {
+    private final TalonFX m_turretMotor = new TalonFX(TurretConstants.MOTOR_ID, "rio");
+    private final CANcoder m_turretEncoder = new CANcoder(TurretConstants.ENCODER_ID);
 
-/*
-    private final DigitalInput topLimitSwitch = new DigitalInput(ElevatorConstants.TopLimitSwitchID);
-    private final DigitalInput botLimitSwitch = new DigitalInput(ElevatorConstants.BotLimitSwitchID);
-*/  
+    private final MotionMagicVoltage m_motionMagicRequest = new MotionMagicVoltage(0).withSlot(0);
 
-    private final TalonFX turretMotor = new TalonFX(TurretConstants.MOTOR_ID, "rio");
-    
-    private final ArmFeedforward turretFeedForward = new ArmFeedforward(
-        TurretConstants.kS, TurretConstants.kV, TurretConstants.kA);
-    private double targetPos = 0;
-
-    public final TrapezoidProfile.Constraints turretConstraints =
-    new TrapezoidProfile.Constraints(TurretConstants.kMaxV, TurretConstants.kMaxA);
-
-    public final TrapezoidProfile turretTrapezoidProfile = new TrapezoidProfile(turretConstraints);
-
-    public TrapezoidProfile.State turGoalState = new TrapezoidProfile.State();
-    public TrapezoidProfile.State turSetpointState = new TrapezoidProfile.State();
-
-    // NetworkTables
-    private final NetworkTable ntTable = NetworkTableInstance.getDefault().getTable("Turret");
-    private final NetworkTableEntry ntAngle = ntTable.getEntry("Angle");
-    private final NetworkTableEntry ntPosition = ntTable.getEntry("Turret position");
-    private final NetworkTableEntry ntTargetPos = ntTable.getEntry("Target angle");
-    private final NetworkTableEntry ntRawRotations = ntTable.getEntry("Raw Rotations");
-    private final NetworkTableEntry ntRequestedPosition = ntTable.getEntry("Requested Position");
-    private final NetworkTableEntry ntRequestedVelocity = ntTable.getEntry("Requested Velocity");
-    private final NetworkTableEntry ntTargetDeg = ntTable.getEntry("Target Deg");
-    private final NetworkTableEntry ntCurrentDeg = ntTable.getEntry("Current Deg");
+    private double m_goalDegrees = 0.0;
+    private boolean m_openLoop = false;
 
     public Turret() {
         // Configure TalonFX
@@ -62,121 +39,107 @@ public class Turret extends SubsystemBase {
         slot0.kI = TurretConstants.kI;
         slot0.kD = TurretConstants.kD;
 
+        // Motion Magic configuration (values are in motor rotations and rotations/s)
+        MotionMagicConfigs motionMagicConfigs = talonFXConfigs.MotionMagic;
+        motionMagicConfigs.MotionMagicCruiseVelocity = TurretConstants.kMaxV * TurretConstants.MOTOR_GEAR_RATIO / 360.0; // deg/s -> rot/s
+        motionMagicConfigs.MotionMagicAcceleration = TurretConstants.kMaxA * TurretConstants.MOTOR_GEAR_RATIO / 360.0;   // deg/s^2 -> rot/s^2
+        motionMagicConfigs.MotionMagicJerk = 0; // 0 = trapezoidal (no jerk limit)
+
         // Set motor to brake mode
         talonFXConfigs.MotorOutput.NeutralMode = NeutralModeValue.Brake;
+        talonFXConfigs.MotorOutput.Inverted = TurretConstants.MOTOR_INVERTED
+            ? InvertedValue.Clockwise_Positive
+            : InvertedValue.CounterClockwise_Positive;
 
-        turretMotor.getConfigurator().apply(talonFXConfigs.withSlot0(slot0));
-    
-    }
+        talonFXConfigs.CurrentLimits.SupplyCurrentLimitEnable = true;
+        talonFXConfigs.CurrentLimits.SupplyCurrentLimit = 40; // Amps
 
-    public void setSetpoint(TrapezoidProfile.State nextSetpoint) { turSetpointState = nextSetpoint; }
-    
-    public TrapezoidProfile.State getSetpoint() { return turSetpointState; }
+        m_turretMotor.getConfigurator().apply(talonFXConfigs);
 
-    /**
-     * Set the target angle for the turret using Motion Magic control
-     * @param goalDeg Target angle in degrees
-     */
-    public void setGoal(double goalDeg) {
-        goalDeg = ((goalDeg % 360) + 360) % 360;
-        turGoalState = new TrapezoidProfile.State((goalDeg/360), 0); 
+        // Configure CANcoder
+        CANcoderConfiguration cancoderConfigs = new CANcoderConfiguration();
+        cancoderConfigs.MagnetSensor.MagnetOffset = TurretConstants.ABSOLUTE_ENCODER_OFFSET;
+        cancoderConfigs.MagnetSensor.SensorDirection = TurretConstants.ABSOLUTE_ENCODER_REVERSED
+            ? com.ctre.phoenix6.signals.SensorDirectionValue.CounterClockwise_Positive
+            : com.ctre.phoenix6.signals.SensorDirectionValue.Clockwise_Positive;
 
-        setControl();
-        ntTargetPos.setDouble(goalDeg);
-    }
+        m_turretEncoder.getConfigurator().apply(cancoderConfigs);
 
-    public TrapezoidProfile.State getGoal() { return turGoalState; }
-    public double getGoalValue() { return (turGoalState.position)*360;}
-
-    
-    public double getTurretAngleDeg() {
-        // Get position from TalonFX internal encoder (in rotations)
-        double rotations = turretMotor.getPosition().getValueAsDouble();
-        // Convert rotations back to degrees (reverse the 81:1 gear ratio)
-        double angle = (rotations) * 360;
-        return angle;
+        seedMotorEncoder();
     }
 
     /**
-     * Return the raw motor rotations reported by the TalonFX encoder.
-     * This is the value the Talon APIs use for Position/Velocity control.
+     * Seeds the motor encoder from the CANcoder absolute position.
+     * Accounts for gear ratios between CANcoder, turret, and motor.
      */
-    public double getRawEncoderRotations() {
-        return turretMotor.getPosition().getValueAsDouble();
+    public void seedMotorEncoder() {
+        Timer.delay(0.25); // Wait for CANcoder to stabilize
+        double cancoderRotations = m_turretEncoder.getAbsolutePosition().getValueAsDouble();
+        double turretRotations = cancoderRotations / TurretConstants.ENCODER_GEAR_RATIO;
+        double motorRotations = turretRotations * TurretConstants.MOTOR_GEAR_RATIO;
+        m_turretMotor.setPosition(motorRotations);
     }
 
     /**
-     * Reset the internal encoder to zero at the current position
-     * Call this when the turret is in a known position (e.g., stow position)
+     * Set the target angle for the turret.
+     * @param goal Target angle in degrees
      */
-    public void resetEncoder() {
-        turretMotor.setPosition(0);
+    public void setGoal(double goal) {
+        m_goalDegrees = MathUtil.clamp(goal, TurretConstants.LOWER_SOFT_LIMIT, TurretConstants.UPPER_SOFT_LIMIT);
     }
 
-    /**
-     * Reset encoder and set it to a specific angle
-     * @param currentAngleDeg The actual current angle of the turret in degrees
-     */
-    public void resetEncoderToAngle(double currentAngleDeg) {
-        double rotations = (currentAngleDeg / 360.0) * 25;
-        turretMotor.setPosition(rotations);
+    public double getGoalDegrees() {
+        return m_goalDegrees;
     }
 
-    /**
-     * Get the current state of the turret based on its position
-     * @return Current turret state
-     */
-    
+    public void setOpenLoop(boolean isOpenLoop) {
+        m_openLoop = isOpenLoop;
+    }
+
+    public boolean isOpenLoop() {
+        return m_openLoop;
+    }
+
+    /** Gets the turret angle in degrees */
+    public double getTurretAngle() {
+        double motorRotations = m_turretMotor.getPosition().getValueAsDouble();
+        return motorRotations * 360.0 / TurretConstants.MOTOR_GEAR_RATIO;
+    }
+
+    /** Gets the turret velocity in degrees per second */
+    public double getTurretVelocity() {
+        double motorRotPerSec = m_turretMotor.getVelocity().getValueAsDouble();
+        return motorRotPerSec * 360.0 / TurretConstants.MOTOR_GEAR_RATIO;
+    }
 
     public void stopMotor() {
-        turretMotor.set(0);
+        m_turretMotor.set(0);
     }
 
     /**
      * Direct open-loop percent output (useful for testing)
-     * @param percent -1.0..1.0
+     * @param percent A duty cycle from -1.0 to 1.0 (max reverse to max forward)
      */
     public void setPercent(double percent) {
-        turretMotor.set(percent);
+        m_turretMotor.set(percent);
     }
-
 
     @Override
     public void periodic() {
-        double angle = getTurretAngleDeg();
-        
-        // Update NetworkTables
-        ntAngle.setDouble(angle);
-        ntPosition.setDouble(angle);
-        ntCurrentDeg.setDouble(angle);
-        ntRawRotations.setDouble(getRawEncoderRotations());
+        SmartDashboard.putNumber("Turret/Current Angle (deg)", getTurretAngle());
+        SmartDashboard.putNumber("Turret/Goal Angle (deg)", m_goalDegrees);
+        SmartDashboard.putNumber("Turret/Velocity (deg per s)", getTurretVelocity());
+        SmartDashboard.putBoolean("Turret/Open Loop", m_openLoop);
+        SmartDashboard.putNumber("Turret/Absolute Encoder (rots)", m_turretEncoder.getAbsolutePosition().getValueAsDouble());
 
-        // Update SmartDashboard
-        SmartDashboard.putNumber("Current Turret Angle", angle);
-        
-        setControl();
-        
+        if (!m_openLoop) {
+            runMotionMagic();
+        }
     }
 
-    public void setControl() {
-        final PositionVoltage m_request = new PositionVoltage(0).withSlot(0);
-        TrapezoidProfile.State targetState = turretTrapezoidProfile.calculate(0.02, turSetpointState, turGoalState);
-
-        double targetDeg = (targetState.position) * 360.0;
-        double currentDeg = getTurretAngleDeg();
-
-        // Populate PositionVoltage request (positions here are in motor rotations as used by the TalonFX API).
-        m_request.Position = targetState.position;
-        m_request.Velocity = targetState.velocity;
-        setSetpoint(targetState);
-
-        // Telemetry: publish the requested values so we can verify units/signs on the robot
-        ntRequestedPosition.setDouble(m_request.Position);
-        ntRequestedVelocity.setDouble(m_request.Velocity);
-        ntTargetDeg.setDouble(targetDeg);
-        ntCurrentDeg.setDouble(currentDeg);
-
-        turretMotor.setControl(m_request);
+    /** Runs Motion Magic to the current goal position. */
+    private void runMotionMagic() {
+        double targetMotorRotations = m_goalDegrees * TurretConstants.MOTOR_GEAR_RATIO / 360.0;
+        m_turretMotor.setControl(m_motionMagicRequest.withPosition(targetMotorRotations));
     }
-
 }
