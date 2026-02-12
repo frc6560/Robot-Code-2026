@@ -87,10 +87,16 @@ public class RobotContainer {
         driverXbox.leftBumper().whileTrue(Commands.runOnce(drivebase::lock, drivebase).repeatedly());
 
         // B Button -> Go to 20 Degrees (Middle)
-        operatorXbox.b().onTrue(Commands.runOnce(() -> hood.setGoal(20.0), hood));
+        operatorXbox.b().onTrue(Commands.runOnce(() -> {
+            System.out.println("B pressed - setting hood to 20 degrees");
+            hood.setGoal(20.0);
+        }, hood));
 
         // X Button -> Go to 0 Degrees (Bottom)
-        operatorXbox.x().onTrue(Commands.runOnce(() -> hood.setGoal(0.0), hood));
+        operatorXbox.x().onTrue(Commands.runOnce(() -> {
+            System.out.println("X pressed - setting hood to 0 degrees");
+            hood.setGoal(0.0);
+        }, hood));
     }
 
     public Command getAutonomousCommand() {

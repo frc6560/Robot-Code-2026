@@ -51,7 +51,7 @@ public class Hood extends SubsystemBase {
 
     // Seed motor position from CANcoder
     Timer.delay(0.25);
-    hoodMotor.setPosition(getCurrentAngle() / 360.0);
+    hoodMotor.setPosition(absoluteEncoder.getAbsolutePosition().getValueAsDouble());
     resetProfileToCurrent();
   }
 
@@ -83,11 +83,11 @@ public class Hood extends SubsystemBase {
     // Gear ratio from motor to CANcoder
     config.Feedback.RotorToSensorRatio = HoodConstants.HOOD_GEAR_RATIO;
 
-    // Soft limits (0 to 37 degrees converted to rotations)
+    // Soft limits (convert hood degrees to CANcoder rotations)
     config.SoftwareLimitSwitch.ForwardSoftLimitEnable = true;
-    config.SoftwareLimitSwitch.ForwardSoftLimitThreshold = HoodConstants.HOOD_MAX_ANGLE / 360.0;
+    config.SoftwareLimitSwitch.ForwardSoftLimitThreshold = (HoodConstants.HOOD_MAX_ANGLE / 360.0) * HoodConstants.ABSOLUTE_HOOD_ENCODER_GEAR_RATIO;
     config.SoftwareLimitSwitch.ReverseSoftLimitEnable = true;
-    config.SoftwareLimitSwitch.ReverseSoftLimitThreshold = HoodConstants.HOOD_MIN_ANGLE / 360.0;
+    config.SoftwareLimitSwitch.ReverseSoftLimitThreshold = (HoodConstants.HOOD_MIN_ANGLE / 360.0) * HoodConstants.ABSOLUTE_HOOD_ENCODER_GEAR_RATIO;
 
     hoodMotor.getConfigurator().apply(config);
   }
@@ -112,8 +112,9 @@ public class Hood extends SubsystemBase {
 
   public void runControlLoop() {
     hoodSetpointState = hoodTrapezoidProfile.calculate(0.02, hoodSetpointState, hoodGoalState);
-    positionControl.Position = hoodSetpointState.position;
-    positionControl.Velocity = hoodSetpointState.velocity;
+    // Convert hood rotations to CANcoder rotations
+    positionControl.Position = hoodSetpointState.position * HoodConstants.ABSOLUTE_HOOD_ENCODER_GEAR_RATIO;
+    positionControl.Velocity = hoodSetpointState.velocity * HoodConstants.ABSOLUTE_HOOD_ENCODER_GEAR_RATIO;
     hoodMotor.setControl(positionControl);
   }
 
@@ -139,6 +140,8 @@ public class Hood extends SubsystemBase {
     SmartDashboard.putNumber("Hood/Target Angle", targetAngle);
     SmartDashboard.putBoolean("Hood/At Target", atTarget());
     SmartDashboard.putNumber("Hood/Motor Voltage", hoodMotor.getMotorVoltage().getValueAsDouble());
+    SmartDashboard.putNumber("Hood/CANcoder Raw", absoluteEncoder.getAbsolutePosition().getValueAsDouble());
+    SmartDashboard.putNumber("Hood/Motor Position", getMotorPosition());
   }
 
   public interface PoseSupplier {
