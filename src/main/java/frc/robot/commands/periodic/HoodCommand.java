@@ -24,7 +24,6 @@ public class HoodCommand extends Command {
 
   @Override
   public void execute() {
-    hood.manualUp();
     hood.runControlLoop();
   }
 
