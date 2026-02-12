@@ -2,31 +2,18 @@ package frc.robot.subsystems.superstructure;
 
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.configs.Slot0Configs;
-import com.ctre.phoenix6.configs.MotionMagicConfigs;
-import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.controls.PositionVoltage;
 import com.ctre.phoenix6.hardware.TalonFX;
-import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
 import edu.wpi.first.math.controller.ArmFeedforward;
 
-import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableEntry;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import edu.wpi.first.wpilibj.DigitalInput;
-import edu.wpi.first.wpilibj.smartdashboard.Mechanism2d;
-import edu.wpi.first.wpilibj.smartdashboard.MechanismLigament2d;
-import edu.wpi.first.wpilibj.smartdashboard.MechanismRoot2d;
-
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 
 import frc.robot.Constants.*;
 
@@ -50,12 +37,6 @@ public class Turret extends SubsystemBase {
 
     public TrapezoidProfile.State turGoalState = new TrapezoidProfile.State();
     public TrapezoidProfile.State turSetpointState = new TrapezoidProfile.State();
-
-    private final PIDController pidController = new PIDController(
-        TurretConstants.kP,
-        TurretConstants.kI,
-        TurretConstants.kD
-    );
 
     // NetworkTables
     private final NetworkTable ntTable = NetworkTableInstance.getDefault().getTable("Turret");
