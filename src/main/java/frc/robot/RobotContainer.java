@@ -22,6 +22,7 @@ import frc.robot.Constants.LimelightConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.autonomous.AutoModeChooser;
 import frc.robot.autonomous.AutoCommands;
+import frc.robot.commands.periodic.HoodCommand;
 import frc.robot.subsystems.superstructure.Hood;
 import frc.robot.subsystems.superstructure.Shooter;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
@@ -67,6 +68,7 @@ public class RobotContainer {
       }
 
       vision = new VisionSubsystem(limelights);
+      hood.setDefaultCommand(new HoodCommand(hood));
       configureBindings();
     }
 
