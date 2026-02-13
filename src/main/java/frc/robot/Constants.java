@@ -315,13 +315,13 @@ public final class Constants {
     public static final boolean EXTENSION_ENABLED = false; // temp: set true once extension + limit switch are wired
     public static final int EXTEND_MOTOR_ID = 15; // TODO: set correct ID //completed
     public static final int SPIN_MOTOR_ID = 16; // TODO: set correct ID /completed
-    public static final String CAN_BUS = "Canivore";
+  public static final String CAN_BUS = "rio";
 
     public static final int RETRACT_LIMIT_SWITCH_ID = 5; // TODO: set correct DIO port
     public static final boolean RETRACT_LIMIT_SWITCH_INVERTED = false; // toDo: confirm if this needs to be true or false based on wiring and testing; eg, does it start as true or false when stowed.
 
     public static final boolean EXTEND_MOTOR_INVERTED = false; //TODO
-    public static final boolean SPIN_MOTOR_INVERTED = false; //TODO
+    public static final boolean SPIN_MOTOR_INVERTED = true; //TODO update: complete
 
     public static final double EXTEND_SPEED = 0.65; //tune
   public static final double RETRACT_SPEED = -0.5; //tune

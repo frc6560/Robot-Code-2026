@@ -91,22 +91,22 @@ public class RobotContainer {
         driverXbox.b().onTrue(Commands.runOnce(() -> CommandScheduler.getInstance().schedule(drivebase.sysIdDriveMotorCommand()), drivebase));
         */
 
-        // --- FLYWHEEL SYSID CONTROLS (ACTIVE) ---
-        // A Button: Slow Ramp Up (Quasistatic Forward)
-        driverXbox.a().whileTrue(flywheel.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
-        
-        // B Button: Slow Ramp Down (Quasistatic Reverse)
-        driverXbox.b().whileTrue(flywheel.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
-        
-        // X Button: Fast Step Up (Dynamic Forward)
-        driverXbox.x().whileTrue(flywheel.sysIdDynamic(SysIdRoutine.Direction.kForward));
-        
-        // Y Button: Fast Step Down (Dynamic Reverse)
-        driverXbox.y().whileTrue(flywheel.sysIdDynamic(SysIdRoutine.Direction.kReverse));
+    // --- FLYWHEEL SYSID CONTROLS (MOVED TO OPERATOR) ---
+    // A Button: Slow Ramp Up (Quasistatic Forward)
+    operatorXbox.a().whileTrue(flywheel.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
 
-        // --- INTAKE (Operator X) ---
-        operatorXbox.x()
-            .onTrue(Commands.runOnce(intakeSubsystem::setExtensionMode, intakeSubsystem))
-            .onFalse(Commands.runOnce(intakeSubsystem::setIdleMode, intakeSubsystem));
+    // B Button: Slow Ramp Down (Quasistatic Reverse)
+    operatorXbox.b().whileTrue(flywheel.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
+
+    // Y Button: Fast Step Up (Dynamic Forward)
+    operatorXbox.y().whileTrue(flywheel.sysIdDynamic(SysIdRoutine.Direction.kForward));
+
+    // Right Bumper: Fast Step Down (Dynamic Reverse)
+    operatorXbox.rightBumper().whileTrue(flywheel.sysIdDynamic(SysIdRoutine.Direction.kReverse));
+
+    // --- INTAKE (Driver X, single-controller friendly) ---
+    driverXbox.x()
+      .onTrue(Commands.runOnce(intakeSubsystem::setExtensionMode, intakeSubsystem))
+      .onFalse(Commands.runOnce(intakeSubsystem::setIdleMode, intakeSubsystem));
     }
 }
