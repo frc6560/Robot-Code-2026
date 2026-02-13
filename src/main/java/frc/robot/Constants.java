@@ -76,14 +76,15 @@ public final class Constants {
   public static class LimelightConstants
   {
     public static final String[] LIMELIGHT_NAMES = {
-      "limelight"
+      "limelight-br",
+      "limelight-bl"
     }; // one limelight for now
 
     
     public static Pose3d getLimelightPose(String name){
       Pose3d limelightPose;
       switch(name){
-        case "limelight":
+        case "limelight-br":
           limelightPose = new Pose3d(
             0.354,
             -0.0248,

@@ -77,7 +77,7 @@ public class RobotContainer {
         drivebase.setDefaultCommand(driveFieldOrientedAnglularVelocity);
         driverXbox.a().onTrue(
           Commands.defer(() -> {
-            return Commands.runOnce(() -> vision.hardReset("limelight"), vision);
+            return Commands.runOnce(() -> vision.hardReset("limelight-br"), vision);
           }, Set.of(vision))
         );
         driverXbox.y().onTrue(Commands.runOnce(() -> CommandScheduler.getInstance().cancelAll()));
