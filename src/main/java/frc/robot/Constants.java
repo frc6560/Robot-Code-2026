@@ -80,7 +80,6 @@ public final class Constants {
   {
     public static final String[] LIMELIGHT_NAMES = {
       "limelight-br",
-      "limelight-bl"
     }; // one limelight for now
 
     
