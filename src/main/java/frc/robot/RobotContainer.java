@@ -73,15 +73,20 @@ public class RobotContainer {
 
         // --- DEFAULT COMMANDS ---
 
-        // Shooter Command:
-        // We pass a Lambda (function) that returns true if the Right Trigger is pressed
-        shooter.setDefaultCommand(new ShooterCommand(
-            shooter,
-            shotCalculator,
-            () -> operatorXbox.getRightTriggerAxis() > 0.5, // The Binding!
-            drivebase::getPose,
-            drivebase::getFieldVelocity
-        ));
+        // --- MANUAL SHOOTER MODE ---
+// Define your target RPM here (or use SmartDashboard to tune it live)
+double manualTargetRPM = 3000.0;
+double idleRPM = 600.0;
+
+shooter.setDefaultCommand(Commands.run(() -> {
+    if (operatorXbox.getRightTriggerAxis() > 0.5) {
+        // Change setGoal -> setRPM
+        shooter.setRPM(1000.0); 
+    } else {
+        // Change setGoal -> setRPM
+        shooter.setRPM(600.0);
+    }
+}, shooter));
         
         // Hood and Turret disabled for testing as per your snippet
         // hood.setDefaultCommand(new HoodCommand(hood));
