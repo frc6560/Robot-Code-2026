@@ -36,13 +36,8 @@ public class ShotCalculator {
     private double flywheelRPM;
     private double hoodAzimuth; // in radians
     private double turretAngle; 
-    private double hoodVelocity; 
-    private double turretVelocity; 
 
     private static final double TIME_PARAMETER = 0.058; 
-
-    // low-pass filter coefficient (0-1, higher = more smoothing)
-    private static final double VELOCITY_FILTER_ALPHA = 0.6;
 
     private static final InterpolatingDoubleTreeMap hoodAzimuthMap = new InterpolatingDoubleTreeMap();
     private static final InterpolatingDoubleTreeMap flywheelRPMMap = new InterpolatingDoubleTreeMap();
@@ -55,8 +50,6 @@ public class ShotCalculator {
         this.flywheelRPM = 0;
         this.hoodAzimuth = 0;
         this.turretAngle = 0;
-        this.hoodVelocity = 0;
-        this.turretVelocity = 0;
         this.virtualTargetPose = new Translation2d();
         populateLUTs();
     }
@@ -90,15 +83,6 @@ public class ShotCalculator {
     public double getTurretAngle() {
         return turretAngle;
     }
-    /** Returns the current hood velocity in radians per second. */
-    public double getHoodVelocity() {
-        return hoodVelocity;
-    }
-
-    /** Returns the current turret velocity in radians per second. */
-    public double getTurretVelocity() {
-        return turretVelocity;
-    }
 
     /** Returns the current flywheel RPM. */
     public double getFlywheelRPM() {
@@ -112,8 +96,8 @@ public class ShotCalculator {
     /** Returns the complete shooter state including positions and velocities. */
     public ShooterState getState() {
         return new ShooterState(
-            new TurretState(turretAngle, turretVelocity),
-            new HoodState(hoodAzimuth, hoodVelocity),
+            new TurretState(turretAngle, 0),
+            new HoodState(hoodAzimuth, 0),
             flywheelRPM,
             virtualTargetPose
         );
@@ -229,9 +213,7 @@ public class ShotCalculator {
 
         // Log final output values
         SmartDashboard.putNumber("SOTM/Output/TurretAngleDeg", Math.toDegrees(turretAngle));
-        SmartDashboard.putNumber("SOTM/Output/TurretVelDegPerSec", Math.toDegrees(turretVelocity));
         SmartDashboard.putNumber("SOTM/Output/HoodAngleDeg", Math.toDegrees(hoodAzimuth));
-        SmartDashboard.putNumber("SOTM/Output/HoodVelDegPerSec", Math.toDegrees(hoodVelocity));
         SmartDashboard.putNumber("SOTM/Output/FlywheelRPM", flywheelRPM);
     }
 }
