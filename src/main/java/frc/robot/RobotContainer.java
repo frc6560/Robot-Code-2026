@@ -8,9 +8,6 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
-import frc.robot.subsystems.vision.LimelightVision;
-import frc.robot.subsystems.vision.VisionSubsystem;
-
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,10 +23,14 @@ import frc.robot.autonomous.AutoModeChooser;
 import frc.robot.autonomous.AutoCommands;
 import frc.robot.commands.periodic.HoodCommand;
 import frc.robot.commands.periodic.TurretCommand;
+
 import frc.robot.subsystems.superstructure.Hood;
 import frc.robot.subsystems.superstructure.Shooter;
 import frc.robot.subsystems.superstructure.Turret;
+import frc.robot.subsystems.superstructure.Feeder;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
+import frc.robot.subsystems.vision.LimelightVision;
+import frc.robot.subsystems.vision.VisionSubsystem;
 
 
 public class RobotContainer {
@@ -46,6 +47,7 @@ public class RobotContainer {
     private final Hood hood = new Hood(drivebase::getPose);
     private final Shooter shooter = new Shooter(drivebase::getPose);
     private final Turret turret = new Turret();
+    private final Feeder feeder = new Feeder();
 
 
     private final AutoCommands factory;
@@ -113,7 +115,7 @@ public class RobotContainer {
 
         operatorXbox.y()
           .onTrue(Commands.runOnce(feeder::requestFeed, feeder))
-        .onFalse(Commands.runOnce(feeder::requestStop, feeder));
+          .onFalse(Commands.runOnce(feeder::requestStop, feeder));
     }
 
     public Command getAutonomousCommand() {
