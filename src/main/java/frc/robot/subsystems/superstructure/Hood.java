@@ -17,6 +17,7 @@ import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.HoodConstants;
+import frc.robot.Constants.TurretConstants;
 
 public class Hood extends SubsystemBase {
 
@@ -35,8 +36,7 @@ public class Hood extends SubsystemBase {
     configureAbsoluteEncoder();
     configureMotor();
 
-    Timer.delay(0.25);
-    targetAngle = getHoodAngle();
+    seedMotorEncoder();
   }
 
   private void configureAbsoluteEncoder() {
@@ -71,6 +71,14 @@ public class Hood extends SubsystemBase {
         motionMagicConfigs.MotionMagicJerk = 0;
 
     hoodMotor.getConfigurator().apply(config);
+  }
+
+  private void seedMotorEncoder() {
+    Timer.delay(0.25); // Wait for CANcoder to stabilize
+    double cancoderRotations = absoluteEncoder.getAbsolutePosition().getValueAsDouble();
+    double hoodRotations = cancoderRotations / HoodConstants.ABSOLUTE_HOOD_ENCODER_GEAR_RATIO;
+    double motorRotations = hoodRotations * HoodConstants.HOOD_GEAR_RATIO;
+    hoodMotor.setPosition(motorRotations);
   }
 
   public double getHoodAngle() {
