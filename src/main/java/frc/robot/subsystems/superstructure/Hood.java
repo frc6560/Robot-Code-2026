@@ -110,7 +110,6 @@ public class Hood extends SubsystemBase {
     SmartDashboard.putNumber("Hood/Encoder Rotations", absoluteEncoder.getAbsolutePosition().getValueAsDouble());
     SmartDashboard.putBoolean("Hood/At Target", atTarget());
     SmartDashboard.putNumber("Hood/Motor Voltage", hoodMotor.getMotorVoltage().getValueAsDouble());
-    SmartDashboard.putNumber("Hood/CANcoder Raw", absoluteEncoder.getAbsolutePosition().getValueAsDouble());
     SmartDashboard.putNumber("Hood/Error", getHoodAngle() - targetAngle);
 
     setControl();
