@@ -107,6 +107,7 @@ public class Hood extends SubsystemBase {
   public void periodic() {
     SmartDashboard.putNumber("Hood/Current Angle", getHoodAngle());
     SmartDashboard.putNumber("Hood/Target Angle", targetAngle);
+    SmartDashboard.putNumber("Hood/Encoder Rotations", absoluteEncoder.getAbsolutePosition().getValueAsDouble());
     SmartDashboard.putBoolean("Hood/At Target", atTarget());
     SmartDashboard.putNumber("Hood/Motor Voltage", hoodMotor.getMotorVoltage().getValueAsDouble());
     SmartDashboard.putNumber("Hood/CANcoder Raw", absoluteEncoder.getAbsolutePosition().getValueAsDouble());
