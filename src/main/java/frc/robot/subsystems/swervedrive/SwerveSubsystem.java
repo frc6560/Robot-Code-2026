@@ -47,7 +47,6 @@ import frc.robot.utility.LimelightHelpers.PoseEstimate;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
