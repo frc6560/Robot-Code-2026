@@ -127,7 +127,7 @@ public final class Constants {
     public static final double ABSOLUTE_HOOD_ENCODER_GEAR_RATIO = 44.0 / 18.0; // 2.44:1
 
     /** Motor Inversion */
-    public static final boolean HOOD_MOTOR_INVERTED = false; // TODO: Test and adjust
+    public static final boolean HOOD_MOTOR_INVERTED = true; // TODO: Test and adjust
 
     /** Current Limits */
     public static final double HOOD_CURRENT_LIMIT = 60.0; // Amps
@@ -138,7 +138,7 @@ public final class Constants {
 
     public static final int HOOD_ABSOLUTE_ENCODER_ID = 22;
 
-    public static final double HOOD_ABSOLUTE_ENCODER_OFFSET = 0.05123623889;
+    public static final double HOOD_ABSOLUTE_ENCODER_OFFSET = -0.42;
   }
 
   public static final class ShooterConstants{

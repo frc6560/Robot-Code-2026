@@ -59,10 +59,10 @@ public class Hood extends SubsystemBase {
     slot0.kI = HoodConstants.kI;
     slot0.kD = HoodConstants.kD;
 
-    // Motion Magic (trapezoidal profile) - convert from deg/s to CANcoder rotations/s
+    // Motion Magic (trapezoidal profile) - convert from deg/s to motor rotations/s
     MotionMagicConfigs mm = config.MotionMagic;
-    mm.MotionMagicCruiseVelocity = HoodConstants.kMaxV * HoodConstants.ABSOLUTE_HOOD_ENCODER_GEAR_RATIO / 360.0;
-    mm.MotionMagicAcceleration = HoodConstants.kMaxA * HoodConstants.ABSOLUTE_HOOD_ENCODER_GEAR_RATIO / 360.0;
+    mm.MotionMagicCruiseVelocity = HoodConstants.kMaxV * HoodConstants.HOOD_GEAR_RATIO / 360.0;
+    mm.MotionMagicAcceleration = HoodConstants.kMaxA * HoodConstants.HOOD_GEAR_RATIO / 360.0;
     mm.MotionMagicJerk = 0; // 0 = trapezoidal (no jerk limit)
 
     config.MotorOutput.Inverted = HoodConstants.HOOD_MOTOR_INVERTED
@@ -73,24 +73,20 @@ public class Hood extends SubsystemBase {
     config.CurrentLimits.SupplyCurrentLimit = HoodConstants.HOOD_CURRENT_LIMIT;
     config.CurrentLimits.SupplyCurrentLimitEnable = true;
 
-    // Link motor to CANcoder
-    config.Feedback.FeedbackRemoteSensorID = HoodConstants.HOOD_ABSOLUTE_ENCODER_ID;
-    config.Feedback.FeedbackSensorSource = com.ctre.phoenix6.signals.FeedbackSensorSourceValue.RemoteCANcoder;
-    config.Feedback.SensorToMechanismRatio = HoodConstants.ABSOLUTE_HOOD_ENCODER_GEAR_RATIO;
-    config.Feedback.RotorToSensorRatio = HoodConstants.HOOD_GEAR_RATIO / HoodConstants.ABSOLUTE_HOOD_ENCODER_GEAR_RATIO;
-
     hoodMotor.getConfigurator().apply(config);
   }
 
   /** Seeds the motor encoder from the CANcoder absolute position. */
   private void seedMotorEncoder() {
     double cancoderRotations = absoluteEncoder.getAbsolutePosition().getValueAsDouble();
-    hoodMotor.setPosition(cancoderRotations);
+    double hoodRotations = cancoderRotations / HoodConstants.ABSOLUTE_HOOD_ENCODER_GEAR_RATIO;
+    double motorRotations = hoodRotations * HoodConstants.HOOD_GEAR_RATIO;
+    hoodMotor.setPosition(motorRotations);
   }
 
   public double getHoodAngle() {
-    double cancoderRotations = hoodMotor.getPosition().getValueAsDouble();
-    return cancoderRotations * 360.0 / HoodConstants.ABSOLUTE_HOOD_ENCODER_GEAR_RATIO;
+    double motorRotations = hoodMotor.getPosition().getValueAsDouble();
+    return motorRotations * 360.0 / HoodConstants.HOOD_GEAR_RATIO;
   }
 
   public double getMotorPosition() {
@@ -121,9 +117,9 @@ public class Hood extends SubsystemBase {
 
   @Override
   public void periodic() {
-    // Convert target angle to CANcoder rotations
-    double targetCANcoderRotations = targetAngle * HoodConstants.ABSOLUTE_HOOD_ENCODER_GEAR_RATIO / 360.0;
-    hoodMotor.setControl(motionMagicRequest.withPosition(targetCANcoderRotations));
+    // Convert target angle to motor rotations
+    double targetMotorRotations = targetAngle * HoodConstants.HOOD_GEAR_RATIO / 360.0;
+    hoodMotor.setControl(motionMagicRequest.withPosition(targetMotorRotations));
 
     double currentAngle = getHoodAngle();
     SmartDashboard.putNumber("Hood/Current Angle", currentAngle);
