@@ -19,7 +19,7 @@ public class TurretCommand extends Command{
         TRACKING_PASS
     }
 
-    interface poseSupplier{
+    public interface poseSupplier{
         Pose2d getPose();
         ChassisSpeeds getFieldVelocity();
     }

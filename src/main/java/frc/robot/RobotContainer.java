@@ -17,14 +17,18 @@ import java.util.List;
 import java.util.Set;
 
 import swervelib.SwerveInputStream;
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import frc.robot.Constants.LimelightConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.autonomous.AutoModeChooser;
 import frc.robot.autonomous.AutoCommands;
 import frc.robot.commands.periodic.HoodCommand;
+import frc.robot.commands.periodic.TurretCommand;
 import frc.robot.subsystems.superstructure.Hood;
 import frc.robot.subsystems.superstructure.Shooter;
+import frc.robot.subsystems.superstructure.Turret;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 
 
@@ -40,6 +44,19 @@ public class RobotContainer {
     private final VisionSubsystem vision;
     private final Hood hood = new Hood(drivebase::getPose);
     private final Shooter shooter = new Shooter(drivebase::getPose);
+    private final Turret turret = new Turret();
+
+    private final TurretCommand turretCommand = new TurretCommand(turret, new TurretCommand.poseSupplier() {
+        @Override
+        public Pose2d getPose() {
+            return drivebase.getPose();
+        }
+
+        @Override
+        public ChassisSpeeds getFieldVelocity() {
+            return drivebase.getFieldVelocity();
+        }
+    });
 
     // Subsystems
 
