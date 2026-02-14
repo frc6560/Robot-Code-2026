@@ -42,7 +42,7 @@ public class ShotCalculator {
     private static final double TIME_PARAMETER = 0.058; 
 
     // low-pass filter coefficient (0-1, higher = more smoothing)
-    private static final double VELOCITY_FILTER_ALPHA = 0.8;
+    private static final double VELOCITY_FILTER_ALPHA = 0.6;
 
     private static final InterpolatingDoubleTreeMap hoodAzimuthMap = new InterpolatingDoubleTreeMap();
     private static final InterpolatingDoubleTreeMap flywheelRPMMap = new InterpolatingDoubleTreeMap();
