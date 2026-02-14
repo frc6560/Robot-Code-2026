@@ -5,7 +5,6 @@ import com.ctre.phoenix6.configs.CANcoderConfiguration;
 import com.ctre.phoenix6.configs.MotionMagicConfigs;
 import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
-import com.ctre.phoenix6.controls.PositionVoltage;
 import com.ctre.phoenix6.hardware.CANcoder;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
@@ -25,9 +24,6 @@ public class Turret extends SubsystemBase {
     private final MotionMagicVoltage m_motionMagicRequest = new MotionMagicVoltage(0).withSlot(0);
 
     private double m_goalDegrees = 0.0;
-    private double m_goalVelocity = 0.0;
-
-    private boolean m_setpointTracing = false;
 
     public Turret() {
         // Configure TalonFX
@@ -91,17 +87,6 @@ public class Turret extends SubsystemBase {
         m_goalDegrees = MathUtil.clamp(goal, TurretConstants.LOWER_SOFT_LIMIT, TurretConstants.UPPER_SOFT_LIMIT);
     }
 
-    /** 
-     * Experimental: sets a target setpoint for the turret to trace, which will be used in periodic to update the goal angle.
-      * This is useful for things like tracking a moving target or predicting a pass.
-      * @param goal Target angle in degrees
-      * @param velocity Target velocity in degrees per second (CCW positive)
-     */
-    public void setSetpoint(double goal, double velocity) {
-        m_goalDegrees = MathUtil.clamp(goal, TurretConstants.LOWER_SOFT_LIMIT, TurretConstants.UPPER_SOFT_LIMIT);
-        m_goalVelocity = velocity;
-    }
-
     public double getGoalDegrees() {
         return m_goalDegrees;
     }
@@ -129,26 +114,12 @@ public class Turret extends SubsystemBase {
         SmartDashboard.putNumber("Turret/Goal Angle (deg)", m_goalDegrees);
         SmartDashboard.putNumber("Turret/Velocity (deg per s)", getTurretVelocity());
         SmartDashboard.putNumber("Turret/Absolute Encoder (rots)", m_turretEncoder.getAbsolutePosition().getValueAsDouble());
-
-        if (!m_setpointTracing) {
-            runMotionMagic();
-        }
-        else{
-            runPositionVoltage();
-        }
+        runMotionMagic();
     }
 
     /** Runs Motion Magic to the current goal position. */
     private void runMotionMagic() {
         double targetMotorRotations = m_goalDegrees * TurretConstants.MOTOR_GEAR_RATIO / 360.0;
         m_turretMotor.setControl(m_motionMagicRequest.withPosition(targetMotorRotations));
-    }
-
-    /** Runs position voltage! */
-    private void runPositionVoltage() {
-        double targetMotorRotations = m_goalDegrees * TurretConstants.MOTOR_GEAR_RATIO / 360.0;
-        double targetRPS = m_goalVelocity * TurretConstants.MOTOR_GEAR_RATIO / 360.0; // deg/s -> rot/s
-        PositionVoltage m_request = new PositionVoltage(targetMotorRotations).withSlot(0).withVelocity(targetRPS);
-        m_turretMotor.setControl(m_request);
     }
 }
