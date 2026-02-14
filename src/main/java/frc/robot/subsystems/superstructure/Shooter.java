@@ -14,7 +14,7 @@ import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.Follower;
-import com.ctre.phoenix6.controls.NeutralOut; // Import for Coasting
+import com.ctre.phoenix6.controls.NeutralOut; 
 import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
@@ -34,7 +34,7 @@ import frc.robot.Constants.ShooterConstants;
 import frc.robot.utility.Shooter.ShotCalculator;
 
 public class Shooter extends SubsystemBase {
-    // --- VISUALIZAShooter
+    // --- VISUALIZATION ---
     private final Mechanism2d mech2d;
     private final MechanismRoot2d flywheelRoot;
     private final MechanismLigament2d leftFlywheelVisual;
@@ -48,7 +48,7 @@ public class Shooter extends SubsystemBase {
 
     // --- CONTROL ---
     private final VelocityVoltage velocityControl = new VelocityVoltage(0).withSlot(0);
-    private final NeutralOut coastControl = new NeutralOut(); // Logic for smooth stops
+    private final NeutralOut coastControl = new NeutralOut(); 
     
     // --- SYSID COMPONENTS ---
     private final VoltageOut sysIdControl = new VoltageOut(0);
@@ -72,12 +72,12 @@ public class Shooter extends SubsystemBase {
         configureLeaderMotor();
         configureFollowerMotor();
 
-        // 2. SysId Setup (UPDATED: Slower Ramp Rate of 0.5 V/s)
+        // 2. SysId Setup
         sysIdRoutine = new SysIdRoutine(
             new SysIdRoutine.Config(
-                Volts.of(0.5).per(Second), // Slower Ramp (Less Scary)
-                Volts.of(4),    // Step Voltage
-                null,           // Default Timeout
+                Volts.of(0.5).per(Second), 
+                Volts.of(4),    
+                null,           
                 (state) -> SignalLogger.writeString("SysIdState", state.toString())
             ),
             new SysIdRoutine.Mechanism(
@@ -114,8 +114,8 @@ public class Shooter extends SubsystemBase {
         config.CurrentLimits.SupplyCurrentLimitEnable = true;
         config.CurrentLimits.SupplyCurrentLimit = ShooterConstants.FLYWHEEL_SUPPLY_CURRENT_LIMIT;
 
-        // UPDATED: Slower Ramp (1.0s) to prevent abrupt braking
-        config.ClosedLoopRamps.VoltageClosedLoopRampPeriod = 1.0; 
+        // UPDATED: Faster Ramp (0.02s) for responsive shooting
+        config.ClosedLoopRamps.VoltageClosedLoopRampPeriod = 0.02; 
 
         leaderMotor.getConfigurator().apply(config);
     }
@@ -143,15 +143,11 @@ public class Shooter extends SubsystemBase {
 
     // --- CONTROL METHODS ---
 
-    /**
-     * Set target velocity in RPS.
-     * UPDATED: Uses Coast control if target is 0 for smooth stopping.
-     */
     public void setRPS(double rps) {
         targetRPS = rps;
         
-        if (Math.abs(rps) < 0.1) {
-            // Smart Stop: If we want 0 speed, just COAST. Don't brake hard.
+        if (Math.abs(rps) < 1.0) { // Increased deadband slightly
+            // Smart Stop: Coast logic
             leaderMotor.setControl(coastControl);
         } else {
             // Normal Run
@@ -174,12 +170,12 @@ public class Shooter extends SubsystemBase {
 
     public void stop() {
         targetRPS = 0.0;
-        leaderMotor.setControl(coastControl); // Explicitly Coast
+        leaderMotor.setControl(coastControl);
     }
 
     public double getCurrentRPS() {
         double motorRPS = leaderMotor.getVelocity().getValueAsDouble();
-        return motorRPS / ShooterConstants.FLYWHEEL_GEAR_RATIO;
+        return motorRPS * ShooterConstants.FLYWHEEL_GEAR_RATIO;
     }
 
     public double getCurrentRPM() {
@@ -187,6 +183,8 @@ public class Shooter extends SubsystemBase {
     }
 
     public boolean atTarget() {
+        // FIXED: Cannot be "at target" if we are stopped/idling
+        if (Math.abs(targetRPS) < 1.0) return false;
         return Math.abs(getCurrentRPS() - targetRPS) < (ShooterConstants.FLYWHEEL_RPM_TOLERANCE / 60.0);
     }
 

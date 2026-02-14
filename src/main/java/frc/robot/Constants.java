@@ -151,13 +151,13 @@ public final class Constants {
     public static final double kI = 0.00;
     public static final double kD = 0.00;
     public static final double kV = 0.1183; 
-     public static final double kS = 0.00;
+     public static final double kS = 0.05;
 
     /** Flywheel Geometry */
        public static final double MAX_RPM = 5000; 
     public static final double TARGET_RPM_HARDSET = 2000.0; 
     public static final double FLYWHEEL_GEAR_RATIO = 1.25; 
-    public static final double FLYWHEEL_IDLE_RPM = 60.0; //kraken x60 
+    public static final double FLYWHEEL_IDLE_RPM = 500; //kraken x60 
     public static final double FLYWHEEL_RPM_TOLERANCE = 100.0;
 
     /** Current Limits */
