@@ -123,6 +123,10 @@ public class RobotContainer {
         operatorXbox.leftBumper()
           .onTrue(Commands.run(() -> shooter.setRPM(2000.0), shooter))
           .onFalse(Commands.run(() -> shooter.setRPM(0.0), shooter));
+        
+        operatorXbox.rightBumper()
+          .onTrue(Commands.runOnce(() -> hood.setGoal(25.0), hood))
+          .onFalse(Commands.runOnce(() -> hood.setGoal(0.0), hood));
     }
 
     public Command getAutonomousCommand() {
