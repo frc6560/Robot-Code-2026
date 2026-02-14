@@ -3,9 +3,9 @@ package frc.robot.subsystems.superstructure;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
-import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
@@ -14,13 +14,12 @@ public class Feeder extends SubsystemBase {
 
     private final TalonFX panMotor = new TalonFX(14);
     private final TalonFX pusherMotor = new TalonFX(23);
-    private final DigitalInput beamBreaker = new DigitalInput(0); // DIO 0
 
-    private static final double PAN_RUNNING_RPM = 180.0;
+    private static final double PAN_RUNNING_RPM = 120.0;
     private static final double PUSHER_RUNNING_RPM = 2500.0;
-    private static final double IDLE_RPM = 10.0;
+    private static final double IDLE_RPM = 0.0;
 
-    private static final double PAN_GEAR_RATIO = 1.0;
+    private static final double PAN_GEAR_RATIO = 1.0 / 33.14;
     private static final double PUSHER_GEAR_RATIO = 1.0;
 
     private static final double PAN_SPEED_TOLERANCE_RPM = 20.0;
@@ -37,18 +36,20 @@ public class Feeder extends SubsystemBase {
     }
 
     private RevolverState state = RevolverState.IDLE;
-    private boolean beamBreakOverride = false;
 
     /* ======================= Constructor ======================= */
     public Feeder() {
-        configureMotor(panMotor, 0.25, 40);
-        configureMotor(pusherMotor, 0.15, 60);
+        configureMotor(panMotor, 0.25, 40, true);
+        configureMotor(pusherMotor, 0.15, 60, true);
     }
 
-    private void configureMotor(TalonFX motor, double kP, int currentLimit) {
+    private void configureMotor(TalonFX motor, double kP, int currentLimit, boolean inverted) {
         TalonFXConfiguration config = new TalonFXConfiguration();
         config.Slot0.kP = kP;
         config.Slot0.kV = 0.12;
+        config.MotorOutput.Inverted = inverted
+            ? InvertedValue.Clockwise_Positive
+            : InvertedValue.CounterClockwise_Positive;
         config.CurrentLimits.SupplyCurrentLimitEnable = true;
         config.CurrentLimits.SupplyCurrentLimit = currentLimit;
         motor.getConfigurator().apply(config);
@@ -74,7 +75,7 @@ public class Feeder extends SubsystemBase {
 
     /* ======================= Sensors ======================= */
     public boolean hasBall() {
-        return !beamBreaker.get(); // beam broken = ball present
+        return true; // Always assume ball is present (no beam break sensor)
     }
 
     /* ======================= Velocity Feedback ======================= */
@@ -106,17 +107,8 @@ public class Feeder extends SubsystemBase {
         state = RevolverState.IDLE;
     }
 
-    public void enableBeamBreakOverride() {
-        beamBreakOverride = true;
+    public void requestOverride() {
         state = RevolverState.OVERRIDE;
-    }
-
-    public void disableBeamBreakOverride() {
-        beamBreakOverride = false;
-
-        if (state == RevolverState.OVERRIDE) {
-            state = hasBall() ? RevolverState.STAGED : RevolverState.FEEDING;
-        }
     }
 
     /* ======================= Periodic State Machine ======================= */
@@ -139,12 +131,7 @@ public class Feeder extends SubsystemBase {
 
             case FEEDING:
                 setPanRPM(PAN_RUNNING_RPM);
-                if (!hasBall() || beamBreakOverride) {
-                    setPusherRPM(PUSHER_RUNNING_RPM);
-                } else {
-                    setPusherRPM(IDLE_RPM);
-                    state = RevolverState.STAGED;
-                }
+                setPusherRPM(PUSHER_RUNNING_RPM);
                 break;
 
             case STAGED:
@@ -160,8 +147,6 @@ public class Feeder extends SubsystemBase {
 
 
         SmartDashboard.putString("Revolver/State", state.name());
-        SmartDashboard.putBoolean("Revolver/Has Ball", hasBall());
-        SmartDashboard.putBoolean("Revolver/Beam Override", beamBreakOverride);
 
         SmartDashboard.putNumber("Revolver/Pan Actual RPM", getPanActualRPM());
         SmartDashboard.putNumber("Revolver/Pusher Actual RPM", getPusherActualRPM());
