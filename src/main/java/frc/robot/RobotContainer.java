@@ -91,17 +91,14 @@ public class RobotContainer {
         driverXbox.x().onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
         driverXbox.b().onTrue(Commands.runOnce(() -> CommandScheduler.getInstance().schedule(drivebase.sysIdDriveMotorCommand()), drivebase));
         driverXbox.start().onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
-        driverXbox.leftBumper().whileTrue(Commands.runOnce(drivebase::lock, drivebase).repeatedly());
+        driverXbox.leftBumper().whileTrue(Commands.runOnce(() -> turret.setGoal(92)));
+        driverXbox.rightBumper().whileTrue(Commands.runOnce(() -> turret.setGoal(-92)));
 
-        // B Button -> Go to 20 Degrees (Middle)
         operatorXbox.b().onTrue(Commands.runOnce(() -> {
-            System.out.println("B pressed - setting hood to 20 degrees");
             hood.setGoal(20.0);
         }, hood));
 
-        // X Button -> Go to 0 Degrees (Bottom)
         operatorXbox.x().onTrue(Commands.runOnce(() -> {
-            System.out.println("X pressed - setting hood to 0 degrees");
             hood.setGoal(0.0);
         }, hood));
     }
