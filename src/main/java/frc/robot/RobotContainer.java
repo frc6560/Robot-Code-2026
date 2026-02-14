@@ -73,7 +73,7 @@ public class RobotContainer {
       }
 
       vision = new VisionSubsystem(limelights);
-      hood.setDefaultCommand(new HoodCommand(hood));
+      // hood.setDefaultCommand(new HoodCommand(hood));
       // turret.setDefaultCommand(new TurretCommand(turret, drivebase::getPose, drivebase::getFieldVelocity));
       
       configureBindings();
