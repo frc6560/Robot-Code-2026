@@ -64,6 +64,7 @@ public class ShotCalculator {
 
     public void populateLUTs(){
         // FIXED: Changed negative RPMs to positive
+        flywheelRPMMap.put(1.1, 1000.0); 
         flywheelRPMMap.put(3.77, 1990.0);
         flywheelRPMMap.put(4.29, 2070.0);
         flywheelRPMMap.put(4.82, 2175.0); 
