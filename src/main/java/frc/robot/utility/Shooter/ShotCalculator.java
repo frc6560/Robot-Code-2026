@@ -203,9 +203,9 @@ public class ShotCalculator {
         SmartDashboard.putNumber("SOTM/VirtualOffset/magnitude", targetOffset.getNorm());
 
         // calculates hood angle and flywheel RPM from virtual target
-        double hoodAzimuth = hoodAzimuthMap.get(distanceToTarget);
+        hoodAzimuth = hoodAzimuthMap.get(distanceToTarget);
         flywheelRPM = flywheelRPMMap.get(distanceToTarget);
-        double turretAngle = MathUtil.angleModulus(Math.atan2(
+        turretAngle = MathUtil.angleModulus(Math.atan2(
             virtualTargetPose.getY() - turretPose.getY(),
             virtualTargetPose.getX() - turretPose.getX()
         ) - projectedPosition.getRotation().getRadians());
