@@ -30,4 +30,16 @@ public class VisionSubsystem extends SubsystemBase{
             }
         }
     }
+
+    public void disableVision(){
+        for(LimelightVision vision : visionList){
+            vision.disableVision(true);
+        }
+    }
+
+     public void enableVision(){
+        for(LimelightVision vision : visionList){
+            vision.disableVision(false);
+        }
+    }
 }
