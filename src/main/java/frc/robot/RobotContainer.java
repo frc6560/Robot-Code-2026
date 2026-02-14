@@ -121,8 +121,8 @@ public class RobotContainer {
           .onTrue(Commands.runOnce(feeder::requestStop, feeder));
 
         operatorXbox.leftBumper()
-          .onTrue(Commands.runOnce(() -> shooter.setRPM(2000.0), shooter))
-          .onFalse(Commands.runOnce(() -> shooter.setRPM(0.0), shooter));
+          .onTrue(Commands.run(() -> shooter.setRPM(2000.0), shooter))
+          .onFalse(Commands.run(() -> shooter.setRPM(0.0), shooter));
     }
 
     public Command getAutonomousCommand() {
