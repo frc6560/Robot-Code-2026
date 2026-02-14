@@ -82,8 +82,7 @@ public class TurretCommand extends Command{
                 case TRACKING_TARGET:
                     shotCalculator.calculate(poseSupplier.getPose(), velocitySupplier.getFieldVelocity());
                     double targetAngle = Units.radiansToDegrees(shotCalculator.getTurretAngle());
-                    double targetVelocity = Units.radiansToDegrees(shotCalculator.getTurretVelocity());
-                    turret.setSetpoint(targetAngle, targetVelocity);
+                    turret.setGoal(targetAngle); // No velocity tracking for now
                     break;
                 case TRACKING_PASS:
                     turret.stopMotor(); // for now, just stop the turret in the pass zone. We could potentially track a pass target here in the future.
