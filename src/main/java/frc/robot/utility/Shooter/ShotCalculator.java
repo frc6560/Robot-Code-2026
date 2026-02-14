@@ -89,22 +89,26 @@ public class ShotCalculator {
         timeOfFlightMap.put(5.47, 1.008);
     }
 
+    /** Returns the current hood azimuth in radians. */
     public double getHoodAzimuth() {
         return hoodAzimuth;
     }
 
+    /** Returns the current turret angle in radians. */
     public double getTurretAngle() {
         return turretAngle;
     }
-
+    /** Returns the current hood velocity in radians per second. */
     public double getHoodVelocity() {
         return hoodVelocity;
     }
 
+    /** Returns the current turret velocity in radians per second. */
     public double getTurretVelocity() {
         return turretVelocity;
     }
 
+    /** Returns the current flywheel RPM. */
     public double getFlywheelRPM() {
         return flywheelRPM;
     }

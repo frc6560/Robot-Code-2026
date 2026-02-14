@@ -148,9 +148,7 @@ public class Turret extends SubsystemBase {
     private void runPositionVoltage() {
         double targetMotorRotations = m_goalDegrees * TurretConstants.MOTOR_GEAR_RATIO / 360.0;
         double targetRPS = m_goalVelocity * TurretConstants.MOTOR_GEAR_RATIO / 360.0; // deg/s -> rot/s
-        PositionVoltage m_request = new PositionVoltage(targetMotorRotations).withSlot(0);
-        m_request.Velocity = targetRPS;
-
+        PositionVoltage m_request = new PositionVoltage(targetMotorRotations).withSlot(0).withVelocity(targetRPS);
         m_turretMotor.setControl(m_request);
     }
 }
