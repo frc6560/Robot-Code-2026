@@ -4,12 +4,12 @@
 
 package frc.robot.commands.periodic;
 
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj2.command.Command;
-import frc.robot.ManualControls;
 import frc.robot.subsystems.superstructure.Shooter;
 import frc.robot.utility.Shooter.ShotCalculator;
 
@@ -17,22 +17,23 @@ public class ShooterCommand extends Command {
 
   private final Shooter shooter;
   private final ShotCalculator shotCalculator;
-  private final ManualControls controls;
   
-  // Suppliers to feed the calculator
+  // CHANGED: Replaced ManualControls with a generic BooleanSupplier
+  private final BooleanSupplier isShootingSupplier; 
+  
   private final Supplier<Pose2d> poseSupplier;
   private final Supplier<ChassisSpeeds> speedsSupplier;
 
   public ShooterCommand(
       Shooter shooter, 
       ShotCalculator shotCalculator, 
-      ManualControls controls,
+      BooleanSupplier isShootingSupplier, // Pass the trigger check here
       Supplier<Pose2d> poseSupplier,
       Supplier<ChassisSpeeds> speedsSupplier) {
       
     this.shooter = shooter;
     this.shotCalculator = shotCalculator;
-    this.controls = controls;
+    this.isShootingSupplier = isShootingSupplier;
     this.poseSupplier = poseSupplier;
     this.speedsSupplier = speedsSupplier;
 
@@ -42,20 +43,17 @@ public class ShooterCommand extends Command {
   @Override
   public void initialize() {
     shooter.setIdle();
-    shotCalculator.resetFilter(); 
   }
 
   @Override
   public void execute() {
-    // 1. Update the Calculator with where the robot is NOW
+    // 1. Constantly update the math
     shotCalculator.calculate(poseSupplier.get(), speedsSupplier.get());
 
-    // 2. Check Driver Input
-    if (controls.getShooterRev()) {
-      // 3. Set RPM based on the calculated virtual target
+    // 2. Check the BooleanSupplier (The binding from RobotContainer)
+    if (isShootingSupplier.getAsBoolean()) {
       shooter.setRPMFromCalculator(shotCalculator);
     } else {
-      // 4. Idle
       shooter.setIdle();
     }
   }
