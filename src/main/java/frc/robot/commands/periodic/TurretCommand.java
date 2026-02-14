@@ -2,6 +2,7 @@ package frc.robot.commands.periodic;
 
 import java.util.Optional;
 
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.util.Units;
@@ -85,7 +86,9 @@ public class TurretCommand extends Command{
                     turret.setGoal(targetAngle); // No velocity tracking for now
                     break;
                 case TRACKING_PASS:
-                    turret.stopMotor(); // for now, just stop the turret in the pass zone. We could potentially track a pass target here in the future.
+                    Alliance alliance = DriverStation.getAlliance().get();
+                    double fieldPassAngle = (alliance == Alliance.Red) ? 0 : 180; // angle to track the front right corner of the pass target
+                    turret.setGoal(MathUtil.angleModulus(fieldPassAngle - poseSupplier.getPose().getRotation().getDegrees()));
                     break;
             }
         }
