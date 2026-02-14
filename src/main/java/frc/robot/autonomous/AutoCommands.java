@@ -4,7 +4,6 @@ package frc.robot.autonomous;
 import choreo.auto.AutoFactory;
 import choreo.auto.AutoRoutine;
 import choreo.auto.AutoTrajectory;
-import frc.robot.Constants.FeederConstants;
 import frc.robot.Constants.ShooterConstants;
 // import frc.robot.subsystems.superstructure.Feeder;
 // import frc.robot.subsystems.superstructure.Shooter;

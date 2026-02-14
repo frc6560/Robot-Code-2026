@@ -31,7 +31,6 @@ import edu.wpi.first.wpilibj.smartdashboard.MechanismRoot2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.ShooterConstants;
-import frc.robot.utility.Shooter.ShotCalculator;
 
 public class Shooter extends SubsystemBase {
     private final Mechanism2d mech2d;

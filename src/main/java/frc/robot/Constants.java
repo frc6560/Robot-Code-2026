@@ -123,8 +123,8 @@ public final class Constants {
     public static final double kMaxA = 720.0;  // Max acceleration (degrees/second²)
 
     /** Hood Geometry */
-    public static final double HOOD_GEAR_RATIO = 40.0; // 40:1 total gear reduction
-    public static final double ABSOLUTE_HOOD_ENCODER_GEAR_RATIO = 44.0 / 18.0; // 2.44:1
+    public static final double HOOD_GEAR_RATIO = 40.0; // rotates 40 for every 1 rotation of the hood
+    public static final double ABSOLUTE_HOOD_ENCODER_GEAR_RATIO = 180.0 / 44.0 ; // encoder rotates 180 for every 44 rotations of the hood 
 
     /** Motor Inversion */
     public static final boolean HOOD_MOTOR_INVERTED = false; // TODO: Test and adjust
@@ -168,10 +168,6 @@ public final class Constants {
     public static final boolean RIGHT_FLYWHEEL_OPPOSED = true; 
 
     public static final int FLYWHEEL_STATOR_CURRENT_LIMIT = 80;
-  }
-
-  public static final class FeederConstants{
-    public static final double FEEDER_RPM = -1000;
   }
 
   public static final class TurretConstants{
