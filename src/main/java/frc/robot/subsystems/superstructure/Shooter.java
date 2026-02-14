@@ -204,5 +204,7 @@ public class Shooter extends SubsystemBase {
         leftFlywheelVisual.setAngle(visualAngle);
         rightFlywheelVisual.setAngle(-visualAngle);
         SmartDashboard.putNumber("Flywheel/Visual Angle", visualAngle);
+
+        setRPM(ShooterConstants.FLYWHEEL_IDLE_RPM); // TODO: pls remove when proper commands are impelemented.
     }
 }
