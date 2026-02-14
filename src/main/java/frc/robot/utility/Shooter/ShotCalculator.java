@@ -50,14 +50,6 @@ public class ShotCalculator {
 
     public Translation2d virtualTargetPose; 
 
-    // state for numerical differentiation
-    private double prevHoodAzimuth = 0;
-    private double prevTurretAngle = 0;
-    private double prevTimestamp = 0;
-    private double filteredHoodVelocity = 0;
-    private double filteredTurretVelocity = 0;
-    private boolean hasInitialized = false;
-
     /** A util class for outputting shooter state values, even while the robot is moving! */
     public ShotCalculator() {
         this.flywheelRPM = 0;
@@ -227,40 +219,13 @@ public class ShotCalculator {
         SmartDashboard.putNumber("SOTM/VirtualOffset/magnitude", targetOffset.getNorm());
 
         // calculates hood angle and flywheel RPM from virtual target
-        double newHoodAzimuth = hoodAzimuthMap.get(distanceToTarget);
+        double hoodAzimuth = hoodAzimuthMap.get(distanceToTarget);
         flywheelRPM = flywheelRPMMap.get(distanceToTarget);
-        double newTurretAngle = MathUtil.angleModulus(Math.atan2(
+        double turretAngle = MathUtil.angleModulus(Math.atan2(
             virtualTargetPose.getY() - turretPose.getY(),
             virtualTargetPose.getX() - turretPose.getX()
         ) - projectedPosition.getRotation().getRadians());
 
-        // Calculate velocities using numerical differentiation with low-pass filtering
-        double currentTime = Timer.getFPGATimestamp();
-        if (hasInitialized) {
-            double dt = currentTime - prevTimestamp;
-            if (dt > 1e-6) { // Avoid division by zero
-                // Raw velocity from backward difference
-                double rawHoodVelocity = MathUtil.angleModulus(newHoodAzimuth - prevHoodAzimuth) / dt;
-                double rawTurretVelocity = MathUtil.angleModulus(newTurretAngle - prevTurretAngle) / dt;
-
-                // Exponential moving average filter: filtered = alpha * prev + (1 - alpha) * raw
-                filteredHoodVelocity = VELOCITY_FILTER_ALPHA * filteredHoodVelocity
-                                     + (1 - VELOCITY_FILTER_ALPHA) * rawHoodVelocity;
-                filteredTurretVelocity = VELOCITY_FILTER_ALPHA * filteredTurretVelocity
-                                       + (1 - VELOCITY_FILTER_ALPHA) * rawTurretVelocity;
-            }
-        } else {
-            hasInitialized = true;
-        }
-
-        prevHoodAzimuth = newHoodAzimuth;
-        prevTurretAngle = newTurretAngle;
-        prevTimestamp = currentTime;
-
-        hoodAzimuth = newHoodAzimuth;
-        turretAngle = newTurretAngle;
-        hoodVelocity = filteredHoodVelocity;
-        turretVelocity = filteredTurretVelocity;
 
         // Log final output values
         SmartDashboard.putNumber("SOTM/Output/TurretAngleDeg", Math.toDegrees(turretAngle));
@@ -268,12 +233,5 @@ public class ShotCalculator {
         SmartDashboard.putNumber("SOTM/Output/HoodAngleDeg", Math.toDegrees(hoodAzimuth));
         SmartDashboard.putNumber("SOTM/Output/HoodVelDegPerSec", Math.toDegrees(hoodVelocity));
         SmartDashboard.putNumber("SOTM/Output/FlywheelRPM", flywheelRPM);
-    }
-
-    /** Resets the velocity filter state. Call this when re-enabling or after long pauses. */
-    public void resetFilter() {
-        hasInitialized = false;
-        filteredHoodVelocity = 0;
-        filteredTurretVelocity = 0;
     }
 }
