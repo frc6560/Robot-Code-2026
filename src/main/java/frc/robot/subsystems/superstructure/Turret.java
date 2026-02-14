@@ -20,7 +20,7 @@ import frc.robot.Constants.*;
 
 public class Turret extends SubsystemBase {
     private final TalonFX m_turretMotor = new TalonFX(TurretConstants.MOTOR_ID, "rio");
-    private final CANcoder m_turretEncoder = new CANcoder(TurretConstants.ENCODER_ID);
+    private final CANcoder m_turretEncoder = new CANcoder(TurretConstants.ENCODER_ID, "rio");
 
     private final MotionMagicVoltage m_motionMagicRequest = new MotionMagicVoltage(0).withSlot(0);
 
