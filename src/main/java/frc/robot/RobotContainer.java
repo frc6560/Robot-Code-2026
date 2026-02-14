@@ -39,7 +39,7 @@ public class RobotContainer {
     private final VisionSubsystem vision;
     
     // Superstructure
-    private final Hood hood = new Hood(drivebase::getPose);
+    //private final Hood hood = new Hood(drivebase::getPose);
     private final Shooter shooter = new Shooter(drivebase::getPose);
     private final Turret turret = new Turret();
 
@@ -108,9 +108,9 @@ public class RobotContainer {
         driverXbox.leftBumper().whileTrue(Commands.runOnce(() -> turret.setGoal(92), turret));
         driverXbox.rightBumper().whileTrue(Commands.runOnce(() -> turret.setGoal(-92), turret));
 
-        // Hood Bindings (Direct Set)
-        operatorXbox.b().onTrue(Commands.runOnce(() -> hood.setGoal(20.0), hood));
-        operatorXbox.x().onTrue(Commands.runOnce(() -> hood.setGoal(0.0), hood));
+        // // Hood Bindings (Direct Set)
+        // operatorXbox.b().onTrue(Commands.runOnce(() -> hood.setGoal(20.0), hood));
+        // operatorXbox.x().onTrue(Commands.runOnce(() -> hood.setGoal(0.0), hood));
 
     
     }

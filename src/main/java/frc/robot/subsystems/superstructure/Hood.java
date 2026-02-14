@@ -91,29 +91,29 @@ public class Hood extends SubsystemBase {
     hoodMotor.stopMotor();
   }
 
-  @Override
-  public void periodic() {
-    // Open loop control
-    double currentAngle = getHoodAngle();
-    double error = targetAngle - currentAngle;
+  // @Override
+  // public void periodic() {
+  //   // Open loop control
+  //   double currentAngle = getHoodAngle();
+  //   double error = targetAngle - currentAngle;
 
-    if (Math.abs(error) > ANGLE_TOLERANCE) {
-      // Move toward target
-      double speed = error > 0 ? DUTY_CYCLE_SPEED : -DUTY_CYCLE_SPEED;
-      hoodMotor.setControl(dutyCycleControl.withOutput(speed));
-    } else {
-      // At target, stop
-      hoodMotor.setControl(dutyCycleControl.withOutput(0.0));
-    }
+  //   if (Math.abs(error) > ANGLE_TOLERANCE) {
+  //     // Move toward target
+  //     double speed = error > 0 ? DUTY_CYCLE_SPEED : -DUTY_CYCLE_SPEED;
+  //     hoodMotor.setControl(dutyCycleControl.withOutput(speed));
+  //   } else {
+  //     // At target, stop
+  //     hoodMotor.setControl(dutyCycleControl.withOutput(0.0));
+  //   }
 
-    SmartDashboard.putNumber("Hood/Current Angle", currentAngle);
-    SmartDashboard.putNumber("Hood/Target Angle", targetAngle);
-    SmartDashboard.putBoolean("Hood/At Target", atTarget());
-    SmartDashboard.putNumber("Hood/Motor Voltage", hoodMotor.getMotorVoltage().getValueAsDouble());
-    SmartDashboard.putNumber("Hood/CANcoder Raw", absoluteEncoder.getAbsolutePosition().getValueAsDouble());
-    SmartDashboard.putNumber("Hood/Motor Position", getMotorPosition());
-    SmartDashboard.putNumber("Hood/Error", error);
-  }
+  //   SmartDashboard.putNumber("Hood/Current Angle", currentAngle);
+  //   SmartDashboard.putNumber("Hood/Target Angle", targetAngle);
+  //   SmartDashboard.putBoolean("Hood/At Target", atTarget());
+  //   SmartDashboard.putNumber("Hood/Motor Voltage", hoodMotor.getMotorVoltage().getValueAsDouble());
+  //   SmartDashboard.putNumber("Hood/CANcoder Raw", absoluteEncoder.getAbsolutePosition().getValueAsDouble());
+  //   SmartDashboard.putNumber("Hood/Motor Position", getMotorPosition());
+  //   SmartDashboard.putNumber("Hood/Error", error);
+  // }
 
   public interface PoseSupplier {
     Pose2d getPose();
