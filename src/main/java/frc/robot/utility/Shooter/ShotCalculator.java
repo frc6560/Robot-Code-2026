@@ -170,7 +170,7 @@ public class ShotCalculator {
         double prevTimeOfFlight = 0;
         int iterationsUsed = 0;
 
-        if(Math.hypot(turretVx, turretVy) > 0.1){
+        if(Math.hypot(turretVx, turretVy) > 0.4){
             for(int i = 0; i < 20; i++){
                 timeOfFlight = timeOfFlightMap.get(distanceToTarget);
                 iterationsUsed = i + 1;
