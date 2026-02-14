@@ -97,10 +97,10 @@ public class RobotContainer {
         driverXbox.start().
           onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
         driverXbox.leftBumper()
-          .onTrue(Commands.runOnce(() -> turret.setGoal(92)));
+          .onTrue(Commands.runOnce(() -> turret.setGoal(92)))
           .onFalse(Commands.runOnce(() -> turret.setGoal(0)));
         driverXbox.rightBumper()
-          .onTrue(Commands.runOnce(() -> turret.setGoal(-92)));
+          .onTrue(Commands.runOnce(() -> turret.setGoal(-92)))
           .onFalse(Commands.runOnce(() -> turret.setGoal(0)));
 
         operatorXbox.b().onTrue(Commands.runOnce(() -> {
