@@ -193,8 +193,8 @@ public final class Constants {
     public static final double kD = 0.2;
 
     /** Motion Constraints. IN DEGREES PER SECOND */
-    public static final double kMaxV = 180; // deg/s
-    public static final double kMaxA = 180; // deg/s^2
+    public static final double kMaxV = 360; // deg/s
+    public static final double kMaxA = 540; // deg/s^2
 
     public static final boolean MOTOR_INVERTED = true; // TODO: test and set
 
