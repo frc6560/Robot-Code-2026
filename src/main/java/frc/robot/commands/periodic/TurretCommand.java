@@ -21,16 +21,21 @@ public class TurretCommand extends Command{
 
     public interface poseSupplier{
         Pose2d getPose();
+    }
+
+    public interface velocitySupplier{
         ChassisSpeeds getFieldVelocity();
     }
 
     private final Turret turret;
     private final poseSupplier poseSupplier;
+    private final velocitySupplier velocitySupplier;
     private TurretState turretState = TurretState.IDLE;
     private final ShotCalculator shotCalculator = new ShotCalculator();
     
-    public TurretCommand(Turret turret, poseSupplier supplier){
+    public TurretCommand(Turret turret, poseSupplier supplier, velocitySupplier velocitySupplier){
         this.turret = turret;
+        this.velocitySupplier = velocitySupplier;
         this.poseSupplier = supplier;
     }
 
@@ -75,7 +80,7 @@ public class TurretCommand extends Command{
                     turret.stopMotor();
                     break;
                 case TRACKING_TARGET:
-                    shotCalculator.calculate(poseSupplier.getPose(), poseSupplier.getFieldVelocity());
+                    shotCalculator.calculate(poseSupplier.getPose(), velocitySupplier.getFieldVelocity());
                     double targetAngle = Units.radiansToDegrees(shotCalculator.getTurretAngle());
                     double targetVelocity = Units.radiansToDegrees(shotCalculator.getTurretVelocity());
                     turret.setSetpoint(targetAngle, targetVelocity);

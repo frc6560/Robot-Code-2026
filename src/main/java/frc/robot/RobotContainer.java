@@ -42,23 +42,11 @@ public class RobotContainer {
     private final SwerveSubsystem drivebase  = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(),
     "swerve/falcon"));
     private final VisionSubsystem vision;
+
     private final Hood hood = new Hood(drivebase::getPose);
     private final Shooter shooter = new Shooter(drivebase::getPose);
     private final Turret turret = new Turret();
 
-    private final TurretCommand turretCommand = new TurretCommand(turret, new TurretCommand.poseSupplier() {
-        @Override
-        public Pose2d getPose() {
-            return drivebase.getPose();
-        }
-
-        @Override
-        public ChassisSpeeds getFieldVelocity() {
-            return drivebase.getFieldVelocity();
-        }
-    });
-
-    // Subsystems
 
     private final AutoCommands factory;
     private final AutoModeChooser autoChooser;
@@ -86,6 +74,8 @@ public class RobotContainer {
 
       vision = new VisionSubsystem(limelights);
       hood.setDefaultCommand(new HoodCommand(hood));
+      turret.setDefaultCommand(new TurretCommand(turret, drivebase::getPose, drivebase::getFieldVelocity));
+      
       configureBindings();
     }
 
