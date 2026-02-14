@@ -116,6 +116,13 @@ public class RobotContainer {
         operatorXbox.y()
           .onTrue(Commands.runOnce(feeder::requestFeed, feeder))
           .onFalse(Commands.runOnce(feeder::requestStop, feeder));
+
+        operatorXbox.a()
+          .onTrue(Commands.runOnce(feeder::requestStop, feeder));
+
+        operatorXbox.leftBumper()
+          .onTrue(Commands.runOnce(feeder::enableBeamBreakOverride, feeder))
+          .onFalse(Commands.runOnce(feeder::disableBeamBreakOverride, feeder));
     }
 
     public Command getAutonomousCommand() {
