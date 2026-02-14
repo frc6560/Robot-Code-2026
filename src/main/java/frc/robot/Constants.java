@@ -114,7 +114,7 @@ public final class Constants {
     public static final double kA = 0.0;   // Acceleration feedforward
 
     /** PID Gains */
-    public static final double kP = 0.5;   // Proportional gain
+    public static final double kP = 0.01;   // Proportional gain
     public static final double kI = 0.0;   // Integral gain
     public static final double kD = 0.0;   // Derivative gain
 
@@ -138,7 +138,7 @@ public final class Constants {
 
     public static final int HOOD_ABSOLUTE_ENCODER_ID = 22;
 
-    public static final double HOOD_ABSOLUTE_ENCODER_OFFSET = -0.225;
+    public static final double HOOD_ABSOLUTE_ENCODER_OFFSET = 0.05123623889;
   }
 
   public static final class ShooterConstants{
