@@ -109,7 +109,7 @@ public final class Constants {
     public static final int HOOD_MOTOR_ID = 21;
 
     /** Feedforward Gains (for TalonFX Slot0) */
-    public static final double kS = 0.5;   // Static friction voltage
+    public static final double kS = 0.05;   // Static friction voltage
     public static final double kV = 0.12;  // Velocity feedforward
     public static final double kA = 0.0;   // Acceleration feedforward
 

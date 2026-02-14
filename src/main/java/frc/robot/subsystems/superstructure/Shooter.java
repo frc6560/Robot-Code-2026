@@ -175,7 +175,7 @@ public class Shooter extends SubsystemBase {
 
     public double getCurrentRPS() {
         double motorRPS = leaderMotor.getVelocity().getValueAsDouble();
-        return motorRPS / ShooterConstants.FLYWHEEL_GEAR_RATIO;
+        return motorRPS * ShooterConstants.FLYWHEEL_GEAR_RATIO;
     }
 
     public double getCurrentRPM() {

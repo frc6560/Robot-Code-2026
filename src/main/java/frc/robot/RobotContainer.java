@@ -81,7 +81,7 @@ double idleRPM = 600.0;
 shooter.setDefaultCommand(Commands.run(() -> {
     if (operatorXbox.getRightTriggerAxis() > 0.5) {
         // Change setGoal -> setRPM
-        shooter.setRPM(1000.0); 
+        shooter.setRPM(1500.0); 
     } else {
         // Change setGoal -> setRPM
         shooter.setRPM(600.0);
