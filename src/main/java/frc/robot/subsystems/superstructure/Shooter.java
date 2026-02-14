@@ -34,45 +34,38 @@ import frc.robot.Constants.ShooterConstants;
 import frc.robot.utility.Shooter.ShotCalculator;
 
 public class Shooter extends SubsystemBase {
-    // --- VISUALIZATION ---
     private final Mechanism2d mech2d;
     private final MechanismRoot2d flywheelRoot;
     private final MechanismLigament2d leftFlywheelVisual;
     private final MechanismLigament2d rightFlywheelVisual;
     private double visualAngle = 0.0;
 
-    // --- HARDWARE ---
     private final TalonFX leaderMotor;
     private final TalonFX followerMotor;
     private final NetworkTable limelightTable;
 
-    // --- CONTROL ---
     private final VelocityVoltage velocityControl = new VelocityVoltage(0).withSlot(0);
     private final NeutralOut coastControl = new NeutralOut(); 
     
-    // --- SYSID COMPONENTS ---
     private final VoltageOut sysIdControl = new VoltageOut(0);
     private final SysIdRoutine sysIdRoutine;
 
-    // --- STATE ---
     private double targetRPS = 0.0;
     private final PoseSupplier poseSupplier;
 
     public interface PoseSupplier { Pose2d getPose(); }
 
-    /** Creates a new Flywheel. */
+    /** Creates a new Shooter. */
     public Shooter(PoseSupplier poseSupplier) {
         this.poseSupplier = poseSupplier;
         limelightTable = NetworkTableInstance.getDefault().getTable("limelight");
 
-        // 1. Initialize Motors
         leaderMotor = new TalonFX(ShooterConstants.LEFT_FLYWHEEL_ID, "rio");
         followerMotor = new TalonFX(ShooterConstants.RIGHT_FLYWHEEL_ID, "rio");
 
         configureLeaderMotor();
         configureFollowerMotor();
 
-        // 2. SysId Setup
         sysIdRoutine = new SysIdRoutine(
             new SysIdRoutine.Config(
                 Volts.of(0.5).per(Second), 
@@ -87,7 +80,6 @@ public class Shooter extends SubsystemBase {
             )
         );
 
-        // 3. Visualization Setup
         mech2d = new Mechanism2d(200, 200);
         flywheelRoot = mech2d.getRoot("Flywheel Root", 100, 100);
         leftFlywheelVisual = flywheelRoot.append(new MechanismLigament2d("Left Flywheel", 50, 0));
@@ -132,7 +124,6 @@ public class Shooter extends SubsystemBase {
         followerMotor.setControl(new Follower(leaderMotor.getDeviceID(), MotorAlignmentValue.Opposed));
     }
 
-    // --- SYSID METHODS ---
     public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
         return sysIdRoutine.quasistatic(direction);
     }
@@ -140,8 +131,6 @@ public class Shooter extends SubsystemBase {
     public Command sysIdDynamic(SysIdRoutine.Direction direction) {
         return sysIdRoutine.dynamic(direction);
     }
-
-    // --- CONTROL METHODS ---
 
     public void setRPS(double rps) {
         targetRPS = rps;
@@ -158,10 +147,6 @@ public class Shooter extends SubsystemBase {
 
     public void setRPM(double rpm) {
         setRPS(rpm / 60.0);
-    }
-
-    public void setRPMFromCalculator(ShotCalculator calculator) {
-        setRPM(calculator.getFlywheelRPM());
     }
 
     public void setIdle() {
@@ -183,7 +168,6 @@ public class Shooter extends SubsystemBase {
     }
 
     public boolean atTarget() {
-        // FIXED: Cannot be "at target" if we are stopped/idling
         if (Math.abs(targetRPS) < 1.0) return false;
         return Math.abs(getCurrentRPS() - targetRPS) < (ShooterConstants.FLYWHEEL_RPM_TOLERANCE / 60.0);
     }
