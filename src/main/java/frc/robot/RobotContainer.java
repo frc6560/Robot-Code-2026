@@ -87,12 +87,21 @@ public class RobotContainer {
             return Commands.runOnce(() -> vision.hardReset("limelight-br"), vision);
           }, Set.of(vision))
         );
-        driverXbox.y().onTrue(Commands.runOnce(() -> CommandScheduler.getInstance().cancelAll()));
-        driverXbox.x().onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
-        driverXbox.b().onTrue(Commands.runOnce(() -> CommandScheduler.getInstance().schedule(drivebase.sysIdDriveMotorCommand()), drivebase));
-        driverXbox.start().onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
-        driverXbox.leftBumper().whileTrue(Commands.runOnce(() -> turret.setGoal(92)));
-        driverXbox.rightBumper().whileTrue(Commands.runOnce(() -> turret.setGoal(-92)));
+
+        driverXbox.y()
+          .onTrue(Commands.runOnce(() -> CommandScheduler.getInstance().cancelAll()));
+        driverXbox.x()
+          .onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
+        driverXbox.b()
+          .onTrue(Commands.runOnce(() -> CommandScheduler.getInstance().schedule(drivebase.sysIdDriveMotorCommand()), drivebase));
+        driverXbox.start().
+          onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
+        driverXbox.leftBumper()
+          .onTrue(Commands.runOnce(() -> turret.setGoal(92)));
+          .onFalse(Commands.runOnce(() -> turret.setGoal(0)));
+        driverXbox.rightBumper()
+          .onTrue(Commands.runOnce(() -> turret.setGoal(-92)));
+          .onFalse(Commands.runOnce(() -> turret.setGoal(0)));
 
         operatorXbox.b().onTrue(Commands.runOnce(() -> {
             hood.setGoal(20.0);
@@ -101,6 +110,10 @@ public class RobotContainer {
         operatorXbox.x().onTrue(Commands.runOnce(() -> {
             hood.setGoal(0.0);
         }, hood));
+
+        operatorXbox.y()
+          .onTrue(Commands.runOnce(feeder::requestFeed, feeder))
+        .onFalse(Commands.runOnce(feeder::requestStop, feeder));
     }
 
     public Command getAutonomousCommand() {
