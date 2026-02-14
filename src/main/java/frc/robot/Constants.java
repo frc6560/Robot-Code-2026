@@ -89,10 +89,10 @@ public final class Constants {
       switch(name){
         case "limelight-br":
           limelightPose = new Pose3d(
-            0.354,
-            -0.0248,
-            0.192,
-            new Rotation3d(0, Units.degreesToRadians(17.23), 0)
+            -0.299, // front/back
+            0.267, // left/right
+            0.540, // height
+            new Rotation3d(0, Units.degreesToRadians(30.0), 0)
           );
           break;
         default:
