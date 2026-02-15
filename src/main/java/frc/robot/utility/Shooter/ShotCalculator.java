@@ -19,10 +19,10 @@ import frc.robot.Constants.TurretConstants;
 public class ShotCalculator {
 
     /** State container for turret position and velocity. */
-    public record TurretState(double positionRadians, double velocityRadiansPerSecond) {}
+    public record TurretState(double positionRadians) {}
 
     /** State container for hood position and velocity. */
-    public record HoodState(double positionRadians, double velocityRadiansPerSecond) {}
+    public record HoodState(double positionRadians) {}
 
     /** Combined state for the entire shooter system. */
     public record ShooterState(
@@ -95,8 +95,8 @@ public class ShotCalculator {
     /** Returns the complete shooter state including positions and velocities. */
     public ShooterState getState() {
         return new ShooterState(
-            new TurretState(turretAngle, 0),
-            new HoodState(hoodAzimuth, 0),
+            new TurretState(turretAngle),
+            new HoodState(hoodAzimuth),
             flywheelRPM,
             virtualTargetPose
         );

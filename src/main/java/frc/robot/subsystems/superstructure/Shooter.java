@@ -21,8 +21,6 @@ import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.MotorAlignmentValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.smartdashboard.Mechanism2d;
@@ -50,17 +48,10 @@ public class Shooter extends SubsystemBase {
     private final VoltageOut sysIdControl = new VoltageOut(0);
     private final SysIdRoutine sysIdRoutine;
 
-    public interface PoseSupplier { Pose2d getPose(); }
-    public interface VelocitySupplier { ChassisSpeeds getFieldVelocity(); }
-
     private double targetRPS = 0.0;
-    private final PoseSupplier poseSupplier;
-    private final VelocitySupplier velocitySupplier;
 
     /** Creates a new Shooter. */
-    public Shooter(PoseSupplier poseSupplier, VelocitySupplier velocitySupplier) {
-        this.poseSupplier = poseSupplier;
-        this.velocitySupplier = velocitySupplier;
+    public Shooter() {
         limelightTable = NetworkTableInstance.getDefault().getTable("limelight");
 
         leaderMotor = new TalonFX(ShooterConstants.LEFT_FLYWHEEL_ID, "rio");
@@ -179,14 +170,6 @@ public class Shooter extends SubsystemBase {
         return limelightTable.getEntry("tv").getDouble(0.0) == 1.0;
     }
 
-    public Pose2d getRobotPose() {
-        return poseSupplier.getPose();
-    }
-
-    public ChassisSpeeds getFieldVelocity() {
-        return velocitySupplier.getFieldVelocity();
-    }
-
     @Override
     public void periodic() {
         SmartDashboard.putBoolean("Flywheel/Periodic Running", true);
@@ -211,7 +194,5 @@ public class Shooter extends SubsystemBase {
         leftFlywheelVisual.setAngle(visualAngle);
         rightFlywheelVisual.setAngle(-visualAngle);
         SmartDashboard.putNumber("Flywheel/Visual Angle", visualAngle);
-
-        setRPM(ShooterConstants.FLYWHEEL_IDLE_RPM); // TODO: pls remove when proper commands are impelemented.
     }
 }

@@ -5,7 +5,6 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
-import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import java.io.File;
@@ -14,15 +13,13 @@ import java.util.List;
 import java.util.Set;
 
 import swervelib.SwerveInputStream;
-import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
-import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import frc.robot.Constants.LimelightConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.autonomous.AutoModeChooser;
 import frc.robot.autonomous.AutoCommands;
-import frc.robot.commands.periodic.HoodCommand;
-import frc.robot.commands.periodic.TurretCommand;
+import frc.robot.commands.periodic.SuperstructureCommand;
+import frc.robot.utility.Shooter.ShotCalculator;
 
 import frc.robot.subsystems.superstructure.Hood;
 import frc.robot.subsystems.superstructure.Shooter;
@@ -44,10 +41,12 @@ public class RobotContainer {
     "swerve/falcon"));
     private final VisionSubsystem vision;
 
-    private final Hood hood = new Hood(drivebase::getPose, drivebase::getFieldVelocity);
-    private final Shooter shooter = new Shooter(drivebase::getPose, drivebase::getFieldVelocity);
+    private final Hood hood = new Hood();
+    private final Shooter shooter = new Shooter();
     private final Turret turret = new Turret();
     private final Feeder feeder = new Feeder();
+
+    private final ShotCalculator shotCalculator = new ShotCalculator();
 
 
     private final AutoCommands factory;
@@ -75,9 +74,20 @@ public class RobotContainer {
       }
 
       vision = new VisionSubsystem(limelights);
-      // hood.setDefaultCommand(new HoodCommand(hood));
-      // turret.setDefaultCommand(new TurretCommand(turret, drivebase::getPose, drivebase::getFieldVelocity));
       
+      SuperstructureCommand superstructureCommand = new SuperstructureCommand(
+        hood,
+        shooter,
+        turret,
+        drivebase::getPose,
+        drivebase::getFieldVelocity,
+        shotCalculator
+      );
+
+      hood.setDefaultCommand(superstructureCommand);
+      shooter.setDefaultCommand(superstructureCommand);
+      turret.setDefaultCommand(superstructureCommand);
+
       configureBindings();
     }
 

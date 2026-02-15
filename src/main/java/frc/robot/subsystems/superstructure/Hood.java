@@ -12,8 +12,6 @@ import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.ctre.phoenix6.signals.SensorDirectionValue;
 
 import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -29,15 +27,8 @@ public class Hood extends SubsystemBase {
 
   private final MotionMagicVoltage m_motionMagicRequest = new MotionMagicVoltage(0).withSlot(0);
 
-  public interface PoseSupplier { Pose2d getPose();}
-  public interface VelocitySupplier { ChassisSpeeds getFieldVelocity();}
 
-  private final PoseSupplier poseSupplier;
-  private final VelocitySupplier velocitySupplier;
-
-  public Hood(PoseSupplier poseSupplier, VelocitySupplier velocitySupplier) {
-    this.poseSupplier = poseSupplier;
-    this.velocitySupplier = velocitySupplier;
+  public Hood() {
     hoodMotor = new TalonFX(HoodConstants.HOOD_MOTOR_ID, "rio");
     absoluteEncoder = new CANcoder(HoodConstants.HOOD_ABSOLUTE_ENCODER_ID, "rio");
 
@@ -97,14 +88,6 @@ public class Hood extends SubsystemBase {
   public void setGoal(double goalDeg) {
     goalDeg = MathUtil.clamp(goalDeg, HoodConstants.HOOD_MIN_ANGLE, HoodConstants.HOOD_MAX_ANGLE);
     targetAngle = goalDeg;
-  }
-
-  public Pose2d getRobotPose() {
-    return poseSupplier.getPose();
-  }
-
-  public ChassisSpeeds getRobotVelocity() {
-    return velocitySupplier.getFieldVelocity();
   }
 
   public boolean atTarget() {
