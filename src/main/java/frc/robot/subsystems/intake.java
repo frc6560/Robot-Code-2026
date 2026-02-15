@@ -7,6 +7,8 @@ import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
 import edu.wpi.first.wpilibj.DigitalInput;
+import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
+import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.IntakeConstants;
 
@@ -16,6 +18,7 @@ public class intake extends SubsystemBase {
 	private final TalonFX spinMotor = new TalonFX(IntakeConstants.SPIN_MOTOR_ID, IntakeConstants.CAN_BUS);
 	private final DigitalInput retractLimitSwitch =
 			new DigitalInput(IntakeConstants.RETRACT_LIMIT_SWITCH_ID);
+	private final ShuffleboardTab intakeTab = Shuffleboard.getTab("Intake");
 
 	private double lastExtendCommand = 0.0;
 	private Mode mode = Mode.IDLE;
@@ -31,6 +34,9 @@ public class intake extends SubsystemBase {
 		configureMotor(spinMotor, NeutralModeValue.Coast, IntakeConstants.SPIN_MOTOR_INVERTED);
 		applyExtendCurrentLimits(false);
 		applySpinCurrentLimits();
+			intakeTab.addNumber("Extension Rotations", this::getExtensionRotations);
+			intakeTab.addNumber("Spin RPS", () -> spinMotor.getVelocity().getValueAsDouble());
+			intakeTab.addBoolean("Magnetic Switch", () -> retractLimitSwitch.get());
 	}
 
 	private void configureMotor(TalonFX motor, NeutralModeValue neutralMode, boolean inverted) {
@@ -147,6 +153,10 @@ public class intake extends SubsystemBase {
 			extendMotor.setPosition(0.0);
 		}
 
+		if (getExtensionRotations() >= IntakeConstants.MAX_EXTENSION_ROTATIONS) {
+			stopExtend();
+		}
+
 		if (lastExtendCommand < 0 && isRetracted()) {
 			lastExtendCommand = 0.0;
 			extendMotor.set(0.0);
@@ -159,7 +169,11 @@ public class intake extends SubsystemBase {
 
 		switch (mode) {
 			case EXTENSION:
-				setExtendPercent(IntakeConstants.EXTEND_SPEED);
+				if (getExtensionRotations() < IntakeConstants.MAX_EXTENSION_ROTATIONS) {
+					setExtendPercent(IntakeConstants.EXTEND_SPEED);
+				} else {
+					stopExtend();
+				}
 				setSpinPercent(IntakeConstants.SPIN_SPEED);
 				break;
 			case SPRINGY:

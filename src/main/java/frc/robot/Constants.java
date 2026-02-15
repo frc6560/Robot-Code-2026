@@ -317,20 +317,20 @@ public final class Constants {
     public static final int SPIN_MOTOR_ID = 16; // TODO: set correct ID /completed
   public static final String CAN_BUS = "rio";
 
-    public static final int RETRACT_LIMIT_SWITCH_ID = 5; // TODO: set correct DIO port
+    public static final int RETRACT_LIMIT_SWITCH_ID = 9; // TODO: set correct DIO port
     public static final boolean RETRACT_LIMIT_SWITCH_INVERTED = false; // toDo: confirm if this needs to be true or false based on wiring and testing; eg, does it start as true or false when stowed.
 
-    public static final boolean EXTEND_MOTOR_INVERTED = false; //TODO
+    public static final boolean EXTEND_MOTOR_INVERTED = true; //TODO
     public static final boolean SPIN_MOTOR_INVERTED = true; //TODO update: complete
 
-    public static final double EXTEND_SPEED = 0.65; //tune
-  public static final double RETRACT_SPEED = -0.5; //tune
-    public static final double SPIN_SPEED = 0.7; //tune
-    public static final double SPRINGY_EXTEND_SPEED = 0.12; //tune
+    public static final double EXTEND_SPEED = 0.5; //tune (0.65)
+  public static final double RETRACT_SPEED = -0.5; //tune  (-0.5)
+    public static final double SPIN_SPEED = 0.7; //tune   (0.7))
+    public static final double SPRINGY_EXTEND_SPEED = 0.05; //tune
     public static final double SPRINGY_SPIN_SPEED = 0.7; //tune
 
-  public static final double MAX_EXTENSION_ROTATIONS = 60.0; // TODO: tune
-  public static final double SPRINGY_TRIGGER_ROTATIONS = 55.0; // TODO: tune
+  public static final double MAX_EXTENSION_ROTATIONS = 10.0; // TODO: tune
+  public static final double SPRINGY_TRIGGER_ROTATIONS = 5.0; // TODO: tune
 
     public static final double EXTEND_SUPPLY_CURRENT_LIMIT = 35;
     public static final double EXTEND_STATOR_CURRENT_LIMIT = 60;
