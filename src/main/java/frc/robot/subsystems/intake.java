@@ -1,7 +1,10 @@
 package frc.robot.subsystems;
 
 import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
+import com.ctre.phoenix6.configs.MotionMagicConfigs;
+import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
@@ -18,9 +21,10 @@ public class intake extends SubsystemBase {
 	private final TalonFX spinMotor = new TalonFX(IntakeConstants.SPIN_MOTOR_ID, IntakeConstants.CAN_BUS);
 	private final DigitalInput retractLimitSwitch =
 			new DigitalInput(IntakeConstants.RETRACT_LIMIT_SWITCH_ID);
+	private final MotionMagicVoltage motionMagicRequest = new MotionMagicVoltage(0).withSlot(0);
 	private final ShuffleboardTab intakeTab = Shuffleboard.getTab("Intake");
 
-	private double lastExtendCommand = 0.0;
+	private double targetExtensionInches = 0.0;
 	private Mode mode = Mode.IDLE;
 
 	public enum Mode {
@@ -34,7 +38,8 @@ public class intake extends SubsystemBase {
 		configureMotor(spinMotor, NeutralModeValue.Coast, IntakeConstants.SPIN_MOTOR_INVERTED);
 		applyExtendCurrentLimits(false);
 		applySpinCurrentLimits();
-			intakeTab.addNumber("Extension Rotations", this::getExtensionRotations);
+			intakeTab.addNumber("Extension Position (in)", this::getExtensionInches);
+				intakeTab.addNumber("Extension Target (in)", () -> targetExtensionInches);
 			intakeTab.addNumber("Spin RPS", () -> spinMotor.getVelocity().getValueAsDouble());
 			intakeTab.addBoolean("Magnetic Switch", () -> retractLimitSwitch.get());
 	}
@@ -44,7 +49,38 @@ public class intake extends SubsystemBase {
 		config.MotorOutput.NeutralMode = neutralMode;
 		config.MotorOutput.Inverted =
 				inverted ? InvertedValue.Clockwise_Positive : InvertedValue.CounterClockwise_Positive;
+
+		if (motor == extendMotor) {
+			Slot0Configs slot0 = config.Slot0;
+			slot0.kS = IntakeConstants.EXTEND_kS;
+			slot0.kV = IntakeConstants.EXTEND_kV;
+			slot0.kA = IntakeConstants.EXTEND_kA;
+			slot0.kP = IntakeConstants.EXTEND_kP;
+			slot0.kI = IntakeConstants.EXTEND_kI;
+			slot0.kD = IntakeConstants.EXTEND_kD;
+
+			MotionMagicConfigs mm = config.MotionMagic;
+			mm.MotionMagicCruiseVelocity = IntakeConstants.EXTEND_MAX_VELOCITY;
+			mm.MotionMagicAcceleration = IntakeConstants.EXTEND_MAX_ACCELERATION;
+			mm.MotionMagicJerk = 0;
+
+			double maxExtensionRotations = inchesToMotorRotations(IntakeConstants.MAX_EXTENSION_INCHES);
+			config.SoftwareLimitSwitch.ForwardSoftLimitEnable = true;
+			config.SoftwareLimitSwitch.ForwardSoftLimitThreshold = maxExtensionRotations;
+			config.SoftwareLimitSwitch.ReverseSoftLimitEnable = true;
+			config.SoftwareLimitSwitch.ReverseSoftLimitThreshold = 0.0;
+		}
 		motor.getConfigurator().apply(config);
+	}
+
+	private double inchesToMotorRotations(double inches) {
+		double pinionRotations = inches / IntakeConstants.INCHES_PER_PINION_ROTATION;
+		return pinionRotations * IntakeConstants.EXTEND_GEAR_RATIO;
+	}
+
+	private double motorRotationsToInches(double motorRotations) {
+		double pinionRotations = motorRotations / IntakeConstants.EXTEND_GEAR_RATIO;
+		return pinionRotations * IntakeConstants.INCHES_PER_PINION_ROTATION;
 	}
 
 	private void applyExtendCurrentLimits(boolean springy) {
@@ -95,18 +131,15 @@ public class intake extends SubsystemBase {
 
 	public void setExtendPercent(double percent) {
 		if (!IntakeConstants.EXTENSION_ENABLED) {
-			lastExtendCommand = 0.0;
 			extendMotor.set(0.0);
 			return;
 		}
 
 		if (percent < 0 && isRetracted()) {
-			lastExtendCommand = 0.0;
 			extendMotor.set(0.0);
 			return;
 		}
 
-		lastExtendCommand = percent;
 		extendMotor.set(percent);
 	}
 
@@ -153,15 +186,6 @@ public class intake extends SubsystemBase {
 			extendMotor.setPosition(0.0);
 		}
 
-		if (getExtensionRotations() >= IntakeConstants.MAX_EXTENSION_ROTATIONS) {
-			stopExtend();
-		}
-
-		if (lastExtendCommand < 0 && isRetracted()) {
-			lastExtendCommand = 0.0;
-			extendMotor.set(0.0);
-		}
-
 		if (mode == Mode.EXTENSION
 				&& getExtensionRotations() >= IntakeConstants.SPRINGY_TRIGGER_ROTATIONS) {
 			setSpringyMode();
@@ -169,30 +193,37 @@ public class intake extends SubsystemBase {
 
 		switch (mode) {
 			case EXTENSION:
-				if (getExtensionRotations() < IntakeConstants.MAX_EXTENSION_ROTATIONS) {
-					setExtendPercent(IntakeConstants.EXTEND_SPEED);
+				targetExtensionInches = IntakeConstants.MAX_EXTENSION_INCHES;
+				if (getExtensionInches() >= IntakeConstants.MAX_EXTENSION_INCHES - 2.0) {
+					setSpinPercent(IntakeConstants.SPIN_SPEED);
 				} else {
-					stopExtend();
+					stopSpin();
 				}
-				setSpinPercent(IntakeConstants.SPIN_SPEED);
 				break;
 			case SPRINGY:
-				stopExtend();
-				setSpinPercent(IntakeConstants.SPRINGY_SPIN_SPEED);
+				targetExtensionInches = IntakeConstants.MAX_EXTENSION_INCHES;
+				if (getExtensionInches() >= IntakeConstants.MAX_EXTENSION_INCHES - 2.0) {
+					setSpinPercent(IntakeConstants.SPRINGY_SPIN_SPEED);
+				} else {
+					stopSpin();
+				}
 				break;
 			case IDLE:
 			default:
-				if (!isRetracted()) {
-					setExtendPercent(IntakeConstants.RETRACT_SPEED);
-				} else {
-					stopExtend();
-				}
+				targetExtensionInches = 0.0;
 				stopSpin();
 				break;
 		}
+
+		double targetMotorRotations = inchesToMotorRotations(targetExtensionInches);
+		extendMotor.setControl(motionMagicRequest.withPosition(targetMotorRotations));
 	}
 
 	public double getExtensionRotations() {
 		return extendMotor.getPosition().getValueAsDouble();
+	}
+
+	public double getExtensionInches() {
+		return motorRotationsToInches(getExtensionRotations());
 	}
 }

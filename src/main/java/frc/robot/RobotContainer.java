@@ -106,7 +106,9 @@ public class RobotContainer {
 
     // --- INTAKE (Driver X, single-controller friendly) ---
     driverXbox.x()
-      .onTrue(Commands.runOnce(intakeSubsystem::setExtensionMode, intakeSubsystem))
-      .onFalse(Commands.runOnce(intakeSubsystem::setIdleMode, intakeSubsystem));
+      .whileTrue(Commands.startEnd(
+          intakeSubsystem::setExtensionMode,
+          intakeSubsystem::setIdleMode,
+          intakeSubsystem));
     }
 }
