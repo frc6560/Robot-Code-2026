@@ -1,97 +1,101 @@
 package frc.robot;
 
 import edu.wpi.first.wpilibj.Filesystem;
-import edu.wpi.first.wpilibj.XboxController;
-
+import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
-import edu.wpi.first.wpilibj2.command.button.Trigger;
-
-import frc.robot.subsystems.RevolverSubsystem;
-import frc.robot.subsystems.swervedrive.SwerveSubsystem;
-import frc.robot.Constants.OperatorConstants;
-
-import swervelib.SwerveInputStream;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+
+import swervelib.SwerveInputStream;
+import edu.wpi.first.math.geometry.Pose3d;
+import frc.robot.Constants.LimelightConstants;
+import frc.robot.Constants.OperatorConstants;
+import frc.robot.autonomous.AutoModeChooser;
+import frc.robot.autonomous.AutoCommands;
+
+import frc.robot.subsystems.swervedrive.SwerveSubsystem;
+import frc.robot.subsystems.vision.LimelightVision;
+import frc.robot.subsystems.vision.VisionSubsystem;
+import frc.robot.subsystems.RevolverSubsystem;
 
 public class RobotContainer {
 
-    /* ================= CONTROLLERS ================= */
+    // Controllers
+    private final CommandXboxController driverXbox = new CommandXboxController(0);
+    private final CommandXboxController operatorXbox = new CommandXboxController(1);
 
-    // Driver controller (port 0)
-    private final CommandXboxController driverXbox =
-        new CommandXboxController(0);
+     // The robot's subsystems and commands are defined here...
+    private final SwerveSubsystem drivebase  = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(),
+    "swerve/falcon"));
+    private final VisionSubsystem vision;
 
-    // Operator controller (port 1 ONLY)
-    private final XboxController operatorXbox =
-        new XboxController(1);
 
-    private final ManualControls controls =
-        new ManualControls(null, operatorXbox); // firstXbox unused
+    private final RevolverSubsystem feeder = new RevolverSubsystem();
 
-    /* ================= DRIVEBASE ================= */
-    private final SwerveSubsystem drivebase =
-        new SwerveSubsystem(
-            new File(Filesystem.getDeployDirectory(), "swerve/falcon")
-        );
 
-    /* ================= REVOLVER ================= */
-    private final RevolverSubsystem revolver = new RevolverSubsystem();
+    private final AutoCommands factory;
+    private final AutoModeChooser autoChooser;
 
-    /* ================= DRIVE INPUT ================= */
-    private final SwerveInputStream driveAngularVelocity =
-        SwerveInputStream.of(
-            drivebase.getSwerveDrive(),
-            () -> -driverXbox.getLeftY(),
-            () -> -driverXbox.getLeftX()
-        )
-        .withControllerRotationAxis(() -> -driverXbox.getRightX())
-        .deadband(OperatorConstants.DEADBAND)
-        .scaleTranslation(0.8)
-        .allianceRelativeControl(true);
+    SwerveInputStream driveAngularVelocity = SwerveInputStream.of(drivebase.getSwerveDrive(),
+      () -> driverXbox.getLeftY() * -1,
+      () -> driverXbox.getLeftX() * -1)
+      .withControllerRotationAxis(() -> -driverXbox.getRightX())
+      .deadband(OperatorConstants.DEADBAND)
+      .scaleTranslation(0.8)
+      .allianceRelativeControl(true);
 
-    /* ================= CONSTRUCTOR ================= */
+
     public RobotContainer() {
-        configureBindings();
+      factory = new AutoCommands(drivebase);
+
+      autoChooser = new AutoModeChooser(factory);
+      SmartDashboard.putData("Auto Chooser", autoChooser.getAutoChooser());
+
+      List<LimelightVision> limelights = new ArrayList<LimelightVision>();
+      for(String name : LimelightConstants.LIMELIGHT_NAMES) {
+        Pose3d cameraPose = LimelightConstants.getLimelightPose(name);
+        limelights.add(new LimelightVision(drivebase, name, cameraPose));
+      }
+
+      vision = new VisionSubsystem(limelights);
+      
+      configureBindings();
     }
 
-    /* ================= BUTTON BINDINGS ================= */
     private void configureBindings() {
-
-        /* ---------- Drive ---------- */
-        drivebase.setDefaultCommand(
-            drivebase.driveFieldOriented(driveAngularVelocity)
+        Command driveFieldOrientedAnglularVelocity = drivebase.driveFieldOriented(driveAngularVelocity);
+        drivebase.setDefaultCommand(driveFieldOrientedAnglularVelocity);
+        driverXbox.a().onTrue(
+          Commands.defer(() -> {
+            return Commands.runOnce(() -> vision.hardReset("limelight-br"), vision);
+          }, Set.of(vision))
         );
 
-        /* ---------- Utility ---------- */
-        driverXbox.y().onTrue(
-            Commands.runOnce(() -> CommandScheduler.getInstance().cancelAll())
-        );
+        driverXbox.y()
+          .onTrue(Commands.runOnce(() -> CommandScheduler.getInstance().cancelAll()));
+        driverXbox.x()
+          .onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
+        driverXbox.b()
+          .onTrue(Commands.runOnce(() -> CommandScheduler.getInstance().schedule(drivebase.sysIdDriveMotorCommand()), drivebase));
+        driverXbox.start().
+          onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
 
-        driverXbox.start().onTrue(
-            Commands.runOnce(drivebase::zeroNoAprilTagsGyro)
-        );
+        operatorXbox.y()
+          .onTrue(Commands.runOnce(feeder::requestFeed, feeder))
+          .onFalse(Commands.runOnce(feeder::requestStop, feeder));
 
-        driverXbox.leftBumper().whileTrue(
-            Commands.runOnce(drivebase::lock, drivebase).repeatedly()
-        );
+        operatorXbox.a()
+          .onTrue(Commands.runOnce(feeder::requestStop, feeder));
 
-        /* ================= REVOLVER (OPERATOR CONTROLLER) ================= */
+    }
 
-        // Y → FEED while held
-        new Trigger(controls::revolverFeed)
-            .onTrue(Commands.runOnce(revolver::requestFeed, revolver))
-            .onFalse(Commands.runOnce(revolver::requestStop, revolver));
-
-        // A → HARD STOP
-        new Trigger(controls::revolverStop)
-            .onTrue(Commands.runOnce(revolver::requestStop, revolver));
-
-        // Left bumper → BEAM BREAK OVERRIDE while held
-        new Trigger(controls::revolverOverride)
-            .onTrue(Commands.runOnce(revolver::enableBeamBreakOverride, revolver))
-            .onFalse(Commands.runOnce(revolver::disableBeamBreakOverride, revolver));
+    public Command getAutonomousCommand() {
+      return autoChooser.getAutoChooser().selectedCommand();
     }
 }

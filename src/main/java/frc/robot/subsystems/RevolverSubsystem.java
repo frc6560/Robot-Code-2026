@@ -3,61 +3,50 @@ package frc.robot.subsystems;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
-import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
-/**
- * Revolver subsystem WITHOUT idle mode.
- * States:
- * STOPPED -> SPINNING_UP -> FEEDING -> STAGED
- * OVERRIDE bypasses beam breaker.
- */
 public class RevolverSubsystem extends SubsystemBase {
 
-    /* ======================= Hardware ======================= */
     private final TalonFX panMotor = new TalonFX(14);
     private final TalonFX pusherMotor = new TalonFX(23);
-    private final DigitalInput beamBreaker = new DigitalInput(0);
 
-    /* ======================= RPM Targets ======================= */
-    private static final double PAN_RUNNING_RPM = 180.0;
-    private static final double PUSHER_RUNNING_RPM = 2500.0;
+    private static final double PAN_RUNNING_RPM = 60.0;
+    private static final double PUSHER_RUNNING_RPM = 3500.0;
 
-    /* ======================= Gearing ======================= */
-    private static final double PAN_GEAR_RATIO = 1.0;
-    private static final double PUSHER_GEAR_RATIO = 1.0;
+    private static final double PAN_GEAR_RATIO = 1.0 / 33.14;
+    private static final double PUSHER_GEAR_RATIO = 1.0 / 2.5;
 
-    /* ======================= Tolerances ======================= */
     private static final double PAN_SPEED_TOLERANCE_RPM = 20.0;
 
     private final VelocityVoltage panRequest = new VelocityVoltage(0);
     private final VelocityVoltage pusherRequest = new VelocityVoltage(0);
 
-    /* ======================= State Machine ======================= */
     public enum RevolverState {
         STOPPED,
         SPINNING_UP,
         FEEDING,
-        STAGED,
         OVERRIDE
     }
 
     private RevolverState state = RevolverState.STOPPED;
-    private boolean beamBreakOverride = false;
 
     /* ======================= Constructor ======================= */
     public RevolverSubsystem() {
-        configureMotor(panMotor, 0.25, 40);
-        configureMotor(pusherMotor, 0.15, 60);
+        configureMotor(panMotor, 0.25, 40, true);
+        configureMotor(pusherMotor, 0.15, 60, true);
     }
 
-    private void configureMotor(TalonFX motor, double kP, int currentLimit) {
+    private void configureMotor(TalonFX motor, double kP, int currentLimit, boolean inverted) {
         TalonFXConfiguration config = new TalonFXConfiguration();
         config.Slot0.kP = kP;
         config.Slot0.kV = 0.12;
+        config.MotorOutput.Inverted = inverted
+            ? InvertedValue.Clockwise_Positive
+            : InvertedValue.CounterClockwise_Positive;
         config.CurrentLimits.SupplyCurrentLimitEnable = true;
         config.CurrentLimits.SupplyCurrentLimit = currentLimit;
         motor.getConfigurator().apply(config);
@@ -81,17 +70,12 @@ public class RevolverSubsystem extends SubsystemBase {
         );
     }
 
-    private void stopAll() {
-        panMotor.set(0);
-        pusherMotor.set(0);
+    public void stopMotors() {
+        setPanRPM(0);
+        setPusherRPM(0);
     }
 
-    /* ======================= Sensors ======================= */
-    public boolean hasBall() {
-        return !beamBreaker.get();
-    }
-
-    /* ======================= Velocity Feedback ======================= */
+    /* ======================= Feedback ======================= */
     public double getPanActualRPM() {
         return panMotor.getVelocity().getValueAsDouble()
                 * 60.0
@@ -111,38 +95,31 @@ public class RevolverSubsystem extends SubsystemBase {
 
     /* ======================= Requests ======================= */
     public void requestFeed() {
-        if (state == RevolverState.STOPPED) {
-            state = RevolverState.SPINNING_UP;
-        }
+        state = RevolverState.SPINNING_UP;
     }
 
     public void requestStop() {
         state = RevolverState.STOPPED;
     }
 
-    public void enableBeamBreakOverride() {
-        beamBreakOverride = true;
+    public void requestOverride() {
         state = RevolverState.OVERRIDE;
     }
 
-    public void disableBeamBreakOverride() {
-        beamBreakOverride = false;
-        state = hasBall() ? RevolverState.STAGED : RevolverState.FEEDING;
-    }
-
-    /* ======================= Periodic State Machine ======================= */
+    /* ======================= Periodic ======================= */
     @Override
     public void periodic() {
 
         switch (state) {
 
             case STOPPED:
-                stopAll();
+                stopMotors();
                 break;
 
             case SPINNING_UP:
                 setPanRPM(PAN_RUNNING_RPM);
                 setPusherRPM(0);
+
                 if (panAtSpeed()) {
                     state = RevolverState.FEEDING;
                 }
@@ -150,18 +127,7 @@ public class RevolverSubsystem extends SubsystemBase {
 
             case FEEDING:
                 setPanRPM(PAN_RUNNING_RPM);
-
-                if (!hasBall() || beamBreakOverride) {
-                    setPusherRPM(PUSHER_RUNNING_RPM);
-                } else {
-                    setPusherRPM(0);
-                    state = RevolverState.STAGED;
-                }
-                break;
-
-            case STAGED:
-                setPanRPM(PAN_RUNNING_RPM);
-                setPusherRPM(0);
+                setPusherRPM(PUSHER_RUNNING_RPM);
                 break;
 
             case OVERRIDE:
@@ -170,11 +136,7 @@ public class RevolverSubsystem extends SubsystemBase {
                 break;
         }
 
-        /* ======================= Telemetry ======================= */
         SmartDashboard.putString("Revolver/State", state.name());
-        SmartDashboard.putBoolean("Revolver/Has Ball", hasBall());
-        SmartDashboard.putBoolean("Revolver/Beam Override", beamBreakOverride);
-
         SmartDashboard.putNumber("Revolver/Pan Actual RPM", getPanActualRPM());
         SmartDashboard.putNumber("Revolver/Pusher Actual RPM", getPusherActualRPM());
         SmartDashboard.putBoolean("Revolver/Pan At Speed", panAtSpeed());
@@ -184,4 +146,3 @@ public class RevolverSubsystem extends SubsystemBase {
         return state;
     }
 }
-
