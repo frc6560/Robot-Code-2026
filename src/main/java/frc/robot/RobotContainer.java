@@ -84,9 +84,7 @@ public class RobotContainer {
         shotCalculator
       );
 
-      hood.setDefaultCommand(superstructureCommand);
-      shooter.setDefaultCommand(superstructureCommand);
-      turret.setDefaultCommand(superstructureCommand);
+      hood.setDefaultCommand(superstructureCommand); // choose one of these to be default, since they all run together in the same command. might as well be hood since it's the slowest to react, and shooter and turret can keep up with it.
 
       configureBindings();
     }
