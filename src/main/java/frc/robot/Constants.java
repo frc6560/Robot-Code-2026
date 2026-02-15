@@ -127,7 +127,7 @@ public final class Constants {
     public static final double ABSOLUTE_HOOD_ENCODER_GEAR_RATIO = 180.0 / 44.0 ; // encoder rotates 180 for every 44 rotations of the hood 
 
     /** Motor Inversion */
-    public static final boolean HOOD_MOTOR_INVERTED = false; // TODO: Test and adjust
+    public static final boolean HOOD_MOTOR_INVERTED = true; // TODO: Test and adjust
 
     /** Current Limits */
     public static final double HOOD_CURRENT_LIMIT = 60.0; // Amps
@@ -138,7 +138,7 @@ public final class Constants {
 
     public static final int HOOD_ABSOLUTE_ENCODER_ID = 22;
 
-    public static final double HOOD_ABSOLUTE_ENCODER_OFFSET = -0.225;
+    public static final double HOOD_ABSOLUTE_ENCODER_OFFSET = 0.417;
   }
 
   public static final class ShooterConstants{
