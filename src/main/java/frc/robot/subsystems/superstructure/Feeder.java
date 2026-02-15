@@ -16,7 +16,7 @@ public class Feeder extends SubsystemBase {
     private final TalonFX pusherMotor = new TalonFX(23);
 
     private static final double PAN_RUNNING_RPM = 60.0;
-    private static final double PUSHER_RUNNING_RPM = 3500.0;
+    private static final double PUSHER_RUNNING_RPM = 3000.0;
     private static final double IDLE_RPM = 0.0;
 
     private static final double PAN_GEAR_RATIO = 1.0 / 33.14;
