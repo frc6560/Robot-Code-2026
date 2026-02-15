@@ -134,7 +134,7 @@ public class RobotContainer {
         
         operatorXbox.rightBumper()
           .onTrue(Commands.runOnce(() -> hood.setGoal(25.0), hood))
-          .onFalse(Commands.runOnce(() -> hood.setGoal(0.0), hood));
+          .onFalse(Commands.runOnce(() -> hood.setGoal(9.0), hood));
     }
 
     public Command getAutonomousCommand() {
