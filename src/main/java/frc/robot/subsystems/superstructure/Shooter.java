@@ -22,6 +22,7 @@ import com.ctre.phoenix6.signals.MotorAlignmentValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.smartdashboard.Mechanism2d;
@@ -49,14 +50,17 @@ public class Shooter extends SubsystemBase {
     private final VoltageOut sysIdControl = new VoltageOut(0);
     private final SysIdRoutine sysIdRoutine;
 
+    public interface PoseSupplier { Pose2d getPose(); }
+    public interface VelocitySupplier { ChassisSpeeds getFieldVelocity(); }
+
     private double targetRPS = 0.0;
     private final PoseSupplier poseSupplier;
-
-    public interface PoseSupplier { Pose2d getPose(); }
+    private final VelocitySupplier velocitySupplier;
 
     /** Creates a new Shooter. */
-    public Shooter(PoseSupplier poseSupplier) {
+    public Shooter(PoseSupplier poseSupplier, VelocitySupplier velocitySupplier) {
         this.poseSupplier = poseSupplier;
+        this.velocitySupplier = velocitySupplier;
         limelightTable = NetworkTableInstance.getDefault().getTable("limelight");
 
         leaderMotor = new TalonFX(ShooterConstants.LEFT_FLYWHEEL_ID, "rio");
@@ -177,6 +181,10 @@ public class Shooter extends SubsystemBase {
 
     public Pose2d getRobotPose() {
         return poseSupplier.getPose();
+    }
+
+    public ChassisSpeeds getFieldVelocity() {
+        return velocitySupplier.getFieldVelocity();
     }
 
     @Override

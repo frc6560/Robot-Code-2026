@@ -10,6 +10,12 @@ import frc.robot.ManualControls;
 
 public class ShooterCommand extends Command {
 
+  enum ShooterState {
+    IDLE, 
+    SHOOTING_TARGET, 
+    SHOOTING_PASS
+  }
+
   private final Shooter shooter; 
   private final ShotCalculator shotCalculator;
 

@@ -5,6 +5,14 @@ import frc.robot.subsystems.superstructure.Hood;
 
 public class HoodCommand extends Command {
 
+  enum HoodState {
+    IDLE, 
+    TRACKING_TARGET, 
+    TRACKING_PASS
+  }
+
+  
+
   private final Hood hood;
 
   public HoodCommand(Hood hood) {

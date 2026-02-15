@@ -44,8 +44,8 @@ public class RobotContainer {
     "swerve/falcon"));
     private final VisionSubsystem vision;
 
-    private final Hood hood = new Hood(drivebase::getPose);
-    private final Shooter shooter = new Shooter(drivebase::getPose);
+    private final Hood hood = new Hood(drivebase::getPose, drivebase::getFieldVelocity);
+    private final Shooter shooter = new Shooter(drivebase::getPose, drivebase::getFieldVelocity);
     private final Turret turret = new Turret();
     private final Feeder feeder = new Feeder();
 

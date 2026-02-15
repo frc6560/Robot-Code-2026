@@ -13,6 +13,7 @@ import com.ctre.phoenix6.signals.SensorDirectionValue;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -28,7 +29,15 @@ public class Hood extends SubsystemBase {
 
   private final MotionMagicVoltage m_motionMagicRequest = new MotionMagicVoltage(0).withSlot(0);
 
-  public Hood(PoseSupplier poseSupplier) {
+  public interface PoseSupplier { Pose2d getPose();}
+  public interface VelocitySupplier { ChassisSpeeds getFieldVelocity();}
+
+  private final PoseSupplier poseSupplier;
+  private final VelocitySupplier velocitySupplier;
+
+  public Hood(PoseSupplier poseSupplier, VelocitySupplier velocitySupplier) {
+    this.poseSupplier = poseSupplier;
+    this.velocitySupplier = velocitySupplier;
     hoodMotor = new TalonFX(HoodConstants.HOOD_MOTOR_ID, "rio");
     absoluteEncoder = new CANcoder(HoodConstants.HOOD_ABSOLUTE_ENCODER_ID, "rio");
 
@@ -90,6 +99,14 @@ public class Hood extends SubsystemBase {
     targetAngle = goalDeg;
   }
 
+  public Pose2d getRobotPose() {
+    return poseSupplier.getPose();
+  }
+
+  public ChassisSpeeds getRobotVelocity() {
+    return velocitySupplier.getFieldVelocity();
+  }
+
   public boolean atTarget() {
     return Math.abs(getHoodAngle() - targetAngle) < ANGLE_TOLERANCE;
   }
@@ -113,9 +130,5 @@ public class Hood extends SubsystemBase {
     SmartDashboard.putNumber("Hood/Error", getHoodAngle() - targetAngle);
 
     setControl();
-  }
-
-  public interface PoseSupplier {
-    Pose2d getPose();
   }
 }
