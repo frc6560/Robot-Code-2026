@@ -55,10 +55,10 @@ public class ShotCalculator {
 
     public void populateLUTs(){
         // shooter RPM
-        flywheelRPMMap.put(3.77, -1990.0);
-        flywheelRPMMap.put(4.29, -2070.0);
-        flywheelRPMMap.put(4.82, -2175.0); 
-        flywheelRPMMap.put(5.47, -2285.0);
+        flywheelRPMMap.put(3.77, 1990.0);
+        flywheelRPMMap.put(4.29, 2070.0);
+        flywheelRPMMap.put(4.82, 2175.0); 
+        flywheelRPMMap.put(5.47, 2285.0);
 
         // hood azimuth (finish on main bot. these are completely BS values).
         hoodAzimuthMap.put(3.77, Math.toRadians(20));
