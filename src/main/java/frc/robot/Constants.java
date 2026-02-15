@@ -117,6 +117,7 @@ public final class Constants {
     public static final double kP = 0.5;   // Proportional gain
     public static final double kI = 0.0;   // Integral gain
     public static final double kD = 0.0;   // Derivative gain
+    public static final double kG = 0.0;   // Gravity compensation 
 
     /** Motion Profile Constraints */
     public static final double kMaxV = 360.0;  // Max velocity (degrees/second)

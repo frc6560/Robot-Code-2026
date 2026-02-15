@@ -5,7 +5,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
-import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine; // Import for SysId
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import java.io.File;
@@ -14,9 +14,7 @@ import java.util.List;
 import java.util.Set;
 
 import swervelib.SwerveInputStream;
-import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
-import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import frc.robot.Constants.LimelightConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.autonomous.AutoModeChooser;
@@ -32,18 +30,28 @@ import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import frc.robot.subsystems.vision.LimelightVision;
 import frc.robot.subsystems.vision.VisionSubsystem;
 
+// ** NEW IMPORTS **
+import frc.robot.utility.Shooter.ShotCalculator;
+import frc.robot.ManualControls; 
 
 public class RobotContainer {
 
-    // Controllers
+    // --- CONTROLLERS ---
     private final CommandXboxController driverXbox = new CommandXboxController(0);
     private final CommandXboxController operatorXbox = new CommandXboxController(1);
 
-     // The robot's subsystems and commands are defined here...
-    private final SwerveSubsystem drivebase  = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(),
-    "swerve/falcon"));
-    private final VisionSubsystem vision;
+    // ** NEW: Manual Controls Wrapper **
+    // (Used by HoodCommand to read joystick buttons)
+    private final ManualControls controls = new ManualControls(driverXbox.getHID(), operatorXbox.getHID());
 
+    // --- SUBSYSTEMS ---
+    private final SwerveSubsystem drivebase  = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(), "swerve/falcon"));
+    
+    // ** NEW: Shot Calculator **
+    // (Passes drivebase so it can get Velocity for shooting on the move)
+    private final ShotCalculator shotCalc = new ShotCalculator();
+
+    private final VisionSubsystem vision;
     private final Hood hood = new Hood(drivebase::getPose);
     private final Shooter shooter = new Shooter(drivebase::getPose);
     private final Turret turret = new Turret();
@@ -64,7 +72,6 @@ public class RobotContainer {
 
     public RobotContainer() {
       factory = new AutoCommands(drivebase);
-
       autoChooser = new AutoModeChooser(factory);
       SmartDashboard.putData("Auto Chooser", autoChooser.getAutoChooser());
 
@@ -73,10 +80,11 @@ public class RobotContainer {
         Pose3d cameraPose = LimelightConstants.getLimelightPose(name);
         limelights.add(new LimelightVision(drivebase, name, cameraPose));
       }
-
       vision = new VisionSubsystem(limelights);
-      // hood.setDefaultCommand(new HoodCommand(hood));
-      // turret.setDefaultCommand(new TurretCommand(turret, drivebase::getPose, drivebase::getFieldVelocity));
+
+      // --- DEFAULT COMMANDS ---
+      // This enables the Manual Jog and Auto-Aim logic we wrote in HoodCommand
+      //hood.setDefaultCommand(new HoodCommand(hood, controls, shotCalc));
       
       configureBindings();
     }
@@ -84,20 +92,26 @@ public class RobotContainer {
     private void configureBindings() {
         Command driveFieldOrientedAnglularVelocity = drivebase.driveFieldOriented(driveAngularVelocity);
         drivebase.setDefaultCommand(driveFieldOrientedAnglularVelocity);
-        driverXbox.a().onTrue(
-          Commands.defer(() -> {
-            return Commands.runOnce(() -> vision.hardReset("limelight-br"), vision);
-          }, Set.of(vision))
-        );
 
-        driverXbox.y()
-          .onTrue(Commands.runOnce(() -> CommandScheduler.getInstance().cancelAll()));
-        driverXbox.x()
-          .onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
-        driverXbox.b()
-          .onTrue(Commands.runOnce(() -> CommandScheduler.getInstance().schedule(drivebase.sysIdDriveMotorCommand()), drivebase));
-        driverXbox.start().
-          onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
+        // --- DRIVER CONTROLS ---
+
+        // 1. SysId Tests (Hood Characterization)
+        // WARNING: Be ready to release these buttons immediately!
+        
+        // Quasistatic (Slow Ramp) -> Finds kS and kG
+        driverXbox.a().whileTrue(hood.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
+        driverXbox.b().whileTrue(hood.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
+
+        // Dynamic (Fast Step) -> Finds kV and kA
+        // Only run if Soft Limits are working!
+        driverXbox.x().whileTrue(hood.sysIdDynamic(SysIdRoutine.Direction.kForward));
+        driverXbox.y().whileTrue(hood.sysIdDynamic(SysIdRoutine.Direction.kReverse));
+
+
+        // 2. Drive Utilities
+        driverXbox.start().onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
+        
+        // Turret Test (Driver Bumpers)
         driverXbox.leftBumper()
           .onTrue(Commands.runOnce(() -> turret.setGoal(92)))
           .onFalse(Commands.runOnce(() -> turret.setGoal(0)));
@@ -105,25 +119,28 @@ public class RobotContainer {
           .onTrue(Commands.runOnce(() -> turret.setGoal(-92)))
           .onFalse(Commands.runOnce(() -> turret.setGoal(0)));
 
-        operatorXbox.b().onTrue(Commands.runOnce(() -> {
-            hood.setGoal(20.0);
-        }, hood));
 
-        operatorXbox.x().onTrue(Commands.runOnce(() -> {
-            hood.setGoal(0.0);
-        }, hood));
+        // --- OPERATOR CONTROLS ---
 
+        // 1. Hood Test Buttons (Overrides Default Command)
+        operatorXbox.b().onTrue(Commands.runOnce(() -> hood.setGoal(20.0), hood));
+        operatorXbox.x().onTrue(Commands.runOnce(() -> hood.setGoal(0.0), hood));
+
+        // 2. Feeder
         operatorXbox.y()
           .onTrue(Commands.runOnce(feeder::requestFeed, feeder))
           .onFalse(Commands.runOnce(feeder::requestStop, feeder));
-
         operatorXbox.a()
           .onTrue(Commands.runOnce(feeder::requestStop, feeder));
 
-        operatorXbox.leftBumper()
-          .onTrue(Commands.run(() -> shooter.setRPM(2000.0), shooter))
-          .onFalse(Commands.run(() -> shooter.setRPM(0.0), shooter));
+        // // 3. Shooter Test
+        // operatorXbox.leftBumper()
+        //   .onTrue(Commands.run(() -> shooter.setGoal(2000.0), shooter)) // Fixed method name (setRPM -> setGoal)
+        //   .onFalse(Commands.run(() -> shooter.stop(), shooter));
         
+        // 4. Manual Hood Jog / Auto Aim
+        // These are handled by 'hood.setDefaultCommand(new HoodCommand...)'
+        // But if you want a specific override:
         operatorXbox.rightBumper()
           .onTrue(Commands.runOnce(() -> hood.setGoal(25.0), hood))
           .onFalse(Commands.runOnce(() -> hood.setGoal(0.0), hood));
