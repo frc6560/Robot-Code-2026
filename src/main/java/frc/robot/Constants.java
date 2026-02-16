@@ -124,22 +124,22 @@ public final class Constants {
     public static final double kMaxA = 720.0;  // Max acceleration (degrees/second²)
 
     /** Hood Geometry */
-    public static final double HOOD_GEAR_RATIO = 40.0; // rotates 40 for every 1 rotation of the hood
-    public static final double ABSOLUTE_HOOD_ENCODER_GEAR_RATIO = 180.0 / 44.0 ; // encoder rotates 180 for every 44 rotations of the hood 
+    public static final double HOOD_GEAR_RATIO = 33.33; // rotates 40 for every 1 rotation of the hood
+    public static final double ABSOLUTE_HOOD_ENCODER_GEAR_RATIO = 360.0 / 44.0 ; // encoder rotates 180 for every 44 rotations of the hood 
 
     /** Motor Inversion */
-    public static final boolean HOOD_MOTOR_INVERTED = false; // TODO: Test and adjust
+    public static final boolean HOOD_MOTOR_INVERTED = true; // TODO: Test and adjust
 
     /** Current Limits */
     public static final double HOOD_CURRENT_LIMIT = 60.0; // Amps
 
     /** Hood Angle Limits */
-    public static final double HOOD_MIN_ANGLE = 0.0;   // degrees
-    public static final double HOOD_MAX_ANGLE = 37.0;  // degrees
+    public static final double HOOD_MIN_ANGLE = 10.5;   // degrees
+    public static final double HOOD_MAX_ANGLE = 31.0;  // degrees
 
     public static final int HOOD_ABSOLUTE_ENCODER_ID = 22;
 
-    public static final double HOOD_ABSOLUTE_ENCODER_OFFSET = -0.225;
+    public static final double HOOD_ABSOLUTE_ENCODER_OFFSET = -0.121;
   }
 
   public static final class ShooterConstants{

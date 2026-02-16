@@ -34,7 +34,7 @@ public class Hood extends SubsystemBase {
   private final TalonFX hoodMotor;
   private final CANcoder absoluteEncoder;
 
-  private double targetAngle = 0.0;
+  private double targetAngle = 11.0;
   private static final double ANGLE_TOLERANCE = 0.5;
 
   // --- CONTROL REQUESTS ---
