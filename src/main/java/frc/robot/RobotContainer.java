@@ -93,16 +93,7 @@ public class RobotContainer {
         shotCalculator
       );
 
-      // hood.setDefaultCommand(superstructureCommand); // choose one of these to be default, since they all run together in the same command. might as well be hood since it's the slowest to react, and shooter and turret can keep up with it.
-
-      // Set turret default command to always track the blue hub
-      turret.setDefaultCommand(Commands.run(() -> {
-        var robotPose = drivebase.getPose();
-        var toHub = FieldConstants.BLUE_HUB_CENTER.minus(robotPose.getTranslation());
-        double fieldAngle = Math.toDegrees(Math.atan2(toHub.getY(), toHub.getX()));
-        double turretAngle = fieldAngle - robotPose.getRotation().getDegrees();
-        turret.setGoal(turretAngle);
-      }, turret));
+      hood.setDefaultCommand(superstructureCommand); // choose one of these to be default!
 
       configureBindings();
     }

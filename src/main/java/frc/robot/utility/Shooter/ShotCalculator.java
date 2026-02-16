@@ -55,16 +55,26 @@ public class ShotCalculator {
 
     public void populateLUTs(){
         // shooter RPM
-        flywheelRPMMap.put(3.77, 1990.0);
-        flywheelRPMMap.put(4.29, 2070.0);
-        flywheelRPMMap.put(4.82, 2175.0); 
-        flywheelRPMMap.put(5.47, 2285.0);
+        flywheelRPMMap.put(1.279, 2500.0);
+        flywheelRPMMap.put(1.853, 2700.0);
+        flywheelRPMMap.put(2.459, 2800.0);
+        flywheelRPMMap.put(3.062, 2900.0);
+        flywheelRPMMap.put(3.676, 3000.0);
+        flywheelRPMMap.put(4.234, 3200.0);
+        flywheelRPMMap.put(4.822, 3300.0);
+        flywheelRPMMap.put(5.345, 3550.0);
 
-        // hood azimuth (finish on main bot. these are completely BS values).
-        hoodAzimuthMap.put(3.77, Math.toRadians(20));
-        hoodAzimuthMap.put(4.29, Math.toRadians(25));
-        hoodAzimuthMap.put(4.82, Math.toRadians(30));
-        hoodAzimuthMap.put(5.47, Math.toRadians(35));
+
+        // hood azimuth
+        hoodAzimuthMap.put(1.279, Math.toRadians(27.24));
+        hoodAzimuthMap.put(1.853, Math.toRadians(30.0));
+        hoodAzimuthMap.put(2.459, Math.toRadians(32.0));
+        hoodAzimuthMap.put(3.062, Math.toRadians(40.0));
+        hoodAzimuthMap.put(3.676, Math.toRadians(44.0));
+        hoodAzimuthMap.put(4.234, Math.toRadians(45.0));
+        hoodAzimuthMap.put(4.822, Math.toRadians(48.0));
+        hoodAzimuthMap.put(5.345, Math.toRadians(52.0));
+            
 
         // time of flight (finish on main bot)
         timeOfFlightMap.put(3.93, 0.77);
