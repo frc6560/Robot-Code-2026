@@ -23,6 +23,7 @@ import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
 import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
 import frc.robot.autonomous.AutoModeChooser;
 import frc.robot.autonomous.AutoCommands;
+import frc.robot.commands.ClimbCommand;
 import frc.robot.commands.periodic.SuperstructureCommand;
 import frc.robot.utility.Shooter.ShotCalculator;
 
@@ -115,7 +116,7 @@ public class RobotContainer {
           .onTrue(Commands.runOnce(() -> CommandScheduler.getInstance().schedule(drivebase.sysIdDriveMotorCommand()), drivebase));
         driverXbox.start().
           onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
-
+        driverXbox.a().onTrue(Commands.defer(() -> new ClimbCommand(drivebase), Set.of(drivebase)));
 
         operatorXbox.y()
           .onTrue(Commands.runOnce(feeder::requestFeed, feeder))
