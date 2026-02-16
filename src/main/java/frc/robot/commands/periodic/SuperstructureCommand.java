@@ -13,7 +13,6 @@ import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants.FieldConstants;
-import frc.robot.ManualControls;
 import frc.robot.subsystems.superstructure.Hood;
 import frc.robot.subsystems.superstructure.Shooter;
 import frc.robot.subsystems.superstructure.Turret;
@@ -41,7 +40,6 @@ public class SuperstructureCommand extends Command {
     private final PoseSupplier poseSupplier;
     private final VelocitySupplier velocitySupplier;
     private final ShotCalculator shotCalculator;
-    private final ManualControls controls;
 
     private SuperstructureState state = SuperstructureState.IDLE;
 
@@ -61,15 +59,13 @@ public class SuperstructureCommand extends Command {
             Turret turret,
             PoseSupplier poseSupplier,
             VelocitySupplier velocitySupplier,
-            ShotCalculator shotCalculator,
-            ManualControls controls) {
+            ShotCalculator shotCalculator) {
         this.hood = hood;
         this.shooter = shooter;
         this.turret = turret;
         this.poseSupplier = poseSupplier;
         this.velocitySupplier = velocitySupplier;
         this.shotCalculator = shotCalculator;
-        this.controls = controls;
         addRequirements(hood, shooter, turret);
     }
 
@@ -277,7 +273,7 @@ public class SuperstructureCommand extends Command {
 
         // Control hood based on trench intersection
         if (intersectsAnyTrench) {
-            hood.setGoal(0); // Full rumble
+            hood.setGoal(15); // Full rumble
             SmartDashboard.putString("SuperstructureCommand/Trench Status", "STOPPED - Trench Detected");
         } else {
             SmartDashboard.putString("SuperstructureCommand/Trench Status", "RUNNING - Clear Path");

@@ -114,7 +114,7 @@ public class Turret extends SubsystemBase {
         SmartDashboard.putNumber("Turret/Goal Angle (deg)", m_goalDegrees);
         SmartDashboard.putNumber("Turret/Velocity (deg per s)", getTurretVelocity());
         SmartDashboard.putNumber("Turret/Absolute Encoder (rots)", m_turretEncoder.getAbsolutePosition().getValueAsDouble());
-        runMotionMagic();
+        //runMotionMagic();
     }
 
     /** Runs Motion Magic to the current goal position. */
