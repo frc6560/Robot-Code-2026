@@ -120,16 +120,6 @@ public class RobotContainer {
         operatorXbox.y()
           .onTrue(Commands.runOnce(feeder::requestFeed, feeder))
           .onFalse(Commands.runOnce(feeder::requestStop, feeder));
-
-        // Set flywheel RPM from Shuffleboard entry
-        operatorXbox.leftBumper()
-          .onTrue(Commands.run(() -> shooter.setRPM(flywheelRPMEntry.getDouble(2000.0)), shooter))
-          .onFalse(Commands.run(() -> shooter.setRPM(0.0), shooter));
-
-        // Set hood angle from Shuffleboard entry
-        operatorXbox.rightBumper()
-          .onTrue(Commands.runOnce(() -> hood.setGoal(hoodAngleEntry.getDouble(HoodConstants.HOOD_MIN_ANGLE)), hood))
-          .onFalse(Commands.runOnce(() -> hood.setGoal(HoodConstants.HOOD_MIN_ANGLE), hood));
     }
 
     public Command getAutonomousCommand() {
