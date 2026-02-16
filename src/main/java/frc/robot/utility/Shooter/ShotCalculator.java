@@ -76,14 +76,14 @@ public class ShotCalculator {
         hoodAzimuthMap.put(5.345, 52.0);
 
 
-        // time of flight (finish on main bot)
-        timeOfFlightMap.put(3.93, 0.77);
-        timeOfFlightMap.put(4.30, 0.81);
-        timeOfFlightMap.put(4.83, 0.90);
-        timeOfFlightMap.put(5.47, 1.008);
+        // time of flight 
+        timeOfFlightMap.put(1.279, 0.508);
+        timeOfFlightMap.put(2.459, 0.592);
+        timeOfFlightMap.put(3.676, 0.608);
+        timeOfFlightMap.put(4.822, 1.167);
     }
 
-    /** Returns the current hood azimuth in radians. */
+    /** Returns the current hood azimuth in degrees. */
     public double getHoodAzimuth() {
         return hoodAzimuth;
     }
@@ -222,7 +222,7 @@ public class ShotCalculator {
 
         // Log final output values
         SmartDashboard.putNumber("SOTM/Output/TurretAngleDeg", Math.toDegrees(turretAngle));
-        SmartDashboard.putNumber("SOTM/Output/HoodAngleDeg", Math.toDegrees(hoodAzimuth));
+        SmartDashboard.putNumber("SOTM/Output/HoodAngleDeg", hoodAzimuth);
         SmartDashboard.putNumber("SOTM/Output/FlywheelRPM", flywheelRPM);
     }
 }

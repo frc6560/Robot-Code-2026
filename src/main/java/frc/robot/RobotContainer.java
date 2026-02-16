@@ -117,7 +117,7 @@ public class RobotContainer {
           onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
 
 
-        operatorXbox.y()
+        driverXbox.rightBumper()
           .onTrue(Commands.runOnce(feeder::requestFeed, feeder))
           .onFalse(Commands.runOnce(feeder::requestStop, feeder));
     }

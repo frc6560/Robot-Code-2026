@@ -87,8 +87,8 @@ public class SwerveSubsystem extends SubsystemBase {
    */
   public SwerveSubsystem(File directory) { 
     boolean blueAlliance = true;
-    Pose2d startingPose = blueAlliance ? new Pose2d(new Translation2d(Meter.of(3.65),
-                                                                      Meter.of(0.9)),
+    Pose2d startingPose = blueAlliance ? new Pose2d(new Translation2d(Meter.of(4.69),
+                                                                      Meter.of(2.75)),
                                                     Rotation2d.fromDegrees(90))
                                        : new Pose2d(new Translation2d(Meter.of(12.9),
                                                                       Meter.of(7.15)),
@@ -141,6 +141,7 @@ public class SwerveSubsystem extends SubsystemBase {
         );
     Pose2d robotRelativeTurret = getPose().transformBy( turretTransform );
     swerveDrive.field.getObject("TurretPose").setPose(robotRelativeTurret);
+    swerveDrive.field.getObject("BlueHub").setPose(new Pose2d(FieldConstants.BLUE_HUB_CENTER, new Rotation2d()));
     SmartDashboard.getEntry("DistToBlueHub").setDouble(
       robotRelativeTurret.getTranslation().getDistance(FieldConstants.BLUE_HUB_CENTER));
   }

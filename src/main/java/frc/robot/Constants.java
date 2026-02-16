@@ -89,7 +89,7 @@ public final class Constants {
         case "limelight-br":
           limelightPose = new Pose3d(
             -0.299, // front/back
-            0.267, // left/right
+            0.2667, // left/right
             0.540, // height
             new Rotation3d(0, Units.degreesToRadians(30.0), 0)
           );
@@ -138,7 +138,7 @@ public final class Constants {
 
     public static final int HOOD_ABSOLUTE_ENCODER_ID = 22;
 
-    public static final double HOOD_ABSOLUTE_ENCODER_OFFSET = -0.520; // for the 15 deg offset
+    public static final double HOOD_ABSOLUTE_ENCODER_OFFSET = -0.023; // for the 15 deg offset
   }
 
   public static final class ShooterConstants{
@@ -189,8 +189,8 @@ public final class Constants {
     public static final double kD = 0.2;
 
     /** Motion Constraints. IN DEGREES PER SECOND */
-    public static final double kMaxV = 360; // deg/s
-    public static final double kMaxA = 540; // deg/s^2
+    public static final double kMaxV = 450; // deg/s, was 360
+    public static final double kMaxA = 900; // deg/s^2, was 540.
 
     public static final boolean MOTOR_INVERTED = true; // TODO: test and set
 
