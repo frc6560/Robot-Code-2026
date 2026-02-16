@@ -87,6 +87,9 @@ public class Hood extends SubsystemBase {
     return motorPosition / HoodConstants.HOOD_GEAR_RATIO * 360.0; // Convert motor rotations to degrees
   }
 
+  /** Set target goal to a specific angle in degrees
+   * @param goalDeg Desired hood angle in degrees (will be clamped to min/max)
+   */
   public void setGoal(double goalDeg) {
     goalDeg = MathUtil.clamp(goalDeg, HoodConstants.HOOD_MIN_ANGLE, HoodConstants.HOOD_MAX_ANGLE);
     goalDeg -= 15.0;
@@ -102,6 +105,7 @@ public class Hood extends SubsystemBase {
     hoodMotor.stopMotor();
   }
 
+  /** Sets the hood motor to follow the target angle with CTRE's motion magic.*/
   public void setControl(){
     double targetMotorRotations = targetAngle * HoodConstants.HOOD_GEAR_RATIO / 360.0;
     hoodMotor.setControl(m_motionMagicRequest.withPosition(targetMotorRotations));

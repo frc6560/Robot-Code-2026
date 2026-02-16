@@ -66,15 +66,15 @@ public class ShotCalculator {
 
 
         // hood azimuth
-        hoodAzimuthMap.put(1.279, Math.toRadians(27.24));
-        hoodAzimuthMap.put(1.853, Math.toRadians(30.0));
-        hoodAzimuthMap.put(2.459, Math.toRadians(32.0));
-        hoodAzimuthMap.put(3.062, Math.toRadians(40.0));
-        hoodAzimuthMap.put(3.676, Math.toRadians(44.0));
-        hoodAzimuthMap.put(4.234, Math.toRadians(45.0));
-        hoodAzimuthMap.put(4.822, Math.toRadians(48.0));
-        hoodAzimuthMap.put(5.345, Math.toRadians(52.0));
-            
+        hoodAzimuthMap.put(1.279, 27.24);
+        hoodAzimuthMap.put(1.853, 30.0);
+        hoodAzimuthMap.put(2.459, 32.0);
+        hoodAzimuthMap.put(3.062, 40.0);
+        hoodAzimuthMap.put(3.676, 44.0);
+        hoodAzimuthMap.put(4.234, 45.0);
+        hoodAzimuthMap.put(4.822, 48.0);
+        hoodAzimuthMap.put(5.345, 52.0);
+
 
         // time of flight (finish on main bot)
         timeOfFlightMap.put(3.93, 0.77);
