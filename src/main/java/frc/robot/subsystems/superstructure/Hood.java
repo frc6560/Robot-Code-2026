@@ -88,7 +88,7 @@ public class Hood extends SubsystemBase {
   }
 
   /** Set target goal to a specific angle in degrees
-   * @param goalDeg Desired hood angle in degrees (will be clamped to min/max)
+   * @param goalDeg Desired hood angle in SHOT degrees (will be clamped to min/max)
    */
   public void setGoal(double goalDeg) {
     goalDeg = MathUtil.clamp(goalDeg, HoodConstants.HOOD_MIN_ANGLE, HoodConstants.HOOD_MAX_ANGLE);
