@@ -22,7 +22,7 @@ public class Hood extends SubsystemBase {
   private final TalonFX hoodMotor;
   private final CANcoder absoluteEncoder;
 
-  private double targetAngle = 11.0;
+  private double targetAngle = HoodConstants.HOOD_MIN_ANGLE;
   private static final double ANGLE_TOLERANCE = 0.5;
 
   private final MotionMagicVoltage m_motionMagicRequest = new MotionMagicVoltage(0).withSlot(0);
@@ -74,7 +74,9 @@ public class Hood extends SubsystemBase {
 
   private void seedMotorEncoder() {
     Timer.delay(0.25); // Wait for CANcoder to stabilize
-    double cancoderRotations = absoluteEncoder.getAbsolutePosition().getValueAsDouble();
+
+    double raw = absoluteEncoder.getAbsolutePosition().getValueAsDouble(); 
+    double cancoderRotations = raw - Math.floor(raw); // mod 0 to 1
     double hoodRotations = cancoderRotations / HoodConstants.ABSOLUTE_HOOD_ENCODER_GEAR_RATIO;
     double motorRotations = hoodRotations * HoodConstants.HOOD_GEAR_RATIO;
     hoodMotor.setPosition(motorRotations);
@@ -87,6 +89,7 @@ public class Hood extends SubsystemBase {
 
   public void setGoal(double goalDeg) {
     goalDeg = MathUtil.clamp(goalDeg, HoodConstants.HOOD_MIN_ANGLE, HoodConstants.HOOD_MAX_ANGLE);
+    goalDeg -= 15.0;
     targetAngle = goalDeg;
   }
 
@@ -95,6 +98,7 @@ public class Hood extends SubsystemBase {
   }
 
   public void stop() {
+    
     hoodMotor.stopMotor();
   }
 
@@ -105,9 +109,9 @@ public class Hood extends SubsystemBase {
 
   @Override
   public void periodic() {
-    SmartDashboard.putNumber("Hood/Current Angle", getHoodAngle());
+    SmartDashboard.putNumber("Hood/Current Angle", getHoodAngle() + 15.0);
     SmartDashboard.putNumber("Hood/Target Angle", targetAngle);
-    SmartDashboard.putNumber("Hood/Encoder Rotations", absoluteEncoder.getAbsolutePosition().getValueAsDouble());
+    SmartDashboard.putNumber("Hood/Encoder Rotations", absoluteEncoder.getAbsolutePosition().getValueAsDouble() - Math.floor(absoluteEncoder.getAbsolutePosition().getValueAsDouble()));
     SmartDashboard.putBoolean("Hood/At Target", atTarget());
     SmartDashboard.putNumber("Hood/Motor Voltage", hoodMotor.getMotorVoltage().getValueAsDouble());
     SmartDashboard.putNumber("Hood/Error", getHoodAngle() - targetAngle);

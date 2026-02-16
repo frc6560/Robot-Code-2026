@@ -134,7 +134,7 @@ public class Shooter extends SubsystemBase {
             leaderMotor.setControl(coastControl);
         } else {
             // Normal Run
-            double motorRPS = rps * ShooterConstants.FLYWHEEL_GEAR_RATIO;
+            double motorRPS = rps / ShooterConstants.FLYWHEEL_GEAR_RATIO;
             leaderMotor.setControl(velocityControl.withVelocity(motorRPS));
         }
     }
@@ -176,7 +176,7 @@ public class Shooter extends SubsystemBase {
         
         SmartDashboard.putNumber("Flywheel/Current RPS", getCurrentRPS());
         SmartDashboard.putNumber("Flywheel/Current RPM", getCurrentRPM());
-        SmartDashboard.putNumber("Flywheel/Target RPS", targetRPS);
+        SmartDashboard.putNumber("Flywheel/Target RPM", targetRPS / 60.0);
         SmartDashboard.putBoolean("Flywheel/At Target", atTarget());
 
         SmartDashboard.putNumber("Flywheel/Leader Voltage", leaderMotor.getMotorVoltage().getValueAsDouble());

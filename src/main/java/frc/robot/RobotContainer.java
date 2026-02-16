@@ -14,8 +14,13 @@ import java.util.Set;
 
 import swervelib.SwerveInputStream;
 import edu.wpi.first.math.geometry.Pose3d;
+import frc.robot.Constants.FieldConstants;
+import frc.robot.Constants.HoodConstants;
 import frc.robot.Constants.LimelightConstants;
 import frc.robot.Constants.OperatorConstants;
+import edu.wpi.first.networktables.GenericEntry;
+import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
+import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
 import frc.robot.autonomous.AutoModeChooser;
 import frc.robot.autonomous.AutoCommands;
 import frc.robot.commands.periodic.SuperstructureCommand;
@@ -48,6 +53,10 @@ public class RobotContainer {
 
     private final ShotCalculator shotCalculator = new ShotCalculator();
 
+    // Shuffleboard entries for manual control
+    private final ShuffleboardTab tuningTab = Shuffleboard.getTab("Tuning");
+    private final GenericEntry flywheelRPMEntry = tuningTab.add("Flywheel RPM", 2000.0).getEntry();
+    private final GenericEntry hoodAngleEntry = tuningTab.add("Hood Angle", 15.0).getEntry();
 
     private final AutoCommands factory;
     private final AutoModeChooser autoChooser;
@@ -84,7 +93,16 @@ public class RobotContainer {
         shotCalculator
       );
 
-      hood.setDefaultCommand(superstructureCommand); // choose one of these to be default, since they all run together in the same command. might as well be hood since it's the slowest to react, and shooter and turret can keep up with it.
+      // hood.setDefaultCommand(superstructureCommand); // choose one of these to be default, since they all run together in the same command. might as well be hood since it's the slowest to react, and shooter and turret can keep up with it.
+
+      // Set turret default command to always track the blue hub
+      turret.setDefaultCommand(Commands.run(() -> {
+        var robotPose = drivebase.getPose();
+        var toHub = FieldConstants.BLUE_HUB_CENTER.minus(robotPose.getTranslation());
+        double fieldAngle = Math.toDegrees(Math.atan2(toHub.getY(), toHub.getX()));
+        double turretAngle = fieldAngle - robotPose.getRotation().getDegrees();
+        turret.setGoal(turretAngle);
+      }, turret));
 
       configureBindings();
     }
@@ -106,35 +124,21 @@ public class RobotContainer {
           .onTrue(Commands.runOnce(() -> CommandScheduler.getInstance().schedule(drivebase.sysIdDriveMotorCommand()), drivebase));
         driverXbox.start().
           onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
-        driverXbox.leftBumper()
-          .onTrue(Commands.runOnce(() -> turret.setGoal(92)))
-          .onFalse(Commands.runOnce(() -> turret.setGoal(0)));
-        driverXbox.rightBumper()
-          .onTrue(Commands.runOnce(() -> turret.setGoal(-92)))
-          .onFalse(Commands.runOnce(() -> turret.setGoal(0)));
 
-        operatorXbox.b().onTrue(Commands.runOnce(() -> {
-            hood.setGoal(20.0);
-        }, hood));
-
-        operatorXbox.x().onTrue(Commands.runOnce(() -> {
-            hood.setGoal(0.0);
-        }, hood));
 
         operatorXbox.y()
           .onTrue(Commands.runOnce(feeder::requestFeed, feeder))
           .onFalse(Commands.runOnce(feeder::requestStop, feeder));
 
-        operatorXbox.a()
-          .onTrue(Commands.runOnce(feeder::requestStop, feeder));
-
+        // Set flywheel RPM from Shuffleboard entry
         operatorXbox.leftBumper()
-          .onTrue(Commands.run(() -> shooter.setRPM(2000.0), shooter))
+          .onTrue(Commands.run(() -> shooter.setRPM(flywheelRPMEntry.getDouble(2000.0)), shooter))
           .onFalse(Commands.run(() -> shooter.setRPM(0.0), shooter));
-        
+
+        // Set hood angle from Shuffleboard entry
         operatorXbox.rightBumper()
-          .onTrue(Commands.runOnce(() -> hood.setGoal(25.0), hood))
-          .onFalse(Commands.runOnce(() -> hood.setGoal(9.0), hood));
+          .onTrue(Commands.runOnce(() -> hood.setGoal(hoodAngleEntry.getDouble(HoodConstants.HOOD_MIN_ANGLE)), hood))
+          .onFalse(Commands.runOnce(() -> hood.setGoal(HoodConstants.HOOD_MIN_ANGLE), hood));
     }
 
     public Command getAutonomousCommand() {
