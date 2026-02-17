@@ -91,7 +91,7 @@ public class SuperstructureCommand extends Command {
                 idleState();
                 break;
             case PASS:
-                trackHubTarget();
+                idleState();
                 break;
             case SHOOT:
                 trackHubTarget();
