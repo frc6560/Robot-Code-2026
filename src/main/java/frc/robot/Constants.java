@@ -59,7 +59,7 @@ public final class Constants {
 
   public static final class FieldConstants{
 
-    public static final Translation2d BLUE_HUB_CENTER = new Translation2d(4.68, 4.03);
+    public static final Translation2d BLUE_HUB_CENTER = new Translation2d(4.62, 4.03);
     public static final Translation2d RED_HUB_CENTER = new Translation2d(11.85, 4.03);
 
     public static final double BLUE_ZONE_X = 4.0;
