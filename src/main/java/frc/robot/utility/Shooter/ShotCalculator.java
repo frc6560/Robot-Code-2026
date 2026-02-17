@@ -54,33 +54,32 @@ public class ShotCalculator {
     }
 
     public void populateLUTs(){
-        // // shooter RPM
-        // flywheelRPMMap.put(1.279, 2500.0);
-        // flywheelRPMMap.put(1.853, 2700.0);
-        // flywheelRPMMap.put(2.459, 2800.0);
-        // flywheelRPMMap.put(3.062, 2900.0);
-        // flywheelRPMMap.put(3.676, 3000.0);
-        // flywheelRPMMap.put(4.234, 3200.0);
-        // flywheelRPMMap.put(4.822, 3300.0);
-        // flywheelRPMMap.put(5.345, 3550.0);
+        // shooter RPM
+        flywheelRPMMap.put(1.279, 2500.0);
+        flywheelRPMMap.put(1.853, 2700.0);
+        flywheelRPMMap.put(2.459, 2800.0);
+        flywheelRPMMap.put(3.062, 2900.0);
+        flywheelRPMMap.put(3.676, 3000.0);
+        flywheelRPMMap.put(4.234, 3200.0);
+        flywheelRPMMap.put(4.822, 3300.0);
+        flywheelRPMMap.put(5.345, 3550.0);
+
+        // hood azimuth
+        hoodAzimuthMap.put(1.279, 27.24);
+        hoodAzimuthMap.put(1.853, 30.0);
+        hoodAzimuthMap.put(2.459, 32.0);
+        hoodAzimuthMap.put(3.062, 40.0);
+        hoodAzimuthMap.put(3.676, 44.0);
+        hoodAzimuthMap.put(4.234, 45.0);
+        hoodAzimuthMap.put(4.822, 48.0);
+        hoodAzimuthMap.put(5.345, 52.0);
 
 
-        // // hood azimuth
-        // hoodAzimuthMap.put(1.279, 27.24);
-        // hoodAzimuthMap.put(1.853, 30.0);
-        // hoodAzimuthMap.put(2.459, 32.0);
-        // hoodAzimuthMap.put(3.062, 40.0);
-        // hoodAzimuthMap.put(3.676, 44.0);
-        // hoodAzimuthMap.put(4.234, 45.0);
-        // hoodAzimuthMap.put(4.822, 48.0);
-        // hoodAzimuthMap.put(5.345, 52.0);
-
-
-        // // time of flight 
-        // timeOfFlightMap.put(1.279, 0.508);
-        // timeOfFlightMap.put(2.459, 0.592);
-        // timeOfFlightMap.put(3.676, 0.608);
-        // timeOfFlightMap.put(4.822, 1.167);
+        // time of flight 
+        timeOfFlightMap.put(1.279, 0.508);
+        timeOfFlightMap.put(2.459, 0.592);
+        timeOfFlightMap.put(3.676, 0.608);
+        timeOfFlightMap.put(4.822, 1.167);
     }
 
     /** Returns the current hood azimuth in degrees. */
