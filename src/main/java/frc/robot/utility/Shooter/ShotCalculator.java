@@ -22,7 +22,7 @@ public class ShotCalculator {
     public record TurretState(double positionRadians) {}
 
     /** State container for hood position and velocity. */
-    public record HoodState(double positionRadians) {}
+    public record HoodState(double positionDegrees) {}
 
     /** Combined state for the entire shooter system. */
     public record ShooterState(
@@ -33,7 +33,7 @@ public class ShotCalculator {
     ) {}
 
     private double flywheelRPM;
-    private double hoodAzimuth; // in radians
+    private double hoodAzimuth; // in degrees
     private double turretAngle; 
 
     private static final double TIME_PARAMETER = 0.058; 
