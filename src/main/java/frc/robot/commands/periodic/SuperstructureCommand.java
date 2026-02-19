@@ -9,9 +9,9 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants.FieldConstants;
-import frc.robot.subsystems.superstructure.Hood;
-import frc.robot.subsystems.superstructure.Shooter;
-import frc.robot.subsystems.superstructure.Turret;
+import frc.robot.subsystems.hood.Hood;
+import frc.robot.subsystems.shooter.Shooter;
+import frc.robot.subsystems.turret.Turret;
 import frc.robot.utility.Shooter.ShotCalculator;
 
 public class SuperstructureCommand extends Command {

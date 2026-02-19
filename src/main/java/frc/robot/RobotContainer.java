@@ -12,6 +12,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+import edu.wpi.first.wpilibj.RobotBase;
+
 import swervelib.SwerveInputStream;
 import edu.wpi.first.math.geometry.Pose3d;
 import frc.robot.Constants.FieldConstants;
@@ -26,10 +28,26 @@ import frc.robot.autonomous.AutoCommands;
 import frc.robot.commands.periodic.SuperstructureCommand;
 import frc.robot.utility.Shooter.ShotCalculator;
 
-import frc.robot.subsystems.superstructure.Hood;
-import frc.robot.subsystems.superstructure.Shooter;
-import frc.robot.subsystems.superstructure.Turret;
-import frc.robot.subsystems.superstructure.Feeder;
+import frc.robot.subsystems.hood.Hood;
+import frc.robot.subsystems.hood.HoodIO;
+import frc.robot.subsystems.hood.HoodIOTalonFX;
+import frc.robot.subsystems.hood.HoodIOSim;
+import frc.robot.subsystems.shooter.Shooter;
+import frc.robot.subsystems.shooter.ShooterIO;
+import frc.robot.subsystems.shooter.ShooterIOTalonFX;
+import frc.robot.subsystems.shooter.ShooterIOSim;
+import frc.robot.subsystems.turret.Turret;
+import frc.robot.subsystems.turret.TurretIO;
+import frc.robot.subsystems.turret.TurretIOTalonFX;
+import frc.robot.subsystems.turret.TurretIOSim;
+import frc.robot.subsystems.feeder.Feeder;
+import frc.robot.subsystems.feeder.FeederIO;
+import frc.robot.subsystems.feeder.FeederIOTalonFX;
+import frc.robot.subsystems.feeder.FeederIOSim;
+import frc.robot.subsystems.intake.Intake;
+import frc.robot.subsystems.intake.IntakeIO;
+import frc.robot.subsystems.intake.IntakeIOTalonFX;
+import frc.robot.subsystems.intake.IntakeIOSim;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import frc.robot.subsystems.vision.LimelightVision;
 import frc.robot.subsystems.vision.VisionSubsystem;
@@ -46,10 +64,11 @@ public class RobotContainer {
     "swerve/falcon"));
     private final VisionSubsystem vision;
 
-    private final Hood hood = new Hood();
-    private final Shooter shooter = new Shooter();
-    private final Turret turret = new Turret();
-    private final Feeder feeder = new Feeder();
+    private final Hood hood;
+    private final Shooter shooter;
+    private final Turret turret;
+    private final Feeder feeder;
+    private final Intake intake;
 
     private final ShotCalculator shotCalculator = new ShotCalculator();
 
@@ -71,6 +90,21 @@ public class RobotContainer {
 
 
     public RobotContainer() {
+      // Initialize subsystems with appropriate IO implementations
+      if (RobotBase.isReal()) {
+        hood = new Hood(new HoodIOTalonFX());
+        shooter = new Shooter(new ShooterIOTalonFX());
+        turret = new Turret(new TurretIOTalonFX());
+        feeder = new Feeder(new FeederIOTalonFX());
+        intake = new Intake(new IntakeIOTalonFX());
+      } else {
+        hood = new Hood(new HoodIOSim());
+        shooter = new Shooter(new ShooterIOSim());
+        turret = new Turret(new TurretIOSim());
+        feeder = new Feeder(new FeederIOSim());
+        intake = new Intake(new IntakeIOSim());
+      }
+
       factory = new AutoCommands(drivebase);
 
       autoChooser = new AutoModeChooser(factory);
@@ -83,7 +117,7 @@ public class RobotContainer {
       }
 
       vision = new VisionSubsystem(limelights);
-      
+
       SuperstructureCommand superstructureCommand = new SuperstructureCommand(
         hood,
         shooter,
