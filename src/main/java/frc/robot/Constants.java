@@ -132,7 +132,7 @@ public final class Constants {
 
     public static final int HOOD_ABSOLUTE_ENCODER_ID = 22;
 
-    public static final double HOOD_ABSOLUTE_ENCODER_OFFSET = -0.92; // for the 15 deg offset
+    public static final double HOOD_ABSOLUTE_ENCODER_OFFSET = -0.909; // for the 15 deg offset
   }
 
   public static final class ShooterConstants{
@@ -179,7 +179,7 @@ public final class Constants {
 
     /** PID Gains */
     public static final double kP = 5;
-    public static final double kI = 0.01;
+    public static final double kI = 0;
     public static final double kD = 0.2;
 
     /** Motion Constraints. IN DEGREES PER SECOND */
@@ -190,7 +190,7 @@ public final class Constants {
 
     /** Turret Geometry */
     public static final double MOTOR_GEAR_RATIO = 10.0; // Motor reduction ratio
-    public static final double ENCODER_GEAR_RATIO =  150.0 / 259.0 ; // Encoder reduction ratio
+    public static final double ENCODER_GEAR_RATIO =  25.0 / 42.0 ; // Encoder reduction ratio
     
 
     // Absolute encoder setup

@@ -19,7 +19,7 @@ import frc.robot.Constants.TurretConstants;
 public class ShotCalculator {
 
     /** State container for turret position and velocity. */
-    public record TurretState(double positionRadians) {}
+    public record TurretState(double positionRadians, double velocityRadiansPerSecond) {}
 
     /** State container for hood position and velocity. */
     public record HoodState(double positionDegrees) {}
@@ -34,7 +34,8 @@ public class ShotCalculator {
 
     private double flywheelRPM;
     private double hoodAzimuth; // in degrees
-    private double turretAngle; 
+    private double turretAngle;
+    private double turretVelocityFF; // feedforward velocity in rad/s 
 
     private static final double TIME_PARAMETER = 0.058; 
 
@@ -49,6 +50,7 @@ public class ShotCalculator {
         this.flywheelRPM = 0;
         this.hoodAzimuth = 0;
         this.turretAngle = 0;
+        this.turretVelocityFF = 0;
         this.virtualTargetPose = new Translation2d();
         populateLUTs();
     }
@@ -92,6 +94,11 @@ public class ShotCalculator {
         return turretAngle;
     }
 
+    /** Returns the turret velocity feedforward in radians per second. */
+    public double getTurretVelocityFF() {
+        return turretVelocityFF;
+    }
+
     /** Returns the current flywheel RPM. */
     public double getFlywheelRPM() {
         return flywheelRPM;
@@ -104,7 +111,7 @@ public class ShotCalculator {
     /** Returns the complete shooter state including positions and velocities. */
     public ShooterState getState() {
         return new ShooterState(
-            new TurretState(turretAngle),
+            new TurretState(turretAngle, turretVelocityFF),
             new HoodState(hoodAzimuth),
             flywheelRPM,
             virtualTargetPose
@@ -218,10 +225,21 @@ public class ShotCalculator {
             virtualTargetPose.getX() - turretPose.getX()
         ) - projectedPosition.getRotation().getRadians());
 
+        double deltaX = virtualTargetPose.getX() - turretPose.getX();
+        double deltaY = virtualTargetPose.getY() - turretPose.getY();
+        double distSquared = distanceToTarget * distanceToTarget;
+
+        if (distSquared > 0.01) { 
+            double losRate = (turretVx * deltaY - turretVy * deltaX) / distSquared;
+            turretVelocityFF = losRate - fieldVelocity.omegaRadiansPerSecond;
+        } else {
+            turretVelocityFF = -fieldVelocity.omegaRadiansPerSecond;
+        }
 
         // Log final output values
         SmartDashboard.putNumber("SOTM/Output/TurretAngleDeg", Math.toDegrees(turretAngle));
         SmartDashboard.putNumber("SOTM/Output/HoodAngleDeg", hoodAzimuth);
         SmartDashboard.putNumber("SOTM/Output/FlywheelRPM", flywheelRPM);
+        SmartDashboard.putNumber("SOTM/Output/TurretVelocityFF", Math.toDegrees(turretVelocityFF));
     }
 }
