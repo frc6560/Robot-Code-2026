@@ -10,6 +10,7 @@ public class TurretIOSim implements TurretIO {
     private final PIDController pidController;
 
     private double targetAngleDegrees = 0.0;
+    private double targetVelocityDegreesPerSec = 0.0;
     private double appliedVolts = 0.0;
 
     private static final double TURRET_LENGTH_METERS = 0.3;
@@ -33,9 +34,12 @@ public class TurretIOSim implements TurretIO {
 
     @Override
     public void updateInputs(TurretIOInputs inputs) {
-        // Calculate control effort
+        // Calculate control effort with velocity feedforward
         double currentAngle = Math.toDegrees(turretSim.getAngleRads());
-        appliedVolts = pidController.calculate(currentAngle, targetAngleDegrees);
+        double pidOutput = pidController.calculate(currentAngle, targetAngleDegrees);
+        // Convert velocity feedforward to voltage using kV (degrees/sec to motor rotations/sec)
+        double velocityFF = targetVelocityDegreesPerSec * TurretConstants.MOTOR_GEAR_RATIO / 360.0 * TurretConstants.kV;
+        appliedVolts = pidOutput + velocityFF;
         appliedVolts = Math.max(-12.0, Math.min(12.0, appliedVolts));
 
         turretSim.setInputVoltage(appliedVolts);
@@ -59,6 +63,13 @@ public class TurretIOSim implements TurretIO {
     @Override
     public void setTargetAngle(double angleDegrees) {
         targetAngleDegrees = angleDegrees;
+        targetVelocityDegreesPerSec = 0.0;
+    }
+
+    @Override
+    public void setTargetAngleWithVelocity(double angleDegrees, double velocityDegreesPerSec) {
+        targetAngleDegrees = angleDegrees;
+        targetVelocityDegreesPerSec = velocityDegreesPerSec;
     }
 
     @Override

@@ -22,6 +22,9 @@ public interface TurretIO {
     /** Set the target turret angle in degrees (motor rotations will be calculated internally) */
     default void setTargetAngle(double angleDegrees) {}
 
+    /** Set the target turret angle with velocity feedforward for tracking moving targets */
+    default void setTargetAngleWithVelocity(double angleDegrees, double velocityDegreesPerSec) {}
+
     /** Stop the turret motor */
     default void stop() {}
 

@@ -7,6 +7,7 @@ import com.ctre.phoenix6.configs.MotionMagicConfigs;
 import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
+import com.ctre.phoenix6.controls.PositionVoltage;
 import com.ctre.phoenix6.hardware.CANcoder;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
@@ -26,6 +27,7 @@ public class TurretIOTalonFX implements TurretIO {
     private final CANcoder absoluteEncoder;
 
     private final MotionMagicVoltage motionMagicRequest = new MotionMagicVoltage(0).withSlot(0);
+    private final PositionVoltage positionRequest = new PositionVoltage(0).withSlot(0);
 
     private final StatusSignal<Angle> motorPosition;
     private final StatusSignal<AngularVelocity> motorVelocity;
@@ -124,6 +126,15 @@ public class TurretIOTalonFX implements TurretIO {
     public void setTargetAngle(double angleDegrees) {
         double targetMotorRotations = angleDegrees * TurretConstants.MOTOR_GEAR_RATIO / 360.0;
         turretMotor.setControl(motionMagicRequest.withPosition(targetMotorRotations));
+    }
+
+    @Override
+    public void setTargetAngleWithVelocity(double angleDegrees, double velocityDegreesPerSec) {
+        double targetMotorRotations = angleDegrees * TurretConstants.MOTOR_GEAR_RATIO / 360.0;
+        double targetMotorVelocityRPS = velocityDegreesPerSec * TurretConstants.MOTOR_GEAR_RATIO / 360.0;
+        turretMotor.setControl(positionRequest
+            .withPosition(targetMotorRotations)
+            .withVelocity(targetMotorVelocityRPS));
     }
 
     @Override
