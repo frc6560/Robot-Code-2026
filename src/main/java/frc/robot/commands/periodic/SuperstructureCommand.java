@@ -112,7 +112,8 @@ public class SuperstructureCommand extends Command {
         shotCalculator.calculate(pose, velocity);
 
         shooter.setRPM(shotCalculator.getFlywheelRPM());
-        turret.setGoal(Units.radiansToDegrees(shotCalculator.getTurretAngle()));
+        turret.setGoalWithVelocity(Units.radiansToDegrees(shotCalculator.getTurretAngle()), 
+                                    Units.radiansToDegrees(shotCalculator.getTurretVelocityFF()));
         hood.setGoal(shotCalculator.getHoodAzimuth());
     }
 
