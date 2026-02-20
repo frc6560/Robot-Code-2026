@@ -13,18 +13,38 @@ import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
+import com.therekrab.autopilot.APConstraints;
+import com.therekrab.autopilot.APProfile;
+import com.therekrab.autopilot.APTarget;
+import com.therekrab.autopilot.Autopilot;
+import edu.wpi.first.units.measure.LinearVelocity;
+import static edu.wpi.first.units.Units.Centimeters;
+import static edu.wpi.first.units.Units.Degrees;
+
 /**
  * A command that automatically aligns the robot to a target pose for climbing.
- * Uses simple PID control for X, Y, and rotation.
+ * Uses Autopilot for path planning with PID control for heading.
  */
 public class ClimbCommand extends SequentialCommandGroup {
+
+    // Autopilot configuration
+    private static final APConstraints kConstraints = new APConstraints()
+        .withAcceleration(5.0)
+        .withJerk(2.0);
+
+    private static final APProfile kProfile = new APProfile(kConstraints)
+        .withErrorXY(Centimeters.of(2))
+        .withErrorTheta(Degrees.of(0.5))
+        .withBeelineRadius(Centimeters.of(8));
+
+    private static final Autopilot kAutopilot = new Autopilot(kProfile);
 
     // Poses
     private Pose2d targetPose;
     private Pose2d prescorePose;
     private double initialY;
 
-    // PID Controllers
+    // PID Controllers (kept for backward compatibility and heading control)
     private PIDController xController;
     private PIDController yController;
     private PIDController rotationController;
@@ -82,24 +102,35 @@ public class ClimbCommand extends SequentialCommandGroup {
     }
 
 
-    /** Drives to prescore position using braindead PID */
+    /** Drives to prescore position using Autopilot */
     public Command getDriveToPrescore() {
         return Commands.run(() -> {
             prescorePose = getPrescore(targetPose);
             Pose2d currentPose = drivetrain.getPose();
+            ChassisSpeeds robotRelativeSpeeds = drivetrain.getRobotVelocity();
 
-            // Calculate errors
+            // Create Autopilot target
+            APTarget prescoreTarget = new APTarget(prescorePose)
+                .withEntryAngle(prescorePose.getRotation());
+
+            // Calculate velocities using Autopilot
+            Autopilot.APResult output = kAutopilot.calculate(currentPose, robotRelativeSpeeds, prescoreTarget);
+
+            // Extract field-relative velocities and target rotation
+            double xVel = output.vx().in(edu.wpi.first.units.Units.MetersPerSecond);
+            double yVel = output.vy().in(edu.wpi.first.units.Units.MetersPerSecond);
+            Rotation2d headingReference = output.targetAngle();
+
+            // Use rotation PID to track the heading setpoint
+            double rotVel = rotationController.calculate(
+                currentPose.getRotation().getRadians(),
+                headingReference.getRadians()
+            );
+
+            // Calculate errors for logging
             double xError = prescorePose.getX() - currentPose.getX();
             double yError = prescorePose.getY() - currentPose.getY();
             double rotError = prescorePose.getRotation().getRadians() - currentPose.getRotation().getRadians();
-
-            // Calculate velocities
-            double xVel = xController.calculate(currentPose.getX(), prescorePose.getX());
-            double yVel = yController.calculate(currentPose.getY(), prescorePose.getY());
-            double rotVel = rotationController.calculate(
-                currentPose.getRotation().getRadians(),
-                prescorePose.getRotation().getRadians()
-            );
 
             drivetrain.drive(ChassisSpeeds.fromFieldRelativeSpeeds(xVel, yVel, rotVel, currentPose.getRotation()));
 
@@ -132,30 +163,41 @@ public class ClimbCommand extends SequentialCommandGroup {
             SmartDashboard.putNumber("Climb/Prescore/Actual_Rot_Vel", robotVel.omegaRadiansPerSecond);
 
             // Status
-            SmartDashboard.putBoolean("Climb/Prescore/At_Target", distance < 0.05);
+            SmartDashboard.putBoolean("Climb/Prescore/At_Target", kAutopilot.atTarget(currentPose, prescoreTarget));
         }, drivetrain).until(() -> {
-            double distance = drivetrain.getPose().getTranslation().getDistance(prescorePose.getTranslation());
-            return distance < 0.05;
+            APTarget prescoreTarget = new APTarget(prescorePose);
+            return kAutopilot.atTarget(drivetrain.getPose(), prescoreTarget);
         });
     }
 
-    /** Drives to final climb position using braindead PID */
+    /** Drives to final climb position using Autopilot */
     public Command getDriveInCommand() {
         return Commands.run(() -> {
             Pose2d currentPose = drivetrain.getPose();
+            ChassisSpeeds robotRelativeSpeeds = drivetrain.getRobotVelocity();
 
-            // Calculate errors
+            // Create Autopilot target
+            APTarget finalTarget = new APTarget(targetPose)
+                .withEntryAngle(targetPose.getRotation());
+
+            // Calculate velocities using Autopilot
+            Autopilot.APResult output = kAutopilot.calculate(currentPose, robotRelativeSpeeds, finalTarget);
+
+            // Extract field-relative velocities and target rotation
+            double xVel = output.vx().in(edu.wpi.first.units.Units.MetersPerSecond);
+            double yVel = output.vy().in(edu.wpi.first.units.Units.MetersPerSecond);
+            Rotation2d headingReference = output.targetAngle();
+
+            // Use rotation PID to track the heading setpoint
+            double rotVel = rotationController.calculate(
+                currentPose.getRotation().getRadians(),
+                headingReference.getRadians()
+            );
+
+            // Calculate errors for logging
             double xError = targetPose.getX() - currentPose.getX();
             double yError = targetPose.getY() - currentPose.getY();
             double rotError = targetPose.getRotation().getRadians() - currentPose.getRotation().getRadians();
-
-            // Calculate velocities
-            double xVel = xController.calculate(currentPose.getX(), targetPose.getX());
-            double yVel = yController.calculate(currentPose.getY(), targetPose.getY());
-            double rotVel = rotationController.calculate(
-                currentPose.getRotation().getRadians(),
-                targetPose.getRotation().getRadians()
-            );
 
             drivetrain.drive(ChassisSpeeds.fromFieldRelativeSpeeds(xVel, yVel, rotVel, currentPose.getRotation()));
 
@@ -192,7 +234,7 @@ public class ClimbCommand extends SequentialCommandGroup {
             SmartDashboard.putNumber("Climb/Final/Actual_Rot_Vel", robotVel.omegaRadiansPerSecond);
 
             // Status
-            SmartDashboard.putBoolean("Climb/Final/At_Target", distance < 0.02 && absRotError < 0.017);
+            SmartDashboard.putBoolean("Climb/Final/At_Target", kAutopilot.atTarget(currentPose, finalTarget));
             SmartDashboard.putBoolean("Climb/Final/Translation_Done", distance < 0.02);
             SmartDashboard.putBoolean("Climb/Final/Rotation_Done", absRotError < 0.017);
 
@@ -205,10 +247,8 @@ public class ClimbCommand extends SequentialCommandGroup {
                 SmartDashboard.putString("Climb/Final/Warning", "None");
             }
         }, drivetrain).until(() -> {
-            Pose2d currentPose = drivetrain.getPose();
-            double distance = currentPose.getTranslation().getDistance(targetPose.getTranslation());
-            double rotError = Math.abs(currentPose.getRotation().getRadians() - targetPose.getRotation().getRadians());
-            return distance < 0.02 && rotError < 0.017;
+            APTarget finalTarget = new APTarget(targetPose);
+            return kAutopilot.atTarget(drivetrain.getPose(), finalTarget);
         });
     }
 
