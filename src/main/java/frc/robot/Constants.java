@@ -342,8 +342,8 @@ public final class Constants {
     public static final double EXTEND_kD = 0.0;
 
     // Motion Magic constraints (motor rotations/sec)
-    public static final double EXTEND_MAX_VELOCITY = 5.5;
-    public static final double EXTEND_MAX_ACCELERATION = 50.0;
+    public static final double EXTEND_MAX_VELOCITY = 5.5; //theo 15rps
+    public static final double EXTEND_MAX_ACCELERATION = 50.0; //80 rps^2 (theoretical)
 
     public static final double EXTEND_SUPPLY_CURRENT_LIMIT = 35;
     public static final double EXTEND_STATOR_CURRENT_LIMIT = 60;
