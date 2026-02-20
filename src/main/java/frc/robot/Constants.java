@@ -323,13 +323,8 @@ public final class Constants {
     public static final boolean EXTEND_MOTOR_INVERTED = true; //TODO
     public static final boolean SPIN_MOTOR_INVERTED = true; //TODO update: complete
 
-    public static final double EXTEND_SPEED = 0.5; //tune (0.65)
-  public static final double RETRACT_SPEED = -0.5; //tune  (-0.5)
     public static final double SPIN_SPEED = 0.7; //tune   (0.7))
-    public static final double SPRINGY_EXTEND_SPEED = 0.05; //tune
     public static final double SPRINGY_SPIN_SPEED = 0.7; //tune
-
-  public static final double MAX_EXTENSION_ROTATIONS = 10.0; // TODO: tune
   public static final double SPRINGY_TRIGGER_ROTATIONS = 5.0; // TODO: tune
 
     // Linear actuator geometry
