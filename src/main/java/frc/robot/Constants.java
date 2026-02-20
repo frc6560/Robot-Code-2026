@@ -249,5 +249,7 @@ public final class Constants {
 
     public static final double SPIN_SUPPLY_CURRENT_LIMIT = 30;
     public static final double SPIN_STATOR_CURRENT_LIMIT = 50;
+
+    public static final double INTAKE_RUN_TIME = 3.5;
   }
 }

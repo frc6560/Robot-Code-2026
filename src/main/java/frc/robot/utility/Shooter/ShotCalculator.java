@@ -43,7 +43,11 @@ public class ShotCalculator {
     private static final InterpolatingDoubleTreeMap flywheelRPMMap = new InterpolatingDoubleTreeMap();
     private static final InterpolatingDoubleTreeMap timeOfFlightMap = new InterpolatingDoubleTreeMap();
 
-    public Translation2d virtualTargetPose; 
+    private static final double MIN_DISTANCE = 1.279;
+    private static final double MAX_DISTANCE = 5.345;
+
+    public Translation2d virtualTargetPose;
+    private double distanceToVirtualTarget = 0.0; 
 
     /** A util class for outputting shooter state values, even while the robot is moving! */
     public ShotCalculator() {
@@ -108,6 +112,16 @@ public class ShotCalculator {
 
     public Translation2d getVirtualTargetPose() {
         return virtualTargetPose;
+    }
+
+    /** Returns true if the distance to the virtual target is within the LUT range. */
+    public boolean isShotValid() {
+        return distanceToVirtualTarget >= MIN_DISTANCE && distanceToVirtualTarget <= MAX_DISTANCE;
+    }
+
+    /** Returns the current distance to the virtual target. */
+    public double getDistanceToVirtualTarget() {
+        return distanceToVirtualTarget;
     }
 
     /** Returns the complete shooter state including positions and velocities. */
@@ -209,10 +223,13 @@ public class ShotCalculator {
             }
         }
         
+        distanceToVirtualTarget = distanceToTarget;
+
         SmartDashboard.putNumber("SOTM/Iterations", iterationsUsed);
         SmartDashboard.putNumber("SOTM/TimeOfFlight", timeOfFlight);
         SmartDashboard.putNumber("SOTM/Distance/Static", staticDistance);
         SmartDashboard.putNumber("SOTM/Distance/Virtual", distanceToTarget);
+        SmartDashboard.putBoolean("SOTM/ShotValid", isShotValid());
 
         Translation2d targetOffset = virtualTargetPose.minus(targetPose);
         SmartDashboard.putNumber("SOTM/VirtualOffset/X", targetOffset.getX());

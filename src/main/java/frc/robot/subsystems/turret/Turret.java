@@ -66,6 +66,10 @@ public class Turret extends SubsystemBase {
         io.seedMotorEncoder();
     }
 
+    public boolean getAtTarget(){
+        return getTurretAngle() - goalDegrees < 0.8;
+    }
+
     @Override
     public void periodic() {
         io.updateInputs(inputs);
@@ -84,5 +88,6 @@ public class Turret extends SubsystemBase {
         Logger.recordOutput("Turret/CurrentAngleDegrees", getTurretAngle());
         Logger.recordOutput("Turret/VelocityDegreesPerSec", getTurretVelocity());
         Logger.recordOutput("Turret/ErrorDegrees", getTurretAngle() - goalDegrees);
+        Logger.recordOutput("Turret/AtTarget", getAtTarget());
     }
 }
