@@ -4,9 +4,9 @@ package frc.robot.autonomous;
 import choreo.auto.AutoFactory;
 import choreo.auto.AutoRoutine;
 import choreo.auto.AutoTrajectory;
+import frc.robot.Constants.IntakeConstants;
 import frc.robot.subsystems.feeder.Feeder;
 import frc.robot.subsystems.intake.Intake;
-// import frc.robot.subsystems.superstructure.Shooter;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 
 import edu.wpi.first.wpilibj2.command.Command;
@@ -59,7 +59,7 @@ public class AutoCommands {
 
     public Command intake(){
         return Commands.run(() -> intake.setExtensionMode(), intake)
-            .withTimeout(3.5)
+            .withTimeout(IntakeConstants.INTAKE_RUN_TIME)
             .finallyDo((interrupted) -> {
                 intake.setIdleMode();
             });
