@@ -93,6 +93,14 @@ public class TurretIOTalonFX implements TurretIO {
         config.CurrentLimits.SupplyCurrentLimitEnable = true;
         config.CurrentLimits.SupplyCurrentLimit = 40;
 
+        // Soft limits (convert from degrees to motor rotations)
+        config.SoftwareLimitSwitch.ForwardSoftLimitEnable = true;
+        config.SoftwareLimitSwitch.ForwardSoftLimitThreshold =
+            TurretConstants.UPPER_SOFT_LIMIT * TurretConstants.MOTOR_GEAR_RATIO / 360.0;
+        config.SoftwareLimitSwitch.ReverseSoftLimitEnable = true;
+        config.SoftwareLimitSwitch.ReverseSoftLimitThreshold =
+            TurretConstants.LOWER_SOFT_LIMIT * TurretConstants.MOTOR_GEAR_RATIO / 360.0;
+
         turretMotor.getConfigurator().apply(config);
     }
 

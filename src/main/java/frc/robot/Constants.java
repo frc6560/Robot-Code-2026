@@ -203,25 +203,43 @@ public final class Constants {
   }
 
   public static final class IntakeConstants{
-    public static final boolean EXTENSION_ENABLED = false; // temp: set true once extension + limit switch are wired
-    public static final int EXTEND_MOTOR_ID = 15; 
-    public static final int SPIN_MOTOR_ID = 16; 
-    public static final String CAN_BUS = "Canivore";
+    public static final boolean EXTENSION_ENABLED = true; // temp: set true once extension + limit switch are wired
+    public static final int EXTEND_MOTOR_ID = 15; // TODO: set correct ID //completed
+    public static final int SPIN_MOTOR_ID = 16; // TODO: set correct ID /completed
+  public static final String CAN_BUS = "rio";
 
-    public static final int RETRACT_LIMIT_SWITCH_ID = 67; // TODO: set correct DIO port
-    public static final boolean RETRACT_LIMIT_SWITCH_INVERTED = false; // toDo: confirm if this needs to be true or false based on wiring and testing; eg, does it start as true or false when stowed.
+    public static final int RETRACT_LIMIT_SWITCH_ID = 9; // TODO: set correct DIO port
+    public static final boolean RETRACT_LIMIT_SWITCH_INVERTED = true; // toDo: confirm if this needs to be true or false based on wiring and testing; eg, does it start as true or false when stowed.
 
-    public static final boolean EXTEND_MOTOR_INVERTED = false; //TODO
-    public static final boolean SPIN_MOTOR_INVERTED = false; //TODO
+    public static final boolean EXTEND_MOTOR_INVERTED = true; //TODO
+    public static final boolean SPIN_MOTOR_INVERTED = true; //TODO update: complete
 
-    public static final double EXTEND_SPEED = 0.65; //tune
-  public static final double RETRACT_SPEED = -0.5; //tune
-    public static final double SPIN_SPEED = 0.7; //tune
-    public static final double SPRINGY_EXTEND_SPEED = 0.12; //tune
+    public static final double EXTEND_SPEED = 0.5; //tune (0.65)
+  public static final double RETRACT_SPEED = -0.5; //tune  (-0.5)
+    public static final double SPIN_SPEED = 0.7; //tune   (0.7))
+    public static final double SPRINGY_EXTEND_SPEED = 0.05; //tune
     public static final double SPRINGY_SPIN_SPEED = 0.7; //tune
 
-  public static final double MAX_EXTENSION_ROTATIONS = 60.0; // TODO: tune
-  public static final double SPRINGY_TRIGGER_ROTATIONS = 55.0; // TODO: tune
+  public static final double MAX_EXTENSION_ROTATIONS = 10.0; // TODO: tune
+  public static final double SPRINGY_TRIGGER_ROTATIONS = 5.0; // TODO: tune
+
+    // Linear actuator geometry
+    public static final double EXTEND_GEAR_RATIO = 64.0 / 14.0; // 4.57:1 motor to pinion
+    public static final double PINION_DIAMETER_INCHES = 1.751;
+    public static final double INCHES_PER_PINION_ROTATION = Math.PI * PINION_DIAMETER_INCHES;
+    public static final double MAX_EXTENSION_INCHES = 11.0;
+
+    // Motion Magic PID gains
+    public static final double EXTEND_kS = 0.1;
+    public static final double EXTEND_kV = 0.12;
+    public static final double EXTEND_kA = 0.0;
+    public static final double EXTEND_kP = 0.5;
+    public static final double EXTEND_kI = 0.0;
+    public static final double EXTEND_kD = 0.0;
+
+    // Motion Magic constraints (motor rotations/sec)
+    public static final double EXTEND_MAX_VELOCITY = 5.5;
+    public static final double EXTEND_MAX_ACCELERATION = 50.0;
 
     public static final double EXTEND_SUPPLY_CURRENT_LIMIT = 35;
     public static final double EXTEND_STATOR_CURRENT_LIMIT = 60;

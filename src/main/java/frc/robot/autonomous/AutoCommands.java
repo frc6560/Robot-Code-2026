@@ -5,7 +5,8 @@ import choreo.auto.AutoFactory;
 import choreo.auto.AutoRoutine;
 import choreo.auto.AutoTrajectory;
 import frc.robot.Constants.ShooterConstants;
-// import frc.robot.subsystems.superstructure.Feeder;
+import frc.robot.subsystems.feeder.Feeder;
+import frc.robot.subsystems.intake.Intake;
 // import frc.robot.subsystems.superstructure.Shooter;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 
@@ -19,18 +20,19 @@ import edu.wpi.first.wpilibj2.command.Commands;
 // helpers for markers
 public class AutoCommands {
     private SwerveSubsystem drivetrain;
-    // private Shooter shooter;
-    // private Feeder feeder;
+    private Feeder feeder;
+    private Intake intake;
 
     private AutoFactory autoFactory;
 
-    public AutoCommands(SwerveSubsystem drivetrain
-        // , Shooter shooter, Feeder feeder
+    public AutoCommands(SwerveSubsystem drivetrain,
+        Feeder feeder,
+        Intake intake
     ) {
         this.drivetrain = drivetrain;
-        // this.shooter = shooter;
-        // this.feeder = feeder;
-
+        this.feeder = feeder;
+        this.intake = intake;
+        
         autoFactory = new AutoFactory(
             drivetrain::getPose,
             drivetrain::resetOdometry,
@@ -48,19 +50,20 @@ public class AutoCommands {
         return IDLE;
     }
 
-    public Command spinUpShooter(){
-    //     return Commands.runOnce(() -> shooter.setRPM(ShooterConstants.FLYWHEEL_RPM), shooter);
-        return Commands.idle();
+    public Command shoot(){
+        return Commands.run(() -> feeder.requestFeed(), feeder)
+            .withTimeout(3.0)
+            .finallyDo((interrupted) -> {
+                feeder.requestStop();
+            });
     }
 
-    public Command shoot(){
-        // return Commands.run(() -> feeder.setRPM(FeederConstants.FEEDER_RPM), feeder)
-        //     .withTimeout(3.0)
-        //     .finallyDo((interrupted) -> {
-        //         shooter.setRPM(0);
-        //         feeder.setRPM(0);
-        //     });
-        return Commands.idle();
+    public Command intake(){
+        return Commands.run(() -> intake.setExtensionMode(), intake)
+            .withTimeout(3.0)
+            .finallyDo((interrupted) -> {
+                intake.setIdleMode();
+            });
     }
 
     /** Test auto on HP side. Should be comp level accuracy. */
@@ -74,17 +77,7 @@ public class AutoCommands {
 
         trenchToCenter.atTime("intake")
             .onTrue(
-                Commands.idle()
-            );
-        
-        trenchToShoot.atTime("shoot")
-            .onTrue(
-                spinUpShooter()
-            );
-        
-        bumpToShoot.atTime("shoot")
-            .onTrue(
-                spinUpShooter()
+                intake()
             );
 
         testRoutine
@@ -114,17 +107,7 @@ public class AutoCommands {
 
         trenchToCenter.atTime("intake")
             .onTrue(
-                Commands.idle()
-            );
-        
-        trenchToShoot.atTime("shoot")
-            .onTrue(
-                spinUpShooter()
-            );
-        
-        trenchToClimb.atTime("shoot")
-            .onTrue(
-                spinUpShooter()
+                intake()
             );
 
         testRoutine

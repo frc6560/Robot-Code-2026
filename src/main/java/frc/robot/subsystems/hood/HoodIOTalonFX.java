@@ -35,8 +35,8 @@ public class HoodIOTalonFX implements HoodIO {
     private final StatusSignal<Angle> absolutePosition;
 
     public HoodIOTalonFX() {
-        hoodMotor = new TalonFX(HoodConstants.HOOD_MOTOR_ID, "rio");
-        absoluteEncoder = new CANcoder(HoodConstants.HOOD_ABSOLUTE_ENCODER_ID, "rio");
+        hoodMotor = new TalonFX(HoodConstants.HOOD_MOTOR_ID, "Canivore");
+        absoluteEncoder = new CANcoder(HoodConstants.HOOD_ABSOLUTE_ENCODER_ID, "Canivore");
 
         configureAbsoluteEncoder();
         configureMotor();

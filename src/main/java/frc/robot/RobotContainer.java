@@ -68,7 +68,7 @@ public class RobotContainer {
     private final Shooter shooter;
     private final Turret turret;
     private final Feeder feeder;
-    // private final Intake intake;
+    private final Intake intake;
 
     private final ShotCalculator shotCalculator = new ShotCalculator();
 
@@ -96,16 +96,16 @@ public class RobotContainer {
         shooter = new Shooter(new ShooterIOTalonFX());
         turret = new Turret(new TurretIOTalonFX());
         feeder = new Feeder(new FeederIOTalonFX());
-        // intake = new Intake(new IntakeIOTalonFX());
+        intake = new Intake(new IntakeIOTalonFX());
       } else {
         hood = new Hood(new HoodIOSim());
         shooter = new Shooter(new ShooterIOSim());
         turret = new Turret(new TurretIOSim());
         feeder = new Feeder(new FeederIOSim());
-        // intake = new Intake(new IntakeIOSim());
+        intake = new Intake(new IntakeIOSim());
       }
 
-      factory = new AutoCommands(drivebase);
+      factory = new AutoCommands(drivebase, feeder, intake);
 
       autoChooser = new AutoModeChooser(factory);
       SmartDashboard.putData("Auto Chooser", autoChooser.getAutoChooser());
@@ -154,6 +154,10 @@ public class RobotContainer {
         driverXbox.rightBumper()
           .onTrue(Commands.runOnce(feeder::requestFeed, feeder))
           .onFalse(Commands.runOnce(feeder::requestStop, feeder));
+
+        driverXbox.leftBumper()
+          .onTrue(Commands.runOnce(intake::setExtensionMode, intake))
+          .onFalse(Commands.runOnce(intake::setIdleMode, intake));
     }
 
     public Command getAutonomousCommand() {

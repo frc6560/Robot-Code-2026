@@ -11,9 +11,8 @@ public class IntakeIOSim implements IntakeIO {
     private double extendAppliedVolts = 0.0;
     private double spinAppliedVolts = 0.0;
     private double extendPosition = 0.0;
-    private boolean simulatedLimitSwitch = true;
 
-    private static final double EXTEND_GEARING = 1.0;
+    private static final double EXTEND_GEARING = 64.0 / 14.0;
     private static final double SPIN_GEARING = 1.0;
     private static final double EXTEND_MOI = 0.001;
     private static final double SPIN_MOI = 0.001;
@@ -58,9 +57,7 @@ public class IntakeIOSim implements IntakeIO {
         inputs.spinCurrentAmps = Math.abs(spinSim.getCurrentDrawAmps());
         inputs.spinTempCelsius = 25.0;
 
-        // Simulate limit switch - triggered when position is near zero
-        simulatedLimitSwitch = extendPosition <= 0.1;
-        inputs.retractLimitSwitch = simulatedLimitSwitch;
+        inputs.retractLimitSwitch = extendPosition <= 0.1;
     }
 
     @Override

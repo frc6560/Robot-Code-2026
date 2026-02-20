@@ -19,18 +19,13 @@ public interface IntakeIO {
         public boolean retractLimitSwitch = false;
     }
 
-    /** Updates the set of loggable inputs */
     default void updateInputs(IntakeIOInputs inputs) {}
 
-    /** Set the extend motor percent output */
     default void setExtendPercent(double percent) {}
 
-    /** Set the spin motor percent output */
     default void setSpinPercent(double percent) {}
 
-    /** Reset the extend motor position to zero */
     default void resetExtendPosition() {}
 
-    /** Apply springy current limits (lower limits for springy mode) */
     default void setSpringyCurrentLimits(boolean springy) {}
 }
