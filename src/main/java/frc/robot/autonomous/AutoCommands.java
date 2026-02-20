@@ -4,7 +4,6 @@ package frc.robot.autonomous;
 import choreo.auto.AutoFactory;
 import choreo.auto.AutoRoutine;
 import choreo.auto.AutoTrajectory;
-import frc.robot.Constants.ShooterConstants;
 import frc.robot.subsystems.feeder.Feeder;
 import frc.robot.subsystems.intake.Intake;
 // import frc.robot.subsystems.superstructure.Shooter;
@@ -60,7 +59,7 @@ public class AutoCommands {
 
     public Command intake(){
         return Commands.run(() -> intake.setExtensionMode(), intake)
-            .withTimeout(3.0)
+            .withTimeout(3.5)
             .finallyDo((interrupted) -> {
                 intake.setIdleMode();
             });
@@ -84,14 +83,18 @@ public class AutoCommands {
             .active()
                 .onTrue(
                     Commands.sequence(
-                        trenchToCenter.resetOdometry(),  // Only reset once at the start!
+                        trenchToCenter.resetOdometry(),
                         trenchToCenter.cmd(), // add an intake command after (or during) this.
                         trenchToShoot.cmd()
+                            .beforeStarting(trenchToShoot.resetOdometry())
                             .andThen(shoot()), // to simulate shooting
-                        trenchToCenter.cmd(),
+                        trenchToCenter.cmd()
+                            .beforeStarting(trenchToCenter.resetOdometry()),
                         bumpToShoot.cmd()
+                            .beforeStarting(bumpToShoot.resetOdometry())
                             .andThen(shoot()),
                         climb.cmd()
+                            .beforeStarting(climb.resetOdometry())
                     )
         );
 
@@ -114,7 +117,6 @@ public class AutoCommands {
             .active()
                 .onTrue(
                     Commands.sequence(
-                        trenchToCenter.resetOdometry(), 
                         trenchToCenter.cmd() // add an intake command after (or during) this.
                             .beforeStarting(trenchToCenter.resetOdometry()),
                         trenchToShoot.cmd()
