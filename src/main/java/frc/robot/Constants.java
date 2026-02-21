@@ -32,9 +32,9 @@ public final class Constants {
     // Hold time on motor brakes when disabled
     
     public static final double WHEEL_LOCK_TIME = 10; // seconds
-    public static final double kS = 0.0994; 
-    public static final double kV = 2.4482;
-    public static final double kA = 0.1997;
+    public static final double kS = 0.186; 
+    public static final double kV = 2.004;
+    public static final double kA = 0.173;
 
     public static final double kP_translation = 2.0;
     public static final double kP_rotation = 4.0;
