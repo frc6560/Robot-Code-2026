@@ -1,5 +1,7 @@
 package frc.robot.commands;
 
+import java.util.Set;
+
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
@@ -17,7 +19,6 @@ import com.therekrab.autopilot.APConstraints;
 import com.therekrab.autopilot.APProfile;
 import com.therekrab.autopilot.APTarget;
 import com.therekrab.autopilot.Autopilot;
-import edu.wpi.first.units.measure.LinearVelocity;
 import static edu.wpi.first.units.Units.Centimeters;
 import static edu.wpi.first.units.Units.Degrees;
 
@@ -104,14 +105,13 @@ public class ClimbCommand extends SequentialCommandGroup {
 
     /** Drives to prescore position using Autopilot */
     public Command getDriveToPrescore() {
-        return Commands.run(() -> {
+        return Commands.runOnce(() -> {
+            // Initialize prescore pose
             prescorePose = getPrescore(targetPose);
-            Pose2d currentPose = drivetrain.getPose();
-            ChassisSpeeds robotRelativeSpeeds = drivetrain.getRobotVelocity();
-
-            // Create Autopilot target with entry angle for curved path
-            // Calculate entry angle to curve INWARD (toward center)
-            double yDiff = currentPose.getY() - prescorePose.getY();
+        }, drivetrain).andThen(Commands.defer(() -> {
+            // Calculate entry angle ONCE at command start based on initial position
+            Pose2d startPose = drivetrain.getPose();
+            double yDiff = startPose.getY() - prescorePose.getY();
 
             // Curve inward: if on right side (yDiff > 0), curve left; if on left (yDiff < 0), curve right
             // Adjust the 30 degree value to control how aggressive the curve is (try 20-45 degrees)
@@ -119,71 +119,74 @@ public class ClimbCommand extends SequentialCommandGroup {
             double angleAdjustment = Math.signum(yDiff) * curveAmount;
             Rotation2d entryAngle = prescorePose.getRotation().plus(Rotation2d.fromRadians(angleAdjustment));
 
+            // Create the target once with fixed entry angle
             APTarget prescoreTarget = new APTarget(prescorePose)
                 .withEntryAngle(entryAngle);
 
-            // Calculate velocities using Autopilot
-            Autopilot.APResult output = kAutopilot.calculate(currentPose, robotRelativeSpeeds, prescoreTarget);
+            // Log the entry angle
+            SmartDashboard.putNumber("Climb/Prescore/EntryAngle_Deg", entryAngle.getDegrees());
+            SmartDashboard.putNumber("Climb/Prescore/InitialYDiff", yDiff);
 
-            // Extract field-relative velocities and target rotation
-            double xVel = output.vx().in(edu.wpi.first.units.Units.MetersPerSecond);
-            double yVel = output.vy().in(edu.wpi.first.units.Units.MetersPerSecond);
-            Rotation2d headingReference = output.targetAngle();
+            return Commands.run(() -> {
+                Pose2d currentPose = drivetrain.getPose();
+                ChassisSpeeds robotRelativeSpeeds = drivetrain.getRobotVelocity();
 
-            // Use rotation PID to track the heading setpoint
-            double rotVel = rotationController.calculate(
-                currentPose.getRotation().getRadians(),
-                headingReference.getRadians()
-            );
+                // Calculate velocities using Autopilot with fixed target
+                Autopilot.APResult output = kAutopilot.calculate(currentPose, robotRelativeSpeeds, prescoreTarget);
 
-            // Calculate errors for logging
-            double xError = prescorePose.getX() - currentPose.getX();
-            double yError = prescorePose.getY() - currentPose.getY();
-            double rotError = prescorePose.getRotation().getRadians() - currentPose.getRotation().getRadians();
+                // Extract field-relative velocities and target rotation
+                double xVel = output.vx().in(edu.wpi.first.units.Units.MetersPerSecond);
+                double yVel = output.vy().in(edu.wpi.first.units.Units.MetersPerSecond);
+                Rotation2d headingReference = output.targetAngle();
 
-            drivetrain.drive(ChassisSpeeds.fromFieldRelativeSpeeds(xVel, yVel, rotVel, currentPose.getRotation()));
+                // Use rotation PID to track the heading setpoint
+                double rotVel = rotationController.calculate(
+                    currentPose.getRotation().getRadians(),
+                    headingReference.getRadians()
+                );
 
-            // Get robot velocity for logging
-            ChassisSpeeds robotVel = drivetrain.getFieldVelocity();
+                // Calculate errors for logging
+                double xError = prescorePose.getX() - currentPose.getX();
+                double yError = prescorePose.getY() - currentPose.getY();
+                double rotError = prescorePose.getRotation().getRadians() - currentPose.getRotation().getRadians();
 
-            // Comprehensive logging
-            double distance = currentPose.getTranslation().getDistance(prescorePose.getTranslation());
+                drivetrain.drive(ChassisSpeeds.fromFieldRelativeSpeeds(xVel, yVel, rotVel, currentPose.getRotation()));
 
-            // Position logging
-            SmartDashboard.putNumber("Climb/Prescore/Current_X", currentPose.getX());
-            SmartDashboard.putNumber("Climb/Prescore/Current_Y", currentPose.getY());
-            SmartDashboard.putNumber("Climb/Prescore/Target_X", prescorePose.getX());
-            SmartDashboard.putNumber("Climb/Prescore/Target_Y", prescorePose.getY());
+                // Get robot velocity for logging
+                ChassisSpeeds robotVel = drivetrain.getFieldVelocity();
 
-            // Error logging
-            SmartDashboard.putNumber("Climb/Prescore/Error_X", xError);
-            SmartDashboard.putNumber("Climb/Prescore/Error_Y", yError);
-            SmartDashboard.putNumber("Climb/Prescore/Error_Rot", rotError);
-            SmartDashboard.putNumber("Climb/Prescore/Distance", distance);
+                // Comprehensive logging
+                double distance = currentPose.getTranslation().getDistance(prescorePose.getTranslation());
 
-            // Velocity/Output logging
-            SmartDashboard.putNumber("Climb/Prescore/Output_X_Vel", xVel);
-            SmartDashboard.putNumber("Climb/Prescore/Output_Y_Vel", yVel);
-            SmartDashboard.putNumber("Climb/Prescore/Output_Rot_Vel", rotVel);
+                // Position logging
+                SmartDashboard.putNumber("Climb/Prescore/Current_X", currentPose.getX());
+                SmartDashboard.putNumber("Climb/Prescore/Current_Y", currentPose.getY());
+                SmartDashboard.putNumber("Climb/Prescore/Target_X", prescorePose.getX());
+                SmartDashboard.putNumber("Climb/Prescore/Target_Y", prescorePose.getY());
 
-            // Actual robot velocity
-            SmartDashboard.putNumber("Climb/Prescore/Actual_X_Vel", robotVel.vxMetersPerSecond);
-            SmartDashboard.putNumber("Climb/Prescore/Actual_Y_Vel", robotVel.vyMetersPerSecond);
-            SmartDashboard.putNumber("Climb/Prescore/Actual_Rot_Vel", robotVel.omegaRadiansPerSecond);
+                // Error logging
+                SmartDashboard.putNumber("Climb/Prescore/Error_X", xError);
+                SmartDashboard.putNumber("Climb/Prescore/Error_Y", yError);
+                SmartDashboard.putNumber("Climb/Prescore/Error_Rot", rotError);
+                SmartDashboard.putNumber("Climb/Prescore/Distance", distance);
 
-            // Status
-            SmartDashboard.putBoolean("Climb/Prescore/At_Target", kAutopilot.atTarget(currentPose, prescoreTarget));
-        }, drivetrain).until(() -> {
-            Pose2d currentPose = drivetrain.getPose();
-            double yDiff = currentPose.getY() - prescorePose.getY();
-            double curveAmount = Math.toRadians(30);
-            double angleAdjustment = Math.signum(yDiff) * curveAmount;
-            Rotation2d entryAngle = prescorePose.getRotation().plus(Rotation2d.fromRadians(angleAdjustment));
+                // Velocity/Output logging
+                SmartDashboard.putNumber("Climb/Prescore/Output_X_Vel", xVel);
+                SmartDashboard.putNumber("Climb/Prescore/Output_Y_Vel", yVel);
+                SmartDashboard.putNumber("Climb/Prescore/Output_Rot_Vel", rotVel);
 
-            APTarget prescoreTarget = new APTarget(prescorePose)
-                .withEntryAngle(entryAngle);
-            return kAutopilot.atTarget(currentPose, prescoreTarget);
-        });
+                // Actual robot velocity
+                SmartDashboard.putNumber("Climb/Prescore/Actual_X_Vel", robotVel.vxMetersPerSecond);
+                SmartDashboard.putNumber("Climb/Prescore/Actual_Y_Vel", robotVel.vyMetersPerSecond);
+                SmartDashboard.putNumber("Climb/Prescore/Actual_Rot_Vel", robotVel.omegaRadiansPerSecond);
+
+                // Status
+                SmartDashboard.putBoolean("Climb/Prescore/At_Target", kAutopilot.atTarget(currentPose, prescoreTarget));
+            }, drivetrain).until(() -> {
+                Pose2d currentPose = drivetrain.getPose();
+                return kAutopilot.atTarget(currentPose, prescoreTarget);
+            });
+        }, Set.of()));
     }
 
     public Command getDriveInCommand() {
