@@ -261,7 +261,7 @@ public class ClimbCommand extends SequentialCommandGroup {
             prescoreX = targetPose.getX() - 1.0; // Move back toward center (negative X)
         }
 
-        return new Pose2d(prescoreX, targetPose.getY(), targetPose.getRotation());
+        return new Pose2d(prescoreX, targetPose.getY(), targetPose.getRotation().plus(new Rotation2d(Math.PI)));
 }
 
     /** Sets the target pose based on alliance and starting Y position */
