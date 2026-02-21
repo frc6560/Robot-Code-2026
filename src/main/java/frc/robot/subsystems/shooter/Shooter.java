@@ -31,6 +31,8 @@ public class Shooter extends SubsystemBase {
 
     private double targetRPS = 0.0;
 
+    private double lastActiveRPS = (ShooterConstants.FLYWHEEL_IDLE_RPM / 60.0);
+
     public Shooter(ShooterIO io) {
         this.io = io;
 
@@ -68,6 +70,10 @@ public class Shooter extends SubsystemBase {
     public void setRPS(double rps) {
         targetRPS = rps;
         io.setVelocityRPS(rps);
+
+        if (rps > (ShooterConstants.FLYWHEEL_IDLE_RPM / 60.0)) {
+            lastActiveRPS = rps;
+        }
     }
 
     public void setRPM(double rpm) {
@@ -75,7 +81,8 @@ public class Shooter extends SubsystemBase {
     }
 
     public void setIdle() {
-        setRPM(ShooterConstants.FLYWHEEL_IDLE_RPM);
+        setRPS(lastActiveRPS * 0.70);
+
     }
 
     public void stop() {

@@ -117,9 +117,8 @@ public final class Constants {
     public static final double kMaxA = 720.0;  // Max acceleration (degrees/second²)
 
     /** Hood Geometry */
-    public static final double HOOD_GEAR_RATIO = 33.33; // rotates 40 for every 1 rotation of the hood
-    public static final double ABSOLUTE_HOOD_ENCODER_GEAR_RATIO = 360.0 / 44.0 ; // encoder rotates 360/44 times every mechanism rotation
-
+    public static final double HOOD_GEAR_RATIO = 40; 
+    public static final double ABSOLUTE_HOOD_ENCODER_GEAR_RATIO = (44.0 / 18.0) * (24.0 / 12.0);
     /** Motor Inversion */
     public static final boolean HOOD_MOTOR_INVERTED = true; // TODO: Test and adjust
 
@@ -146,6 +145,8 @@ public final class Constants {
     public static final double kD = 0.00;
     public static final double kV = 0.1183; 
      public static final double kS = 0.05;
+
+     public static final double FLYWHEEL_ACCELERATION = 100.0;
 
     /** Flywheel Geometry */
        public static final double MAX_RPM = 5000; 
