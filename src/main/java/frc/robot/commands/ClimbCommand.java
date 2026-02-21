@@ -109,8 +109,10 @@ public class ClimbCommand extends SequentialCommandGroup {
             Pose2d currentPose = drivetrain.getPose();
             ChassisSpeeds robotRelativeSpeeds = drivetrain.getRobotVelocity();
 
-            // Create Autopilot target
-            APTarget prescoreTarget = new APTarget(prescorePose);
+            // Create Autopilot target with entry angle for curved path
+            // Entry angle = direction robot should be traveling when arriving at target
+            APTarget prescoreTarget = new APTarget(prescorePose)
+                .withEntryAngle(prescorePose.getRotation());
 
             // Calculate velocities using Autopilot
             Autopilot.APResult output = kAutopilot.calculate(currentPose, robotRelativeSpeeds, prescoreTarget);
@@ -164,7 +166,8 @@ public class ClimbCommand extends SequentialCommandGroup {
             // Status
             SmartDashboard.putBoolean("Climb/Prescore/At_Target", kAutopilot.atTarget(currentPose, prescoreTarget));
         }, drivetrain).until(() -> {
-            APTarget prescoreTarget = new APTarget(prescorePose);
+            APTarget prescoreTarget = new APTarget(prescorePose)
+                .withEntryAngle(prescorePose.getRotation());
             return kAutopilot.atTarget(drivetrain.getPose(), prescoreTarget);
         });
     }
