@@ -60,8 +60,8 @@ public class ClimbCommand extends SequentialCommandGroup {
 
         // Initialize PID controllers (tune these values as needed)
         // Reduced kP and increased kD to prevent overshoot in X and Y
-        this.xController = new PIDController(2.5, 0, 0.8);  // Reduced kP: 4.5→2.5, Increased kD: 0.4→0.8
-        this.yController = new PIDController(2.5, 0, 0.8);  // Reduced kP: 4.5→2.5, Increased kD: 0.4→0.8
+        this.xController = new PIDController(2.5, 0, 0);  // Reduced kP: 4.5→2.5, Increased kD: 0.4→0.8
+        this.yController = new PIDController(2.5, 0, 0);  // Reduced kP: 4.5→2.5, Increased kD: 0.4→0.8
         this.rotationController = new PIDController(4.0, 0, 0.6);  // Reduced kP: 5.0→4.0, Increased kD: 0.5→0.6
         this.rotationController.enableContinuousInput(-Math.PI, Math.PI);
 
@@ -170,34 +170,22 @@ public class ClimbCommand extends SequentialCommandGroup {
         });
     }
 
-    /** Drives to final climb position using Autopilot */
     public Command getDriveInCommand() {
         return Commands.run(() -> {
             Pose2d currentPose = drivetrain.getPose();
-            ChassisSpeeds robotRelativeSpeeds = drivetrain.getRobotVelocity();
 
-            // Create Autopilot target
-            APTarget finalTarget = new APTarget(targetPose)
-                .withEntryAngle(targetPose.getRotation());
-
-            // Calculate velocities using Autopilot
-            Autopilot.APResult output = kAutopilot.calculate(currentPose, robotRelativeSpeeds, finalTarget);
-
-            // Extract field-relative velocities and target rotation
-            double xVel = output.vx().in(edu.wpi.first.units.Units.MetersPerSecond);
-            double yVel = output.vy().in(edu.wpi.first.units.Units.MetersPerSecond);
-            Rotation2d headingReference = output.targetAngle();
-
-            // Use rotation PID to track the heading setpoint
-            double rotVel = rotationController.calculate(
-                currentPose.getRotation().getRadians(),
-                headingReference.getRadians()
-            );
-
-            // Calculate errors for logging
+            // Calculate errors
             double xError = targetPose.getX() - currentPose.getX();
             double yError = targetPose.getY() - currentPose.getY();
             double rotError = targetPose.getRotation().getRadians() - currentPose.getRotation().getRadians();
+
+            // Calculate velocities
+            double xVel = xController.calculate(currentPose.getX(), targetPose.getX());
+            double yVel = yController.calculate(currentPose.getY(), targetPose.getY());
+            double rotVel = rotationController.calculate(
+                currentPose.getRotation().getRadians(),
+                targetPose.getRotation().getRadians()
+            );
 
             drivetrain.drive(ChassisSpeeds.fromFieldRelativeSpeeds(xVel, yVel, rotVel, currentPose.getRotation()));
 
@@ -234,7 +222,7 @@ public class ClimbCommand extends SequentialCommandGroup {
             SmartDashboard.putNumber("Climb/Final/Actual_Rot_Vel", robotVel.omegaRadiansPerSecond);
 
             // Status
-            SmartDashboard.putBoolean("Climb/Final/At_Target", kAutopilot.atTarget(currentPose, finalTarget));
+            SmartDashboard.putBoolean("Climb/Final/At_Target", distance < 0.02 && absRotError < 0.017);
             SmartDashboard.putBoolean("Climb/Final/Translation_Done", distance < 0.02);
             SmartDashboard.putBoolean("Climb/Final/Rotation_Done", absRotError < 0.017);
 
@@ -247,10 +235,13 @@ public class ClimbCommand extends SequentialCommandGroup {
                 SmartDashboard.putString("Climb/Final/Warning", "None");
             }
         }, drivetrain).until(() -> {
-            APTarget finalTarget = new APTarget(targetPose);
-            return kAutopilot.atTarget(drivetrain.getPose(), finalTarget);
+            Pose2d currentPose = drivetrain.getPose();
+            double distance = currentPose.getTranslation().getDistance(targetPose.getTranslation());
+            double rotError = Math.abs(currentPose.getRotation().getRadians() - targetPose.getRotation().getRadians());
+            return distance < 0.02 && rotError < 0.017;
         });
     }
+
 
 
     /** Gets the prescore position 1 meter back from target */

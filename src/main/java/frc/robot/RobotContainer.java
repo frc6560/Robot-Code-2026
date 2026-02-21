@@ -108,15 +108,15 @@ public class RobotContainer {
           }, Set.of(vision))
         );
 
-        driverXbox.y()
-          .onTrue(Commands.runOnce(() -> CommandScheduler.getInstance().cancelAll()));
+        // driverXbox.y()
+        //   .onTrue(Commands.runOnce(() -> CommandScheduler.getInstance().cancelAll()));
         driverXbox.x()
           .onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
         driverXbox.b()
           .onTrue(Commands.runOnce(() -> CommandScheduler.getInstance().schedule(drivebase.sysIdDriveMotorCommand()), drivebase));
         driverXbox.start().
           onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
-        driverXbox.a().onTrue(Commands.defer(() -> new ClimbCommand(drivebase), Set.of(drivebase)));
+        driverXbox.y().onTrue(Commands.defer(() -> new ClimbCommand(drivebase), Set.of(drivebase)));
 
         operatorXbox.y()
           .onTrue(Commands.runOnce(feeder::requestFeed, feeder))
