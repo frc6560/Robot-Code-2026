@@ -110,9 +110,17 @@ public class ClimbCommand extends SequentialCommandGroup {
             ChassisSpeeds robotRelativeSpeeds = drivetrain.getRobotVelocity();
 
             // Create Autopilot target with entry angle for curved path
-            // Entry angle = direction robot should be traveling when arriving at target
+            // Calculate entry angle to curve INWARD (toward center)
+            double yDiff = currentPose.getY() - prescorePose.getY();
+
+            // Curve inward: if on right side (yDiff > 0), curve left; if on left (yDiff < 0), curve right
+            // Adjust the 30 degree value to control how aggressive the curve is (try 20-45 degrees)
+            double curveAmount = Math.toRadians(30);
+            double angleAdjustment = Math.signum(yDiff) * curveAmount;
+            Rotation2d entryAngle = prescorePose.getRotation().plus(Rotation2d.fromRadians(angleAdjustment));
+
             APTarget prescoreTarget = new APTarget(prescorePose)
-                .withEntryAngle(prescorePose.getRotation());
+                .withEntryAngle(entryAngle);
 
             // Calculate velocities using Autopilot
             Autopilot.APResult output = kAutopilot.calculate(currentPose, robotRelativeSpeeds, prescoreTarget);
@@ -166,9 +174,15 @@ public class ClimbCommand extends SequentialCommandGroup {
             // Status
             SmartDashboard.putBoolean("Climb/Prescore/At_Target", kAutopilot.atTarget(currentPose, prescoreTarget));
         }, drivetrain).until(() -> {
+            Pose2d currentPose = drivetrain.getPose();
+            double yDiff = currentPose.getY() - prescorePose.getY();
+            double curveAmount = Math.toRadians(30);
+            double angleAdjustment = Math.signum(yDiff) * curveAmount;
+            Rotation2d entryAngle = prescorePose.getRotation().plus(Rotation2d.fromRadians(angleAdjustment));
+
             APTarget prescoreTarget = new APTarget(prescorePose)
-                .withEntryAngle(prescorePose.getRotation());
-            return kAutopilot.atTarget(drivetrain.getPose(), prescoreTarget);
+                .withEntryAngle(entryAngle);
+            return kAutopilot.atTarget(currentPose, prescoreTarget);
         });
     }
 
