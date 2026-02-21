@@ -32,9 +32,9 @@ public final class Constants {
     // Hold time on motor brakes when disabled
     
     public static final double WHEEL_LOCK_TIME = 10; // seconds
-    public static final double kS = 0.0994; 
-    public static final double kV = 2.4482;
-    public static final double kA = 0.1997;
+    public static final double kS = 0.186; 
+    public static final double kV = 2.004;
+    public static final double kA = 0.173;
 
     public static final double kP_translation = 2.0;
     public static final double kP_rotation = 4.0;
@@ -56,8 +56,8 @@ public final class Constants {
     public static final Translation2d BLUE_HUB_CENTER = new Translation2d(4.62, 4.03);
     public static final Translation2d RED_HUB_CENTER = new Translation2d(11.85, 4.03);
 
-    public static final double BLUE_ZONE_X = 4.0;
-    public static final double RED_ZONE_X = 12.46;
+    public static final double BLUE_ZONE_X = 4.70;
+    public static final double RED_ZONE_X = 11.84;
   }
 
   public static class OperatorConstants
@@ -132,7 +132,7 @@ public final class Constants {
 
     public static final int HOOD_ABSOLUTE_ENCODER_ID = 22;
 
-    public static final double HOOD_ABSOLUTE_ENCODER_OFFSET = -0.92; // for the 15 deg offset
+    public static final double HOOD_ABSOLUTE_ENCODER_OFFSET = -0.909; // for the 15 deg offset
   }
 
   public static final class ShooterConstants{
@@ -179,7 +179,7 @@ public final class Constants {
 
     /** PID Gains */
     public static final double kP = 5;
-    public static final double kI = 0.01;
+    public static final double kI = 0;
     public static final double kD = 0.2;
 
     /** Motion Constraints. IN DEGREES PER SECOND */
@@ -190,7 +190,7 @@ public final class Constants {
 
     /** Turret Geometry */
     public static final double MOTOR_GEAR_RATIO = 10.0; // Motor reduction ratio
-    public static final double ENCODER_GEAR_RATIO =  150.0 / 259.0 ; // Encoder reduction ratio
+    public static final double ENCODER_GEAR_RATIO =  25.0 / 42.0 ; // Encoder reduction ratio
     
 
     // Absolute encoder setup
@@ -203,25 +203,43 @@ public final class Constants {
   }
 
   public static final class IntakeConstants{
-    public static final boolean EXTENSION_ENABLED = false; // temp: set true once extension + limit switch are wired
-    public static final int EXTEND_MOTOR_ID = 15; 
-    public static final int SPIN_MOTOR_ID = 16; 
-    public static final String CAN_BUS = "Canivore";
+    public static final boolean EXTENSION_ENABLED = true; // temp: set true once extension + limit switch are wired
+    public static final int EXTEND_MOTOR_ID = 15; // TODO: set correct ID //completed
+    public static final int SPIN_MOTOR_ID = 16; // TODO: set correct ID /completed
+  public static final String CAN_BUS = "rio";
 
-    public static final int RETRACT_LIMIT_SWITCH_ID = 67; // TODO: set correct DIO port
-    public static final boolean RETRACT_LIMIT_SWITCH_INVERTED = false; // toDo: confirm if this needs to be true or false based on wiring and testing; eg, does it start as true or false when stowed.
+    public static final int RETRACT_LIMIT_SWITCH_ID = 9; // TODO: set correct DIO port
+    public static final boolean RETRACT_LIMIT_SWITCH_INVERTED = true; // toDo: confirm if this needs to be true or false based on wiring and testing; eg, does it start as true or false when stowed.
 
-    public static final boolean EXTEND_MOTOR_INVERTED = false; //TODO
-    public static final boolean SPIN_MOTOR_INVERTED = false; //TODO
+    public static final boolean EXTEND_MOTOR_INVERTED = true; //TODO
+    public static final boolean SPIN_MOTOR_INVERTED = true; //TODO update: complete
 
-    public static final double EXTEND_SPEED = 0.65; //tune
-  public static final double RETRACT_SPEED = -0.5; //tune
-    public static final double SPIN_SPEED = 0.7; //tune
-    public static final double SPRINGY_EXTEND_SPEED = 0.12; //tune
+    public static final double EXTEND_SPEED = 0.5; //tune (0.65)
+  public static final double RETRACT_SPEED = -0.5; //tune  (-0.5)
+    public static final double SPIN_SPEED = 0.7; //tune   (0.7))
+    public static final double SPRINGY_EXTEND_SPEED = 0.05; //tune
     public static final double SPRINGY_SPIN_SPEED = 0.7; //tune
 
-  public static final double MAX_EXTENSION_ROTATIONS = 60.0; // TODO: tune
-  public static final double SPRINGY_TRIGGER_ROTATIONS = 55.0; // TODO: tune
+  public static final double MAX_EXTENSION_ROTATIONS = 10.0; // TODO: tune
+  public static final double SPRINGY_TRIGGER_ROTATIONS = 5.0; // TODO: tune
+
+    // Linear actuator geometry
+    public static final double EXTEND_GEAR_RATIO = 64.0 / 14.0; // 4.57:1 motor to pinion
+    public static final double PINION_DIAMETER_INCHES = 1.751;
+    public static final double INCHES_PER_PINION_ROTATION = Math.PI * PINION_DIAMETER_INCHES;
+    public static final double MAX_EXTENSION_INCHES = 11.0;
+
+    // Motion Magic PID gains
+    public static final double EXTEND_kS = 0.1;
+    public static final double EXTEND_kV = 0.12;
+    public static final double EXTEND_kA = 0.0;
+    public static final double EXTEND_kP = 0.5;
+    public static final double EXTEND_kI = 0.0;
+    public static final double EXTEND_kD = 0.0;
+
+    // Motion Magic constraints (motor rotations/sec)
+    public static final double EXTEND_MAX_VELOCITY = 5.5;
+    public static final double EXTEND_MAX_ACCELERATION = 50.0;
 
     public static final double EXTEND_SUPPLY_CURRENT_LIMIT = 35;
     public static final double EXTEND_STATOR_CURRENT_LIMIT = 60;
@@ -231,5 +249,7 @@ public final class Constants {
 
     public static final double SPIN_SUPPLY_CURRENT_LIMIT = 30;
     public static final double SPIN_STATOR_CURRENT_LIMIT = 50;
+
+    public static final double INTAKE_RUN_TIME = 3.5;
   }
 }
