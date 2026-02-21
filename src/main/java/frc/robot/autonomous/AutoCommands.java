@@ -84,10 +84,10 @@ public class AutoCommands {
                 .onTrue(
                     Commands.sequence(
                         trenchToCenter.resetOdometry(),
-                        trenchToCenter.cmd(), // add an intake command after (or during) this.
+                        trenchToCenter.cmd(), 
                         trenchToShoot.cmd()
                             .beforeStarting(trenchToShoot.resetOdometry())
-                            .andThen(shoot()), // to simulate shooting
+                            .andThen(shoot()), 
                         trenchToCenter.cmd()
                             .beforeStarting(trenchToCenter.resetOdometry()),
                         bumpToShoot.cmd()
@@ -120,13 +120,13 @@ public class AutoCommands {
                         trenchToCenter.cmd() // add an intake command after (or during) this.
                             .beforeStarting(trenchToCenter.resetOdometry()),
                         trenchToShoot.cmd()
-                            .beforeStarting(trenchToShoot.resetOdometry())
-                            .andThen(shoot()), // to simulate shooting
+                            .beforeStarting(trenchToShoot.resetOdometry()),
+                            // .andThen(shoot()), 
                         trenchToCenter.cmd()
                             .beforeStarting(trenchToCenter.resetOdometry()),
                         trenchToClimb.cmd()
                             .beforeStarting(trenchToClimb.resetOdometry())
-                            .andThen(shoot())
+                            // .andThen(shoot())
                     )
         );
 

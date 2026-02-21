@@ -132,7 +132,7 @@ public final class Constants {
 
     public static final int HOOD_ABSOLUTE_ENCODER_ID = 22;
 
-    public static final double HOOD_ABSOLUTE_ENCODER_OFFSET = -0.909; // for the 15 deg offset
+    public static final double HOOD_ABSOLUTE_ENCODER_OFFSET = -0.645; // for the 15 deg offset
   }
 
   public static final class ShooterConstants{
@@ -161,7 +161,7 @@ public final class Constants {
     public static final boolean LEFT_FLYWHEEL_INVERTED = false; 
     public static final boolean RIGHT_FLYWHEEL_OPPOSED = true; 
 
-    public static final int FLYWHEEL_STATOR_CURRENT_LIMIT = 80;
+    public static final int FLYWHEEL_STATOR_CURRENT_LIMIT = 140;
   }
 
   public static final class TurretConstants{

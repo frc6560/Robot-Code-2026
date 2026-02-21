@@ -77,6 +77,8 @@ public class FeederIOTalonFX implements FeederIO {
             : InvertedValue.CounterClockwise_Positive;
         config.CurrentLimits.SupplyCurrentLimitEnable = true;
         config.CurrentLimits.SupplyCurrentLimit = currentLimit;
+        config.CurrentLimits.StatorCurrentLimitEnable = true;
+        config.CurrentLimits.StatorCurrentLimit = 40;
         motor.getConfigurator().apply(config);
         motor.setNeutralMode(NeutralModeValue.Brake);
     }
