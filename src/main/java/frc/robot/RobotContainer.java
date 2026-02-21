@@ -28,90 +28,117 @@ import frc.robot.subsystems.superstructure.Feeder;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import frc.robot.subsystems.vision.LimelightVision;
 import frc.robot.subsystems.vision.VisionSubsystem;
+import frc.robot.subsystems.superstructure.LEDSubsystem;
 
 
 public class RobotContainer {
 
     // Controllers
-    private final CommandXboxController driverXbox = new CommandXboxController(0);
+    private final CommandXboxController driverXbox   = new CommandXboxController(0);
     private final CommandXboxController operatorXbox = new CommandXboxController(1);
 
-     // The robot's subsystems and commands are defined here...
-    private final SwerveSubsystem drivebase  = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(),
-    "swerve/falcon"));
+    // Subsystems
+    private final SwerveSubsystem drivebase = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(),
+            "swerve/falcon"));
     private final VisionSubsystem vision;
 
-    private final Hood hood = new Hood();
+    private final Hood    hood    = new Hood();
     private final Shooter shooter = new Shooter();
-    private final Turret turret = new Turret();
-    private final Feeder feeder = new Feeder();
+    private final Turret  turret  = new Turret();
+    private final Feeder  feeder  = new Feeder();
+
+    private final LEDSubsystem leds = new LEDSubsystem();
 
     private final ShotCalculator shotCalculator = new ShotCalculator();
 
-
-    private final AutoCommands factory;
+    private final AutoCommands   factory;
     private final AutoModeChooser autoChooser;
 
     SwerveInputStream driveAngularVelocity = SwerveInputStream.of(drivebase.getSwerveDrive(),
-      () -> driverXbox.getLeftY() * -1,
-      () -> driverXbox.getLeftX() * -1)
-      .withControllerRotationAxis(() -> -driverXbox.getRightX())
-      .deadband(OperatorConstants.DEADBAND)
-      .scaleTranslation(0.8)
-      .allianceRelativeControl(true);
+            () -> driverXbox.getLeftY() * -1,
+            () -> driverXbox.getLeftX() * -1)
+            .withControllerRotationAxis(() -> -driverXbox.getRightX())
+            .deadband(OperatorConstants.DEADBAND)
+            .scaleTranslation(0.8)
+            .allianceRelativeControl(true);
 
 
     public RobotContainer() {
-      factory = new AutoCommands(drivebase);
+        factory     = new AutoCommands(drivebase);
+        autoChooser = new AutoModeChooser(factory);
+        SmartDashboard.putData("Auto Chooser", autoChooser.getAutoChooser());
 
-      autoChooser = new AutoModeChooser(factory);
-      SmartDashboard.putData("Auto Chooser", autoChooser.getAutoChooser());
+        List<LimelightVision> limelights = new ArrayList<LimelightVision>();
+        for (String name : LimelightConstants.LIMELIGHT_NAMES) {
+            Pose3d cameraPose = LimelightConstants.getLimelightPose(name);
+            limelights.add(new LimelightVision(drivebase, name, cameraPose));
+        }
 
-      List<LimelightVision> limelights = new ArrayList<LimelightVision>();
-      for(String name : LimelightConstants.LIMELIGHT_NAMES) {
-        Pose3d cameraPose = LimelightConstants.getLimelightPose(name);
-        limelights.add(new LimelightVision(drivebase, name, cameraPose));
-      }
+        vision = new VisionSubsystem(limelights);
 
-      vision = new VisionSubsystem(limelights);
-      
-      SuperstructureCommand superstructureCommand = new SuperstructureCommand(
-        hood,
-        shooter,
-        turret,
-        drivebase::getPose,
-        drivebase::getFieldVelocity,
-        shotCalculator
-      );
+        SuperstructureCommand superstructureCommand = new SuperstructureCommand(
+                hood,
+                shooter,
+                turret,
+                drivebase::getPose,
+                drivebase::getFieldVelocity,
+                shotCalculator);
 
-      hood.setDefaultCommand(superstructureCommand); // choose one of these to be default, since they all run together in the same command. might as well be hood since it's the slowest to react, and shooter and turret can keep up with it.
+        // Hood is the default command owner since it's the slowest to react
+        hood.setDefaultCommand(superstructureCommand);
 
-      configureBindings();
+        // LEDs run every loop automatically via their internal state machine —
+        // no default command needed.
+
+        configureBindings();
     }
 
     private void configureBindings() {
-        Command driveFieldOrientedAnglularVelocity = drivebase.driveFieldOriented(driveAngularVelocity);
-        drivebase.setDefaultCommand(driveFieldOrientedAnglularVelocity);
+        Command driveFieldOrientedAngularVelocity = drivebase.driveFieldOriented(driveAngularVelocity);
+        drivebase.setDefaultCommand(driveFieldOrientedAngularVelocity);
+
+        // ── Driver bindings ───────────────────────────────────────────────────
+
         driverXbox.a().onTrue(
-          Commands.defer(() -> {
-            return Commands.runOnce(() -> vision.hardReset("limelight-br"), vision);
-          }, Set.of(vision))
-        );
+                Commands.defer(() ->
+                    Commands.runOnce(() -> vision.hardReset("limelight-br"), vision),
+                Set.of(vision)));
 
         driverXbox.y()
-          .onTrue(Commands.runOnce(() -> CommandScheduler.getInstance().cancelAll()));
+                .onTrue(Commands.runOnce(() -> CommandScheduler.getInstance().cancelAll()));
+
         driverXbox.x()
-          .onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
+                .onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
+
         driverXbox.b()
-          .onTrue(Commands.runOnce(() -> CommandScheduler.getInstance().schedule(drivebase.sysIdDriveMotorCommand()), drivebase));
-        driverXbox.start().
-          onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
+                .onTrue(Commands.runOnce(() ->
+                    CommandScheduler.getInstance().schedule(drivebase.sysIdDriveMotorCommand()), drivebase));
+
+        driverXbox.start()
+                .onTrue(Commands.runOnce(drivebase::zeroNoAprilTagsGyro));
+
+        // Turret manual aim + LED shift signals
         driverXbox.leftBumper()
-          .onTrue(Commands.runOnce(() -> turret.setGoal(92)))
-          .onFalse(Commands.runOnce(() -> turret.setGoal(0)));
+                .onTrue(Commands.runOnce(() -> {
+                    turret.setGoal(92);
+                    leds.setShiftLeft(true);
+                }))
+                .onFalse(Commands.runOnce(() -> {
+                    turret.setGoal(0);
+                    leds.setShiftLeft(false);
+                }));
+
         driverXbox.rightBumper()
-          .onTrue(Commands.runOnce(() -> turret.setGoal(-92)))
-          .onFalse(Commands.runOnce(() -> turret.setGoal(0)));
+                .onTrue(Commands.runOnce(() -> {
+                    turret.setGoal(-92);
+                    leds.setShiftRight(true);
+                }))
+                .onFalse(Commands.runOnce(() -> {
+                    turret.setGoal(0);
+                    leds.setShiftRight(false);
+                }));
+
+        // ── Operator bindings ─────────────────────────────────────────────────
 
         operatorXbox.b().onTrue(Commands.runOnce(() -> {
             hood.setGoal(20.0);
@@ -122,22 +149,41 @@ public class RobotContainer {
         }, hood));
 
         operatorXbox.y()
-          .onTrue(Commands.runOnce(feeder::requestFeed, feeder))
-          .onFalse(Commands.runOnce(feeder::requestStop, feeder));
+                .onTrue(Commands.runOnce(feeder::requestFeed, feeder))
+                .onFalse(Commands.runOnce(feeder::requestStop, feeder));
 
         operatorXbox.a()
-          .onTrue(Commands.runOnce(feeder::requestStop, feeder));
+                .onTrue(Commands.runOnce(feeder::requestStop, feeder));
 
         operatorXbox.leftBumper()
-          .onTrue(Commands.run(() -> shooter.setRPM(2000.0), shooter))
-          .onFalse(Commands.run(() -> shooter.setRPM(0.0), shooter));
-        
+                .onTrue(Commands.run(() -> shooter.setRPM(2000.0), shooter))
+                .onFalse(Commands.run(() -> shooter.setRPM(0.0), shooter));
+
         operatorXbox.rightBumper()
-          .onTrue(Commands.runOnce(() -> hood.setGoal(25.0), hood))
-          .onFalse(Commands.runOnce(() -> hood.setGoal(0.0), hood));
+                .onTrue(Commands.runOnce(() -> hood.setGoal(25.0), hood))
+                .onFalse(Commands.runOnce(() -> hood.setGoal(0.0), hood));
+
+        // ── LED state updates — wired to robot mechanisms ─────────────────────
+        // TODO: replace the hood.atGoal() / feeder checks below with whatever
+        //       methods your subsystems expose for "mechanisms stowed" and
+        //       "auto stow active". These are best-guess placeholders.
+
+        // Mechanisms stowed = hood is at 0 and feeder is stopped
+        // Call this continuously via a trigger on the hood's at-goal state.
+        // If Hood exposes a BooleanSupplier, wire it like this:
+        //   new Trigger(hood::isAtHome)
+        //       .onTrue(Commands.runOnce(() -> leds.setMechanismsStowed(true)))
+        //       .onFalse(Commands.runOnce(() -> leds.setMechanismsStowed(false)));
+        //
+        // For now, update stowed state alongside hood goal changes:
+        operatorXbox.x().onTrue(Commands.runOnce(() -> leds.setMechanismsStowed(true)));
+        operatorXbox.b().onTrue(Commands.runOnce(() -> leds.setMechanismsStowed(false)));
+        operatorXbox.rightBumper()
+                .onTrue(Commands.runOnce(() -> leds.setMechanismsStowed(false)))
+                .onFalse(Commands.runOnce(() -> leds.setMechanismsStowed(true)));
     }
 
     public Command getAutonomousCommand() {
-      return autoChooser.getAutoChooser().selectedCommand();
+        return autoChooser.getAutoChooser().selectedCommand();
     }
 }
