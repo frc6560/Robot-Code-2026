@@ -93,8 +93,9 @@ public final class Constants {
             0.208, // front/back
             - 0.327, // left/right
             0.503, // height
-            new Rotation3d(0, Units.degreesToRadians(20), 0)
+            new Rotation3d(0, Units.degreesToRadians(20.46), Units.degreesToRadians(90.0))
           );
+          break;
         default:
           throw new IllegalArgumentException("Invalid limelight name. You might want to double check your configs: " + name);
       }
@@ -139,7 +140,7 @@ public final class Constants {
 
     public static final int HOOD_ABSOLUTE_ENCODER_ID = 22;
 
-    public static final double HOOD_ABSOLUTE_ENCODER_OFFSET = -0.645; // for the 15 deg offset
+    public static final double HOOD_ABSOLUTE_ENCODER_OFFSET = -0.504; // for the 15 deg offset
   }
 
   public static final class ShooterConstants{
