@@ -82,8 +82,8 @@ public class ClimbCommand extends SequentialCommandGroup {
         System.out.println("ClimbCommand initialized at Y=" + initialY);
 
         super.addCommands(
-            getDriveToPrescore(),
-            getDriveInCommand()
+            getDriveToPrescore()
+            // getDriveInCommand()  // Commented out for testing - stops at prescore position
         );
         super.addRequirements(drivetrain);
     }
@@ -113,11 +113,12 @@ public class ClimbCommand extends SequentialCommandGroup {
             Pose2d startPose = drivetrain.getPose();
             double yDiff = startPose.getY() - prescorePose.getY();
 
+            // Entry angle is 180° (traveling in -X direction) with curve adjustment
             // Curve inward: if on right side (yDiff > 0), curve left; if on left (yDiff < 0), curve right
             // Adjust the 30 degree value to control how aggressive the curve is (try 20-45 degrees)
             double curveAmount = Math.toRadians(30);
             double angleAdjustment = Math.signum(yDiff) * curveAmount;
-            Rotation2d entryAngle = prescorePose.getRotation().plus(Rotation2d.fromRadians(angleAdjustment));
+            Rotation2d entryAngle = Rotation2d.fromRadians(Math.PI + angleAdjustment);  // 180° ± curve
 
             // Create the target once with fixed entry angle
             APTarget prescoreTarget = new APTarget(prescorePose)
