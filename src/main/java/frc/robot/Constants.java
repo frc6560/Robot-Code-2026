@@ -73,7 +73,7 @@ public final class Constants {
   public static class LimelightConstants
   {
     public static final String[] LIMELIGHT_NAMES = {
-      "limelight-br",
+      "limelight-br", "limelight-cl"
     }; // one limelight for now
 
     
@@ -88,6 +88,13 @@ public final class Constants {
             new Rotation3d(0, Units.degreesToRadians(30.0), 0)
           );
           break;
+        case "limelight-cl":
+          limelightPose = new Pose3d(
+            0.208, // front/back
+            - 0.327, // left/right
+            0.503, // height
+            new Rotation3d(0, Units.degreesToRadians(20), 0)
+          );
         default:
           throw new IllegalArgumentException("Invalid limelight name. You might want to double check your configs: " + name);
       }

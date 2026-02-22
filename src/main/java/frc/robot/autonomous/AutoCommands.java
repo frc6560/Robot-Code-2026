@@ -120,13 +120,13 @@ public class AutoCommands {
                         trenchToCenter.cmd() // add an intake command after (or during) this.
                             .beforeStarting(trenchToCenter.resetOdometry()),
                         trenchToShoot.cmd()
-                            .beforeStarting(trenchToShoot.resetOdometry()),
-                            // .andThen(shoot()), 
+                            .beforeStarting(trenchToShoot.resetOdometry())
+                            .andThen(shoot()), 
                         trenchToCenter.cmd()
                             .beforeStarting(trenchToCenter.resetOdometry()),
                         trenchToClimb.cmd()
                             .beforeStarting(trenchToClimb.resetOdometry())
-                            // .andThen(shoot())
+                            .andThen(shoot())
                     )
         );
 
