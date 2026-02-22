@@ -39,6 +39,8 @@ public class Intake extends SubsystemBase {
 		config.MotorOutput.Inverted =
 				inverted ? InvertedValue.Clockwise_Positive : InvertedValue.CounterClockwise_Positive;
 		motor.getConfigurator().apply(config);
+		config.CurrentLimits.StatorCurrentLimitEnable = true;
+        config.CurrentLimits.StatorCurrentLimit = 40;
 	}
 
 	private void applyExtendCurrentLimits(boolean springy) {
