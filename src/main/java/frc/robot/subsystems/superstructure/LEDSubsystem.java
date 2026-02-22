@@ -1,20 +1,37 @@
 package frc.robot.subsystems.superstructure;
 
+import java.util.Optional;
+
 import edu.wpi.first.wpilibj.AddressableLED;
 import edu.wpi.first.wpilibj.AddressableLEDBuffer;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 /**
  * LEDSubsystem — self-contained LED state machine for FRC 2026.
  *
- * Call the setters below from your other subsystems or RobotContainer
- * to update robot state. This subsystem handles all display logic internally.
+ * What this version does:
+ *  - PREGAME (Disabled): shows READY / NOT STOWED, plus directional "shift" swipe cues
+ *    (shiftLeft/Right/Forward/Back are your driver alignment flags).
  *
- * Setup in RobotContainer:
- *   private final LEDSubsystem m_leds = new LEDSubsystem();
- *   // Then in other subsystems/commands, inject m_leds and call its setters.
+ *  - INGAME (Auto/Teleop): determines PASSING vs SHOOTING based on:
+ *      1) Your alliance (DriverStation.getAlliance())
+ *      2) 2026 game-specific message ('R' or 'B') indicating which alliance's hub is inactive first
+ *      3) Current teleop "shift segment" based on match time remaining.
+ *
+ *    Semantics:
+ *      - SHOOTING = your hub is ACTIVE
+ *      - PASSING  = your hub is INACTIVE
+ *
+ *  - Transition visualization:
+ *      - Replaces all pulse behavior with a LOADING BAR for the final LOADING_BAR_SECONDS
+ *        before a boundary where YOUR hub state flips.
+ *
+ *  - AdvantageScope telemetry:
+ *      Publishes keys under "LED/..." via SmartDashboard (NetworkTables).
  */
 public class LEDSubsystem extends SubsystemBase {
 
@@ -22,24 +39,37 @@ public class LEDSubsystem extends SubsystemBase {
     // CONFIG — adjust these to match your robot
     // ═══════════════════════════════════════════════════════════════════════════
 
-    private static final int    LED_PORT          = 9;    // PWM port
-    private static final int    LED_LENGTH        = 60;   // Total LED count
+    private static final int LED_PORT   = 9;   // PWM port
+    private static final int LED_LENGTH = 60;  // Total LED count
 
-    // Match time windows (seconds remaining in match)
-    private static final double PASSING_START     = 135.0;
-    private static final double PASSING_END       = 105.0;
-    private static final double SHOOTING_END      =  30.0;
-    // Climb period = everything below SHOOTING_END
+    /** Seconds before a hub-state flip to show loading bar (change this freely) */
+    private static final double LOADING_BAR_SECONDS = 2.0;
 
-    // Pulse ramp starts this many seconds before a period transition
-    private static final double PULSE_THRESHOLD   = 5.0;
+    // Swipe animation (pregame directional shifts)
+    private static final double SWIPE_STEP_SEC = 0.03; // seconds per LED step
+    private static final int    SWIPE_TRAIL    = 12;   // LEDs in the trail
 
-    // Swipe animation
-    private static final double SWIPE_STEP_SEC    = 0.03; // seconds per LED step
-    private static final int    SWIPE_TRAIL       = 12;   // LEDs in the trail
+    // ═══════════════════════════════════════════════════════════════════════════
+    // REBUILT TELEOP "ALLIANCE SHIFT" TIMING (seconds remaining shown on DS)
+    //
+    // Teleop time typically counts down from ~135 to 0.
+    //
+    // TRANSITION: 2:20–2:10  => 140..130 (but teleop starts around 135; we treat >130 as transition)
+    // SHIFT 1:    2:10–1:45  => 130..105
+    // SHIFT 2:    1:45–1:20  => 105..80
+    // SHIFT 3:    1:20–0:55  => 80..55
+    // SHIFT 4:    0:55–0:30  => 55..30
+    // ENDGAME:    0:30–0:00  => 30..0
+    //
+    // NOTE: If your event uses different breakpoints, only change these constants.
+    // ═══════════════════════════════════════════════════════════════════════════
 
-    // Pulse animation
-    private static final double PULSE_BASE_PERIOD = 1.0;  // seconds per cycle at 1x speed
+    private static final double TELEOP_TRANSITION_END = 130.0;
+    private static final double SHIFT_1_END           = 105.0;
+    private static final double SHIFT_2_END           =  80.0;
+    private static final double SHIFT_3_END           =  55.0;
+    private static final double SHIFT_4_END           =  30.0;
+    private static final double ENDGAME_END           =   0.0;
 
     // ═══════════════════════════════════════════════════════════════════════════
     // ENUMS
@@ -47,6 +77,17 @@ public class LEDSubsystem extends SubsystemBase {
 
     /** Top-level robot phase, driven by DriverStation */
     private enum RobotPhase { PREGAME, INGAME, OFF }
+
+    /** Teleop segments for 2026 alliance shifts */
+    private enum TeleopSegment {
+        UNKNOWN,
+        TRANSITION,
+        SHIFT_1,
+        SHIFT_2,
+        SHIFT_3,
+        SHIFT_4,
+        ENDGAME
+    }
 
     /** All possible LED output states */
     private enum LEDState {
@@ -58,12 +99,17 @@ public class LEDSubsystem extends SubsystemBase {
         PREGAME_SHIFT_FORWARD,
         PREGAME_SHIFT_BACK,
 
-        // InGame
-        PASSING_PERIOD,
-        SHOOTING_PERIOD,
+        // InGame (mechanism overrides)
         CLIMB_ACTUATING,
         CLIMB_AUTO_ALIGN,
         AUTO_STOW_ACTIVATED,
+
+        // InGame (gameplay)
+        HUB_ACTIVE_SHOOT,
+        HUB_INACTIVE_PASS,
+        LOADING_TO_ACTIVE,
+        LOADING_TO_INACTIVE,
+        GAME_DATA_UNKNOWN,
 
         OFF
     }
@@ -87,17 +133,34 @@ public class LEDSubsystem extends SubsystemBase {
     private boolean autoStowActive   = false;
     private boolean climbActuating   = false;
     private boolean autoAlignActive  = false;
-    private boolean shiftLeft        = false;
-    private boolean shiftRight       = false;
-    private boolean shiftForward     = false;
-    private boolean shiftBack        = false;
+
+    // Driver “directional shift” cues (NOT the 2026 alliance shifts)
+    private boolean shiftLeft    = false;
+    private boolean shiftRight   = false;
+    private boolean shiftForward = false;
+    private boolean shiftBack    = false;
 
     // ═══════════════════════════════════════════════════════════════════════════
     // INTERNAL STATE MACHINE
     // ═══════════════════════════════════════════════════════════════════════════
 
-    private LEDState currentState    = LEDState.OFF;
-    private LEDState previousState   = null;
+    private LEDState currentState  = LEDState.OFF;
+    private LEDState previousState = null;
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // AdvantageScope / NT telemetry snapshot
+    // ═══════════════════════════════════════════════════════════════════════════
+    private String  t_alliance               = "Unknown";
+    private String  t_gameData               = "";
+    private String  t_inactiveFirstAlliance  = "Unknown";
+    private String  t_teleopSegment          = "Unknown";
+    private boolean t_myHubActive            = false;
+
+    private boolean t_loadingBarActive       = false;
+    private boolean t_loadingToActive        = false;
+    private double  t_loadingProgress        = 0.0;
+
+    private double  t_timeToNextBoundary     = -1.0;
 
     // ═══════════════════════════════════════════════════════════════════════════
     // CONSTRUCTOR
@@ -109,6 +172,7 @@ public class LEDSubsystem extends SubsystemBase {
         led.setLength(LED_LENGTH);
         led.setData(buffer);
         led.start();
+
         animTimer.start();
     }
 
@@ -120,6 +184,7 @@ public class LEDSubsystem extends SubsystemBase {
     public void setAutoStowActive(boolean active)     { this.autoStowActive   = active; }
     public void setClimbActuating(boolean actuating)  { this.climbActuating   = actuating; }
     public void setAutoAlignActive(boolean active)    { this.autoAlignActive  = active; }
+
     public void setShiftLeft(boolean active)          { this.shiftLeft        = active; }
     public void setShiftRight(boolean active)         { this.shiftRight       = active; }
     public void setShiftForward(boolean active)       { this.shiftForward     = active; }
@@ -135,11 +200,12 @@ public class LEDSubsystem extends SubsystemBase {
         transitionIfNeeded(nextState);
         renderState();
         led.setData(buffer);
+
+        publishTelemetry();
     }
 
     // ── State resolution ──────────────────────────────────────────────────────
 
-    /** Determines what state we should be in given current robot + match conditions */
     private LEDState resolveState() {
         RobotPhase phase = resolvePhase();
 
@@ -151,13 +217,13 @@ public class LEDSubsystem extends SubsystemBase {
     }
 
     private RobotPhase resolvePhase() {
-        if (DriverStation.isDisabled())                                  return RobotPhase.PREGAME;
-        if (DriverStation.isTeleop() || DriverStation.isAutonomous())    return RobotPhase.INGAME;
+        if (DriverStation.isDisabled())                               return RobotPhase.PREGAME;
+        if (DriverStation.isTeleop() || DriverStation.isAutonomous()) return RobotPhase.INGAME;
         return RobotPhase.OFF;
     }
 
     private LEDState resolvePreGameState() {
-        // Directional shifts take highest priority
+        // Directional shifts take highest priority (driver alignment cues)
         if (shiftLeft)    return LEDState.PREGAME_SHIFT_LEFT;
         if (shiftRight)   return LEDState.PREGAME_SHIFT_RIGHT;
         if (shiftForward) return LEDState.PREGAME_SHIFT_FORWARD;
@@ -171,23 +237,195 @@ public class LEDSubsystem extends SubsystemBase {
         // Auto stow overrides everything
         if (autoStowActive) return LEDState.AUTO_STOW_ACTIVATED;
 
-        // Climb states
+        // Climb states override gameplay
         if (climbActuating) {
             return autoAlignActive ? LEDState.CLIMB_AUTO_ALIGN : LEDState.CLIMB_ACTUATING;
         }
 
-        // Period-based state
-        return resolveMatchPeriodState();
+        // Gameplay-based state
+        return resolveHubGameplayState();
     }
 
-    private LEDState resolveMatchPeriodState() {
-        double t = DriverStation.getMatchTime();
+    /**
+     * Determines PASSING vs SHOOTING based on:
+     *  - DriverStation alliance
+     *  - game-specific message ('R'/'B' = alliance whose hub is inactive first)
+     *  - current teleop shift segment based on match time
+     *
+     * Also determines when to show loading bar for flips.
+     */
+    private LEDState resolveHubGameplayState() {
+        // Reset telemetry defaults each loop (so stale values don't persist)
+        t_gameData              = safeString(DriverStation.getGameSpecificMessage());
+        t_alliance              = "Unknown";
+        t_inactiveFirstAlliance = "Unknown";
+        t_teleopSegment         = "Unknown";
+        t_myHubActive           = false;
+        t_loadingBarActive      = false;
+        t_loadingToActive       = false;
+        t_loadingProgress       = 0.0;
+        t_timeToNextBoundary    = -1.0;
 
-        if (t < 0)              return LEDState.PASSING_PERIOD; // timer not yet valid
-        if (t >= PASSING_START) return LEDState.PASSING_PERIOD;
-        if (t >= PASSING_END)   return LEDState.PASSING_PERIOD;
-        if (t >= SHOOTING_END)  return LEDState.SHOOTING_PERIOD;
-        return LEDState.CLIMB_ACTUATING;
+        // AUTO: treat as active (both hubs active)
+        if (DriverStation.isAutonomous()) {
+            t_myHubActive = true;
+            return LEDState.HUB_ACTIVE_SHOOT;
+        }
+
+        // Only compute segments in teleop
+        if (!DriverStation.isTeleop()) {
+            return LEDState.GAME_DATA_UNKNOWN;
+        }
+
+        Optional<Alliance> myAllianceOpt = DriverStation.getAlliance();
+        if (myAllianceOpt.isEmpty()) {
+            return LEDState.GAME_DATA_UNKNOWN;
+        }
+        Alliance myAlliance = myAllianceOpt.get();
+        t_alliance = (myAlliance == Alliance.Blue) ? "Blue" : "Red";
+
+        double t = DriverStation.getMatchTime();
+        TeleopSegment seg = getTeleopSegment(t);
+        t_teleopSegment = seg.name();
+
+        // TRANSITION + ENDGAME: both hubs active
+        if (seg == TeleopSegment.TRANSITION || seg == TeleopSegment.ENDGAME) {
+            t_myHubActive = true;
+            return LEDState.HUB_ACTIVE_SHOOT;
+        }
+
+        // Unknown time
+        if (seg == TeleopSegment.UNKNOWN) {
+            return LEDState.GAME_DATA_UNKNOWN;
+        }
+
+        Optional<Alliance> inactiveFirstOpt = parseInactiveFirstAlliance(t_gameData);
+        if (inactiveFirstOpt.isEmpty()) {
+            return LEDState.GAME_DATA_UNKNOWN;
+        }
+        Alliance inactiveFirst = inactiveFirstOpt.get();
+        t_inactiveFirstAlliance = (inactiveFirst == Alliance.Blue) ? "Blue" : "Red";
+
+        boolean activeNow = isMyHubActiveDuringShift(myAlliance, inactiveFirst, seg);
+        t_myHubActive = activeNow;
+
+        // Determine time to next boundary and whether we should show loading bar
+        double timeToBoundary = secondsUntilNextBoundary(t, seg);
+        t_timeToNextBoundary = timeToBoundary;
+
+        if (timeToBoundary >= 0.0 && timeToBoundary <= LOADING_BAR_SECONDS) {
+            TeleopSegment nextSeg = nextTeleopSegment(seg);
+
+            boolean activeAfter;
+            if (nextSeg == TeleopSegment.TRANSITION || nextSeg == TeleopSegment.ENDGAME) {
+                activeAfter = true; // both active
+            } else if (nextSeg == TeleopSegment.SHIFT_1 || nextSeg == TeleopSegment.SHIFT_2
+                    || nextSeg == TeleopSegment.SHIFT_3 || nextSeg == TeleopSegment.SHIFT_4) {
+                activeAfter = isMyHubActiveDuringShift(myAlliance, inactiveFirst, nextSeg);
+            } else {
+                activeAfter = activeNow;
+            }
+
+            // Only show loading bar if our hub state actually flips at this boundary
+            if (activeAfter != activeNow) {
+                t_loadingBarActive = true;
+                t_loadingToActive  = (activeAfter && !activeNow);
+                t_loadingProgress  = clamp(1.0 - (timeToBoundary / LOADING_BAR_SECONDS), 0.0, 1.0);
+
+                return t_loadingToActive ? LEDState.LOADING_TO_ACTIVE : LEDState.LOADING_TO_INACTIVE;
+            }
+        }
+
+        return activeNow ? LEDState.HUB_ACTIVE_SHOOT : LEDState.HUB_INACTIVE_PASS;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 2026 SHIFT HELPERS
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    private TeleopSegment getTeleopSegment(double matchTimeRemainingSeconds) {
+        // DS can return <0 when not synced/valid
+        if (matchTimeRemainingSeconds < 0) return TeleopSegment.UNKNOWN;
+
+        // Treat >130 as transition (teleop begins around ~135)
+        if (matchTimeRemainingSeconds > TELEOP_TRANSITION_END) return TeleopSegment.TRANSITION;
+        if (matchTimeRemainingSeconds > SHIFT_1_END)           return TeleopSegment.SHIFT_1;
+        if (matchTimeRemainingSeconds > SHIFT_2_END)           return TeleopSegment.SHIFT_2;
+        if (matchTimeRemainingSeconds > SHIFT_3_END)           return TeleopSegment.SHIFT_3;
+        if (matchTimeRemainingSeconds > SHIFT_4_END)           return TeleopSegment.SHIFT_4;
+        if (matchTimeRemainingSeconds >= ENDGAME_END)          return TeleopSegment.ENDGAME;
+
+        return TeleopSegment.UNKNOWN;
+    }
+
+    private TeleopSegment nextTeleopSegment(TeleopSegment seg) {
+        return switch (seg) {
+            case TRANSITION -> TeleopSegment.SHIFT_1;
+            case SHIFT_1    -> TeleopSegment.SHIFT_2;
+            case SHIFT_2    -> TeleopSegment.SHIFT_3;
+            case SHIFT_3    -> TeleopSegment.SHIFT_4;
+            case SHIFT_4    -> TeleopSegment.ENDGAME;
+            case ENDGAME    -> TeleopSegment.ENDGAME;
+            default         -> TeleopSegment.UNKNOWN;
+        };
+    }
+
+    /**
+     * Seconds until the next segment boundary (when match time crosses the next "*_END" value).
+     * Returns -1 if unknown.
+     */
+    private double secondsUntilNextBoundary(double matchTimeRemainingSeconds, TeleopSegment seg) {
+        if (matchTimeRemainingSeconds < 0) return -1.0;
+
+        double boundary = switch (seg) {
+            case TRANSITION -> TELEOP_TRANSITION_END;
+            case SHIFT_1    -> SHIFT_1_END;
+            case SHIFT_2    -> SHIFT_2_END;
+            case SHIFT_3    -> SHIFT_3_END;
+            case SHIFT_4    -> SHIFT_4_END;
+            case ENDGAME    -> ENDGAME_END;
+            default         -> -1.0;
+        };
+
+        if (boundary < 0) return -1.0;
+        return matchTimeRemainingSeconds - boundary;
+    }
+
+    /**
+     * Game Data parsing:
+     * Expects first char of message to be:
+     *  - 'R' => Red hub inactive first (SHIFT 1)
+     *  - 'B' => Blue hub inactive first (SHIFT 1)
+     */
+    private Optional<Alliance> parseInactiveFirstAlliance(String gameData) {
+        if (gameData == null || gameData.isEmpty()) return Optional.empty();
+
+        char c = Character.toUpperCase(gameData.charAt(0));
+        if (c == 'R') return Optional.of(Alliance.Red);
+        if (c == 'B') return Optional.of(Alliance.Blue);
+        return Optional.empty();
+    }
+
+    /**
+     * Hub activity during SHIFT 1–4.
+     *
+     * This encodes the pattern:
+     *  - inactiveFirst alliance hub is INACTIVE in SHIFT 1 and SHIFT 3, ACTIVE in SHIFT 2 and SHIFT 4
+     *  - the other alliance is the opposite during SHIFT 1–4
+     *
+     * Outside SHIFT 1–4, we treat both hubs active (handled elsewhere).
+     */
+    private boolean isMyHubActiveDuringShift(Alliance myAlliance, Alliance inactiveFirst, TeleopSegment seg) {
+        boolean inactiveFirstActive = switch (seg) {
+            case SHIFT_1 -> false;
+            case SHIFT_2 -> true;
+            case SHIFT_3 -> false;
+            case SHIFT_4 -> true;
+            default      -> true;
+        };
+
+        boolean myIsInactiveFirst = (myAlliance == inactiveFirst);
+        return myIsInactiveFirst ? inactiveFirstActive : !inactiveFirstActive;
     }
 
     // ── State transition ──────────────────────────────────────────────────────
@@ -215,85 +453,68 @@ public class LEDSubsystem extends SubsystemBase {
             case PREGAME_SHIFT_FORWARD -> animateSwipe(SwipeDirection.INWARD,  255, 255, 255);
             case PREGAME_SHIFT_BACK    -> animateSwipe(SwipeDirection.OUTWARD, 255, 255, 255);
 
-            // ── InGame ───────────────────────────────────────────────────────
-            case PASSING_PERIOD -> {
-                if (isNearTransition()) animatePulse(255, 255, 255, pulseMultiplier());
-                else                    setSolid(255, 255, 255);
-            }
-            case SHOOTING_PERIOD -> {
-                if (isNearTransition()) animatePulse(0, 255, 255, pulseMultiplier());
-                else                    setSolid(0, 255, 255);
-            }
-            case CLIMB_ACTUATING  -> setSolid(0, 0, 255);
-            case CLIMB_AUTO_ALIGN -> animatePulse(0, 0, 255, 2.0); // fixed 2x speed pulse
+            // ── Mechanism overrides ─────────────────────────────────────────
             case AUTO_STOW_ACTIVATED -> setSolid(255, 0, 0);
+            case CLIMB_ACTUATING     -> setSolid(0, 0, 255);
+            case CLIMB_AUTO_ALIGN    -> setSolid(0, 0, 255); // (no pulse; keep simple)
 
-            case OFF -> setSolid(0, 0, 0);
+            // ── Gameplay (no pulses; only solids + loading bar) ─────────────
+            case HUB_ACTIVE_SHOOT   -> setSolid(0, 255, 255);   // cyan
+            case HUB_INACTIVE_PASS  -> setSolid(255, 255, 255); // white
+
+            case LOADING_TO_ACTIVE   -> renderLoadingBar(/*toActive=*/true);
+            case LOADING_TO_INACTIVE -> renderLoadingBar(/*toActive=*/false);
+
+            case GAME_DATA_UNKNOWN  -> setSolid(255, 165, 0);   // orange
+            case OFF                -> setSolid(0, 0, 0);
         }
     }
 
-    // ── Pulse helpers ─────────────────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════════════
+    // LOADING BAR (transition animation)
+    // ═══════════════════════════════════════════════════════════════════════════
 
-    /** True when we're within PULSE_THRESHOLD seconds of the next period transition */
-    private boolean isNearTransition() {
-        double t = DriverStation.getMatchTime();
-        if (t < 0) return false;
-        double nearest = nearestUpcomingBoundary(t);
-        double timeToTransition = t - nearest;
-        return timeToTransition >= 0 && timeToTransition <= PULSE_THRESHOLD;
-    }
+    private void renderLoadingBar(boolean toActive) {
+        // Choose bar color based on where we're going:
+        //  - toActive => cyan (shoot)
+        //  - toInactive => white (pass)
+        int r = toActive ? 0   : 255;
+        int g = toActive ? 255 : 255;
+        int b = toActive ? 255 : 255;
 
-    /**
-     * Ramps from 1x → (1 + PULSE_THRESHOLD)x as we approach the boundary.
-     * e.g. with PULSE_THRESHOLD = 5: 1x at 5s out, 6x at 0s.
-     */
-    private double pulseMultiplier() {
-        double t = DriverStation.getMatchTime();
-        if (t < 0) return 1.0;
-        double nearest = nearestUpcomingBoundary(t);
-        double timeToTransition = Math.max(0, t - nearest);
-        return 1.0 + (PULSE_THRESHOLD - timeToTransition);
-    }
+        // Use the telemetry progress if we computed it; otherwise compute locally
+        double progress = t_loadingProgress;
 
-    /** Returns the next period-end time boundary that match time will cross */
-    private double nearestUpcomingBoundary(double t) {
-        if (t > PASSING_END)  return PASSING_END;
-        if (t > SHOOTING_END) return SHOOTING_END;
-        return 0.0;
+        if (!t_loadingBarActive) {
+            // Fallback compute
+            double t = DriverStation.getMatchTime();
+            TeleopSegment seg = getTeleopSegment(t);
+            double dt = secondsUntilNextBoundary(t, seg);
+            if (dt >= 0.0) {
+                progress = clamp(1.0 - (dt / LOADING_BAR_SECONDS), 0.0, 1.0);
+            } else {
+                progress = 1.0;
+            }
+        }
+
+        int lit = (int)Math.round(progress * LED_LENGTH);
+
+        for (int i = 0; i < LED_LENGTH; i++) {
+            if (i < lit) buffer.setRGB(i, r, g, b);
+            else         buffer.setRGB(i, 0, 0, 0);
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
     // ANIMATION PRIMITIVES
     // ═══════════════════════════════════════════════════════════════════════════
 
-    /** Solid fill */
     private void setSolid(int r, int g, int b) {
         for (int i = 0; i < LED_LENGTH; i++) {
             buffer.setRGB(i, r, g, b);
         }
     }
 
-    /** Sine-wave brightness pulse. multiplier speeds up the cycle. */
-    private void animatePulse(int r, int g, int b, double multiplier) {
-        double period     = PULSE_BASE_PERIOD / Math.max(1.0, multiplier);
-        double brightness = (Math.sin(2 * Math.PI * animTimer.get() / period) + 1.0) / 2.0;
-        for (int i = 0; i < LED_LENGTH; i++) {
-            buffer.setRGB(i,
-                (int)(r * brightness),
-                (int)(g * brightness),
-                (int)(b * brightness));
-        }
-    }
-
-    /**
-     * Moving swipe with a fading trail. Loops continuously.
-     *
-     * LED layout assumption:
-     *   Index 0 → (LED_LENGTH/2 - 1) : left side  (front → back)
-     *   Index LED_LENGTH/2 → LED_LENGTH-1 : right side (front → back)
-     *
-     * Modify mapSwipeIndex() to match your robot's actual wiring.
-     */
     private void animateSwipe(SwipeDirection dir, int r, int g, int b) {
         int head = (int)(animTimer.get() / SWIPE_STEP_SEC) % LED_LENGTH;
 
@@ -311,10 +532,8 @@ public class LEDSubsystem extends SubsystemBase {
     }
 
     /**
-     * Maps a logical index to a physical LED index based on swipe direction.
-     * Assumes strip is split: first half = left side, second half = right side.
-     *
-     * ⚠️ Modify this to match your robot's LED wiring layout.
+     * Modify this to match your wiring layout.
+     * Assumes: first half = left side, second half = right side.
      */
     private int mapSwipeIndex(int i, SwipeDirection dir) {
         int half = LED_LENGTH / 2;
@@ -324,5 +543,44 @@ public class LEDSubsystem extends SubsystemBase {
             case INWARD  -> (i < half) ? i : (LED_LENGTH - 1) - (i - half);
             case OUTWARD -> (i < half) ? (half - 1) - i : half + (LED_LENGTH - 1 - i);
         };
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // TELEMETRY (AdvantageScope via NetworkTables)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    private void publishTelemetry() {
+        SmartDashboard.putString("LED/State", currentState.name());
+        SmartDashboard.putString("LED/PrevState", previousState == null ? "null" : previousState.name());
+
+        SmartDashboard.putString("LED/Alliance", t_alliance);
+        SmartDashboard.putString("LED/GameData", t_gameData);
+        SmartDashboard.putString("LED/InactiveFirstAlliance", t_inactiveFirstAlliance);
+        SmartDashboard.putString("LED/TeleopSegment", t_teleopSegment);
+
+        SmartDashboard.putBoolean("LED/MyHubActive", t_myHubActive);
+
+        SmartDashboard.putBoolean("LED/IsLoadingBar", t_loadingBarActive);
+        SmartDashboard.putBoolean("LED/LoadingToActive", t_loadingToActive);
+        SmartDashboard.putNumber("LED/LoadingProgress", t_loadingProgress);
+        SmartDashboard.putNumber("LED/TimeToNextBoundary", t_timeToNextBoundary);
+
+        SmartDashboard.putNumber("LED/MatchTime", DriverStation.getMatchTime());
+        SmartDashboard.putBoolean("LED/Teleop", DriverStation.isTeleop());
+        SmartDashboard.putBoolean("LED/Auto", DriverStation.isAutonomous());
+        SmartDashboard.putBoolean("LED/Disabled", DriverStation.isDisabled());
+        SmartDashboard.putBoolean("LED/FMSAttached", DriverStation.isFMSAttached());
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SMALL UTILS
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    private static double clamp(double v, double lo, double hi) {
+        return Math.max(lo, Math.min(hi, v));
+    }
+
+    private static String safeString(String s) {
+        return (s == null) ? "" : s;
     }
 }
