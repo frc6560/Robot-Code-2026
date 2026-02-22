@@ -51,6 +51,7 @@ import frc.robot.subsystems.intake.IntakeIOSim;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import frc.robot.subsystems.vision.LimelightVision;
 import frc.robot.subsystems.vision.VisionSubsystem;
+import frc.robot.commands.ClimbCommand;
 
 
 public class RobotContainer {
@@ -141,15 +142,15 @@ public class RobotContainer {
           }, Set.of(vision))
         );
 
-        driverXbox.y()
-          .onTrue(Commands.runOnce(() -> CommandScheduler.getInstance().cancelAll()));
+        // driverXbox.y()
+        //   .onTrue(Commands.runOnce(() -> CommandScheduler.getInstance().cancelAll()));
         driverXbox.x()
           .onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
         driverXbox.b()
           .onTrue(Commands.runOnce(() -> CommandScheduler.getInstance().schedule(drivebase.sysIdDriveMotorCommand()), drivebase));
         driverXbox.start().
           onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
-
+        driverXbox.y().onTrue(Commands.defer(() -> new ClimbCommand(drivebase), Set.of(drivebase)));
 
         driverXbox.rightBumper()
           .onTrue(Commands.runOnce(feeder::requestFeed, feeder))
