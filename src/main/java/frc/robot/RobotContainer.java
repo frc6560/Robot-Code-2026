@@ -4,6 +4,7 @@ import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
+import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
@@ -40,6 +41,7 @@ import frc.robot.subsystems.turret.Turret;
 import frc.robot.subsystems.turret.TurretIO;
 import frc.robot.subsystems.turret.TurretIOTalonFX;
 import frc.robot.subsystems.turret.TurretIOSim;
+import frc.robot.subsystems.climb.Climb.ClimbState;
 import frc.robot.subsystems.feeder.Feeder;
 import frc.robot.subsystems.feeder.FeederIO;
 import frc.robot.subsystems.feeder.FeederIOTalonFX;
@@ -51,6 +53,11 @@ import frc.robot.subsystems.intake.IntakeIOSim;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import frc.robot.subsystems.vision.LimelightVision;
 import frc.robot.subsystems.vision.VisionSubsystem;
+import frc.robot.subsystems.climb.Climb.ClimbState;
+import frc.robot.subsystems.climb.Climb;
+import frc.robot.subsystems.climb.ClimbIO;
+import frc.robot.subsystems.climb.ClimbIOKraken;
+import frc.robot.subsystems.climb.ClimbIOSim;
 
 
 public class RobotContainer {
@@ -69,6 +76,7 @@ public class RobotContainer {
     private final Turret turret;
     private final Feeder feeder;
     private final Intake intake;
+    private final Climb climb; 
 
     private final ShotCalculator shotCalculator = new ShotCalculator();
 
@@ -97,12 +105,14 @@ public class RobotContainer {
         turret = new Turret(new TurretIOTalonFX());
         feeder = new Feeder(new FeederIOTalonFX());
         intake = new Intake(new IntakeIOTalonFX());
+        climb = new Climb(new ClimbIOKraken());
       } else {
         hood = new Hood(new HoodIOSim());
         shooter = new Shooter(new ShooterIOSim());
         turret = new Turret(new TurretIOSim());
         feeder = new Feeder(new FeederIOSim());
         intake = new Intake(new IntakeIOSim());
+        climb = new Climb(new ClimbIOSim());
       }
 
       factory = new AutoCommands(drivebase, feeder, intake);
@@ -158,6 +168,17 @@ public class RobotContainer {
         driverXbox.leftBumper()
           .onTrue(Commands.runOnce(intake::setExtensionMode, intake))
           .onFalse(Commands.runOnce(intake::setIdleMode, intake));
+
+  
+  
+        climb.setDefaultCommand(new RunCommand(() -> climb.setState(ClimbState.BOTH_DOWN), climb));
+
+        // Changed operatorController to operatorXbox
+        operatorXbox.rightBumper().whileTrue(climb.autoClimbRoutine());
+
+        operatorXbox.povLeft().whileTrue(new RunCommand(() -> climb.setState(ClimbState.LEFT_REACH), climb));
+        operatorXbox.povRight().whileTrue(new RunCommand(() -> climb.setState(ClimbState.RIGHT_REACH), climb));
+        operatorXbox.povDown().whileTrue(new RunCommand(() -> climb.setState(ClimbState.MEET_MIDDLE), climb));
     }
 
     public Command getAutonomousCommand() {

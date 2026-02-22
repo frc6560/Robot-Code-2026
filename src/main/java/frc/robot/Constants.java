@@ -253,4 +253,34 @@ public final class Constants {
 
     public static final double INTAKE_RUN_TIME = 3.5;
   }
+
+  public static final class ClimbConstants {
+        public static final boolean CLIMB_ENABLED = true;
+        
+        // Motor & Sensor IDs
+        public static final int LEFT_MOTOR_ID = 15;
+        public static final int RIGHT_MOTOR_ID = 16;
+        public static final int LEFT_LIMIT_SWITCH_ID = 4;
+        public static final int RIGHT_LIMIT_SWITCH_ID = 5;
+        public static final String CAN_BUS = "rio";
+        
+        public static final boolean LEFT_MOTOR_INVERTED = false;
+        public static final boolean RIGHT_MOTOR_INVERTED = true; 
+        public static final boolean LIMIT_SWITCH_INVERTED = false;
+
+        // Motion Magic / PID
+        public static final double kP = 2.0;
+        public static final double kI = 0.0;
+        public static final double kD = 0.1;
+        public static final double kV = 0.12;
+        public static final double CRUISE_VELOCITY_RPS = 40.0;
+        public static final double ACCELERATION_RPS2 = 80.0;
+
+        
+        public static final double RETRACTED_ROTATIONS = 0.0; // Fully pulled down (Limit Switch)
+        public static final double MID_ROTATIONS = 40.0;      // Arms meeting in the middle to pull robot up
+        public static final double EXTEND_ROTATIONS = 80.0;   // Reaching up for the next rung
+        
+        public static final double POSITION_TOLERANCE = 2.0;  // How close to target before advancing sequence
+    }
 }
