@@ -35,10 +35,10 @@ public class AutoModeChooser {
                 routine = m_CommandFactory.getNoAuto();
                 name = "Idle";
                 break;
-            case TEST_BUMP:
-                routine = m_CommandFactory.getTestBump();
-                name = "Bump Test";
-                break;
+            // case TEST_BUMP:
+            //     routine = m_CommandFactory.getTestBump();
+            //     name = "Bump Test";
+            //     break;
             case TEST_TRENCH:
                 routine = m_CommandFactory.getTestTrench();
                 name = "Trench Test";
@@ -46,6 +46,10 @@ public class AutoModeChooser {
             default:
                 routine = m_CommandFactory.getNoAuto();
                 name = "Idle";
+                break;
+            case TEST_TRENCH_L:
+                routine = m_CommandFactory.getTestTrenchL();
+                name = "Trench Test left";
                 break;
         }
         return new Pair<>(name, routine);

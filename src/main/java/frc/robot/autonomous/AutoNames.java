@@ -4,5 +4,6 @@ package frc.robot.autonomous;
 public enum AutoNames {
     IDLE,
     TEST_BUMP,
-    TEST_TRENCH
+    TEST_TRENCH,
+    TEST_TRENCH_L
 }

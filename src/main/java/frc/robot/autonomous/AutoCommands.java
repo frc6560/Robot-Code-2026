@@ -49,57 +49,57 @@ public class AutoCommands {
         return IDLE;
     }
 
-    public Command shoot(){
-        return Commands.run(() -> feeder.requestFeed(), feeder)
-            .withTimeout(3.0)
-            .finallyDo((interrupted) -> {
-                feeder.requestStop();
-            });
-    }
+    // public Command shoot(){
+    //     return Commands.run(() -> feeder.requestFeed(), feeder)
+    //         .withTimeout(3.0)
+    //         .finallyDo((interrupted) -> {
+    //             feeder.requestStop();
+    //         });
+    // }
 
-    public Command intake(){
-        return Commands.run(() -> intake.setExtensionMode(), intake)
-            .withTimeout(IntakeConstants.INTAKE_RUN_TIME)
-            .finallyDo((interrupted) -> {
-                intake.setIdleMode();
-            });
-    }
+    // public Command intake(){
+    //     return Commands.run(() -> intake.setExtensionMode(), intake)
+    //         .withTimeout(IntakeConstants.INTAKE_RUN_TIME)
+    //         .finallyDo((interrupted) -> {
+    //             intake.setIdleMode();
+    //         });
+    // }
 
     /** Test auto on HP side. Should be comp level accuracy. */
-    public AutoRoutine getTestBump(){
-        AutoRoutine testRoutine = autoFactory.newRoutine("testBump");
+    // public AutoRoutine getTestBump(){
+    //     AutoRoutine testRoutine = autoFactory.newRoutine("testBump");
         
-        AutoTrajectory trenchToCenter = testRoutine.trajectory("hpTrenchToCenter");
-        AutoTrajectory trenchToShoot = testRoutine.trajectory("hpTrenchToShoot");
-        AutoTrajectory bumpToShoot = testRoutine.trajectory("hpBumpToShoot");
-        AutoTrajectory climb = testRoutine.trajectory("hpClimb");
+    //     AutoTrajectory trenchToCenter = testRoutine.trajectory("hpTrenchToCenter");
+    //     AutoTrajectory trenchToShoot = testRoutine.trajectory("hpTrenchToShoot");
+    //     AutoTrajectory bumpToShoot = testRoutine.trajectory("hpBumpToShoot");
+    //     AutoTrajectory climb = testRoutine.trajectory("hpClimb");
 
-        trenchToCenter.atTime("intake")
-            .onTrue(
-                intake()
-            );
+    //     trenchToCenter.atTime("intake")
+    //         .onTrue(
+    //             intake()
+    //         );
 
-        testRoutine
-            .active()
-                .onTrue(
-                    Commands.sequence(
-                        trenchToCenter.resetOdometry(),
-                        trenchToCenter.cmd(), 
-                        trenchToShoot.cmd()
-                            .beforeStarting(trenchToShoot.resetOdometry())
-                            .andThen(shoot()), 
-                        trenchToCenter.cmd()
-                            .beforeStarting(trenchToCenter.resetOdometry()),
-                        bumpToShoot.cmd()
-                            .beforeStarting(bumpToShoot.resetOdometry())
-                            .andThen(shoot()),
-                        climb.cmd()
-                            .beforeStarting(climb.resetOdometry())
-                    )
-        );
+    //     testRoutine
+    //         .active()
+    //             .onTrue(
+    //                 Commands.sequence(
+    //                     trenchToCenter.resetOdometry(),
+    //                     trenchToCenter.cmd(), 
+    //                     trenchToShoot.cmd()
+    //                         .beforeStarting(trenchToShoot.resetOdometry())
+    //                         .andThen(shoot()), 
+    //                     trenchToCenter.cmd()
+    //                         .beforeStarting(trenchToCenter.resetOdometry()),
+    //                     bumpToShoot.cmd()
+    //                         .beforeStarting(bumpToShoot.resetOdometry())
+    //                         .andThen(shoot()),
+    //                     climb.cmd()
+    //                         .beforeStarting(climb.resetOdometry())
+    //                 )
+    //     );
 
-        return testRoutine;
-    }
+    //     return testRoutine;
+    // }
 
     public AutoRoutine getTestTrench(){
         AutoRoutine testRoutine = autoFactory.newRoutine("testTrench");
@@ -108,10 +108,10 @@ public class AutoCommands {
         AutoTrajectory trenchToShoot = testRoutine.trajectory("hpTrenchToShoot");
         AutoTrajectory trenchToClimb = testRoutine.trajectory("hpTrenchToClimb");
 
-        trenchToCenter.atTime("intake")
-            .onTrue(
-                intake()
-            );
+        // trenchToCenter.atTime("intake")
+        //     .onTrue(
+        //         intake()
+        //     );
 
         testRoutine
             .active()
@@ -140,10 +140,10 @@ public class AutoCommands {
         AutoTrajectory trenchToShoot = testRoutine.trajectory("hpTrenchToShoot_left");
         AutoTrajectory trenchToClimb = testRoutine.trajectory("hpTrenchToClimb_left");
 
-        trenchToCenter.atTime("intake")
-            .onTrue(
-                intake()
-            );
+        // trenchToCenter.atTime("intake")
+        //     .onTrue(
+        //         intake()
+        //     );
 
         testRoutine
             .active()
