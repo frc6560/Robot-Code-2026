@@ -87,12 +87,14 @@ public class SwerveSubsystem extends SubsystemBase {
    */
   public SwerveSubsystem(File directory) { 
     boolean blueAlliance = true;
+
+    // these starting positions should change with every new autonomous we run.
     Pose2d startingPose = blueAlliance ? new Pose2d(new Translation2d(Meter.of(3.7),
                                                                       Meter.of(4)),
                                                     Rotation2d.fromDegrees(0))
-                                       : new Pose2d(new Translation2d(Meter.of(12.9),
-                                                                      Meter.of(7.15)),
-                                                    Rotation2d.fromDegrees(270));
+                                       : new Pose2d(new Translation2d(Meter.of(12.85),
+                                                                      Meter.of(4.03)),
+                                                    Rotation2d.fromDegrees(180));
     // Configure the Telemetry before creating the SwerveDrive to avoid unnecessary objects being created.
     SwerveDriveTelemetry.verbosity = TelemetryVerbosity.HIGH;
     try
