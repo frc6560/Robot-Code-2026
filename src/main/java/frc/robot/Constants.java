@@ -88,6 +88,14 @@ public final class Constants {
             new Rotation3d(0, Units.degreesToRadians(30.0), 0)
           );
           break;
+        case "limelight":
+          limelightPose = new Pose3d(
+            8.20768, // front/back
+            12.87697, // left/right
+            19.80598, // height
+            new Rotation3d(0, Units.degreesToRadians(30.0), 0)
+          );
+          break;
         default:
           throw new IllegalArgumentException("Invalid limelight name. You might want to double check your configs: " + name);
       }

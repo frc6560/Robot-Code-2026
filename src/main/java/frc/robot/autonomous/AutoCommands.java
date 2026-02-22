@@ -132,4 +132,36 @@ public class AutoCommands {
 
         return testRoutine;
     }
+
+    public AutoRoutine getTestTrenchL(){
+        AutoRoutine testRoutine = autoFactory.newRoutine("testTrench");
+        
+        AutoTrajectory trenchToCenter = testRoutine.trajectory("hpTrenchToCenter_left");
+        AutoTrajectory trenchToShoot = testRoutine.trajectory("hpTrenchToShoot_left");
+        AutoTrajectory trenchToClimb = testRoutine.trajectory("hpTrenchToClimb_left");
+
+        trenchToCenter.atTime("intake")
+            .onTrue(
+                intake()
+            );
+
+        testRoutine
+            .active()
+                .onTrue(
+                    Commands.sequence(
+                        trenchToCenter.cmd() // add an intake command after (or during) this.
+                            .beforeStarting(trenchToCenter.resetOdometry()),
+                        trenchToShoot.cmd()
+                            .beforeStarting(trenchToShoot.resetOdometry()),
+                            // .andThen(shoot()), 
+                        trenchToCenter.cmd()
+                            .beforeStarting(trenchToCenter.resetOdometry()),
+                        trenchToClimb.cmd()
+                            .beforeStarting(trenchToClimb.resetOdometry())
+                            // .andThen(shoot())
+                    )
+        );
+
+        return testRoutine;
+    }
 }
