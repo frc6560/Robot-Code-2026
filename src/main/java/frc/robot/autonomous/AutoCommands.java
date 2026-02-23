@@ -8,6 +8,7 @@ import frc.robot.subsystems.feeder.Feeder;
 import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 
@@ -38,6 +39,34 @@ public class AutoCommands {
         );
     }
 
+    private static final double DEFAULT_TOLERANCE_METERS = 0.1;
+
+    /**
+     * Wraps a trajectory command to end early when within tolerance of the final pose.
+     * @param trajectory The AutoTrajectory to follow
+     * @param toleranceMeters Distance tolerance in meters
+     * @return Command that follows the trajectory but ends early if within tolerance
+     */
+    public Command cmdWithAccuracy(AutoTrajectory trajectory, double toleranceMeters) {
+        return trajectory.cmd().until(() -> {
+            Pose2d currentPose = drivetrain.getPose();
+            Pose2d finalPose = trajectory.getFinalPose().orElse(null);
+            if (finalPose == null) {
+                return false;
+            }
+            return currentPose.getTranslation().getDistance(finalPose.getTranslation()) < toleranceMeters;
+        });
+    }
+
+    /**
+     * Wraps a trajectory command to end early when within 0.1m of the final pose.
+     * @param trajectory The AutoTrajectory to follow
+     * @return Command that follows the trajectory but ends early if within tolerance
+     */
+    public Command cmdWithAccuracy(AutoTrajectory trajectory) {
+        return cmdWithAccuracy(trajectory, DEFAULT_TOLERANCE_METERS);
+    }
+
     /** These are functions for returning different autonomous routines. See AutoNames.java for more information. */
 
     /** These literally do nothing. As in, nothing. */
@@ -55,11 +84,13 @@ public class AutoCommands {
     }
 
     public Command intake(){
-        return Commands.runOnce(() -> intake.setExtensionMode(), intake);
+        return Commands.idle();
+        // return Commands.runOnce(() -> intake.setExtensionMode(), intake);
     }
 
     public Command retract(){
-        return Commands.runOnce(() -> intake.setIdleMode(), intake);
+        return Commands.idle();
+        // return Commands.runOnce(() -> intake.setIdleMode(), intake);
     }
 
     /** Test auto on HP side. Should be comp level accuracy. */
@@ -92,13 +123,13 @@ public class AutoCommands {
                 .onTrue(
                     Commands.sequence(
                         trenchToCenter.resetOdometry(),
-                        trenchToCenter.cmd(), 
-                        trenchToShoot.cmd()
+                        cmdWithAccuracy(trenchToCenter), 
+                        cmdWithAccuracy(trenchToShoot)
                             .andThen(shoot()), 
-                        trenchToCenter.cmd(),
-                        bumpToShoot.cmd()
+                        cmdWithAccuracy(trenchToCenter),
+                        cmdWithAccuracy(bumpToShoot)
                             .andThen(shoot()),
-                        climb.cmd()
+                        cmdWithAccuracy(climb)
                     )
         );
 
@@ -137,12 +168,12 @@ public class AutoCommands {
             .active()
                 .onTrue(
                     Commands.sequence(
-                        trenchToCenter.cmd() 
+                        cmdWithAccuracy(trenchToCenter) 
                             .beforeStarting(trenchToCenter.resetOdometry()),
-                        trenchToShoot.cmd()
+                        cmdWithAccuracy(trenchToShoot)
                             .andThen(shoot()), 
-                        trenchToCenterSecondSwipe.cmd(),
-                        trenchToClimb.cmd()
+                        cmdWithAccuracy(trenchToCenterSecondSwipe),
+                        cmdWithAccuracy(trenchToClimb)
                             .andThen(shoot())
                     )
         );
