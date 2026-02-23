@@ -64,9 +64,9 @@ public class RobotContainer {
     "swerve/falcon"));
     private final VisionSubsystem vision;
 
-    private final Hood hood;
-    private final Shooter shooter;
-    private final Turret turret;
+    // private final Hood hood;
+    // private final Shooter shooter;
+    // private final Turret turret;
     private final Feeder feeder;
     private final Intake intake;
 
@@ -92,15 +92,15 @@ public class RobotContainer {
     public RobotContainer() {
       // Initialize subsystems with appropriate IO implementations
       if (RobotBase.isReal()) {
-        hood = new Hood(new HoodIOTalonFX());
-        shooter = new Shooter(new ShooterIOTalonFX());
-        turret = new Turret(new TurretIOTalonFX());
+        // hood = new Hood(new HoodIOTalonFX());
+        // shooter = new Shooter(new ShooterIOTalonFX());
+        // turret = new Turret(new TurretIOTalonFX());
         feeder = new Feeder(new FeederIOTalonFX());
         intake = new Intake(new IntakeIOTalonFX());
       } else {
-        hood = new Hood(new HoodIOSim());
-        shooter = new Shooter(new ShooterIOSim());
-        turret = new Turret(new TurretIOSim());
+        // hood = new Hood(new HoodIOSim());
+        // shooter = new Shooter(new ShooterIOSim());
+        // turret = new Turret(new TurretIOSim());
         feeder = new Feeder(new FeederIOSim());
         intake = new Intake(new IntakeIOSim());
       }
@@ -118,16 +118,16 @@ public class RobotContainer {
 
       vision = new VisionSubsystem(limelights);
 
-      SuperstructureCommand superstructureCommand = new SuperstructureCommand(
-        hood,
-        shooter,
-        turret,
-        drivebase::getPose,
-        drivebase::getFieldVelocity,
-        shotCalculator
-      );
+      // SuperstructureCommand superstructureCommand = new SuperstructureCommand(
+      //   hood,
+      //   shooter,
+      //   turret,
+      //   drivebase::getPose,
+      //   drivebase::getFieldVelocity,
+      //   shotCalculator
+      // );
 
-      hood.setDefaultCommand(superstructureCommand); // choose one of these to be default!
+      // hood.setDefaultCommand(superstructureCommand); // choose one of these to be default!
 
       configureBindings();
     }

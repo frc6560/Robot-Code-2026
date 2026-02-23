@@ -36,7 +36,7 @@ public final class Constants {
     public static final double kV = 2.004;
     public static final double kA = 0.173;
 
-    public static final double kP_translation = 2.0;
+    public static final double kP_translation = 4.0;
     public static final double kP_rotation = 4.0;
 
     public static final double kI_translation = 0.0;
@@ -132,7 +132,7 @@ public final class Constants {
     public static final boolean HOOD_MOTOR_INVERTED = true; // TODO: Test and adjust
 
     /** Current Limits */
-    public static final double HOOD_CURRENT_LIMIT = 60.0; // Amps
+    public static final double HOOD_CURRENT_LIMIT = 40.0; // Amps
 
     /** Hood Angle Limits */
     public static final double HOOD_MIN_ANGLE = 26.0;   // degrees
@@ -163,13 +163,13 @@ public final class Constants {
     public static final double FLYWHEEL_RPM_TOLERANCE = 100.0;
 
     /** Current Limits */
-    public static final double FLYWHEEL_SUPPLY_CURRENT_LIMIT = 60.0; // Amps
+    public static final double FLYWHEEL_SUPPLY_CURRENT_LIMIT = 50.0; // Amps
 
     /** Motor Inversion Settings */
     public static final boolean LEFT_FLYWHEEL_INVERTED = false; 
     public static final boolean RIGHT_FLYWHEEL_OPPOSED = true; 
 
-    public static final int FLYWHEEL_STATOR_CURRENT_LIMIT = 140;
+    public static final int FLYWHEEL_STATOR_CURRENT_LIMIT = 50;
   }
 
   public static final class TurretConstants{
@@ -250,13 +250,13 @@ public final class Constants {
     public static final double EXTEND_MAX_ACCELERATION = 50.0;
 
     public static final double EXTEND_SUPPLY_CURRENT_LIMIT = 35;
-    public static final double EXTEND_STATOR_CURRENT_LIMIT = 60;
+    public static final double EXTEND_STATOR_CURRENT_LIMIT = 40;
 
     public static final double EXTEND_SPRINGY_SUPPLY_CURRENT_LIMIT = 12;
     public static final double EXTEND_SPRINGY_STATOR_CURRENT_LIMIT = 20;
 
     public static final double SPIN_SUPPLY_CURRENT_LIMIT = 30;
-    public static final double SPIN_STATOR_CURRENT_LIMIT = 50;
+    public static final double SPIN_STATOR_CURRENT_LIMIT = 40;
 
     public static final double INTAKE_RUN_TIME = 3.5;
   }

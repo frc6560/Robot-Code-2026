@@ -44,7 +44,7 @@ public class FeederIOTalonFX implements FeederIO {
         pusherMotor = new TalonFX(PUSHER_MOTOR_ID);
 
         configureMotor(panMotor, 0.25, 40, true);
-        configureMotor(pusherMotor, 0.15, 60, true);
+        configureMotor(pusherMotor, 0.15, 40, true);
 
         panPosition = panMotor.getPosition();
         panVelocity = panMotor.getVelocity();

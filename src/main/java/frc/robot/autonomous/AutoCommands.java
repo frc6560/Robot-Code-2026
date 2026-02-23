@@ -4,7 +4,6 @@ package frc.robot.autonomous;
 import choreo.auto.AutoFactory;
 import choreo.auto.AutoRoutine;
 import choreo.auto.AutoTrajectory;
-import frc.robot.Constants.IntakeConstants;
 import frc.robot.subsystems.feeder.Feeder;
 import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
@@ -13,10 +12,8 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 
 
-// TODOs: delete all commented out files in robot.java, and this file
 // refactor code: add follow and shoot helper
 // add a helper method to sequence commands: sequencePaths(Commands... commands)
-// helpers for markers
 public class AutoCommands {
     private SwerveSubsystem drivetrain;
     private Feeder feeder;
@@ -58,11 +55,11 @@ public class AutoCommands {
     }
 
     public Command intake(){
-        return Commands.run(() -> intake.setExtensionMode(), intake)
-            .withTimeout(IntakeConstants.INTAKE_RUN_TIME)
-            .finallyDo((interrupted) -> {
-                intake.setIdleMode();
-            });
+        return Commands.runOnce(() -> intake.setExtensionMode(), intake);
+    }
+
+    public Command retract(){
+        return Commands.runOnce(() -> intake.setIdleMode(), intake);
     }
 
     /** Test auto on HP side. Should be comp level accuracy. */
@@ -79,6 +76,17 @@ public class AutoCommands {
                 intake()
             );
 
+        trenchToShoot.atTime("shoot")
+            .onTrue(
+                retract()
+            );
+
+        bumpToShoot.atTime("shoot")
+            .onTrue(
+                retract()
+            );
+
+
         testRoutine
             .active()
                 .onTrue(
@@ -86,15 +94,11 @@ public class AutoCommands {
                         trenchToCenter.resetOdometry(),
                         trenchToCenter.cmd(), 
                         trenchToShoot.cmd()
-                            .beforeStarting(trenchToShoot.resetOdometry())
                             .andThen(shoot()), 
-                        trenchToCenter.cmd()
-                            .beforeStarting(trenchToCenter.resetOdometry()),
+                        trenchToCenter.cmd(),
                         bumpToShoot.cmd()
-                            .beforeStarting(bumpToShoot.resetOdometry())
                             .andThen(shoot()),
                         climb.cmd()
-                            .beforeStarting(climb.resetOdometry())
                     )
         );
 
@@ -113,19 +117,26 @@ public class AutoCommands {
                 intake()
             );
 
+        trenchToShoot.atTime("shoot")
+            .onTrue(
+                retract()
+            );
+        
+        trenchToClimb.atTime("shoot")
+            .onTrue(
+                retract()
+            );
+
         testRoutine
             .active()
                 .onTrue(
                     Commands.sequence(
-                        trenchToCenter.cmd() // add an intake command after (or during) this.
+                        trenchToCenter.cmd() 
                             .beforeStarting(trenchToCenter.resetOdometry()),
                         trenchToShoot.cmd()
-                            .beforeStarting(trenchToShoot.resetOdometry())
                             .andThen(shoot()), 
-                        trenchToCenter.cmd()
-                            .beforeStarting(trenchToCenter.resetOdometry()),
+                        trenchToCenter.cmd(),
                         trenchToClimb.cmd()
-                            .beforeStarting(trenchToClimb.resetOdometry())
                             .andThen(shoot())
                     )
         );

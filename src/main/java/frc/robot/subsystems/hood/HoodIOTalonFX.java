@@ -83,7 +83,7 @@ public class HoodIOTalonFX implements HoodIO {
 
         config.CurrentLimits.SupplyCurrentLimit = HoodConstants.HOOD_CURRENT_LIMIT;
         config.CurrentLimits.SupplyCurrentLimitEnable = true;
-        config.CurrentLimits.StatorCurrentLimit = 30;
+        config.CurrentLimits.StatorCurrentLimit = 40;
         config.CurrentLimits.StatorCurrentLimitEnable = true;
 
         MotionMagicConfigs motionMagicConfigs = config.MotionMagic;
