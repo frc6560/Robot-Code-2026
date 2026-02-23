@@ -111,8 +111,14 @@ public class AutoCommands {
         AutoTrajectory trenchToCenter = testRoutine.trajectory("hpTrenchToCenter");
         AutoTrajectory trenchToShoot = testRoutine.trajectory("hpTrenchToShoot");
         AutoTrajectory trenchToClimb = testRoutine.trajectory("hpTrenchToClimb");
+        AutoTrajectory trenchToCenterSecondSwipe = testRoutine.trajectory("hpTrenchToCenter2");
 
         trenchToCenter.atTime("intake")
+            .onTrue(
+                intake()
+            );
+
+        trenchToCenterSecondSwipe.atTime("intake")
             .onTrue(
                 intake()
             );
@@ -135,7 +141,7 @@ public class AutoCommands {
                             .beforeStarting(trenchToCenter.resetOdometry()),
                         trenchToShoot.cmd()
                             .andThen(shoot()), 
-                        trenchToCenter.cmd(),
+                        trenchToCenterSecondSwipe.cmd(),
                         trenchToClimb.cmd()
                             .andThen(shoot())
                     )
