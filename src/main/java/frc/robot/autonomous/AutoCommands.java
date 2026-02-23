@@ -84,13 +84,11 @@ public class AutoCommands {
     }
 
     public Command intake(){
-        return Commands.idle();
-        // return Commands.runOnce(() -> intake.setExtensionMode(), intake);
+        return Commands.runOnce(() -> intake.setExtensionMode(), intake);
     }
 
     public Command retract(){
-        return Commands.idle();
-        // return Commands.runOnce(() -> intake.setIdleMode(), intake);
+        return Commands.runOnce(() -> intake.setIdleMode(), intake);
     }
 
     /** Test auto on HP side. Should be comp level accuracy. */
