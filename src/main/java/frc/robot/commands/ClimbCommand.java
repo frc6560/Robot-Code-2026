@@ -60,9 +60,9 @@ public class ClimbCommand extends SequentialCommandGroup {
 
         // Initialize PID controllers (tune these values as needed)
         // Reduced kP and increased kD to prevent overshoot in X and Y
-        this.xController = new PIDController(2.5, 0, 0);  // Reduced kP: 4.5→2.5, Increased kD: 0.4→0.8
-        this.yController = new PIDController(2.5, 0, 0);  // Reduced kP: 4.5→2.5, Increased kD: 0.4→0.8
-        this.rotationController = new PIDController(4.0, 0, 0.6);  // Reduced kP: 5.0→4.0, Increased kD: 0.5→0.6
+        this.xController = new PIDController(4.8, 0, 0.02);  // Reduced kP: 4.5→2.5, Increased kD: 0.4→0.8
+        this.yController = new PIDController(5, 0, 0.02);  // Reduced kP: 4.5→2.5, Increased kD: 0.4→0.8
+        this.rotationController = new PIDController(1.5, 0, 0.07);  // Reduced kP: 5.0→4.0, Increased kD: 0.5→0.6
         this.rotationController.enableContinuousInput(-Math.PI, Math.PI);
 
         // Log PID constants to SmartDashboard for tuning
@@ -261,9 +261,9 @@ public class ClimbCommand extends SequentialCommandGroup {
         // Calculate prescore position 1 meter back from target
         double prescoreX;
         if (alliance.equals(DriverStation.Alliance.Blue)) {
-            prescoreX = targetPose.getX() + 1.0; // Move back toward center (positive X)
+            prescoreX = targetPose.getX() + 0.3; // Move back toward center (positive X)
         } else {
-            prescoreX = targetPose.getX() - 1.0; // Move back toward center (negative X)
+            prescoreX = targetPose.getX() - 0.3; // Move back toward center (negative X)
         }
 
         return new Pose2d(prescoreX, targetPose.getY(), targetPose.getRotation());
@@ -291,10 +291,10 @@ public class ClimbCommand extends SequentialCommandGroup {
             }
         } else {
             if (initialY > yThreshold) {
-                targetPose = new Pose2d(14.976325035095215, 4.183515548706055, new Rotation2d(Math.PI));
+                targetPose = new Pose2d(14.922, 4.72, new Rotation2d(Math.PI));
                 selectedTarget = "Red Upper";
             } else {
-                targetPose = new Pose2d(14.977962493896484, 3.330711841583252, new Rotation2d(Math.PI));
+                targetPose = new Pose2d(14.922, 3.851, new Rotation2d(Math.PI));
                 selectedTarget = "Red Lower";
             }
         }

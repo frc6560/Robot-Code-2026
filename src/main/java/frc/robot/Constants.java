@@ -136,7 +136,7 @@ public final class Constants {
     public static final double HOOD_CURRENT_LIMIT = 60.0; // Amps
 
     /** Hood Angle Limits */
-    public static final double HOOD_MIN_ANGLE = 26.0;   // degrees
+    public static final double HOOD_MIN_ANGLE = 15.67;   // degrees
     public static final double HOOD_MAX_ANGLE = 52.6;  // degrees
 
     public static final int HOOD_ABSOLUTE_ENCODER_ID = 22;
@@ -160,7 +160,7 @@ public final class Constants {
        public static final double MAX_RPM = 5000; 
     public static final double TARGET_RPM_HARDSET = 2000.0; 
     public static final double FLYWHEEL_GEAR_RATIO = 1.25; 
-    public static final double FLYWHEEL_IDLE_RPM = 500; //kraken x60 
+    public static final double FLYWHEEL_IDLE_RPM = 0.0; //kraken x60 (500)
     public static final double FLYWHEEL_RPM_TOLERANCE = 100.0;
 
     /** Current Limits */
