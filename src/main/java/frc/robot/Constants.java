@@ -125,9 +125,9 @@ public final class Constants {
     public static final double kMaxA = 720.0;  // Max acceleration (degrees/second²)
 
     /** Hood Geometry */
-    public static final double HOOD_GEAR_RATIO = 33.33; // rotates 40 for every 1 rotation of the hood
-    public static final double ABSOLUTE_HOOD_ENCODER_GEAR_RATIO = 360.0 / 44.0 ; // encoder rotates 360/44 times every mechanism rotation
-
+    public static final double HOOD_GEAR_RATIO = 40; 
+    public static final double ABSOLUTE_HOOD_ENCODER_GEAR_RATIO = (44.0 / 18.0) * (24.0 / 12.0);
+  
     /** Motor Inversion */
     public static final boolean HOOD_MOTOR_INVERTED = true; // TODO: Test and adjust
 
@@ -157,6 +157,7 @@ public final class Constants {
 
     /** Flywheel Geometry */
        public static final double MAX_RPM = 5000; 
+    public static final double FLYWHEEL_ACCELERATION = 2000.0;
     public static final double TARGET_RPM_HARDSET = 2000.0; 
     public static final double FLYWHEEL_GEAR_RATIO = 1.25; 
     public static final double FLYWHEEL_IDLE_RPM = 500; //kraken x60 
@@ -197,9 +198,8 @@ public final class Constants {
     public static final boolean MOTOR_INVERTED = true; // TODO: test and set
 
     /** Turret Geometry */
-    public static final double MOTOR_GEAR_RATIO = 10.0; // Motor reduction ratio
-    public static final double ENCODER_GEAR_RATIO =  25.0 / 42.0 ; // Encoder reduction ratio
-    
+    public static final double MOTOR_GEAR_RATIO = 254.0 / 28.0;  // ≈ 9.07143
+    public static final double ENCODER_GEAR_RATIO = 9.07143 / 12.0;
 
     // Absolute encoder setup
     public static final double ABSOLUTE_ENCODER_OFFSET = 0.199; 
