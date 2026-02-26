@@ -177,29 +177,29 @@ public final class Constants {
     public static final Transform3d ROBOT_RELATIVE_TURRET = new Transform3d(-0.048, -0.1143, 0, new Rotation3d()); // x --> front/back, y --> left/right
 
     /** CAN IDs */
-    public static final int MOTOR_ID = 17;      // TODO: set correct ID
-    public static final int ENCODER_ID = 18;    // TODO: set correct ID
+    public static final int MOTOR_ID = 17;      
+    public static final int ENCODER_ID = 18;   
 
     /** Characterization Gains */
     public static final double kS = 0.1;
-    public static final double kV = 0.2;
+    public static final double kV = 1.0;
     public static final double kA = 0.01;
     public static final double kG = 0.0;
 
     /** PID Gains */
-    public static final double kP = 5;
+    public static final double kP = 5.0;
     public static final double kI = 0;
     public static final double kD = 0.2;
 
     /** Motion Constraints. IN DEGREES PER SECOND */
-    public static final double kMaxV = 450; // deg/s, was 360
-    public static final double kMaxA = 900; // deg/s^2, was 540.
+    public static final double kMaxV = 450;
+    public static final double kMaxA = 900;
 
-    public static final boolean MOTOR_INVERTED = true; // TODO: test and set
+    public static final boolean MOTOR_INVERTED = true; 
 
     /** Turret Geometry */
-    public static final double MOTOR_GEAR_RATIO = 254.0 / 28.0;  // ≈ 9.07143
-    public static final double ENCODER_GEAR_RATIO = 9.07143 / 12.0;
+    public static final double MOTOR_GEAR_RATIO = 254.0 / 28.0; // turret spins once for every ~9 motor rotations
+    public static final double ENCODER_GEAR_RATIO = 127.0 / 168.0; // turret spins once for every ~0.75 encoder rotations
 
     // Absolute encoder setup
     public static final double ABSOLUTE_ENCODER_OFFSET = 0.199; 
