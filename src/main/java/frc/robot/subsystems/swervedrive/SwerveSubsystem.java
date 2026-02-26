@@ -86,7 +86,7 @@ public class SwerveSubsystem extends SubsystemBase {
    * @param directory Directory of swerve drive config files.
    */
   public SwerveSubsystem(File directory) { 
-    boolean blueAlliance = false;
+    boolean blueAlliance = true;
 
     // these starting positions should change with every new autonomous we run.
     Pose2d startingPose = blueAlliance ? new Pose2d(new Translation2d(Meter.of(3.7),
