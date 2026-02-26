@@ -145,7 +145,7 @@ public final class Constants {
 
   public static final class ShooterConstants{
     /** CAN IDs */
-    public static final int LEFT_FLYWHEEL_ID = 21;
+    public static final int LEFT_FLYWHEEL_ID = 19;
     public static final int RIGHT_FLYWHEEL_ID = 20;
 
     /** PID Gains */
