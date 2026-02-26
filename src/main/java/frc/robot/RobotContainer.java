@@ -134,7 +134,7 @@ public class RobotContainer {
         );
 
         driverXbox.y()
-          .onTrue(Commands.runOnce(() -> CommandScheduler.getInstance().cancelAll()));
+          .onTrue(Commands.runOnce(() -> shooter.setRPM(500),shooter));
         driverXbox.x()
           .onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
         driverXbox.b()
@@ -147,9 +147,11 @@ public class RobotContainer {
           .onTrue(Commands.runOnce(feeder::requestFeed, feeder))
           .onFalse(Commands.runOnce(feeder::requestStop, feeder));
 
-        driverXbox.leftBumper()
-          .onTrue(Commands.runOnce(intake::setExtensionMode, intake))
-          .onFalse(Commands.runOnce(intake::setIdleMode, intake));
+        // driverXbox.leftBumper()
+        //   .onTrue(Commands.runOnce(intake::setExtensionMode, intake))
+        //   .onFalse(Commands.runOnce(intake::setIdleMode, intake));
+        
+        
     }
 
     public Command getAutonomousCommand() {
