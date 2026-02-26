@@ -21,7 +21,7 @@ public class FeederIOTalonFX implements FeederIO {
     private static final int PAN_MOTOR_ID = 14;
     private static final int PUSHER_MOTOR_ID = 23;
 
-    private static final double PAN_GEAR_RATIO =  2688/324;
+    private static final double PAN_GEAR_RATIO =  324/2688;
     private static final double PUSHER_GEAR_RATIO = 1.0 / 2.5;
 
     private final VelocityVoltage panRequest = new VelocityVoltage(0);
