@@ -8,7 +8,7 @@ public class Feeder extends SubsystemBase {
     private final FeederIO io;
     private final FeederIOInputsAutoLogged inputs = new FeederIOInputsAutoLogged();
 
-    private static final double PAN_RUNNING_RPM = 3000.0;
+    private static final double PAN_RUNNING_RPM = -5.0;
     private static final double PUSHER_RUNNING_RPM = 3500.0;
     private static final double IDLE_RPM = 0.0;
 

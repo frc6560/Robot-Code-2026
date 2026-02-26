@@ -81,7 +81,8 @@ public class Shooter extends SubsystemBase {
     }
 
     public void setIdle() {
-        setRPM(500.0);
+        setRPS(lastActiveRPS * 0.70);
+
     }
 
     public void stop() {
