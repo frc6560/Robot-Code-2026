@@ -98,50 +98,50 @@ public class Intake extends SubsystemBase {
         io.updateInputs(inputs);
         Logger.processInputs("Intake", inputs);
 
-        // if (!IntakeConstants.EXTENSION_ENABLED) {
-        //     if (mode == Mode.EXTENSION || mode == Mode.SPRINGY) {
-        //         stopExtend();
-        //         setSpinPercent(IntakeConstants.SPIN_SPEED);
-        //     } else {
-        //         stopExtend();
-        //         stopSpin();
-        //     }
-        //     Logger.recordOutput("Intake/Mode", mode.toString());
-        //     return;
-        // }
+        if (!IntakeConstants.EXTENSION_ENABLED) {
+            if (mode == Mode.EXTENSION || mode == Mode.SPRINGY) {
+                stopExtend();
+                setSpinPercent(IntakeConstants.SPIN_SPEED);
+            } else {
+                stopExtend();
+                stopSpin();
+            }
+            Logger.recordOutput("Intake/Mode", mode.toString());
+            return;
+        }
 
-        // if (isRetracted()) {
-        //     io.resetExtendPosition();
-        // }
+        if (isRetracted()) {
+            io.resetExtendPosition();
+        }
 
-        // if (lastExtendCommand < 0 && isRetracted()) {
-        //     lastExtendCommand = 0.0;
-        //     io.setExtendPercent(0.0);
-        // }
+        if (lastExtendCommand < 0 && isRetracted()) {
+            lastExtendCommand = 0.0;
+            io.setExtendPercent(0.0);
+        }
 
-        // if (mode == Mode.EXTENSION && getExtensionRotations() >= IntakeConstants.SPRINGY_TRIGGER_ROTATIONS) {
-        //     setSpringyMode();
-        // }
+        if (mode == Mode.EXTENSION && getExtensionRotations() >= IntakeConstants.SPRINGY_TRIGGER_ROTATIONS) {
+            setSpringyMode();
+        }
 
-        // switch (mode) {
-        //     case EXTENSION:
-        //         setExtendPercent(IntakeConstants.EXTEND_SPEED);
-        //         setSpinPercent(IntakeConstants.SPIN_SPEED);
-        //         break;
-        //     case SPRINGY:
-        //         stopExtend();
-        //         setSpinPercent(IntakeConstants.SPRINGY_SPIN_SPEED);
-        //         break;
-        //     case IDLE:
-        //     default:
-        //         if (!isRetracted()) {
-        //             setExtendPercent(IntakeConstants.RETRACT_SPEED);
-        //         } else {
-        //             stopExtend();
-        //         }
-        //         stopSpin();
-        //         break;
-        // }
+        switch (mode) {
+            case EXTENSION:
+                setExtendPercent(IntakeConstants.EXTEND_SPEED);
+                setSpinPercent(IntakeConstants.SPIN_SPEED);
+                break;
+            case SPRINGY:
+                stopExtend();
+                setSpinPercent(IntakeConstants.SPRINGY_SPIN_SPEED);
+                break;
+            case IDLE:
+            default:
+                if (!isRetracted()) {
+                    setExtendPercent(IntakeConstants.RETRACT_SPEED);
+                } else {
+                    stopExtend();
+                }
+                stopSpin();
+                break;
+        }
 
         Logger.recordOutput("Intake/Mode", mode.toString());
         Logger.recordOutput("Intake/ExtendCommand", lastExtendCommand);
