@@ -76,11 +76,11 @@ public class Turret extends SubsystemBase {
         Logger.processInputs("Turret", inputs);
 
         // Run control based on whether velocity feedforward is being used
-        if (useVelocityFeedforward) {
-            io.setTargetAngleWithVelocity(goalDegrees, goalVelocityDegreesPerSec);
-        } else {
-            io.setTargetAngle(goalDegrees);
-        }
+        // if (useVelocityFeedforward) {
+        //     io.setTargetAngleWithVelocity(goalDegrees, goalVelocityDegreesPerSec);
+        // } else {
+        //     io.setTargetAngle(goalDegrees);
+        // }
 
         Logger.recordOutput("Turret/GoalDegrees", goalDegrees);
         Logger.recordOutput("Turret/GoalVelocityDegreesPerSec", goalVelocityDegreesPerSec);
