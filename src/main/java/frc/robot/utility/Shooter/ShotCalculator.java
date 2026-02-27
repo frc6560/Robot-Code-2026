@@ -62,33 +62,34 @@ public class ShotCalculator {
     public void populateLUTs(){
         // Units are in meters/RPM/degrees/seconds.
         // shooter RPM
-        flywheelRPMMap.put(1.279, 2500.0);
-        flywheelRPMMap.put(1.853, 2700.0);
-        flywheelRPMMap.put(2.459, 2800.0);
-        flywheelRPMMap.put(3.062, 2900.0);
-        flywheelRPMMap.put(3.676, 3000.0);
-        flywheelRPMMap.put(4.234, 3200.0);
-        flywheelRPMMap.put(4.822, 3300.0);
-        flywheelRPMMap.put(5.345, 3550.0);
+        flywheelRPMMap.put(1.593, 1550.0);
+        flywheelRPMMap.put(1.885, 1650.0);
+        flywheelRPMMap.put(2.500, 1750.0);
+        flywheelRPMMap.put(3.098, 1850.0);
+        flywheelRPMMap.put(3.700, 1900.0);
+        flywheelRPMMap.put(4.273, 2050.0);
+        flywheelRPMMap.put(4.987, 2150.0);
+        flywheelRPMMap.put(5.602, 2300.0);
 
         // hood azimuth
-        hoodAzimuthMap.put(1.279, 27.24);
-        hoodAzimuthMap.put(1.853, 30.0);
-        hoodAzimuthMap.put(2.459, 32.0);
-        hoodAzimuthMap.put(3.062, 40.0);
-        hoodAzimuthMap.put(3.676, 44.0);
-        hoodAzimuthMap.put(4.234, 45.0);
-        hoodAzimuthMap.put(4.822, 48.0);
-        hoodAzimuthMap.put(5.345, 52.0);
+        hoodAzimuthMap.put(1.593, 25.0);
+        hoodAzimuthMap.put(1.885, 25.0);
+        hoodAzimuthMap.put(2.500, 27.0);
+        hoodAzimuthMap.put(3.098, 29.0);
+        hoodAzimuthMap.put(3.700, 32.0);
+        hoodAzimuthMap.put(4.273, 35.0);
+        hoodAzimuthMap.put(4.987, 38.0);
+        hoodAzimuthMap.put(5.602, 44.0);
 
 
         // time of flight 
-        timeOfFlightMap.put(1.520, 1.03);
-        timeOfFlightMap.put(2.344, 1.05);
-        timeOfFlightMap.put(3.073, 1.13);
-        timeOfFlightMap.put(3.876, 1.18);
-        timeOfFlightMap.put(4.183, 1.20);
-        timeOfFlightMap.put(4.934, 1.25);
+        timeOfFlightMap.put(1.520, 0.80);
+        timeOfFlightMap.put(1.885, 0.96);
+        timeOfFlightMap.put(2.500, 1.06);
+        timeOfFlightMap.put(3.098, 1.17);
+        timeOfFlightMap.put(3.700, 1.19);
+        timeOfFlightMap.put(4.273, 1.26);
+        timeOfFlightMap.put(4.987, 1.33);
     }
 
     /** Returns the current hood azimuth in degrees. */
