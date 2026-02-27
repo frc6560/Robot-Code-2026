@@ -60,7 +60,7 @@ public class HoodIOTalonFX implements HoodIO {
 
     private void configureAbsoluteEncoder() {
         CANcoderConfiguration config = new CANcoderConfiguration();
-        config.MagnetSensor.SensorDirection = SensorDirectionValue.CounterClockwise_Positive;
+        config.MagnetSensor.SensorDirection = SensorDirectionValue.Clockwise_Positive;
         config.MagnetSensor.MagnetOffset = HoodConstants.HOOD_ABSOLUTE_ENCODER_OFFSET;
         absoluteEncoder.getConfigurator().apply(config);
     }
