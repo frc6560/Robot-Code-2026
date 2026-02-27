@@ -148,7 +148,7 @@ public class RobotContainer {
         driverXbox.leftBumper()
           .onTrue(Commands.runOnce(() -> turret.setGoal(170.0)));
         
-        driverXbox.b()
+        driverXbox.y()
           .onTrue(Commands.runOnce(() -> turret.setGoal(-170.0)));
         
 
