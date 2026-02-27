@@ -4,7 +4,9 @@
 
 package frc.robot;
 
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation2d;
@@ -58,6 +60,24 @@ public final class Constants {
 
     public static final double BLUE_ZONE_X = 4.70;
     public static final double RED_ZONE_X = 11.80;
+
+    // A list of auto start poses.
+    public static final Pose2d BLUE_RIGHT_START = new Pose2d(3.70, 0.75, Rotation2d.fromDegrees(0.0));
+    public static final Pose2d BLUE_LEFT_START = new Pose2d(3.70, 7.25, Rotation2d.fromDegrees(0.0));
+    public static final Pose2d RED_RIGHT_START = new Pose2d(12.85, 7.25, Rotation2d.fromDegrees(180.0));
+    public static final Pose2d RED_LEFT_START = new Pose2d(12.85, 0.75, Rotation2d.fromDegrees(180.0));
+
+    public static final Pose2d BLUE_TESTING_START = new Pose2d(3.70, 4.00, Rotation2d.fromDegrees(0.0));
+    public static final Pose2d RED_TESTING_START = new Pose2d(12.85, 4.00, Rotation2d.fromDegrees(180.0));
+
+    public static final double PASS_DEADZONE_MIN_Y = 3.657;
+    public static final double PASS_DEADZONE_MAX_Y = 4.343;
+
+    // A list of pass poses
+    public static final Translation2d BLUE_BOTTOM_PASS_POS = new Translation2d(3.70, 2.50);
+    public static final Translation2d BLUE_TOP_PASS_POS = new Translation2d(3.70, 5.50);
+    public static final Translation2d RED_BOTTOM_PASS_POS = new Translation2d(12.85, 2.50);
+    public static final Translation2d RED_TOP_PASS_POS = new Translation2d(12.85, 5.50);
   }
 
   public static class OperatorConstants

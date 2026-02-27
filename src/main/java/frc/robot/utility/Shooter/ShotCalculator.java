@@ -136,7 +136,7 @@ public class ShotCalculator {
         );
     }
 
-    /** Calculates the shot parameters based on current robot pose and field velocity. */
+    /** Calculates the shot parameters for a hub shot based on current robot pose and field velocity. */
     public void calculate(Pose2d currentRobotPose, 
                             ChassisSpeeds fieldVelocity) {
         // Gets our target pose
