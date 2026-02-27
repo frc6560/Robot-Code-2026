@@ -121,7 +121,7 @@ public class RobotContainer {
         shotCalculator
       );
 
-      // hood.setDefaultCommand(superstructureCommand); // choose one of these to be default!
+      hood.setDefaultCommand(superstructureCommand);
 
       configureBindings();
     }
@@ -148,17 +148,8 @@ public class RobotContainer {
           .onFalse(Commands.runOnce(feeder::requestStop, feeder));
 
         driverXbox.leftBumper()
-          .onTrue(Commands.runOnce(() -> {
-            hood.setGoal(hoodAngleEntry.getDouble(HoodConstants.HOOD_MIN_ANGLE));
-            shooter.setRPM(flywheelRPMEntry.getDouble(ShooterConstants.FLYWHEEL_IDLE_RPM));
-          }, hood, shooter))
-          .onFalse(Commands.runOnce(() -> {
-            hood.setGoal(HoodConstants.HOOD_MIN_ANGLE);
-            shooter.setIdle();
-          }));
-        
-        driverXbox.y()
-          .onTrue(Commands.runOnce(() -> turret.setGoal(-170.0)));
+          .onTrue(Commands.runOnce(intake::setExtensionMode, intake))
+          .onFalse(Commands.runOnce(intake::setIdleMode, intake));
         
     }
 
