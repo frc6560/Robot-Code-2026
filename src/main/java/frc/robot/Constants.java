@@ -126,7 +126,7 @@ public final class Constants {
 
     /** Hood Geometry */
     public static final double HOOD_GEAR_RATIO = 40.0; 
-    public static final double ABSOLUTE_HOOD_ENCODER_GEAR_RATIO = 360.0 / 44.0;
+    public static final double ABSOLUTE_HOOD_ENCODER_GEAR_RATIO = 90.0 / 11.0;
   
     /** Motor Inversion */
     public static final boolean HOOD_MOTOR_INVERTED = true; // TODO: Test and adjust
@@ -135,8 +135,8 @@ public final class Constants {
     public static final double HOOD_CURRENT_LIMIT = 40.0; // Amps
 
     /** Hood Angle Limits */
-    public static final double HOOD_MIN_ANGLE = 26.0;   // degrees
-    public static final double HOOD_MAX_ANGLE = 52.6;  // degrees
+    public static final double HOOD_MIN_ANGLE = 25.1;   // degrees
+    public static final double HOOD_MAX_ANGLE = 45.0;  // degrees
 
     public static final int HOOD_ABSOLUTE_ENCODER_ID = 22;
 

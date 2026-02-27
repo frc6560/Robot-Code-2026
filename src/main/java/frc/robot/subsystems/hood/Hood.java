@@ -12,7 +12,7 @@ public class Hood extends SubsystemBase {
 
     private double targetAngle = HoodConstants.HOOD_MIN_ANGLE;
     private static final double ANGLE_TOLERANCE = 0.5;
-    private static final double ANGLE_OFFSET = 15.0;
+    private static final double ANGLE_OFFSET = 25.0;
 
     public Hood(HoodIO io) {
         this.io = io;
