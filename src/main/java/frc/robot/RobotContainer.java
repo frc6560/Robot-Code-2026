@@ -16,8 +16,10 @@ import edu.wpi.first.wpilibj.RobotBase;
 
 import swervelib.SwerveInputStream;
 import edu.wpi.first.math.geometry.Pose3d;
+import frc.robot.Constants.HoodConstants;
 import frc.robot.Constants.LimelightConstants;
 import frc.robot.Constants.OperatorConstants;
+import frc.robot.Constants.ShooterConstants;
 import edu.wpi.first.networktables.GenericEntry;
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
 import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
@@ -146,16 +148,17 @@ public class RobotContainer {
           .onFalse(Commands.runOnce(feeder::requestStop, feeder));
 
         driverXbox.leftBumper()
-          .onTrue(Commands.runOnce(() -> turret.setGoal(170.0)));
+          .onTrue(Commands.runOnce(() -> {
+            hood.setGoal(hoodAngleEntry.getDouble(HoodConstants.HOOD_MIN_ANGLE));
+            shooter.setRPM(flywheelRPMEntry.getDouble(ShooterConstants.FLYWHEEL_IDLE_RPM));
+          }))
+          .onFalse(Commands.runOnce(() -> {
+            hood.setGoal(HoodConstants.HOOD_MIN_ANGLE);
+            shooter.setIdle();
+          }));
         
         driverXbox.y()
           .onTrue(Commands.runOnce(() -> turret.setGoal(-170.0)));
-        
-
-        // driverXbox.leftBumper()
-        //   .onTrue(Commands.runOnce(intake::setExtensionMode, intake))
-        //   .onFalse(Commands.runOnce(intake::setIdleMode, intake));
-        
         
     }
 
