@@ -182,7 +182,7 @@ public final class Constants {
 
     /** Characterization Gains */
     public static final double kS = 0.1;
-    public static final double kV = 1.0;
+    public static final double kV = 0.2;
     public static final double kA = 0.01;
     public static final double kG = 0.0;
 
