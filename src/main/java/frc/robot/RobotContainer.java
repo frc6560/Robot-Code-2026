@@ -133,8 +133,6 @@ public class RobotContainer {
           }, Set.of(vision))
         );
 
-        driverXbox.y()
-          .onTrue(Commands.runOnce(() -> shooter.setRPM(500),shooter));
         driverXbox.x()
           .onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
         driverXbox.b()
@@ -146,6 +144,13 @@ public class RobotContainer {
         driverXbox.rightBumper()
           .onTrue(Commands.runOnce(feeder::requestFeed, feeder))
           .onFalse(Commands.runOnce(feeder::requestStop, feeder));
+
+        driverXbox.leftBumper()
+          .onTrue(Commands.runOnce(() -> turret.setGoal(170.0)));
+        
+        driverXbox.b()
+          .onTrue(Commands.runOnce(() -> turret.setGoal(-170.0)));
+        
 
         // driverXbox.leftBumper()
         //   .onTrue(Commands.runOnce(intake::setExtensionMode, intake))
