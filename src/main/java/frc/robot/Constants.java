@@ -195,7 +195,7 @@ public final class Constants {
     public static final double kMaxV = 450;
     public static final double kMaxA = 900;
 
-    public static final boolean MOTOR_INVERTED = true; 
+    public static final boolean MOTOR_INVERTED = false; 
 
     /** Turret Geometry */
     public static final double MOTOR_GEAR_RATIO = 254.0 / 28.0; // turret spins once for every ~9 motor rotations
@@ -203,7 +203,7 @@ public final class Constants {
 
     // Absolute encoder setup
     public static final double ABSOLUTE_ENCODER_OFFSET = 0.199; 
-    public static final boolean ABSOLUTE_ENCODER_REVERSED = true; 
+    public static final boolean ABSOLUTE_ENCODER_REVERSED = false; 
 
     // soft limits
     public static final double LOWER_SOFT_LIMIT = -225;
