@@ -119,7 +119,7 @@ public class RobotContainer {
         shotCalculator
       );
 
-      hood.setDefaultCommand(superstructureCommand); // choose one of these to be default!
+      // hood.setDefaultCommand(superstructureCommand); // choose one of these to be default!
 
       configureBindings();
     }
