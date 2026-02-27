@@ -125,7 +125,7 @@ public final class Constants {
     public static final double kMaxA = 720.0;  // Max acceleration (degrees/second²)
 
     /** Hood Geometry */
-    public static final double HOOD_GEAR_RATIO = 33.33; 
+    public static final double HOOD_GEAR_RATIO = 40.0; 
     public static final double ABSOLUTE_HOOD_ENCODER_GEAR_RATIO = 360.0 / 44.0;
   
     /** Motor Inversion */
@@ -199,7 +199,7 @@ public final class Constants {
 
     /** Turret Geometry */
     public static final double MOTOR_GEAR_RATIO = 254.0 / 28.0; // turret spins once for every ~9 motor rotations
-    public static final double ENCODER_GEAR_RATIO = 127.0 / 168.0; // turret spins once for every ~0.75 encoder rotations
+    public static final double ENCODER_GEAR_RATIO = 127.0 / 168.0; // turret spins once for every ~0.75 encoder rotations. fix.
 
     // Absolute encoder setup
     public static final double ABSOLUTE_ENCODER_OFFSET = - 0.028; 
