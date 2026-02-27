@@ -151,7 +151,7 @@ public class RobotContainer {
           .onTrue(Commands.runOnce(() -> {
             hood.setGoal(hoodAngleEntry.getDouble(HoodConstants.HOOD_MIN_ANGLE));
             shooter.setRPM(flywheelRPMEntry.getDouble(ShooterConstants.FLYWHEEL_IDLE_RPM));
-          }))
+          }, hood, shooter))
           .onFalse(Commands.runOnce(() -> {
             hood.setGoal(HoodConstants.HOOD_MIN_ANGLE);
             shooter.setIdle();
