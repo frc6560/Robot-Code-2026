@@ -26,6 +26,7 @@ import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
 import frc.robot.autonomous.AutoModeChooser;
 import frc.robot.autonomous.AutoCommands;
 import frc.robot.commands.periodic.SuperstructureCommand;
+import frc.robot.utility.Shooter.PassCalculator;
 import frc.robot.utility.Shooter.ShotCalculator;
 
 import frc.robot.subsystems.hood.Hood;
@@ -65,6 +66,7 @@ public class RobotContainer {
     private final Intake intake;
 
     private final ShotCalculator shotCalculator = new ShotCalculator();
+    private final PassCalculator passCalculator = new PassCalculator();
 
     // Shuffleboard entries for manual control
     private final ShuffleboardTab tuningTab = Shuffleboard.getTab("Tuning");
@@ -118,7 +120,8 @@ public class RobotContainer {
         turret,
         drivebase::getPose,
         drivebase::getFieldVelocity,
-        shotCalculator
+        shotCalculator,
+        passCalculator
       );
 
       hood.setDefaultCommand(superstructureCommand);

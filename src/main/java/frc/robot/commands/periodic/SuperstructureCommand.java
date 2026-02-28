@@ -9,9 +9,11 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants.FieldConstants;
+import frc.robot.Constants.ShooterConstants;
 import frc.robot.subsystems.hood.Hood;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.turret.Turret;
+import frc.robot.utility.Shooter.PassCalculator;
 import frc.robot.utility.Shooter.ShotCalculator;
 
 public class SuperstructureCommand extends Command {
@@ -35,7 +37,9 @@ public class SuperstructureCommand extends Command {
     private final Turret turret;
     private final PoseSupplier poseSupplier;
     private final VelocitySupplier velocitySupplier;
+
     private final ShotCalculator shotCalculator;
+    private final PassCalculator passCalculator;
 
     private SuperstructureState state = SuperstructureState.IDLE;
 
@@ -45,12 +49,14 @@ public class SuperstructureCommand extends Command {
             Turret turret,
             PoseSupplier poseSupplier,
             VelocitySupplier velocitySupplier,
-            ShotCalculator shotCalculator) {
+            ShotCalculator shotCalculator,
+            PassCalculator passCalculator) {
         this.hood = hood;
         this.shooter = shooter;
         this.turret = turret;
         this.poseSupplier = poseSupplier;
         this.velocitySupplier = velocitySupplier;
+        this.passCalculator = passCalculator;
         this.shotCalculator = shotCalculator;
         addRequirements(hood, shooter, turret);
     }
@@ -91,7 +97,7 @@ public class SuperstructureCommand extends Command {
                 idleState();
                 break;
             case PASS:
-                idleState();
+                trackPassingTarget();
                 break;
             case SHOOT:
                 trackHubTarget();
@@ -115,6 +121,18 @@ public class SuperstructureCommand extends Command {
         turret.setGoalWithVelocity(Units.radiansToDegrees(shotCalculator.getTurretAngle()), 
                                     Units.radiansToDegrees(shotCalculator.getTurretVelocityFF()));
         hood.setGoal(shotCalculator.getHoodAzimuth());
+    }
+
+    public void trackPassingTarget(){
+        Pose2d pose = poseSupplier.getPose();
+        ChassisSpeeds velocity = velocitySupplier.getFieldVelocity();
+
+        passCalculator.calculate(pose, velocity);
+
+        turret.setGoalWithVelocity(Units.radiansToDegrees(passCalculator.getTurretAngle()), 
+                                    Units.radiansToDegrees(passCalculator.getTurretVelocityFF()));
+        hood.setGoal(passCalculator.getHoodAzimuth());
+        shooter.setRPM(ShooterConstants.PASS_RPM);
     }
 
     @Override
