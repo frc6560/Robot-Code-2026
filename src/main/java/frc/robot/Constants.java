@@ -181,7 +181,7 @@ public final class Constants {
     public static final double TARGET_RPM_HARDSET = 2000.0; 
     public static final double FLYWHEEL_GEAR_RATIO = 1.25; 
     public static final double FLYWHEEL_IDLE_RPM = 500; //kraken x60 
-    public static final double FLYWHEEL_RPM_TOLERANCE = 100.0;
+    public static final double FLYWHEEL_RPM_TOLERANCE = 50.0; 
 
     /** Current Limits */
     public static final double FLYWHEEL_SUPPLY_CURRENT_LIMIT = 50.0; // Amps

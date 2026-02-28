@@ -1,5 +1,6 @@
 package frc.robot.commands.scoring;
 
+import edu.wpi.first.math.filter.Debouncer;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.subsystems.feeder.Feeder;
 import frc.robot.subsystems.hood.Hood;
@@ -14,6 +15,8 @@ public class ShotCommand extends Command {
     private final Hood hood;
     private final Shooter shooter;
     private final ShotCalculator shotCalculator;
+
+    Debouncer debouncer = new Debouncer(0.25);
 
     public ShotCommand(
             Feeder feeder,
@@ -34,10 +37,11 @@ public class ShotCommand extends Command {
 
     @Override
     public void execute() {
-        boolean allAtTarget = turret.getAtTarget()
-                           && hood.atTarget()
-                           && shooter.atTarget()
-                           && shotCalculator.isShotValid();
+
+        boolean allAtTarget = debouncer.calculate(turret.getAtTarget())
+                           && debouncer.calculate(hood.atTarget())
+                           && debouncer.calculate(shooter.atTarget())
+                           && debouncer.calculate(shotCalculator.isShotValid());
 
         if (allAtTarget) {
             feeder.requestFeed();
