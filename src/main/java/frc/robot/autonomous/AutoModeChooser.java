@@ -43,6 +43,10 @@ public class AutoModeChooser {
                 routine = m_CommandFactory.getTestTrench();
                 name = "Trench Test";
                 break;
+            case getTestTrenchL:
+                routine = m_CommandFactory.getTestTrenchL();
+                name = "Trench TestL";
+                break;
             default:
                 routine = m_CommandFactory.getNoAuto();
                 name = "Idle";

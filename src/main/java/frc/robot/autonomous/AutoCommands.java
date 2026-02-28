@@ -178,4 +178,49 @@ public class AutoCommands {
 
         return testRoutine;
     }
+
+    public AutoRoutine getTestTrenchL(){
+        AutoRoutine testRoutine = autoFactory.newRoutine("testTrenchL");
+        
+        AutoTrajectory trenchToCenter = testRoutine.trajectory("hpTrenchToCenter_left");
+        AutoTrajectory trenchToShoot = testRoutine.trajectory("hpTrenchToShoot_left");
+        AutoTrajectory trenchToClimb = testRoutine.trajectory("hpTrenchToClimb_left");
+        AutoTrajectory trenchToCenterSecondSwipe = testRoutine.trajectory("hpTrenchToCenter2_left");
+
+        trenchToCenter.atTime("intake")
+            .onTrue(
+                intake()
+            );
+
+        trenchToCenterSecondSwipe.atTime("intake")
+            .onTrue(
+                intake()
+            );
+
+        trenchToShoot.atTime("shoot")
+            .onTrue(
+                retract()
+            );
+        
+        trenchToClimb.atTime("shoot")
+            .onTrue(
+                retract()
+            );
+
+        testRoutine
+            .active()
+                .onTrue(
+                    Commands.sequence(
+                        cmdWithAccuracy(trenchToCenter) 
+                            .beforeStarting(trenchToCenter.resetOdometry()),
+                        cmdWithAccuracy(trenchToShoot)
+                            .andThen(shoot()), 
+                        cmdWithAccuracy(trenchToCenterSecondSwipe),
+                        cmdWithAccuracy(trenchToClimb)
+                            .andThen(shoot())
+                    )
+        );
+
+        return testRoutine;
+    }
 }
