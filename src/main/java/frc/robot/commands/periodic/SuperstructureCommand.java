@@ -92,8 +92,8 @@ public class SuperstructureCommand extends Command {
     @Override
     public void execute() {
         handleState();
-        updateBehavior();
         performTrenchDetection();
+        updateBehavior();
     }
 
     private void handleState() {
@@ -131,8 +131,6 @@ public class SuperstructureCommand extends Command {
 
     private void idleState() {
         shooter.setIdle();
-        turret.stopMotor();
-        hood.stop();
     }
 
     private void trackHubTarget() {
@@ -294,6 +292,7 @@ public class SuperstructureCommand extends Command {
         // Control hood based on trench intersection
         if (intersectsAnyTrench) {
             hood.setGoal(15); // Full rumble
+            state = SuperstructureState.IDLE; // forces idle state
             SmartDashboard.putString("SuperstructureCommand/Trench Status", "STOPPED - Trench Detected");
         } else {
             SmartDashboard.putString("SuperstructureCommand/Trench Status", "RUNNING - Clear Path");
