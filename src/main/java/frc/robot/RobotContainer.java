@@ -150,7 +150,7 @@ public class RobotContainer {
           .onTrue(Commands.runOnce(feeder::requestFeed, feeder))
           .onFalse(Commands.runOnce(feeder::requestStop, feeder));
 
-        driverXbox.leftBumper()
+        operatorXbox.leftBumper()
           .onTrue(Commands.runOnce(intake::setExtensionMode, intake))
           .onFalse(Commands.runOnce(intake::setIdleMode, intake));
         

@@ -17,15 +17,15 @@ import edu.wpi.first.wpilibj.DigitalInput;
 import frc.robot.Constants.IntakeConstants;
 
 public class IntakeIOTalonFX implements IntakeIO {
-    private final TalonFX extendMotor;
+    //private final TalonFX extendMotor;
     private final TalonFX spinMotor;
     private final DigitalInput retractLimitSwitch;
 
-    private final StatusSignal<Angle> extendPosition;
-    private final StatusSignal<AngularVelocity> extendVelocity;
-    private final StatusSignal<Voltage> extendVoltage;
-    private final StatusSignal<Current> extendCurrent;
-    private final StatusSignal<Temperature> extendTemp;
+    // private final StatusSignal<Angle> extendPosition;
+    // private final StatusSignal<AngularVelocity> extendVelocity;
+    // private final StatusSignal<Voltage> extendVoltage;
+    // private final StatusSignal<Current> extendCurrent;
+    // private final StatusSignal<Temperature> extendTemp;
 
     private final StatusSignal<AngularVelocity> spinVelocity;
     private final StatusSignal<Voltage> spinVoltage;
@@ -33,18 +33,18 @@ public class IntakeIOTalonFX implements IntakeIO {
     private final StatusSignal<Temperature> spinTemp;
 
     public IntakeIOTalonFX() {
-        extendMotor = new TalonFX(IntakeConstants.EXTEND_MOTOR_ID, IntakeConstants.CAN_BUS);
+        //extendMotor = new TalonFX(IntakeConstants.EXTEND_MOTOR_ID, IntakeConstants.CAN_BUS);
         spinMotor = new TalonFX(IntakeConstants.SPIN_MOTOR_ID, IntakeConstants.CAN_BUS);
         retractLimitSwitch = new DigitalInput(IntakeConstants.RETRACT_LIMIT_SWITCH_ID);
 
         configureExtendMotor();
         configureSpinMotor();
 
-        extendPosition = extendMotor.getPosition();
-        extendVelocity = extendMotor.getVelocity();
-        extendVoltage = extendMotor.getMotorVoltage();
-        extendCurrent = extendMotor.getSupplyCurrent();
-        extendTemp = extendMotor.getDeviceTemp();
+        // extendPosition = extendMotor.getPosition();
+        // extendVelocity = extendMotor.getVelocity();
+        // extendVoltage = extendMotor.getMotorVoltage();
+        // extendCurrent = extendMotor.getSupplyCurrent();
+        // extendTemp = extendMotor.getDeviceTemp();
 
         spinVelocity = spinMotor.getVelocity();
         spinVoltage = spinMotor.getMotorVoltage();
@@ -53,11 +53,11 @@ public class IntakeIOTalonFX implements IntakeIO {
 
         BaseStatusSignal.setUpdateFrequencyForAll(
             50.0,
-            extendPosition, extendVelocity, extendVoltage, extendCurrent, extendTemp,
+            //extendPosition, extendVelocity, extendVoltage, extendCurrent, extendTemp,
             spinVelocity, spinVoltage, spinCurrent, spinTemp
         );
 
-        extendMotor.optimizeBusUtilization();
+        //extendMotor.optimizeBusUtilization();
         spinMotor.optimizeBusUtilization();
     }
 
@@ -73,7 +73,7 @@ public class IntakeIOTalonFX implements IntakeIO {
         config.CurrentLimits.StatorCurrentLimitEnable = true;
         config.CurrentLimits.StatorCurrentLimit = IntakeConstants.EXTEND_STATOR_CURRENT_LIMIT;
 
-        extendMotor.getConfigurator().apply(config);
+        //extendMotor.getConfigurator().apply(config);
     }
 
     private void configureSpinMotor() {
@@ -94,15 +94,15 @@ public class IntakeIOTalonFX implements IntakeIO {
     @Override
     public void updateInputs(IntakeIOInputs inputs) {
         BaseStatusSignal.refreshAll(
-            extendPosition, extendVelocity, extendVoltage, extendCurrent, extendTemp,
+            //extendPosition, extendVelocity, extendVoltage, extendCurrent, extendTemp,
             spinVelocity, spinVoltage, spinCurrent, spinTemp
         );
 
-        inputs.extendPositionRotations = extendPosition.getValueAsDouble();
-        inputs.extendVelocityRPS = extendVelocity.getValueAsDouble();
-        inputs.extendAppliedVolts = extendVoltage.getValueAsDouble();
-        inputs.extendCurrentAmps = extendCurrent.getValueAsDouble();
-        inputs.extendTempCelsius = extendTemp.getValueAsDouble();
+        // inputs.extendPositionRotations = extendPosition.getValueAsDouble();
+        // inputs.extendVelocityRPS = extendVelocity.getValueAsDouble();
+        // inputs.extendAppliedVolts = extendVoltage.getValueAsDouble();
+        // inputs.extendCurrentAmps = extendCurrent.getValueAsDouble();
+        // inputs.extendTempCelsius = extendTemp.getValueAsDouble();
 
         inputs.spinVelocityRPS = spinVelocity.getValueAsDouble();
         inputs.spinAppliedVolts = spinVoltage.getValueAsDouble();
@@ -115,7 +115,7 @@ public class IntakeIOTalonFX implements IntakeIO {
 
     @Override
     public void setExtendPercent(double percent) {
-        extendMotor.set(percent);
+        //extendMotor.set(percent);
     }
 
     @Override
@@ -125,7 +125,7 @@ public class IntakeIOTalonFX implements IntakeIO {
 
     @Override
     public void resetExtendPosition() {
-        extendMotor.setPosition(0.0);
+        //extendMotor.setPosition(0.0);
     }
 
     @Override
@@ -142,6 +142,6 @@ public class IntakeIOTalonFX implements IntakeIO {
             limits.StatorCurrentLimitEnable = true;
             limits.StatorCurrentLimit = IntakeConstants.EXTEND_STATOR_CURRENT_LIMIT;
         }
-        extendMotor.getConfigurator().apply(limits);
+        //extendMotor.getConfigurator().apply(limits);
     }
 }
