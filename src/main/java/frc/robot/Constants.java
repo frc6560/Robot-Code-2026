@@ -234,7 +234,7 @@ public final class Constants {
   }
 
   public static final class IntakeConstants{
-    public static final boolean EXTENSION_ENABLED = true; // temp: set true once extension + limit switch are wired
+    public static final boolean EXTENSION_ENABLED = false; // Extend motor disabled - only roller/spinner runs
     public static final int EXTEND_MOTOR_ID = 15; // TODO: set correct ID //completed
     public static final int SPIN_MOTOR_ID = 16; // TODO: set correct ID /completed
   public static final String CAN_BUS = "rio";
