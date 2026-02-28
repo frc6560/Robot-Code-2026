@@ -24,6 +24,7 @@ import edu.wpi.first.networktables.GenericEntry;
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
 import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
 import frc.robot.autonomous.AutoModeChooser;
+import frc.robot.commands.ClimbCommand;
 import frc.robot.autonomous.AutoCommands;
 import frc.robot.commands.periodic.SuperstructureCommand;
 import frc.robot.utility.Shooter.PassCalculator;
@@ -153,6 +154,7 @@ public class RobotContainer {
         driverXbox.leftBumper()
           .onTrue(Commands.runOnce(intake::setExtensionMode, intake))
           .onFalse(Commands.runOnce(intake::setIdleMode, intake));
+        operatorXbox.y().onTrue(Commands.defer(() -> new ClimbCommand(drivebase), Set.of(drivebase)));
         
     }
 
