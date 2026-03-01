@@ -7,6 +7,7 @@ import choreo.auto.AutoTrajectory;
 import frc.robot.subsystems.feeder.Feeder;
 import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
+import frc.robot.commands.ClimbCommand;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -81,6 +82,10 @@ public class AutoCommands {
             .finallyDo((interrupted) -> {
                 feeder.requestStop();
             });
+    }
+
+    public Command climb(){
+        return new ClimbCommand(drivetrain);
     }
 
     public Command intake(){
@@ -218,6 +223,7 @@ public class AutoCommands {
                         cmdWithAccuracy(trenchToCenterSecondSwipe),
                         cmdWithAccuracy(trenchToClimb)
                             .andThen(shoot())
+                            .andThen(climb())
                     )
         );
 
