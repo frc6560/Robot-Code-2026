@@ -187,10 +187,10 @@ public class AutoCommands {
     public AutoRoutine getTestTrenchL(){
         AutoRoutine testRoutine = autoFactory.newRoutine("testTrenchL");
         
-        AutoTrajectory trenchToCenter = testRoutine.trajectory("hpTrenchToCenter_left");
-        AutoTrajectory trenchToShoot = testRoutine.trajectory("hpTrenchToShoot_left");
-        AutoTrajectory trenchToClimb = testRoutine.trajectory("hpTrenchToClimb_left");
-        AutoTrajectory trenchToCenterSecondSwipe = testRoutine.trajectory("hpTrenchToCenter2_left");
+        AutoTrajectory trenchToCenter = testRoutine.trajectory("depotTrenchToCenter");
+        AutoTrajectory trenchToShoot = testRoutine.trajectory("depotTrenchToShoot");
+        AutoTrajectory trenchToClimb = testRoutine.trajectory("depotTrenchToClimb");
+        AutoTrajectory trenchToCenterSecondSwipe = testRoutine.trajectory("depotTrenchToCenter2");
 
         trenchToCenter.atTime("intake")
             .onTrue(
