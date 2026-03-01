@@ -89,7 +89,7 @@ public class SwerveSubsystem extends SubsystemBase {
     boolean blueAlliance = true;
 
     // these starting positions should change with every new autonomous we run.
-    Pose2d startingPose = blueAlliance ? FieldConstants.BLUE_LEFT_START
+    Pose2d startingPose = blueAlliance ? FieldConstants.BLUE_TESTING_START
                                        : new Pose2d(new Translation2d(Meter.of(12.83),
                                                                       Meter.of(7.39)),
                                                     Rotation2d.fromDegrees(180));
