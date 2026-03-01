@@ -180,8 +180,8 @@ public final class Constants {
     public static final double kP = 0.5;
     public static final double kI = 0.00;
     public static final double kD = 0.00;
-    public static final double kV = 0.1183; 
-     public static final double kS = 0.05;
+    public static final double kV = 0.117; 
+     public static final double kS = 0.15;
 
     /** Flywheel Geometry */
     public static final double MAX_RPM = 5000; 
