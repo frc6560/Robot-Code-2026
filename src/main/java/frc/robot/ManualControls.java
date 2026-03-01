@@ -1,13 +1,12 @@
 package frc.robot;
 
+import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.XboxController;
 
 public class ManualControls {
 
-    // private final XboxController secondXbox;
-    private final XboxController secondXbox;
-    private final XboxController firstXbox;
+    private final Joystick m_buttonBoard;
 
     
     private static double deadband(double value, double deadband) {
@@ -31,84 +30,56 @@ public class ManualControls {
     
         return value;
       }
-    public ManualControls(XboxController firstXbox, XboxController secondXbox) {
-        this.secondXbox = secondXbox;
-        this.firstXbox = firstXbox;
-        
+
+    public ManualControls(int USB_ID){
+        m_buttonBoard = new Joystick(USB_ID);
     }
 
-    // slow down
-
-    // public boolean slowDown() {
-    //   return (firstXbox.getLeftTriggerAxis() > 0.25);
-    // }
-
-    // climb
-
-    public boolean getClimbDown() {
-      return secondXbox.getRightY() > 0.7; 
-        // return secondXbox.getLeftStickButton(); 
+    public boolean getButton(int buttonNumber){
+        return m_buttonBoard.getRawButtonPressed(buttonNumber);
     }
 
-    public boolean getClimbUp() {
-      return secondXbox.getRightY() < -0.7;
-        // return secondXbox.getRightStickButton(); 
+    public boolean getButtonRelease(int buttonNumber){
+        return m_buttonBoard.getRawButtonReleased(buttonNumber);
     }
 
-    // elevator
-
-    public boolean goToStow(){
-      return secondXbox.getPOV() == 180;
-    }
-    
-    public boolean goToL2Ball(){
-        return secondXbox.getXButton();
+    public boolean getShootTrigger(){
+      return getButton(1);
     }
 
-    public boolean goToL3Ball(){
-        return secondXbox.getBButton();
+    public boolean getShootReleaseTrigger(){
+      return getButtonRelease(1);
     }
 
-    public boolean goToShootBall(){
-        return secondXbox.getYButton();
+    public boolean getIntakeTrigger(){
+      return getButton(2);
     }
 
-    public boolean shiftedControls(){
-      return secondXbox.getRightBumperButton();
-    }
-
-    public boolean goToGroundBall() {
-      return secondXbox.getAButton();
-    }
-
-
-    // pipe and ball grabber 
-
-    // shifted for ball
-    public boolean runIntake(){
-      return secondXbox.getLeftBumperButton();
-    }
-
-    public boolean runOuttake() {
-      return secondXbox.getRightBumperButton();
-    }
-
-    public boolean zeroNoAprilTagsGyro() {
-      return secondXbox.getStartButton();
-    }
+      public boolean getIntakeReleaseTrigger(){
+        return getButtonRelease(2);
+      }
   
+      public boolean getClimbTrigger(){
+        return getButton(3);
+      }
+  
+      public boolean getClimbReleaseTrigger(){
+        return getButtonRelease(3);
+      }
+  
+      public boolean getAutoAlignTrigger(){
+        return getButton(4);
+      }
 
+      public boolean getVisionResetTrigger(){
+        return getButton(5);
+      }
 
+      public boolean getIntakeResetTrigger(){
+        return getButton(6);
+      }
 
-    // tests 
-
-    // public double testWrist(){
-    //   return deadband(secondXbox.getRightX(), 0.1);
-    // }
-    // public double testEle(){
-    //   return secondXbox.getLeftX();
-    // }
-    // public boolean resetWrist(){
-    //   return secondXbox.getRightBumperButton();
-    // }
+      public boolean getClimbResetTrigger(){
+        return getButton(7);
+      }
 }
