@@ -37,7 +37,7 @@ public class ShotCalculator {
     private double turretAngle;
     private double turretVelocityFF; // feedforward velocity in rad/s 
 
-    private static final double TIME_PARAMETER = 0.058; 
+    private static final double TIME_PARAMETER = 0.051; 
 
     private static final InterpolatingDoubleTreeMap hoodAzimuthMap = new InterpolatingDoubleTreeMap();
     private static final InterpolatingDoubleTreeMap flywheelRPMMap = new InterpolatingDoubleTreeMap();
