@@ -54,7 +54,8 @@ public class Turret extends SubsystemBase {
         double bestScore = Double.MAX_VALUE;
         boolean foundValid = false;
 
-        boolean needsWireProtection = Math.abs(currentPosition) >= TurretConstants.WIRE_PROTECTION_THRESHOLD;
+        boolean needsWireProtection = currentPosition <= TurretConstants.WIRE_PROTECTION_LOWER
+            || currentPosition >= TurretConstants.WIRE_PROTECTION_UPPER;
 
         for (double candidate : candidates) {
             if (candidate >= TurretConstants.LOWER_SOFT_LIMIT &&
@@ -153,6 +154,7 @@ public class Turret extends SubsystemBase {
         Logger.recordOutput("Turret/ErrorDegrees", getTurretAngle() - goalDegrees);
         Logger.recordOutput("Turret/AtTarget", getAtTarget());
         Logger.recordOutput("Turret/WireProtectionActive",
-            Math.abs(getTurretAngle()) >= TurretConstants.WIRE_PROTECTION_THRESHOLD);
+            getTurretAngle() <= TurretConstants.WIRE_PROTECTION_LOWER
+            || getTurretAngle() >= TurretConstants.WIRE_PROTECTION_UPPER);
     }
 }
