@@ -47,7 +47,7 @@ public class RobotContainer {
     private final Turret  turret  = new Turret();
     private final Feeder  feeder  = new Feeder();
 
-    private final LEDSubsystem leds = new LEDSubsystem();
+    private final LEDSubsystem leds = new LEDSubsystem(drivebase::getPose);
 
     private final ShotCalculator shotCalculator = new ShotCalculator();
 

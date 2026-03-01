@@ -14,15 +14,16 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.FieldConstants;
+import frc.robot.Constants.ShotTimingConstants;
 import frc.robot.Constants.TurretConstants;
 
 public class ShotCalculator {
 
     /** State container for turret position and velocity. */
-    public record TurretState(double positionRadians) {}
+    public record TurretState(double positionRadians, double velocityRadiansPerSecond) {}
 
     /** State container for hood position and velocity. */
-    public record HoodState(double positionRadians) {}
+    public record HoodState(double positionDegrees) {}
 
     /** Combined state for the entire shooter system. */
     public record ShooterState(
@@ -33,47 +34,54 @@ public class ShotCalculator {
     ) {}
 
     private double flywheelRPM;
-    private double hoodAzimuth; // in radians
-    private double turretAngle; 
+    private double hoodAzimuth; // in degrees
+    private double turretAngle;
+    private double turretVelocityFF; // feedforward velocity in rad/s 
 
     private static final double TIME_PARAMETER = 0.058; 
 
     private static final InterpolatingDoubleTreeMap hoodAzimuthMap = new InterpolatingDoubleTreeMap();
     private static final InterpolatingDoubleTreeMap flywheelRPMMap = new InterpolatingDoubleTreeMap();
-    private static final InterpolatingDoubleTreeMap timeOfFlightMap = new InterpolatingDoubleTreeMap();
+    private static final double MIN_DISTANCE = 1.279;
+    private static final double MAX_DISTANCE = 5.345;
 
-    public Translation2d virtualTargetPose; 
+    public Translation2d virtualTargetPose;
+    private double distanceToVirtualTarget = 0.0; 
 
     /** A util class for outputting shooter state values, even while the robot is moving! */
     public ShotCalculator() {
         this.flywheelRPM = 0;
         this.hoodAzimuth = 0;
         this.turretAngle = 0;
+        this.turretVelocityFF = 0;
         this.virtualTargetPose = new Translation2d();
         populateLUTs();
     }
 
     public void populateLUTs(){
+        // Units are in meters/RPM/degrees/seconds.
         // shooter RPM
-        flywheelRPMMap.put(3.77, 1990.0);
-        flywheelRPMMap.put(4.29, 2070.0);
-        flywheelRPMMap.put(4.82, 2175.0); 
-        flywheelRPMMap.put(5.47, 2285.0);
+        flywheelRPMMap.put(1.279, 2500.0);
+        flywheelRPMMap.put(1.853, 2700.0);
+        flywheelRPMMap.put(2.459, 2800.0);
+        flywheelRPMMap.put(3.062, 2900.0);
+        flywheelRPMMap.put(3.676, 3000.0);
+        flywheelRPMMap.put(4.234, 3200.0);
+        flywheelRPMMap.put(4.822, 3300.0);
+        flywheelRPMMap.put(5.345, 3550.0);
 
-        // hood azimuth (finish on main bot. these are completely BS values).
-        hoodAzimuthMap.put(3.77, Math.toRadians(20));
-        hoodAzimuthMap.put(4.29, Math.toRadians(25));
-        hoodAzimuthMap.put(4.82, Math.toRadians(30));
-        hoodAzimuthMap.put(5.47, Math.toRadians(35));
-
-        // time of flight (finish on main bot)
-        timeOfFlightMap.put(3.93, 0.77);
-        timeOfFlightMap.put(4.30, 0.81);
-        timeOfFlightMap.put(4.83, 0.90);
-        timeOfFlightMap.put(5.47, 1.008);
+        // hood azimuth
+        hoodAzimuthMap.put(1.279, 27.24);
+        hoodAzimuthMap.put(1.853, 30.0);
+        hoodAzimuthMap.put(2.459, 32.0);
+        hoodAzimuthMap.put(3.062, 40.0);
+        hoodAzimuthMap.put(3.676, 44.0);
+        hoodAzimuthMap.put(4.234, 45.0);
+        hoodAzimuthMap.put(4.822, 48.0);
+        hoodAzimuthMap.put(5.345, 52.0);
     }
 
-    /** Returns the current hood azimuth in radians. */
+    /** Returns the current hood azimuth in degrees. */
     public double getHoodAzimuth() {
         return hoodAzimuth;
     }
@@ -81,6 +89,11 @@ public class ShotCalculator {
     /** Returns the current turret angle in radians. */
     public double getTurretAngle() {
         return turretAngle;
+    }
+
+    /** Returns the turret velocity feedforward in radians per second. */
+    public double getTurretVelocityFF() {
+        return turretVelocityFF;
     }
 
     /** Returns the current flywheel RPM. */
@@ -92,10 +105,20 @@ public class ShotCalculator {
         return virtualTargetPose;
     }
 
+    /** Returns true if the distance to the virtual target is within the LUT range. */
+    public boolean isShotValid() {
+        return distanceToVirtualTarget >= MIN_DISTANCE && distanceToVirtualTarget <= MAX_DISTANCE;
+    }
+
+    /** Returns the current distance to the virtual target. */
+    public double getDistanceToVirtualTarget() {
+        return distanceToVirtualTarget;
+    }
+
     /** Returns the complete shooter state including positions and velocities. */
     public ShooterState getState() {
         return new ShooterState(
-            new TurretState(turretAngle),
+            new TurretState(turretAngle, turretVelocityFF),
             new HoodState(hoodAzimuth),
             flywheelRPM,
             virtualTargetPose
@@ -171,7 +194,7 @@ public class ShotCalculator {
 
         if(Math.hypot(turretVx, turretVy) > 0.4){
             for(int i = 0; i < 20; i++){
-                timeOfFlight = timeOfFlightMap.get(distanceToTarget);
+                timeOfFlight = ShotTimingConstants.getTimeOfFlightSeconds(distanceToTarget);
                 iterationsUsed = i + 1;
 
                 // Early exit if time of flight has converged
@@ -191,10 +214,13 @@ public class ShotCalculator {
             }
         }
         
+        distanceToVirtualTarget = distanceToTarget;
+
         SmartDashboard.putNumber("SOTM/Iterations", iterationsUsed);
         SmartDashboard.putNumber("SOTM/TimeOfFlight", timeOfFlight);
         SmartDashboard.putNumber("SOTM/Distance/Static", staticDistance);
         SmartDashboard.putNumber("SOTM/Distance/Virtual", distanceToTarget);
+        SmartDashboard.putBoolean("SOTM/ShotValid", isShotValid());
 
         Translation2d targetOffset = virtualTargetPose.minus(targetPose);
         SmartDashboard.putNumber("SOTM/VirtualOffset/X", targetOffset.getX());
@@ -209,10 +235,21 @@ public class ShotCalculator {
             virtualTargetPose.getX() - turretPose.getX()
         ) - projectedPosition.getRotation().getRadians());
 
+        double deltaX = virtualTargetPose.getX() - turretPose.getX();
+        double deltaY = virtualTargetPose.getY() - turretPose.getY();
+        double distSquared = distanceToTarget * distanceToTarget;
+
+        if (distSquared > 0.01) { 
+            double losRate = (turretVx * deltaY - turretVy * deltaX) / distSquared;
+            turretVelocityFF = losRate - fieldVelocity.omegaRadiansPerSecond;
+        } else {
+            turretVelocityFF = -fieldVelocity.omegaRadiansPerSecond;
+        }
 
         // Log final output values
         SmartDashboard.putNumber("SOTM/Output/TurretAngleDeg", Math.toDegrees(turretAngle));
-        SmartDashboard.putNumber("SOTM/Output/HoodAngleDeg", Math.toDegrees(hoodAzimuth));
+        SmartDashboard.putNumber("SOTM/Output/HoodAngleDeg", hoodAzimuth);
         SmartDashboard.putNumber("SOTM/Output/FlywheelRPM", flywheelRPM);
+        SmartDashboard.putNumber("SOTM/Output/TurretVelocityFF", Math.toDegrees(turretVelocityFF));
     }
 }

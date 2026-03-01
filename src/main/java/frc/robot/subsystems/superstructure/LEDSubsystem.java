@@ -1,6 +1,12 @@
 package frc.robot.subsystems.superstructure;
 
 import java.util.Optional;
+import java.util.function.Supplier;
+
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Translation2d;
+import frc.robot.Constants.FieldConstants;
+import frc.robot.Constants.ShotTimingConstants;
 
 import edu.wpi.first.wpilibj.AddressableLED;
 import edu.wpi.first.wpilibj.AddressableLEDBuffer;
@@ -44,6 +50,10 @@ public class LEDSubsystem extends SubsystemBase {
 
     /** Seconds before a hub-state flip to show loading bar (change this freely) */
     private static final double LOADING_BAR_SECONDS = 2.0;
+
+    /** SOTM "OK to shoot" pulse: pulse when timeToBoundary <= TOF (+pad) until hub becomes active. */
+    private static final double SOTM_TOF_PAD_SEC = 0.05;
+    private static final double SOTM_OK_PULSE_PERIOD_SEC = 0.25;
 
     // Swipe animation (pregame directional shifts)
     private static final double SWIPE_STEP_SEC = 0.03; // seconds per LED step
@@ -107,6 +117,7 @@ public class LEDSubsystem extends SubsystemBase {
         // InGame (gameplay)
         HUB_ACTIVE_SHOOT,
         HUB_INACTIVE_PASS,
+        SOTM_OK_TO_SHOOT_PULSE,
         LOADING_TO_ACTIVE,
         LOADING_TO_INACTIVE,
         GAME_DATA_UNKNOWN,
@@ -124,6 +135,9 @@ public class LEDSubsystem extends SubsystemBase {
     private final AddressableLED       led;
     private final AddressableLEDBuffer buffer;
     private final Timer                animTimer = new Timer();
+
+    // Odometry supplier (used for SOTM timing LEDs)
+    private final Supplier<Pose2d>      poseSupplier;
 
     // ═══════════════════════════════════════════════════════════════════════════
     // ROBOT STATE — set these via the public setters below
@@ -162,11 +176,25 @@ public class LEDSubsystem extends SubsystemBase {
 
     private double  t_timeToNextBoundary     = -1.0;
 
+    // SOTM "OK to shoot" timing (inactive -> active boundary)
+    private boolean t_sotmPulseActive      = false;
+    private double  t_sotmDistanceToHubM   = -1.0;
+    private double  t_sotmTimeOfFlightSec  = -1.0;
+    private double  t_sotmPulseStartTime   = -1.0; // match time remaining when pulse should begin
+    private double  t_sotmActiveBoundary   = -1.0; // match time remaining at the hub activation boundary
+
     // ═══════════════════════════════════════════════════════════════════════════
     // CONSTRUCTOR
     // ═══════════════════════════════════════════════════════════════════════════
 
+    
     public LEDSubsystem() {
+        this(() -> new Pose2d());
+    }
+
+    public LEDSubsystem(Supplier<Pose2d> poseSupplier) {
+        this.poseSupplier = (poseSupplier != null) ? poseSupplier : (() -> new Pose2d());
+
         led = new AddressableLED(LED_PORT);
         buffer = new AddressableLEDBuffer(LED_LENGTH);
         led.setLength(LED_LENGTH);
@@ -266,6 +294,12 @@ public class LEDSubsystem extends SubsystemBase {
         t_loadingProgress       = 0.0;
         t_timeToNextBoundary    = -1.0;
 
+        t_sotmPulseActive     = false;
+        t_sotmDistanceToHubM  = -1.0;
+        t_sotmTimeOfFlightSec = -1.0;
+        t_sotmPulseStartTime  = -1.0;
+        t_sotmActiveBoundary  = -1.0;
+
         // AUTO: treat as active (both hubs active)
         if (DriverStation.isAutonomous()) {
             t_myHubActive = true;
@@ -309,23 +343,46 @@ public class LEDSubsystem extends SubsystemBase {
         boolean activeNow = isMyHubActiveDuringShift(myAlliance, inactiveFirst, seg);
         t_myHubActive = activeNow;
 
-        // Determine time to next boundary and whether we should show loading bar
+        
+        // Determine time to next boundary and whether we should show loading bar / SOTM timing pulse
         double timeToBoundary = secondsUntilNextBoundary(t, seg);
         t_timeToNextBoundary = timeToBoundary;
 
-        if (timeToBoundary >= 0.0 && timeToBoundary <= LOADING_BAR_SECONDS) {
-            TeleopSegment nextSeg = nextTeleopSegment(seg);
+        TeleopSegment nextSeg = nextTeleopSegment(seg);
 
-            boolean activeAfter;
-            if (nextSeg == TeleopSegment.TRANSITION || nextSeg == TeleopSegment.ENDGAME) {
-                activeAfter = true; // both active
-            } else if (nextSeg == TeleopSegment.SHIFT_1 || nextSeg == TeleopSegment.SHIFT_2
-                    || nextSeg == TeleopSegment.SHIFT_3 || nextSeg == TeleopSegment.SHIFT_4) {
-                activeAfter = isMyHubActiveDuringShift(myAlliance, inactiveFirst, nextSeg);
-            } else {
-                activeAfter = activeNow;
+        boolean activeAfter;
+        if (nextSeg == TeleopSegment.TRANSITION || nextSeg == TeleopSegment.ENDGAME) {
+            activeAfter = true; // both active
+        } else if (nextSeg == TeleopSegment.SHIFT_1 || nextSeg == TeleopSegment.SHIFT_2
+                || nextSeg == TeleopSegment.SHIFT_3 || nextSeg == TeleopSegment.SHIFT_4) {
+            activeAfter = isMyHubActiveDuringShift(myAlliance, inactiveFirst, nextSeg);
+        } else {
+            activeAfter = activeNow;
+        }
+
+        // ── SOTM "OK to shoot" pulse:
+        // If we're about to flip from INACTIVE -> ACTIVE, pulse once it's late enough that a shot
+        // fired now would arrive after the hub is ACTIVE (dt <= TOF).
+        if (timeToBoundary >= 0.0 && activeAfter && !activeNow) {
+            Pose2d pose = safePose(poseSupplier.get());
+            double tofSec = estimateTimeOfFlightSecondsToMyHub(pose, myAlliance);
+            double boundary = nextBoundaryMatchTimeRemaining(seg);
+
+            t_sotmTimeOfFlightSec = tofSec;
+            t_sotmActiveBoundary  = boundary;
+            t_sotmPulseStartTime  = boundary + tofSec;
+
+            Translation2d hub = (myAlliance == Alliance.Blue) ? FieldConstants.BLUE_HUB_CENTER : FieldConstants.RED_HUB_CENTER;
+            t_sotmDistanceToHubM = pose.getTranslation().getDistance(hub);
+
+            if (timeToBoundary <= (tofSec + SOTM_TOF_PAD_SEC)) {
+                t_sotmPulseActive = true;
+                return LEDState.SOTM_OK_TO_SHOOT_PULSE;
             }
+        }
 
+        // ── Existing loading bar behavior (kept for other flips and as a "soon" indicator) ──
+        if (timeToBoundary >= 0.0 && timeToBoundary <= LOADING_BAR_SECONDS) {
             // Only show loading bar if our hub state actually flips at this boundary
             if (activeAfter != activeNow) {
                 t_loadingBarActive = true;
@@ -389,6 +446,20 @@ public class LEDSubsystem extends SubsystemBase {
 
         if (boundary < 0) return -1.0;
         return matchTimeRemainingSeconds - boundary;
+    }
+
+
+    /** Returns the match-time-remaining value of the next boundary for a given segment (seconds remaining). */
+    private double nextBoundaryMatchTimeRemaining(TeleopSegment seg) {
+        return switch (seg) {
+            case TRANSITION -> TELEOP_TRANSITION_END;
+            case SHIFT_1    -> SHIFT_1_END;
+            case SHIFT_2    -> SHIFT_2_END;
+            case SHIFT_3    -> SHIFT_3_END;
+            case SHIFT_4    -> SHIFT_4_END;
+            case ENDGAME    -> ENDGAME_END;
+            default         -> -1.0;
+        };
     }
 
     /**
@@ -461,6 +532,7 @@ public class LEDSubsystem extends SubsystemBase {
             // ── Gameplay (no pulses; only solids + loading bar) ─────────────
             case HUB_ACTIVE_SHOOT   -> setSolid(0, 255, 255);   // cyan
             case HUB_INACTIVE_PASS  -> setSolid(255, 255, 255); // white
+            case SOTM_OK_TO_SHOOT_PULSE -> renderPulse(0, 255, 255, SOTM_OK_PULSE_PERIOD_SEC);
 
             case LOADING_TO_ACTIVE   -> renderLoadingBar(/*toActive=*/true);
             case LOADING_TO_INACTIVE -> renderLoadingBar(/*toActive=*/false);
@@ -515,6 +587,16 @@ public class LEDSubsystem extends SubsystemBase {
         }
     }
 
+
+    /** Simple 50% duty-cycle pulse (on/off) at the requested period. */
+    private void renderPulse(int r, int g, int b, double periodSec) {
+        double phase = (animTimer.get() % periodSec) / periodSec;
+        boolean on = phase < 0.5;
+
+        if (on) setSolid(r, g, b);
+        else    setSolid(0, 0, 0);
+    }
+
     private void animateSwipe(SwipeDirection dir, int r, int g, int b) {
         int head = (int)(animTimer.get() / SWIPE_STEP_SEC) % LED_LENGTH;
 
@@ -565,6 +647,13 @@ public class LEDSubsystem extends SubsystemBase {
         SmartDashboard.putNumber("LED/LoadingProgress", t_loadingProgress);
         SmartDashboard.putNumber("LED/TimeToNextBoundary", t_timeToNextBoundary);
 
+
+        SmartDashboard.putBoolean("LED/SOTM/PulseActive", t_sotmPulseActive);
+        SmartDashboard.putNumber("LED/SOTM/DistanceToHubM", t_sotmDistanceToHubM);
+        SmartDashboard.putNumber("LED/SOTM/TimeOfFlightSec", t_sotmTimeOfFlightSec);
+        SmartDashboard.putNumber("LED/SOTM/PulseStartMatchTime", t_sotmPulseStartTime);
+        SmartDashboard.putNumber("LED/SOTM/ActiveBoundaryMatchTime", t_sotmActiveBoundary);
+
         SmartDashboard.putNumber("LED/MatchTime", DriverStation.getMatchTime());
         SmartDashboard.putBoolean("LED/Teleop", DriverStation.isTeleop());
         SmartDashboard.putBoolean("LED/Auto", DriverStation.isAutonomous());
@@ -583,4 +672,19 @@ public class LEDSubsystem extends SubsystemBase {
     private static String safeString(String s) {
         return (s == null) ? "" : s;
     }
+
+    private static Pose2d safePose(Pose2d pose) {
+        return (pose != null) ? pose : new Pose2d();
+    }
+
+    /** Distance-based TOF estimate for LED timing (SOTM). */
+    private static double estimateTimeOfFlightSecondsToMyHub(Pose2d robotPose, Alliance myAlliance) {
+        Translation2d hub = (myAlliance == Alliance.Blue)
+                ? FieldConstants.BLUE_HUB_CENTER
+                : FieldConstants.RED_HUB_CENTER;
+
+        double distance = robotPose.getTranslation().getDistance(hub);
+        return ShotTimingConstants.getTimeOfFlightSeconds(distance);
+    }
+
 }

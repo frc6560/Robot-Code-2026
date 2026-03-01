@@ -16,6 +16,7 @@ import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
 import swervelib.math.Matter;
 
 /**
@@ -238,4 +239,35 @@ public final class Constants {
     public static final double SPIN_SUPPLY_CURRENT_LIMIT = 30;
     public static final double SPIN_STATOR_CURRENT_LIMIT = 50;
   }
+
+  public static final class ShotTimingConstants {
+    /**
+     * Time-of-flight LUT for hub shots.
+     * Keys = distance to hub center (meters), Values = time of flight (seconds).
+     *
+     * NOTE: This LUT is shared by both ShotCalculator (SOTM) and LED timing.
+     */
+    public static final InterpolatingDoubleTreeMap TIME_OF_FLIGHT_SECONDS_BY_DISTANCE_M = new InterpolatingDoubleTreeMap();
+
+    // Bounds of the LUT keys (meters). If you tune the LUT, update these too.
+    public static final double TOF_MIN_DISTANCE_M = 1.520;
+    public static final double TOF_MAX_DISTANCE_M = 4.934;
+
+    static {
+      // time of flight
+      TIME_OF_FLIGHT_SECONDS_BY_DISTANCE_M.put(1.520, 1.03);
+      TIME_OF_FLIGHT_SECONDS_BY_DISTANCE_M.put(2.344, 1.05);
+      TIME_OF_FLIGHT_SECONDS_BY_DISTANCE_M.put(3.073, 1.13);
+      TIME_OF_FLIGHT_SECONDS_BY_DISTANCE_M.put(3.876, 1.18);
+      TIME_OF_FLIGHT_SECONDS_BY_DISTANCE_M.put(4.183, 1.20);
+      TIME_OF_FLIGHT_SECONDS_BY_DISTANCE_M.put(4.934, 1.25);
+    }
+
+    /** Returns interpolated TOF seconds, with distance clamped to the LUT range. */
+    public static double getTimeOfFlightSeconds(double distanceMeters) {
+      double d = Math.max(TOF_MIN_DISTANCE_M, Math.min(TOF_MAX_DISTANCE_M, distanceMeters));
+      return TIME_OF_FLIGHT_SECONDS_BY_DISTANCE_M.get(d);
+    }
+  }
+
 }
