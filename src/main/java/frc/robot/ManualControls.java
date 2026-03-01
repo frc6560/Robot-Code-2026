@@ -44,11 +44,11 @@ public class ManualControls {
     }
 
     public boolean getShootTrigger(){
-      return getButton(1);
+      return getButton(12);
     }
 
     public boolean getShootReleaseTrigger(){
-      return getButtonRelease(1);
+      return getButtonRelease(12);
     }
 
     public boolean getIntakeTrigger(){

@@ -238,8 +238,8 @@ public final class Constants {
     public static final double UPPER_SOFT_LIMIT = 270.0;
 
     // Wire protection thresholds - prefer unwinding toward center when outside these bounds
-    public static final double WIRE_PROTECTION_LOWER = -140;
-    public static final double WIRE_PROTECTION_UPPER = 260;
+    public static final double WIRE_PROTECTION_LOWER = -150.0;
+    public static final double WIRE_PROTECTION_UPPER = 270.0;
   }
 
   public static final class IntakeConstants{
