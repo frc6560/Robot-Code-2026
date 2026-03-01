@@ -35,17 +35,17 @@ public class AutoModeChooser {
                 routine = m_CommandFactory.getNoAuto();
                 name = "Idle";
                 break;
-            case TEST_BUMP:
+            case RIGHT_BUMP:
                 routine = m_CommandFactory.getTestBump();
-                name = "Bump Test";
+                name = "Right Bump";
                 break;
-            case TEST_TRENCH:
+            case RIGHT_TRENCH:
                 routine = m_CommandFactory.getTestTrench();
-                name = "Trench Test";
+                name = "Right Trench";
                 break;
-            case getTestTrenchL:
+            case LEFT_TRENCH:
                 routine = m_CommandFactory.getTestTrenchL();
-                name = "Trench TestL";
+                name = "Left Trench";
                 break;
             default:
                 routine = m_CommandFactory.getNoAuto();

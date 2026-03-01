@@ -3,7 +3,7 @@ package frc.robot.autonomous;
 /** Just a list of autos, subject to change at any time */
 public enum AutoNames {
     IDLE,
-    TEST_BUMP,
-    TEST_TRENCH,
-    getTestTrenchL
+    RIGHT_BUMP,
+    RIGHT_TRENCH,
+    LEFT_TRENCH
 }

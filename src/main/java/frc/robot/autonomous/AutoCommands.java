@@ -178,6 +178,7 @@ public class AutoCommands {
                         cmdWithAccuracy(trenchToCenterSecondSwipe),
                         cmdWithAccuracy(trenchToClimb)
                             .andThen(shoot())
+                            .andThen(climb())
                     )
         );
 
