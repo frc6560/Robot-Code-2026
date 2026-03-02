@@ -131,7 +131,7 @@ public class Turret extends SubsystemBase {
     }
 
     public boolean getAtTarget(){
-        return getTurretAngle() - goalDegrees < 0.8;
+        return Math.abs(getTurretAngle() - goalDegrees) < 2.5; // 1.5 degree tolerance
     }
 
     @Override

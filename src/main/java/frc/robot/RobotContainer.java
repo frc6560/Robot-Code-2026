@@ -5,6 +5,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import edu.wpi.first.wpilibj2.command.button.Trigger;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import java.io.File;
@@ -25,6 +26,7 @@ import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
 import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
 import frc.robot.autonomous.AutoModeChooser;
 import frc.robot.commands.ClimbCommand;
+import frc.robot.commands.scoring.ShotCommand;
 import frc.robot.autonomous.AutoCommands;
 import frc.robot.commands.periodic.SuperstructureCommand;
 import frc.robot.utility.Shooter.PassCalculator;
@@ -53,7 +55,7 @@ import frc.robot.subsystems.vision.VisionSubsystem;
 public class RobotContainer {
     // Controllers
     private final CommandXboxController driverXbox = new CommandXboxController(0);
-    private final CommandXboxController operatorXbox = new CommandXboxController(1);
+    private final ManualControls m_Controls = new ManualControls(1);
 
      // The robot's subsystems and commands are defined here...
     private final SwerveSubsystem drivebase  = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(),
@@ -68,6 +70,7 @@ public class RobotContainer {
 
     private final ShotCalculator shotCalculator = new ShotCalculator();
     private final PassCalculator passCalculator = new PassCalculator();
+    private Command shotCommand;
 
     // Shuffleboard entries for manual control
     private final ShuffleboardTab tuningTab = Shuffleboard.getTab("Tuning");
@@ -147,14 +150,20 @@ public class RobotContainer {
           onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
 
 
-        driverXbox.rightBumper()
-          .onTrue(Commands.runOnce(feeder::requestFeed, feeder))
-          .onFalse(Commands.runOnce(feeder::requestStop, feeder));
+        driverXbox.rightTrigger()
+          .onTrue(Commands.runOnce(() -> {
+            shotCommand = new ShotCommand(feeder, turret, hood, shooter, shotCalculator);
+            shotCommand.schedule();
+          }))
+          .onFalse(Commands.runOnce(() -> {
+            if (shotCommand != null) {
+              shotCommand.cancel();
+            }
+          }));
 
         driverXbox.leftBumper()
           .onTrue(Commands.runOnce(intake::setExtensionMode, intake))
           .onFalse(Commands.runOnce(intake::setIdleMode, intake));
-        operatorXbox.y().onTrue(Commands.defer(() -> new ClimbCommand(drivebase), Set.of(drivebase)));
         
     }
 

@@ -40,7 +40,6 @@ public class ShotCommand extends Command {
 
         boolean allAtTarget = debouncer.calculate(turret.getAtTarget())
                            && debouncer.calculate(hood.atTarget())
-                           && debouncer.calculate(shooter.atTarget())
                            && debouncer.calculate(shotCalculator.isShotValid());
 
         if (allAtTarget) {

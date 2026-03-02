@@ -68,7 +68,7 @@ public class ManualControls {
       }
   
       public boolean getAutoAlignTrigger(){
-        return getButton(4);
+        return getButton(10);
       }
 
       public boolean getVisionResetTrigger(){

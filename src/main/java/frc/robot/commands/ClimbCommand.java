@@ -261,9 +261,9 @@ public class ClimbCommand extends SequentialCommandGroup {
         // Calculate prescore position 1 meter back from target
         double prescoreX;
         if (alliance.equals(DriverStation.Alliance.Blue)) {
-            prescoreX = targetPose.getX() + 1.0; // Move back toward center (positive X)
+            prescoreX = targetPose.getX() + 0.3; // Move back toward center (positive X)
         } else {
-            prescoreX = targetPose.getX() - 1.0; // Move back toward center (negative X)
+            prescoreX = targetPose.getX() - 0.3; // Move back toward center (negative X)
         }
 
         return new Pose2d(prescoreX, targetPose.getY(), targetPose.getRotation());

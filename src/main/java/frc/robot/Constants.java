@@ -177,11 +177,11 @@ public final class Constants {
     public static final int RIGHT_FLYWHEEL_ID = 20;
 
     /** PID Gains */
-    public static final double kP = 0.5;
+    public static final double kP = 0.6;
     public static final double kI = 0.00;
     public static final double kD = 0.00;
     public static final double kV = 0.117; 
-     public static final double kS = 0.15;
+    public static final double kS = 0.15;
 
     /** Flywheel Geometry */
     public static final double MAX_RPM = 5000; 
@@ -243,7 +243,7 @@ public final class Constants {
   }
 
   public static final class IntakeConstants{
-    public static final boolean EXTENSION_ENABLED = true; // Extend motor disabled - only roller/spinner runs
+    public static final boolean EXTENSION_ENABLED = false; // Extend motor disabled - only roller/spinner runs
     public static final int EXTEND_MOTOR_ID = 15; // TODO: set correct ID //completed
     public static final int SPIN_MOTOR_ID = 16; // TODO: set correct ID /completed
   public static final String CAN_BUS = "rio";
