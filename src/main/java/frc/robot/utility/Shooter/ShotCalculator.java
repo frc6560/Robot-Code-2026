@@ -142,6 +142,7 @@ public class ShotCalculator {
         // Gets our target pose
         Optional<Alliance> alliance = DriverStation.getAlliance();
         if(alliance.isEmpty()){
+            DriverStation.reportWarning("Alliance color not detected! Shot calculation aborted.", true);
             return;
         }
         Translation2d targetPose = (alliance.get() == Alliance.Blue) ? 
