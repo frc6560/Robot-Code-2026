@@ -122,12 +122,11 @@ public class ClimbCommand extends SequentialCommandGroup {
             // Extract field-relative velocities and target rotation
             double xVel = output.vx().in(edu.wpi.first.units.Units.MetersPerSecond);
             double yVel = output.vy().in(edu.wpi.first.units.Units.MetersPerSecond);
-            Rotation2d headingReference = output.targetAngle();
 
             // Use rotation PID to track the heading setpoint
             double rotVel = rotationController.calculate(
                 currentPose.getRotation().getRadians(),
-                headingReference.getRadians()
+                prescorePose.getRotation().getRadians() 
             );
 
             // Calculate errors for logging
