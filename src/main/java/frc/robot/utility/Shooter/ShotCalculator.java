@@ -155,6 +155,10 @@ public class ShotCalculator {
             currentRobotPose.getRotation()
         );
         
+        if(Math.hypot(robotVelocity.vxMetersPerSecond, robotVelocity.vyMetersPerSecond) < 0.3){
+            robotVelocity = new ChassisSpeeds(0, 0, robotVelocity.omegaRadiansPerSecond);
+        }
+
         // calculates projected position due to sensor lag
         Pose2d projectedPosition = currentRobotPose.exp(
             new Twist2d(
@@ -203,7 +207,7 @@ public class ShotCalculator {
         double prevTimeOfFlight = 0;
         int iterationsUsed = 0;
 
-        if(Math.hypot(turretVx, turretVy) > 0.4){
+        if(Math.hypot(turretVx, turretVy) > 0.3){
             for(int i = 0; i < 20; i++){
                 timeOfFlight = timeOfFlightMap.get(distanceToTarget);
                 iterationsUsed = i + 1;
