@@ -96,49 +96,7 @@ public class AutoCommands {
         return Commands.runOnce(() -> intake.setIdleMode(), intake);
     }
 
-    /** Test auto on HP side. Should be comp level accuracy. */
-    public AutoRoutine getTestBump(){
-        AutoRoutine testRoutine = autoFactory.newRoutine("testBump");
-        
-        AutoTrajectory trenchToCenter = testRoutine.trajectory("hpTrenchToCenter");
-        AutoTrajectory trenchToShoot = testRoutine.trajectory("hpTrenchToShoot");
-        AutoTrajectory bumpToShoot = testRoutine.trajectory("hpBumpToShoot");
-        AutoTrajectory climb = testRoutine.trajectory("hpClimb");
-
-        trenchToCenter.atTime("intake")
-            .onTrue(
-                intake()
-            );
-
-        trenchToShoot.atTime("shoot")
-            .onTrue(
-                retract()
-            );
-
-        bumpToShoot.atTime("shoot")
-            .onTrue(
-                retract()
-            );
-
-
-        testRoutine
-            .active()
-                .onTrue(
-                    Commands.sequence(
-                        trenchToCenter.resetOdometry(),
-                        cmdWithAccuracy(trenchToCenter), 
-                        cmdWithAccuracy(trenchToShoot)
-                            .andThen(shoot()), 
-                        cmdWithAccuracy(trenchToCenter),
-                        cmdWithAccuracy(bumpToShoot)
-                            .andThen(shoot()),
-                        cmdWithAccuracy(climb)
-                    )
-        );
-
-        return testRoutine;
-    }
-
+    /** Right side trench auto */
     public AutoRoutine getTestTrench(){
         AutoRoutine testRoutine = autoFactory.newRoutine("testTrench");
         
@@ -186,6 +144,7 @@ public class AutoCommands {
         return testRoutine;
     }
 
+    /** Left side trench auto */
     public AutoRoutine getTestTrenchL(){
         AutoRoutine testRoutine = autoFactory.newRoutine("testTrenchL");
         
