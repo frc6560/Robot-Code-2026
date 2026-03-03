@@ -3,17 +3,25 @@ package frc.robot.autonomous;
 import choreo.auto.AutoChooser;
 import choreo.auto.AutoRoutine;
 import edu.wpi.first.math.Pair;
+import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.StringSubscriber;
 
 
 /** Defines an Auto class, which is a name, an enum ID, and a command. */
 public class AutoModeChooser {
     private final AutoChooser autoChooser = new AutoChooser();
+    private final StringSubscriber selectedSubscriber;
 
     private final AutoCommands m_CommandFactory;
-    
+
     public AutoModeChooser(AutoCommands factory){
-        this.m_CommandFactory = factory;   
-        
+        this.m_CommandFactory = factory;
+
+        // Subscribe to the auto chooser's selected value from NetworkTables
+        selectedSubscriber = NetworkTableInstance.getDefault()
+            .getStringTopic("/SmartDashboard/Auto Chooser/selected")
+            .subscribe("Idle");
+
         addRoutines();
     }
 
@@ -35,10 +43,6 @@ public class AutoModeChooser {
                 routine = m_CommandFactory.getNoAuto();
                 name = "Idle";
                 break;
-            case RIGHT_BUMP:
-                routine = m_CommandFactory.getTestBump();
-                name = "Right Bump";
-                break;
             case RIGHT_TRENCH:
                 routine = m_CommandFactory.getTestTrench();
                 name = "Right Trench";
@@ -57,6 +61,10 @@ public class AutoModeChooser {
 
     public AutoChooser getAutoChooser(){
         return autoChooser;
+    }
+
+    public String getSelectedName(){
+        return selectedSubscriber.get();
     }
 }
 

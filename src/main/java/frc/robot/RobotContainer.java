@@ -190,4 +190,12 @@ public class RobotContainer {
     public Command getAutonomousCommand() {
       return autoChooser.getAutoChooser().selectedCommand();
     }
+
+    public SwerveSubsystem getDrivebase() {
+      return drivebase;
+    }
+
+    public AutoModeChooser getAutoChooser() {
+      return autoChooser;
+    }
 }

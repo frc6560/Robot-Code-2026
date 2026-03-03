@@ -12,10 +12,12 @@ import org.littletonrobotics.junction.wpilog.WPILOGReader;
 import org.littletonrobotics.junction.wpilog.WPILOGWriter;
 
 import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import frc.robot.Constants.FieldConstants;
 import frc.robot.Constants.LimelightConstants;
 import frc.robot.utility.LimelightHelpers;
 
@@ -114,6 +116,30 @@ public class Robot extends LoggedRobot
     for(String limelightName : LimelightConstants.LIMELIGHT_NAMES){
       LimelightHelpers.SetIMUMode(limelightName, 1);
     }
+
+    // Update robot pose based on selected auto and alliance
+    updatePoseFromAutoChooser();
+  }
+
+  private void updatePoseFromAutoChooser() {
+    String selectedAuto = m_robotContainer.getAutoChooser().getSelectedName();
+    boolean isRed = DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red;
+
+    Pose2d startPose;
+    switch (selectedAuto) {
+      case "Right Trench":
+        startPose = isRed ? FieldConstants.RED_RIGHT_START : FieldConstants.BLUE_RIGHT_START;
+        break;
+      case "Left Trench":
+        startPose = isRed ? FieldConstants.RED_LEFT_START : FieldConstants.BLUE_LEFT_START;
+        break;
+      case "Idle":
+      default:
+        startPose = isRed ? FieldConstants.RED_TESTING_START : FieldConstants.BLUE_TESTING_START;
+        break;
+    }
+
+    m_robotContainer.getDrivebase().resetOdometry(startPose);
   }
 
   /**
