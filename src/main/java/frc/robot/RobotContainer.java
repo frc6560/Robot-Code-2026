@@ -133,6 +133,7 @@ public class RobotContainer {
       configureBindings();
     }
 
+
     private void configureBindings() {
         Command driveFieldOrientedAnglularVelocity = drivebase.driveFieldOriented(driveAngularVelocity);
         drivebase.setDefaultCommand(driveFieldOrientedAnglularVelocity);
@@ -144,12 +145,11 @@ public class RobotContainer {
 
         driverXbox.x()
           .onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
-        driverXbox.b()
-          .onTrue(Commands.runOnce(() -> CommandScheduler.getInstance().schedule(drivebase.sysIdDriveMotorCommand()), drivebase));
         driverXbox.start().
           onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
 
 
+        
         driverXbox.rightTrigger()
           .onTrue(Commands.runOnce(() -> {
             shotCommand = new ShotCommand(feeder, turret, hood, shooter, shotCalculator);
@@ -165,7 +165,27 @@ public class RobotContainer {
           .onTrue(Commands.runOnce(intake::setExtensionMode, intake))
           .onFalse(Commands.runOnce(intake::setIdleMode, intake));
         
+        Trigger shootTrigger = new Trigger(m_Controls::getShootTrigger);
+        Trigger shootReleaseTrigger = new Trigger(m_Controls::getShootReleaseTrigger);
+
+        shootTrigger.onTrue(Commands.runOnce(() -> {
+          shotCommand = new ShotCommand(feeder, turret, hood, shooter, shotCalculator);
+          shotCommand.schedule();
+        }));
+        shootReleaseTrigger.onTrue(Commands.runOnce(() -> {
+          if (shotCommand != null) {
+            shotCommand.cancel();
+          }
+        }));
+
+
+        Trigger intakeTrigger = new Trigger(m_Controls::getIntakeTrigger);
+        Trigger intakeReleaseTrigger = new Trigger(m_Controls::getIntakeReleaseTrigger);
+
+        intakeTrigger.onTrue(Commands.runOnce(intake::setExtensionMode, intake));
+        intakeReleaseTrigger.onTrue(Commands.runOnce(intake::setIdleMode, intake));
     }
+
 
     public Command getAutonomousCommand() {
       return autoChooser.getAutoChooser().selectedCommand();

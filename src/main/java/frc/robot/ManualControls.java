@@ -51,11 +51,11 @@ public class ManualControls {
       return getButtonRelease(12);
     }
 
-    public boolean getIntakeTrigger(){
+    public boolean getIntakeReleaseTrigger(){
       return getButton(2);
     }
 
-      public boolean getIntakeReleaseTrigger(){
+      public boolean getIntakeTrigger(){
         return getButtonRelease(2);
       }
   

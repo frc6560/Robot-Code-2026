@@ -129,8 +129,22 @@ public class ShooterIOTalonFX implements ShooterIO {
     public void setVelocityRPS(double rps) {
         if (Math.abs(rps) < 1.0) {
             leaderMotor.setControl(coastControl);
+            return;
+        }
+
+        double motorRPS = rps / ShooterConstants.FLYWHEEL_GEAR_RATIO;
+        double currentRPS = leaderVelocity.refresh().getValueAsDouble() * ShooterConstants.FLYWHEEL_GEAR_RATIO;
+        double toleranceRPS = ShooterConstants.FLYWHEEL_RPM_TOLERANCE / 60.0;
+
+        if (Math.abs(currentRPS - rps) > toleranceRPS) {
+            // Bang-bang: full voltage if below target, coast if above
+            if (currentRPS < rps) {
+                leaderMotor.setControl(voltageControl.withOutput(12.0));
+            } else {
+                leaderMotor.setControl(coastControl);
+            }
         } else {
-            double motorRPS = rps / ShooterConstants.FLYWHEEL_GEAR_RATIO;
+            // Within tolerance: use Motion Magic for fine control
             leaderMotor.setControl(velocityControl.withVelocity(motorRPS));
         }
     }
