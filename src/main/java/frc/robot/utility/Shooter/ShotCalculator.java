@@ -255,7 +255,7 @@ public class ShotCalculator {
         double deltaY = virtualTargetPose.getY() - turretPose.getY();
         double distSquared = distanceToTarget * distanceToTarget;
 
-        if (distSquared > 0.01) { 
+        if (distSquared > 0.01 && Math.hypot(turretVx, turretVy) > 0.3) { // avoid division by zero and ignore very small velocities
             double losRate = (turretVx * deltaY - turretVy * deltaX) / distSquared;
             turretVelocityFF = losRate - fieldVelocity.omegaRadiansPerSecond;
         } else {
