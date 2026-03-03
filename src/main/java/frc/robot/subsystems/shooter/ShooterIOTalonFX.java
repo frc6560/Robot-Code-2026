@@ -2,11 +2,10 @@ package frc.robot.subsystems.shooter;
 
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusSignal;
-import com.ctre.phoenix6.configs.MotionMagicConfigs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.Follower;
-import com.ctre.phoenix6.controls.MotionMagicVelocityVoltage;
 import com.ctre.phoenix6.controls.NeutralOut;
+import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
@@ -24,7 +23,7 @@ public class ShooterIOTalonFX implements ShooterIO {
     private final TalonFX leaderMotor;
     private final TalonFX followerMotor;
 
-    private final MotionMagicVelocityVoltage velocityControl = new MotionMagicVelocityVoltage(0).withSlot(0);
+    private final VelocityVoltage velocityControl = new VelocityVoltage(0).withSlot(0);
     private final VoltageOut voltageControl = new VoltageOut(0);
     private final NeutralOut coastControl = new NeutralOut();
 
@@ -85,11 +84,7 @@ public class ShooterIOTalonFX implements ShooterIO {
         config.CurrentLimits.SupplyCurrentLimitEnable = true;
         config.CurrentLimits.SupplyCurrentLimit = ShooterConstants.FLYWHEEL_SUPPLY_CURRENT_LIMIT;
 
-        config.ClosedLoopRamps.VoltageClosedLoopRampPeriod = 0.00;
-
-        MotionMagicConfigs mm = config.MotionMagic;
-        mm.MotionMagicAcceleration = ShooterConstants.FLYWHEEL_ACCELERATION;
-        mm.MotionMagicJerk = 400.0; 
+        config.ClosedLoopRamps.VoltageClosedLoopRampPeriod = 0.0;
 
         leaderMotor.getConfigurator().apply(config);
     }
@@ -133,20 +128,7 @@ public class ShooterIOTalonFX implements ShooterIO {
         }
 
         double motorRPS = rps / ShooterConstants.FLYWHEEL_GEAR_RATIO;
-        double currentRPS = leaderVelocity.refresh().getValueAsDouble() * ShooterConstants.FLYWHEEL_GEAR_RATIO;
-        double toleranceRPS = ShooterConstants.FLYWHEEL_RPM_TOLERANCE / 60.0;
-
-        if (Math.abs(currentRPS - rps) > toleranceRPS) {
-            // Bang-bang: full voltage if below target, coast if above
-            if (currentRPS < rps) {
-                leaderMotor.setControl(voltageControl.withOutput(12.0));
-            } else {
-                leaderMotor.setControl(coastControl);
-            }
-        } else {
-            // Within tolerance: use Motion Magic for fine control
-            leaderMotor.setControl(velocityControl.withVelocity(motorRPS));
-        }
+        leaderMotor.setControl(velocityControl.withVelocity(motorRPS));
     }
 
     @Override
