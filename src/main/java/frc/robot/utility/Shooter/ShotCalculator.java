@@ -197,9 +197,6 @@ public class ShotCalculator {
         SmartDashboard.putNumber("SOTM/TurretVel/vY", turretVy);
         SmartDashboard.putNumber("SOTM/TurretVel/magnitude", Math.hypot(turretVx, turretVy));
 
-        SmartDashboard.putNumber("SOTM/TurretPos/X", turretPose.getX());
-        SmartDashboard.putNumber("SOTM/TurretPos/Y", turretPose.getY());
-
         // calculates a virtual target iteratively based upon our parameters.
         virtualTargetPose = targetPose; 
         double timeOfFlight = 0;
