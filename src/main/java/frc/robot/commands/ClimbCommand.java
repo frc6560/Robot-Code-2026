@@ -7,7 +7,6 @@ import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 
 import edu.wpi.first.math.controller.PIDController;
-import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
@@ -50,13 +49,6 @@ public class ClimbCommand extends SequentialCommandGroup {
     private PIDController yController;
     private PIDController rotationController;
 
-    // Slew rate limiter for rotation velocity (rad/s).
-    // Rate limit is dynamically set each cycle: distance / ROT_SLEW_DIVISOR
-    // so rotation speed is proportional to how far we still need to translate.
-    private static final double ROT_SLEW_DIVISOR = 0.3; // meters per (rad/s/s), tune this
-    private static final double ROT_SLEW_MIN_RATE = 0.5; // floor so rotation doesn't stall (rad/s/s)
-    private SlewRateLimiter rotSlewLimiter = new SlewRateLimiter(ROT_SLEW_MIN_RATE);
-
     // Subsystems
     private SwerveSubsystem drivetrain;
 
@@ -68,9 +60,9 @@ public class ClimbCommand extends SequentialCommandGroup {
 
         // Initialize PID controllers (tune these values as needed)
         // Reduced kP and increased kD to prevent overshoot in X and Y
-        this.xController = new PIDController(3, 0.03, 0.1);  // Reduced kP: 4.5→2.5, Increased kD: 0.4→0.8
-        this.yController = new PIDController(2.75, 0.02, 0.1);  // Reduced kP: 4.5→2.5, Increased kD: 0.4→0.8
-        this.rotationController = new PIDController(5.5, 0.15, 0.05);  // Reduced kP: 5.0→4.0, Increased kD: 0.5→0.6
+        this.xController = new PIDController(2.5, 0, 0);  // Reduced kP: 4.5→2.5, Increased kD: 0.4→0.8
+        this.yController = new PIDController(2.5, 0, 0);  // Reduced kP: 4.5→2.5, Increased kD: 0.4→0.8
+        this.rotationController = new PIDController(4.0, 0, 0.6);  // Reduced kP: 5.0→4.0, Increased kD: 0.5→0.6
         this.rotationController.enableContinuousInput(-Math.PI, Math.PI);
 
         // Log PID constants to SmartDashboard for tuning
@@ -96,18 +88,6 @@ public class ClimbCommand extends SequentialCommandGroup {
     }
 
     /** Update PID values from SmartDashboard (call this in execute if you want live tuning) */
-    private void updatePIDFromDashboard() {
-        double xKp = SmartDashboard.getNumber("Climb/PID/X_kP", 2.5);
-        double xKd = SmartDashboard.getNumber("Climb/PID/X_kD", 0.8);
-        double yKp = SmartDashboard.getNumber("Climb/PID/Y_kP", 2.5);
-        double yKd = SmartDashboard.getNumber("Climb/PID/Y_kD", 0.8);
-        double rotKp = SmartDashboard.getNumber("Climb/PID/Rot_kP", 4.0);
-        double rotKd = SmartDashboard.getNumber("Climb/PID/Rot_kD", 0.6);
-
-        xController.setPID(xKp, 0, xKd);
-        yController.setPID(yKp, 0, yKd);
-        rotationController.setPID(rotKp, 0, rotKd);
-    }
 
 
     /** Drives to prescore position using Autopilot */
@@ -131,16 +111,11 @@ public class ClimbCommand extends SequentialCommandGroup {
             double xVel = output.vx().in(edu.wpi.first.units.Units.MetersPerSecond);
             double yVel = output.vy().in(edu.wpi.first.units.Units.MetersPerSecond);
 
-            // Use rotation PID, then slew-limit based on translational distance
-            // so rotation and translation finish together instead of rotation snapping first
-            double rawRotVel = rotationController.calculate(
+            // Use rotation PID to track the heading setpoint
+            double rotVel = rotationController.calculate(
                 currentPose.getRotation().getRadians(),
-                prescorePose.getRotation().getRadians()
+                prescorePose.getRotation().getRadians() 
             );
-            double distance = currentPose.getTranslation().getDistance(prescorePose.getTranslation());
-            double rateLimit = Math.max(distance / ROT_SLEW_DIVISOR, ROT_SLEW_MIN_RATE);
-            rotSlewLimiter = new SlewRateLimiter(rateLimit, -rateLimit, rotSlewLimiter.lastValue());
-            double rotVel = rotSlewLimiter.calculate(rawRotVel);
 
             // Calculate errors for logging
             double xError = prescorePose.getX() - currentPose.getX();
@@ -151,6 +126,9 @@ public class ClimbCommand extends SequentialCommandGroup {
 
             // Get robot velocity for logging
             ChassisSpeeds robotVel = drivetrain.getFieldVelocity();
+
+            // Comprehensive logging
+            double distance = currentPose.getTranslation().getDistance(prescorePose.getTranslation());
 
             // Position logging
             SmartDashboard.putNumber("Climb/Prescore/Current_X", currentPose.getX());
@@ -193,7 +171,7 @@ public class ClimbCommand extends SequentialCommandGroup {
             double yError = targetPose.getY() - currentPose.getY();
             double rotError = targetPose.getRotation().getRadians() - currentPose.getRotation().getRadians();
 
-            // Calculate velocities — translation and rotation run in parallel
+            // Calculate velocities
             double xVel = xController.calculate(currentPose.getX(), targetPose.getX());
             double yVel = yController.calculate(currentPose.getY(), targetPose.getY());
             double rotVel = rotationController.calculate(
@@ -206,6 +184,7 @@ public class ClimbCommand extends SequentialCommandGroup {
             // Get robot velocity for logging
             ChassisSpeeds robotVel = drivetrain.getFieldVelocity();
 
+            // Comprehensive logging
             double distance = currentPose.getTranslation().getDistance(targetPose.getTranslation());
             double absRotError = Math.abs(rotError);
 
