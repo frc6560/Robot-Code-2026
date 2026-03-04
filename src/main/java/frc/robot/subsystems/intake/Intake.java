@@ -15,6 +15,7 @@ public class Intake extends SubsystemBase {
     public enum Mode {
         IDLE,
         EXTENSION,
+        EXTEND_ONLY,
         SPRINGY
     }
 
@@ -38,6 +39,10 @@ public class Intake extends SubsystemBase {
 
     public void setSpringyMode() {
         setMode(Mode.SPRINGY);
+    }
+
+    public void setExtendOnlyMode() {
+        setMode(Mode.EXTEND_ONLY);
     }
 
     public void setIdleMode() {
@@ -99,9 +104,9 @@ public class Intake extends SubsystemBase {
         Logger.processInputs("Intake", inputs);
 
         if (!IntakeConstants.EXTENSION_ENABLED) {
-            if (mode == Mode.EXTENSION || mode == Mode.SPRINGY) {
+            if (mode == Mode.EXTENSION || mode == Mode.SPRINGY || mode == Mode.EXTEND_ONLY) {
                 stopExtend();
-                setSpinPercent(IntakeConstants.SPIN_SPEED);
+                setSpinPercent(mode == Mode.EXTEND_ONLY ? 0.0 : IntakeConstants.SPIN_SPEED);
             } else {
                 stopExtend();
                 stopSpin();
@@ -127,6 +132,10 @@ public class Intake extends SubsystemBase {
             case EXTENSION:
                 setExtendPercent(IntakeConstants.EXTEND_SPEED);
                 setSpinPercent(IntakeConstants.SPIN_SPEED);
+                break;
+            case EXTEND_ONLY:
+                setExtendPercent(IntakeConstants.EXTEND_SPEED);
+                stopSpin();
                 break;
             case SPRINGY:
                 stopExtend();
