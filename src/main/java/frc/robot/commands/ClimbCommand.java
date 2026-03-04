@@ -88,18 +88,6 @@ public class ClimbCommand extends SequentialCommandGroup {
     }
 
     /** Update PID values from SmartDashboard (call this in execute if you want live tuning) */
-    private void updatePIDFromDashboard() {
-        double xKp = SmartDashboard.getNumber("Climb/PID/X_kP", 2.5);
-        double xKd = SmartDashboard.getNumber("Climb/PID/X_kD", 0.8);
-        double yKp = SmartDashboard.getNumber("Climb/PID/Y_kP", 2.5);
-        double yKd = SmartDashboard.getNumber("Climb/PID/Y_kD", 0.8);
-        double rotKp = SmartDashboard.getNumber("Climb/PID/Rot_kP", 4.0);
-        double rotKd = SmartDashboard.getNumber("Climb/PID/Rot_kD", 0.6);
-
-        xController.setPID(xKp, 0, xKd);
-        yController.setPID(yKp, 0, yKd);
-        rotationController.setPID(rotKp, 0, rotKd);
-    }
 
 
     /** Drives to prescore position using Autopilot */

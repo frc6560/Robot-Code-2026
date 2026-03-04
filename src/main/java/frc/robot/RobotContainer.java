@@ -145,6 +145,8 @@ public class RobotContainer {
 
         driverXbox.x()
           .onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
+        driverXbox.y()
+          .onTrue(Commands.defer(() -> new ClimbCommand(drivebase), Set.of(drivebase)));
         driverXbox.start().
           onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
 
