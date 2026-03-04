@@ -196,20 +196,17 @@ public class ClimbCommand extends SequentialCommandGroup {
             // Calculate velocities — translation and rotation run in parallel
             double xVel = xController.calculate(currentPose.getX(), targetPose.getX());
             double yVel = yController.calculate(currentPose.getY(), targetPose.getY());
-            double rawRotVel = rotationController.calculate(
+            double rotVel = rotationController.calculate(
                 currentPose.getRotation().getRadians(),
                 targetPose.getRotation().getRadians()
             );
-            double distance = currentPose.getTranslation().getDistance(prescorePose.getTranslation());
-            double rateLimit = Math.max(distance / ROT_SLEW_DIVISOR, ROT_SLEW_MIN_RATE);
-            rotSlewLimiter = new SlewRateLimiter(rateLimit, -rateLimit, rotSlewLimiter.lastValue());
-            double rotVel = rotSlewLimiter.calculate(rawRotVel);
 
             drivetrain.drive(ChassisSpeeds.fromFieldRelativeSpeeds(xVel, yVel, rotVel, currentPose.getRotation()));
 
             // Get robot velocity for logging
             ChassisSpeeds robotVel = drivetrain.getFieldVelocity();
 
+            double distance = currentPose.getTranslation().getDistance(targetPose.getTranslation());
             double absRotError = Math.abs(rotError);
 
             // Position logging
