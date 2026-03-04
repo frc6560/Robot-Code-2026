@@ -7,6 +7,7 @@ import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 
 import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
@@ -48,6 +49,13 @@ public class ClimbCommand extends SequentialCommandGroup {
     private PIDController xController;
     private PIDController yController;
     private PIDController rotationController;
+
+    // Slew rate limiter for rotation velocity (rad/s).
+    // Rate limit is dynamically set each cycle: distance / ROT_SLEW_DIVISOR
+    // so rotation speed is proportional to how far we still need to translate.
+    private static final double ROT_SLEW_DIVISOR = 0.3; // meters per (rad/s/s), tune this
+    private static final double ROT_SLEW_MIN_RATE = 0.5; // floor so rotation doesn't stall (rad/s/s)
+    private SlewRateLimiter rotSlewLimiter = new SlewRateLimiter(ROT_SLEW_MIN_RATE);
 
     // Subsystems
     private SwerveSubsystem drivetrain;
@@ -123,11 +131,16 @@ public class ClimbCommand extends SequentialCommandGroup {
             double xVel = output.vx().in(edu.wpi.first.units.Units.MetersPerSecond);
             double yVel = output.vy().in(edu.wpi.first.units.Units.MetersPerSecond);
 
-            // Use rotation PID to track the heading setpoint
-            double rotVel = rotationController.calculate(
+            // Use rotation PID, then slew-limit based on translational distance
+            // so rotation and translation finish together instead of rotation snapping first
+            double rawRotVel = rotationController.calculate(
                 currentPose.getRotation().getRadians(),
-                prescorePose.getRotation().getRadians() 
+                prescorePose.getRotation().getRadians()
             );
+            double distance = currentPose.getTranslation().getDistance(prescorePose.getTranslation());
+            double rateLimit = Math.max(distance / ROT_SLEW_DIVISOR, ROT_SLEW_MIN_RATE);
+            rotSlewLimiter = new SlewRateLimiter(rateLimit, -rateLimit, rotSlewLimiter.lastValue());
+            double rotVel = rotSlewLimiter.calculate(rawRotVel);
 
             // Calculate errors for logging
             double xError = prescorePose.getX() - currentPose.getX();
@@ -138,9 +151,6 @@ public class ClimbCommand extends SequentialCommandGroup {
 
             // Get robot velocity for logging
             ChassisSpeeds robotVel = drivetrain.getFieldVelocity();
-
-            // Comprehensive logging
-            double distance = currentPose.getTranslation().getDistance(prescorePose.getTranslation());
 
             // Position logging
             SmartDashboard.putNumber("Climb/Prescore/Current_X", currentPose.getX());
@@ -183,21 +193,24 @@ public class ClimbCommand extends SequentialCommandGroup {
             double yError = targetPose.getY() - currentPose.getY();
             double rotError = targetPose.getRotation().getRadians() - currentPose.getRotation().getRadians();
 
-            // Calculate velocities
+            // Calculate velocities — translation and rotation run in parallel
             double xVel = xController.calculate(currentPose.getX(), targetPose.getX());
             double yVel = yController.calculate(currentPose.getY(), targetPose.getY());
-            double rotVel = rotationController.calculate(
+            double rawRotVel = rotationController.calculate(
                 currentPose.getRotation().getRadians(),
                 targetPose.getRotation().getRadians()
             );
+            // Slew-limit rotation: rate scales with translational distance so they finish together
+            double distance = currentPose.getTranslation().getDistance(targetPose.getTranslation());
+            double rateLimit = Math.max(distance / ROT_SLEW_DIVISOR, ROT_SLEW_MIN_RATE);
+            rotSlewLimiter = new SlewRateLimiter(rateLimit, -rateLimit, rotSlewLimiter.lastValue());
+            double rotVel = rotSlewLimiter.calculate(rawRotVel);
 
             drivetrain.drive(ChassisSpeeds.fromFieldRelativeSpeeds(xVel, yVel, rotVel, currentPose.getRotation()));
 
             // Get robot velocity for logging
             ChassisSpeeds robotVel = drivetrain.getFieldVelocity();
 
-            // Comprehensive logging
-            double distance = currentPose.getTranslation().getDistance(targetPose.getTranslation());
             double absRotError = Math.abs(rotError);
 
             // Position logging
