@@ -200,8 +200,7 @@ public class ClimbCommand extends SequentialCommandGroup {
                 currentPose.getRotation().getRadians(),
                 targetPose.getRotation().getRadians()
             );
-            // Slew-limit rotation: rate scales with translational distance so they finish together
-            double distance = currentPose.getTranslation().getDistance(targetPose.getTranslation());
+            double distance = currentPose.getTranslation().getDistance(prescorePose.getTranslation());
             double rateLimit = Math.max(distance / ROT_SLEW_DIVISOR, ROT_SLEW_MIN_RATE);
             rotSlewLimiter = new SlewRateLimiter(rateLimit, -rateLimit, rotSlewLimiter.lastValue());
             double rotVel = rotSlewLimiter.calculate(rawRotVel);
