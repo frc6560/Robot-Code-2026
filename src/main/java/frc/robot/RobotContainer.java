@@ -182,9 +182,11 @@ public class RobotContainer {
 
 
         Trigger intakeTrigger = new Trigger(m_Controls::getIntakeTrigger);
+        Trigger intakeRollingTrigger = new Trigger(m_Controls::getIntakeRollingTrigger);
         Trigger intakeReleaseTrigger = new Trigger(m_Controls::getIntakeReleaseTrigger);
 
-        intakeTrigger.onTrue(Commands.runOnce(intake::setExtensionMode, intake));
+        intakeTrigger.onTrue(Commands.runOnce(intake::setExtendOnlyMode, intake));
+        intakeRollingTrigger.onTrue(Commands.runOnce(intake::setExtensionMode, intake));
         intakeReleaseTrigger.onTrue(Commands.runOnce(intake::setIdleMode, intake));
     }
 
