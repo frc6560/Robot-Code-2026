@@ -68,9 +68,9 @@ public class ClimbCommand extends SequentialCommandGroup {
 
         // Initialize PID controllers (tune these values as needed)
         // Reduced kP and increased kD to prevent overshoot in X and Y
-        this.xController = new PIDController(2.5, 0, 0);  // Reduced kP: 4.5→2.5, Increased kD: 0.4→0.8
-        this.yController = new PIDController(2.5, 0, 0);  // Reduced kP: 4.5→2.5, Increased kD: 0.4→0.8
-        this.rotationController = new PIDController(4.0, 0, 0.6);  // Reduced kP: 5.0→4.0, Increased kD: 0.5→0.6
+        this.xController = new PIDController(3, 0.03, 0.1);  // Reduced kP: 4.5→2.5, Increased kD: 0.4→0.8
+        this.yController = new PIDController(2.75, 0.02, 0.1);  // Reduced kP: 4.5→2.5, Increased kD: 0.4→0.8
+        this.rotationController = new PIDController(5.5, 0.15, 0.05);  // Reduced kP: 5.0→4.0, Increased kD: 0.5→0.6
         this.rotationController.enableContinuousInput(-Math.PI, Math.PI);
 
         // Log PID constants to SmartDashboard for tuning
