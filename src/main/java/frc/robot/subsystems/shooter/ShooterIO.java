@@ -15,6 +15,8 @@ public interface ShooterIO {
         public double followerAppliedVolts = 0.0;
         public double followerCurrentAmps = 0.0;
         public double followerTempCelsius = 0.0;
+
+        public String controlMode = "Off";
     }
 
     /** Updates the set of loggable inputs */

@@ -27,6 +27,8 @@ public class ShooterIOTalonFX implements ShooterIO {
     private final VoltageOut voltageControl = new VoltageOut(0);
     private final NeutralOut coastControl = new NeutralOut();
 
+    private String controlMode = "Off";
+
     private final StatusSignal<Angle> leaderPosition;
     private final StatusSignal<AngularVelocity> leaderVelocity;
     private final StatusSignal<Voltage> leaderVoltage;
@@ -118,17 +120,37 @@ public class ShooterIOTalonFX implements ShooterIO {
         inputs.followerAppliedVolts = followerVoltage.getValueAsDouble();
         inputs.followerCurrentAmps = followerCurrent.getValueAsDouble();
         inputs.followerTempCelsius = followerTemp.getValueAsDouble();
+
+        inputs.controlMode = controlMode;
     }
 
     @Override
     public void setVelocityRPS(double rps) {
+        double rpsTolerance = ShooterConstants.FLYWHEEL_RPM_TOLERANCE / 60.0;
         if (Math.abs(rps) < 1.0) {
+            controlMode = "Off";
             leaderMotor.setControl(coastControl);
             return;
         }
 
-        double motorRPS = rps / ShooterConstants.FLYWHEEL_GEAR_RATIO;
-        leaderMotor.setControl(velocityControl.withVelocity(motorRPS));
+        // Convert motor velocity to mechanism velocity for comparison
+        double currentMechanismRPS = leaderMotor.getVelocity().getValueAsDouble() * ShooterConstants.FLYWHEEL_GEAR_RATIO;
+
+        // Applies bang bang control, unless we're within tolerance.
+        if (currentMechanismRPS < rps - rpsTolerance) {
+            // Below target - full power
+            controlMode = "BangBang_FullPower";
+            leaderMotor.setVoltage(12.0);
+        } else if (currentMechanismRPS > rps + rpsTolerance) {
+            // Above target - coast
+            controlMode = "BangBang_Coast";
+            leaderMotor.setVoltage(0.0);
+        } else {
+            // Within tolerance - velocity PID
+            controlMode = "VelocityPID";
+            double motorRPS = rps / ShooterConstants.FLYWHEEL_GEAR_RATIO;
+            leaderMotor.setControl(velocityControl.withVelocity(motorRPS));
+        }
     }
 
     @Override
