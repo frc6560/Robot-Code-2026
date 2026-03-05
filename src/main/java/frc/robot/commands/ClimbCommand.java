@@ -60,9 +60,9 @@ public class ClimbCommand extends SequentialCommandGroup {
 
         // Initialize PID controllers (tune these values as needed)
         // Reduced kP and increased kD to prevent overshoot in X and Y
-        this.xController = new PIDController(2.5, 0, 0);  // Reduced kP: 4.5→2.5, Increased kD: 0.4→0.8
-        this.yController = new PIDController(2.5, 0, 0);  // Reduced kP: 4.5→2.5, Increased kD: 0.4→0.8
-        this.rotationController = new PIDController(4.0, 0, 0.6);  // Reduced kP: 5.0→4.0, Increased kD: 0.5→0.6
+           this.xController = new PIDController(3, 0.03, 0.1);  // Reduced kP: 4.5→2.5, Increased kD: 0.4→0.8
+        this.yController = new PIDController(2.75, 0.02, 0.1);  // Reduced kP: 4.5→2.5, Increased kD: 0.4→0.8
+        this.rotationController = new PIDController(5.5, 0.15, 0.05);  // Reduced kP: 5.0→4.0, Increased kD: 0.5→0.6
         this.rotationController.enableContinuousInput(-Math.PI, Math.PI);
 
         // Log PID constants to SmartDashboard for tuning
@@ -111,24 +111,29 @@ public class ClimbCommand extends SequentialCommandGroup {
             double xVel = output.vx().in(edu.wpi.first.units.Units.MetersPerSecond);
             double yVel = output.vy().in(edu.wpi.first.units.Units.MetersPerSecond);
 
-            // Use rotation PID to track the heading setpoint
-            double rotVel = rotationController.calculate(
-                currentPose.getRotation().getRadians(),
-                prescorePose.getRotation().getRadians() 
-            );
+            // Calculate rotation velocity to finish with translation
+            double distance = currentPose.getTranslation().getDistance(prescorePose.getTranslation());
+            double translationSpeed = 2;
+            double timeRemaining = (translationSpeed > 0.01) ? (distance / translationSpeed) : 0.0;
+            double rotError = prescorePose.getRotation().getRadians() - currentPose.getRotation().getRadians();
+            double rotVel;
+            if (timeRemaining > 0.05) {
+                rotVel = rotError / timeRemaining;
+            } else {
+                rotVel = rotationController.calculate(
+                    currentPose.getRotation().getRadians(),
+                    prescorePose.getRotation().getRadians()
+                );
+            }
 
             // Calculate errors for logging
             double xError = prescorePose.getX() - currentPose.getX();
             double yError = prescorePose.getY() - currentPose.getY();
-            double rotError = prescorePose.getRotation().getRadians() - currentPose.getRotation().getRadians();
 
             drivetrain.drive(ChassisSpeeds.fromFieldRelativeSpeeds(xVel, yVel, rotVel, currentPose.getRotation()));
 
             // Get robot velocity for logging
             ChassisSpeeds robotVel = drivetrain.getFieldVelocity();
-
-            // Comprehensive logging
-            double distance = currentPose.getTranslation().getDistance(prescorePose.getTranslation());
 
             // Position logging
             SmartDashboard.putNumber("Climb/Prescore/Current_X", currentPose.getX());
