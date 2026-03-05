@@ -118,7 +118,7 @@ public class Robot extends LoggedRobot
     }
 
     // Update robot pose based on selected auto and alliance
-    updatePoseFromAutoChooser();
+    // updatePoseFromAutoChooser();
   }
 
   private void updatePoseFromAutoChooser() {
