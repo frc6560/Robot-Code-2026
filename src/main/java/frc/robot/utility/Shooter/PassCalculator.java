@@ -16,25 +16,31 @@ public class PassCalculator {
     public record TurretState(double positionRadians, double velocityRadiansPerSecond) {}
 
     private double hoodAzimuth;
-
+    private double flywheelRPM;
     private double turretAngle;
     private double turretVelocityFF; // feedforward velocity in rad/s 
 
     private static final InterpolatingDoubleTreeMap hoodAzimuthMap = new InterpolatingDoubleTreeMap();
+    private static final InterpolatingDoubleTreeMap flywheelRPMMap = new InterpolatingDoubleTreeMap();
 
     public PassCalculator() {
         hoodAzimuth = 0.0;
         turretAngle = 0.0;
         turretVelocityFF = 0.0;
 
-        hoodAzimuthMap.put(1.593, 25.0);
-        hoodAzimuthMap.put(1.885, 25.0);
-        hoodAzimuthMap.put(2.500, 27.0);
-        hoodAzimuthMap.put(3.098, 29.0);
-        hoodAzimuthMap.put(3.700, 32.0);
-        hoodAzimuthMap.put(4.273, 35.0);
-        hoodAzimuthMap.put(4.987, 38.0);
-        hoodAzimuthMap.put(5.602, 44.0);
+        hoodAzimuthMap.put(4.077, 30.0);
+        hoodAzimuthMap.put(4.980, 36.0);
+        hoodAzimuthMap.put(5.955, 40.0);
+        hoodAzimuthMap.put(6.927, 44.0);
+        hoodAzimuthMap.put(7.777, 44.0);
+        hoodAzimuthMap.put(8.766, 44.0);
+
+        flywheelRPMMap.put(4.077, 1900.0);
+        flywheelRPMMap.put(4.980, 2100.0);
+        flywheelRPMMap.put(5.955, 2200.0);
+        flywheelRPMMap.put(6.927, 2400.0);
+        flywheelRPMMap.put(7.777, 2500.0);
+        flywheelRPMMap.put(8.766, 2600.0);
     }
 
     public double getTurretAngle() {
@@ -47,6 +53,10 @@ public class PassCalculator {
 
     public double getHoodAzimuth(){
         return hoodAzimuth;
+    }
+
+    public double getFlywheelRPM(){
+        return flywheelRPM;
     }
 
     /** Calculates the hood and turret angles based on the robot's pose */
@@ -74,6 +84,8 @@ public class PassCalculator {
 
         double distanceToTarget = robotPose.getTranslation().getDistance(targetPassLocation);
         hoodAzimuth = hoodAzimuthMap.get(distanceToTarget);
+        flywheelRPM = flywheelRPMMap.get(distanceToTarget);
+        
         turretAngle = Math.atan2(targetPassLocation.getY() - robotPose.getY(), targetPassLocation.getX() - robotPose.getX())
                         - robotPose.getRotation().getRadians();
         turretVelocityFF = - fieldVelocity.omegaRadiansPerSecond; // feedforward to help track the target as we move

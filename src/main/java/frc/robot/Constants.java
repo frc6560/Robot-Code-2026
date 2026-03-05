@@ -74,10 +74,10 @@ public final class Constants {
     public static final double PASS_DEADZONE_MAX_Y = 4.343;
 
     // A list of pass poses
-    public static final Translation2d BLUE_BOTTOM_PASS_POS = new Translation2d(3.70, 2.50);
-    public static final Translation2d BLUE_TOP_PASS_POS = new Translation2d(3.70, 5.50);
-    public static final Translation2d RED_BOTTOM_PASS_POS = new Translation2d(12.85, 2.50);
-    public static final Translation2d RED_TOP_PASS_POS = new Translation2d(12.85, 5.50);
+    public static final Translation2d BLUE_BOTTOM_PASS_POS = new Translation2d(2.24, 2.36);
+    public static final Translation2d BLUE_TOP_PASS_POS = new Translation2d(2.24, 5.64);
+    public static final Translation2d RED_BOTTOM_PASS_POS = new Translation2d(14.29, 2.36);
+    public static final Translation2d RED_TOP_PASS_POS = new Translation2d(14.29, 5.64);
   }
 
   public static class OperatorConstants

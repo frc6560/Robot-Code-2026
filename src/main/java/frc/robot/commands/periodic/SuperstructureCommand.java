@@ -171,7 +171,7 @@ public class SuperstructureCommand extends Command {
         turret.setGoalWithVelocity(Units.radiansToDegrees(passCalculator.getTurretAngle()), 
                                     Units.radiansToDegrees(passCalculator.getTurretVelocityFF()));
         hood.setGoal(passCalculator.getHoodAzimuth());
-        shooter.setRPM(ShooterConstants.PASS_RPM);
+        shooter.setRPM(passCalculator.getFlywheelRPM());
     }
 
     private boolean trajectoryIntersectsTrench(Translation2d robotPos, Translation2d velocity,

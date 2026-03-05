@@ -143,7 +143,7 @@ public class SwerveSubsystem extends SubsystemBase {
     swerveDrive.field.getObject("TurretPose").setPose(robotRelativeTurret);
     swerveDrive.field.getObject("BlueHub").setPose(new Pose2d(FieldConstants.BLUE_HUB_CENTER, new Rotation2d()));
     SmartDashboard.getEntry("DistToBlueHub").setDouble(
-      robotRelativeTurret.getTranslation().getDistance(FieldConstants.BLUE_HUB_CENTER));
+      robotRelativeTurret.getTranslation().getDistance(FieldConstants.BLUE_TOP_PASS_POS));
   }
 
   /**
