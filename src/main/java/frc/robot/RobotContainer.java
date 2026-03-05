@@ -128,7 +128,7 @@ public class RobotContainer {
         passCalculator
       );
 
-      // hood.setDefaultCommand(superstructureCommand);
+      hood.setDefaultCommand(superstructureCommand);
 
       configureBindings();
     }
@@ -151,28 +151,9 @@ public class RobotContainer {
           onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
 
 
-        
-        driverXbox.rightTrigger()
-          .onTrue(Commands.runOnce(() -> {
-            feeder.requestFeed();
-          }))
-          .onFalse(Commands.runOnce(() -> {
-            feeder.requestStop();
-          }));
-        
         driverXbox.leftBumper()
-          .onTrue(Commands.runOnce(() -> {
-            hood.setGoal(hoodAngleEntry.getDouble(HoodConstants.HOOD_MIN_ANGLE));
-            shooter.setRPM(flywheelRPMEntry.getDouble(ShooterConstants.PASS_RPM));
-          }))
-          .onFalse(Commands.runOnce(() -> {
-            hood.setGoal(HoodConstants.HOOD_MIN_ANGLE);
-            shooter.setRPM(0);
-          }));
-
-        // driverXbox.leftBumper()
-        //   .onTrue(Commands.runOnce(intake::setExtensionMode, intake))
-        //   .onFalse(Commands.runOnce(intake::setIdleMode, intake));
+          .onTrue(Commands.runOnce(intake::setExtensionMode, intake))
+          .onFalse(Commands.runOnce(intake::setIdleMode, intake));
         
         Trigger shootTrigger = new Trigger(m_Controls::getShootTrigger);
         Trigger shootReleaseTrigger = new Trigger(m_Controls::getShootReleaseTrigger);

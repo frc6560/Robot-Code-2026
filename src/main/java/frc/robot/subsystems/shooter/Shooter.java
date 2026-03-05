@@ -30,6 +30,7 @@ public class Shooter extends SubsystemBase {
     private final SysIdRoutine sysIdRoutine;
 
     private double targetRPS = 0.0;
+    private boolean usingBangBang = false;
 
     private double lastActiveRPS = (ShooterConstants.FLYWHEEL_IDLE_RPM / 60.0);
 
@@ -69,7 +70,7 @@ public class Shooter extends SubsystemBase {
 
     public void setRPS(double rps) {
         targetRPS = rps;
-        io.setVelocityRPS(rps);
+        usingBangBang = true;  // Start with bang-bang, periodic() will switch to velocity control when within tolerance
 
         if (rps > (ShooterConstants.FLYWHEEL_IDLE_RPM / 60.0)) {
             lastActiveRPS = rps;
@@ -86,6 +87,7 @@ public class Shooter extends SubsystemBase {
 
     public void stop() {
         targetRPS = 0.0;
+        usingBangBang = false;
         io.stop();
     }
 
@@ -115,11 +117,34 @@ public class Shooter extends SubsystemBase {
         io.updateInputs(inputs);
         Logger.processInputs("Shooter", inputs);
 
+        // Bang-bang control: apply full voltage when outside tolerance
+        double toleranceRPS = ShooterConstants.FLYWHEEL_RPM_TOLERANCE / 60.0;
+        double error = targetRPS - getCurrentRPS();
+
+        if (targetRPS > 0) {
+            if (Math.abs(error) > toleranceRPS) {
+                // Outside tolerance - use bang-bang
+                if (error > 0) {
+                    // Below target - full power
+                    io.setVoltage(12.0);
+                } else {
+                    // Above target - coast
+                    io.setVoltage(0.0);
+                }
+                usingBangBang = true;
+            } else if (usingBangBang) {
+                // Within tolerance - switch back to velocity control
+                io.setVelocityRPS(targetRPS);
+                usingBangBang = false;
+            }
+        }
+
         Logger.recordOutput("Shooter/CurrentRPS", getCurrentRPS());
         Logger.recordOutput("Shooter/CurrentRPM", getCurrentRPM());
         Logger.recordOutput("Shooter/TargetRPS", targetRPS);
         Logger.recordOutput("Shooter/TargetRPM", targetRPS * 60.0);
         Logger.recordOutput("Shooter/AtTarget", atTarget());
+        Logger.recordOutput("Shooter/UsingBangBang", usingBangBang);
 
         // Visualization
         double rpmToUse = targetRPS * 60.0;
