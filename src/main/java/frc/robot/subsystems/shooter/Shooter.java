@@ -54,6 +54,9 @@ public class Shooter extends SubsystemBase {
             double goalRPS = goalRPM / 60.0; // mechanism RPS
             io.setVelocityRPS(goalRPS);
         }
+        else{
+            io.stop();
+        }
 
         Logger.recordOutput("Shooter/GoalRPM", goalRPM);
         Logger.recordOutput("Shooter/CurrentRPM", getCurrentRPM());
