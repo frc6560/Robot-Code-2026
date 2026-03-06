@@ -248,7 +248,7 @@ public final class Constants {
     public static final int SPIN_MOTOR_ID = 16; // TODO: set correct ID /completed
   public static final String CAN_BUS = "rio";
 
-    public static final int RETRACT_LIMIT_SWITCH_ID = 9; // TODO: set correct DIO port
+    public static final int RETRACT_LIMIT_SWITCH_ID = 7; // TODO: set correct DIO port
     public static final boolean RETRACT_LIMIT_SWITCH_INVERTED = true; // toDo: confirm if this needs to be true or false based on wiring and testing; eg, does it start as true or false when stowed.
 
     public static final boolean EXTEND_MOTOR_INVERTED = true; //TODO
