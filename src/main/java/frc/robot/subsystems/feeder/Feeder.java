@@ -2,6 +2,7 @@ package frc.robot.subsystems.feeder;
 
 import org.littletonrobotics.junction.Logger;
 
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 public class Feeder extends SubsystemBase {
@@ -17,15 +18,25 @@ public class Feeder extends SubsystemBase {
 
     private static final double PAN_SPEED_TOLERANCE_RPM = 20.0;
 
+    private static final double JAM_CURRENT_THRESHOLD = 45.0;
+    private static final double JAM_DETECT_TIME = 0.25;
+    private static final double DEJAM_REVERSE_TIME = 0.3;
+    private static final double DEJAM_PAUSE_TIME = 0.15;
+
     public enum RevolverState {
         IDLE,
         SPINNING_UP,
         FEEDING,
         STAGED,
-        OVERRIDE
+        OVERRIDE,
+        DEJAM_REVERSING,
+        DEJAM_PAUSE
     }
 
     private RevolverState state = RevolverState.IDLE;
+
+    private double jamStartTime = 0;
+    private double dejamStartTime = 0;
 
     public Feeder(FeederIO io) {
         this.io = io;
@@ -45,6 +56,10 @@ public class Feeder extends SubsystemBase {
 
     public boolean panAtSpeed() {
         return Math.abs(getPanActualRPM() - PAN_RUNNING_RPM) < PAN_SPEED_TOLERANCE_RPM;
+    }
+
+    public double getPusherCurrent() {
+        return inputs.pusherCurrentAmps;
     }
 
     public void requestFeed() {
@@ -70,6 +85,8 @@ public class Feeder extends SubsystemBase {
         io.updateInputs(inputs);
         Logger.processInputs("Feeder", inputs);
 
+        double currentTime = Timer.getFPGATimestamp();
+
         switch (state) {
             case IDLE:
                 io.setPanRPM(IDLE_RPM);
@@ -81,12 +98,41 @@ public class Feeder extends SubsystemBase {
                 io.setPusherRPM(IDLE_RPM);
                 if (panAtSpeed()) {
                     state = RevolverState.FEEDING;
+                    jamStartTime = currentTime;
                 }
                 break;
 
             case FEEDING:
                 io.setPanRPM(PAN_RUNNING_RPM);
                 io.setPusherRPM(PUSHER_RUNNING_RPM);
+
+                if (getPusherCurrent() > JAM_CURRENT_THRESHOLD) {
+                    if (currentTime - jamStartTime > JAM_DETECT_TIME) {
+                        state = RevolverState.DEJAM_REVERSING;
+                        dejamStartTime = currentTime;
+                    }
+                } else {
+                    jamStartTime = currentTime;
+                }
+                break;
+
+            case DEJAM_REVERSING:
+                io.setPanRPM(-40);
+                io.setPusherRPM(-500);
+
+                if (currentTime - dejamStartTime > DEJAM_REVERSE_TIME) {
+                    state = RevolverState.DEJAM_PAUSE;
+                    dejamStartTime = currentTime;
+                }
+                break;
+
+            case DEJAM_PAUSE:
+                io.setPanRPM(0);
+                io.setPusherRPM(0);
+
+                if (currentTime - dejamStartTime > DEJAM_PAUSE_TIME) {
+                    state = RevolverState.SPINNING_UP;
+                }
                 break;
 
             case STAGED:
@@ -104,5 +150,6 @@ public class Feeder extends SubsystemBase {
         Logger.recordOutput("Feeder/PanActualRPM", getPanActualRPM());
         Logger.recordOutput("Feeder/PusherActualRPM", getPusherActualRPM());
         Logger.recordOutput("Feeder/PanAtSpeed", panAtSpeed());
+        Logger.recordOutput("Feeder/PusherCurrent", getPusherCurrent());
     }
 }
