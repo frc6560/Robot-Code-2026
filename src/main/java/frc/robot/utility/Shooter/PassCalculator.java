@@ -147,7 +147,7 @@ public class PassCalculator {
         hoodAzimuth = hoodAzimuthMap.get(distanceToVirtualTarget);
         flywheelRPM = flywheelRPMMap.get(distanceToVirtualTarget);
         
-        turretAngle = Math.atan2(virtualTargetPose.getY() - robotPose.getY(), virtualTargetPose.getX() - robotPose.getX())
+        turretAngle = Math.atan2(virtualTargetPose.getY() - turretPose.getY(), virtualTargetPose.getX() - turretPose.getX())
                         - robotPose.getRotation().getRadians();
         
 
