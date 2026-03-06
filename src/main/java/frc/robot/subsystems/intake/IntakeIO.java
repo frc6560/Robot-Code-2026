@@ -23,6 +23,8 @@ public interface IntakeIO {
 
     default void setExtendPercent(double percent) {}
 
+    default void setExtendPosition(double rotations) {}
+
     default void setSpinPercent(double percent) {}
 
     default void resetExtendPosition() {}

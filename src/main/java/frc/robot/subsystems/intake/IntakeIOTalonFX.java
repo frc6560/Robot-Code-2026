@@ -4,6 +4,7 @@ import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
@@ -31,6 +32,8 @@ public class IntakeIOTalonFX implements IntakeIO {
     private final StatusSignal<Voltage> spinVoltage;
     private final StatusSignal<Current> spinCurrent;
     private final StatusSignal<Temperature> spinTemp;
+
+    private final MotionMagicVoltage positionControl = new MotionMagicVoltage(0);
 
     public IntakeIOTalonFX() {
         extendMotor = new TalonFX(IntakeConstants.EXTEND_MOTOR_ID, IntakeConstants.CAN_BUS);
@@ -72,6 +75,17 @@ public class IntakeIOTalonFX implements IntakeIO {
         config.CurrentLimits.SupplyCurrentLimit = IntakeConstants.EXTEND_SUPPLY_CURRENT_LIMIT;
         config.CurrentLimits.StatorCurrentLimitEnable = true;
         config.CurrentLimits.StatorCurrentLimit = IntakeConstants.EXTEND_STATOR_CURRENT_LIMIT;
+
+        // Motion Magic configuration
+        config.Slot0.kS = IntakeConstants.EXTEND_kS;
+        config.Slot0.kV = IntakeConstants.EXTEND_kV;
+        config.Slot0.kA = IntakeConstants.EXTEND_kA;
+        config.Slot0.kP = IntakeConstants.EXTEND_kP;
+        config.Slot0.kI = IntakeConstants.EXTEND_kI;
+        config.Slot0.kD = IntakeConstants.EXTEND_kD;
+
+        config.MotionMagic.MotionMagicCruiseVelocity = IntakeConstants.EXTEND_MAX_VELOCITY;
+        config.MotionMagic.MotionMagicAcceleration = IntakeConstants.EXTEND_MAX_ACCELERATION;
 
         extendMotor.getConfigurator().apply(config);
     }
@@ -116,6 +130,11 @@ public class IntakeIOTalonFX implements IntakeIO {
     @Override
     public void setExtendPercent(double percent) {
         extendMotor.set(percent);
+    }
+
+    @Override
+    public void setExtendPosition(double rotations) {
+        extendMotor.setControl(positionControl.withPosition(rotations));
     }
 
     @Override

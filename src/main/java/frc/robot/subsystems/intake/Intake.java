@@ -70,6 +70,10 @@ public class Intake extends SubsystemBase {
         setExtendPercent(0.0);
     }
 
+    public void setExtendPosition(double rotations) {
+        io.setExtendPosition(rotations);
+    }
+
     public void setSpinPercent(double percent) {
         io.setSpinPercent(percent);
     }
@@ -130,11 +134,11 @@ public class Intake extends SubsystemBase {
 
         switch (mode) {
             case EXTENSION:
-                setExtendPercent(IntakeConstants.EXTEND_SPEED);
+                setExtendPosition(IntakeConstants.EXTENDED_POSITION_ROTATIONS);
                 setSpinPercent(IntakeConstants.SPIN_SPEED);
                 break;
             case EXTEND_ONLY:
-                setExtendPercent(IntakeConstants.EXTEND_SPEED);
+                setExtendPosition(IntakeConstants.EXTENDED_POSITION_ROTATIONS);
                 stopSpin();
                 break;
             case SPRINGY:
@@ -143,11 +147,7 @@ public class Intake extends SubsystemBase {
                 break;
             case IDLE:
             default:
-                if (!isRetracted()) {
-                    setExtendPercent(IntakeConstants.RETRACT_SPEED);
-                } else {
-                    stopExtend();
-                }
+                setExtendPosition(IntakeConstants.RETRACTED_POSITION_ROTATIONS);
                 stopSpin();
                 break;
         }

@@ -263,6 +263,9 @@ public final class Constants {
   public static final double MAX_EXTENSION_ROTATIONS = 10.0; // TODO: tune
   public static final double SPRINGY_TRIGGER_ROTATIONS = 5.0; // TODO: tune
 
+  public static final double EXTENDED_POSITION_ROTATIONS = 8.0; // TODO: tune - target position for extension
+  public static final double RETRACTED_POSITION_ROTATIONS = 0.5; // TODO: tune - target position for retraction (not all the way to limit switch)
+
     // Linear actuator geometry
     public static final double EXTEND_GEAR_RATIO = 115.0 / 24.0; // 4.79:1 motor to pinion
     public static final double PINION_DIAMETER_INCHES = 1.751;
