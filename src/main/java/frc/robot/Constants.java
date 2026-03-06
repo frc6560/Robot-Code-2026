@@ -110,18 +110,18 @@ public final class Constants {
           break;
         case "limelight-cl":
           limelightPose = new Pose3d(
-            0.208, // front/back
-            - 0.327, // left/right
-            0.503, // height
-            new Rotation3d(0, Units.degreesToRadians(20.46), Units.degreesToRadians(90.0))
+            - 0.257, // front/back
+            - 0.325, // left/right
+            0.336, // height
+            new Rotation3d(0, Units.degreesToRadians(25.0), Units.degreesToRadians(90.0))
           );
           break;
         case "limelight-fr":
           limelightPose = new Pose3d(
-            0.208, // front/back
-            0.327, // left/right
-            0.503, // height
-            new Rotation3d(0, Units.degreesToRadians(20.46), Units.degreesToRadians(- 90.0))
+            - 0.257, // front/back
+            0.325, // left/right
+            0.336, // height
+            new Rotation3d(0, Units.degreesToRadians(25.0), Units.degreesToRadians(- 90.0))
           );
           break;
         default:
