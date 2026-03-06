@@ -102,7 +102,7 @@ public final class Constants {
       switch(name){
         case "limelight-br":
           limelightPose = new Pose3d(
-            - 0.299, // front/back
+            -0.299, // front/back
             0.2667, // left/right
             0.540, // height
             new Rotation3d(0, Units.degreesToRadians(30.0), 0)
@@ -110,18 +110,18 @@ public final class Constants {
           break;
         case "limelight-cl":
           limelightPose = new Pose3d(
-            - 0.257, // front/back
-            - 0.325, // left/right
+            -0.257, // front/back
+            -0.325, // left/right
             0.336, // height
             new Rotation3d(0, Units.degreesToRadians(25.0), Units.degreesToRadians(90.0))
           );
           break;
         case "limelight-fr":
           limelightPose = new Pose3d(
-            - 0.257, // front/back
+            -0.257, // front/back
             0.325, // left/right
             0.336, // height
-            new Rotation3d(0, Units.degreesToRadians(25.0), Units.degreesToRadians(- 90.0))
+            new Rotation3d(0, Units.degreesToRadians(25.0), Units.degreesToRadians(-90.0))
           );
           break;
         default:
@@ -255,7 +255,7 @@ public final class Constants {
     public static final boolean SPIN_MOTOR_INVERTED = true; //TODO update: complete
 
     public static final double EXTEND_SPEED = 0.5; //tune (0.65)
-  public static final double RETRACT_SPEED = -0.5; //tune  (-0.5)
+    public static final double RETRACT_SPEED = -0.5; //tune  (-0.5)
     public static final double SPIN_SPEED = 0.7; //tune   (0.7))
     public static final double SPRINGY_EXTEND_SPEED = 0.05; //tune
     public static final double SPRINGY_SPIN_SPEED = 0.7; //tune
