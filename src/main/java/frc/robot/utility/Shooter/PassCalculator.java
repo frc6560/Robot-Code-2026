@@ -3,16 +3,19 @@ package frc.robot.utility.Shooter;
 import java.util.Optional;
 
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.FieldConstants;
+import frc.robot.Constants.TurretConstants;
 
 public class PassCalculator {
 
-    // Note that the RPM 
     public record TurretState(double positionRadians, double velocityRadiansPerSecond) {}
 
     private double hoodAzimuth;
@@ -20,13 +23,17 @@ public class PassCalculator {
     private double turretAngle;
     private double turretVelocityFF; // feedforward velocity in rad/s 
 
+    public Translation2d virtualTargetPose;
+
     private static final InterpolatingDoubleTreeMap hoodAzimuthMap = new InterpolatingDoubleTreeMap();
     private static final InterpolatingDoubleTreeMap flywheelRPMMap = new InterpolatingDoubleTreeMap();
+    private static final InterpolatingDoubleTreeMap timeOfFlightMap = new InterpolatingDoubleTreeMap();
 
     public PassCalculator() {
         hoodAzimuth = 0.0;
         turretAngle = 0.0;
         turretVelocityFF = 0.0;
+        virtualTargetPose = new Translation2d();
 
         hoodAzimuthMap.put(4.077, 30.0);
         hoodAzimuthMap.put(4.980, 36.0);
@@ -41,6 +48,13 @@ public class PassCalculator {
         flywheelRPMMap.put(6.927, 2400.0);
         flywheelRPMMap.put(7.777, 2500.0);
         flywheelRPMMap.put(8.766, 2600.0);
+
+        timeOfFlightMap.put(4.077, 1.25);
+        timeOfFlightMap.put(4.980, 1.26);
+        timeOfFlightMap.put(5.955, 1.33);
+        timeOfFlightMap.put(6.927, 1.33);
+        timeOfFlightMap.put(7.777, 1.39);
+        timeOfFlightMap.put(8.766, 1.47);
     }
 
     public double getTurretAngle() {
@@ -82,12 +96,73 @@ public class PassCalculator {
             return; // if we're in the deadzone, we don't calculate a pass
         }
 
-        double distanceToTarget = robotPose.getTranslation().getDistance(targetPassLocation);
-        hoodAzimuth = hoodAzimuthMap.get(distanceToTarget);
-        flywheelRPM = flywheelRPMMap.get(distanceToTarget);
+        // gets the turret's robot relative transform
+        Transform2d turretTransform = new Transform2d(
+            TurretConstants.ROBOT_RELATIVE_TURRET.getX(), 
+            TurretConstants.ROBOT_RELATIVE_TURRET.getY(),
+            new Rotation2d()
+        );
+
+
+        // gets the turret's field relative velocity
+        Pose2d turretPose = robotPose.transformBy(turretTransform);
+        double angleOffset = Math.atan2(turretTransform.getY(), turretTransform.getX());
+        double r = Math.hypot(turretTransform.getX(), turretTransform.getY());
+
+        double turretVx = fieldVelocity.vxMetersPerSecond
+                        + (-r * fieldVelocity.omegaRadiansPerSecond * Math.sin(robotPose.getRotation().getRadians() + angleOffset));
+        double turretVy = fieldVelocity.vyMetersPerSecond
+                        + (r * fieldVelocity.omegaRadiansPerSecond * Math.cos(robotPose.getRotation().getRadians() + angleOffset));
+
+        // calculates a virtual target iteratively based upon our parameters.
+        virtualTargetPose = targetPassLocation;
+        double timeOfFlight = 0;
+        double distanceToTarget = turretPose.getTranslation().getDistance(targetPassLocation);
+
+        // Convergence threshold for early exit (seconds)
+        final double EPSILON = 0.01;
+        double prevTimeOfFlight = 0;
+        int iterationsUsed = 0;
+
+        if(Math.hypot(turretVx, turretVy) > 0.3){
+            for(int i = 0; i < 20; i++){
+                timeOfFlight = timeOfFlightMap.get(distanceToTarget);
+                iterationsUsed = i + 1;
+
+                // Early exit if time of flight has converged
+                if (i > 0 && Math.abs(timeOfFlight - prevTimeOfFlight) < EPSILON) {
+                    break;
+                }
+
+                prevTimeOfFlight = timeOfFlight;
+
+                virtualTargetPose = targetPassLocation.minus(
+                    new Translation2d(
+                        turretVx * timeOfFlight,
+                        turretVy * timeOfFlight
+                    )
+                );
+                distanceToTarget = turretPose.getTranslation().getDistance(virtualTargetPose);
+            }
+        }
         
-        turretAngle = Math.atan2(targetPassLocation.getY() - robotPose.getY(), targetPassLocation.getX() - robotPose.getX())
+        double distanceToVirtualTarget = distanceToTarget;
+        hoodAzimuth = hoodAzimuthMap.get(distanceToVirtualTarget);
+        flywheelRPM = flywheelRPMMap.get(distanceToVirtualTarget);
+        
+        turretAngle = Math.atan2(virtualTargetPose.getY() - robotPose.getY(), virtualTargetPose.getX() - robotPose.getX())
                         - robotPose.getRotation().getRadians();
-        turretVelocityFF = - fieldVelocity.omegaRadiansPerSecond; // feedforward to help track the target as we move
+        
+
+        double deltaX = virtualTargetPose.getX() - turretPose.getX();
+        double deltaY = virtualTargetPose.getY() - turretPose.getY();
+        double distSquared = distanceToVirtualTarget * distanceToVirtualTarget;
+
+        if (distSquared > 0.01 && Math.hypot(turretVx, turretVy) > 0.3) { // avoid division by zero and ignore very small velocities
+            double losRate = (turretVx * deltaY - turretVy * deltaX) / distSquared;
+            turretVelocityFF = losRate - fieldVelocity.omegaRadiansPerSecond;
+        } else {
+            turretVelocityFF = -fieldVelocity.omegaRadiansPerSecond;
+        }
     }
 }
