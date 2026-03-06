@@ -10,7 +10,6 @@ import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.FieldConstants;
 import frc.robot.Constants.TurretConstants;
 
@@ -122,12 +121,10 @@ public class PassCalculator {
         // Convergence threshold for early exit (seconds)
         final double EPSILON = 0.01;
         double prevTimeOfFlight = 0;
-        int iterationsUsed = 0;
 
         if(Math.hypot(turretVx, turretVy) > 0.3){
             for(int i = 0; i < 20; i++){
                 timeOfFlight = timeOfFlightMap.get(distanceToTarget);
-                iterationsUsed = i + 1;
 
                 // Early exit if time of flight has converged
                 if (i > 0 && Math.abs(timeOfFlight - prevTimeOfFlight) < EPSILON) {
