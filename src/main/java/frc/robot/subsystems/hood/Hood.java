@@ -1,9 +1,14 @@
 package frc.robot.subsystems.hood;
 
+import static edu.wpi.first.units.Units.Volts;
+
 import org.littletonrobotics.junction.Logger;
 
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.units.measure.Voltage;
+import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants.HoodConstants;
 
 public class Hood extends SubsystemBase {
@@ -14,8 +19,20 @@ public class Hood extends SubsystemBase {
     private static final double ANGLE_TOLERANCE = 1.5;
     private static final double ANGLE_OFFSET = 25.0;
 
+    private boolean sysIdMode = false;
+    private final SysIdRoutine sysIdRoutine;
+
     public Hood(HoodIO io) {
         this.io = io;
+
+        sysIdRoutine = new SysIdRoutine(
+            new SysIdRoutine.Config(),
+            new SysIdRoutine.Mechanism(
+                (Voltage volts) -> io.setVoltage(volts.in(Volts)),
+                null,
+                this
+            )
+        );
     }
 
     public double getHoodAngle() {
@@ -44,13 +61,31 @@ public class Hood extends SubsystemBase {
         io.stop();
     }
 
+    public void setSysIdMode(boolean enabled) {
+        sysIdMode = enabled;
+    }
+
+    public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
+        return sysIdRoutine.quasistatic(direction)
+            .beforeStarting(() -> sysIdMode = true)
+            .finallyDo(() -> sysIdMode = false);
+    }
+
+    public Command sysIdDynamic(SysIdRoutine.Direction direction) {
+        return sysIdRoutine.dynamic(direction)
+            .beforeStarting(() -> sysIdMode = true)
+            .finallyDo(() -> sysIdMode = false);
+    }
+
     @Override
     public void periodic() {
         io.updateInputs(inputs);
         Logger.processInputs("Hood", inputs);
 
-        // Run motion magic control
-        io.setTargetAngle(targetAngle);
+        // Only run motion magic control if not in SysId mode
+        if (!sysIdMode) {
+            io.setTargetAngle(targetAngle);
+        }
 
         Logger.recordOutput("Hood/TargetAngleDeg", targetAngle + ANGLE_OFFSET);
         Logger.recordOutput("Hood/CurrentAngleDeg", getHoodAngle() + ANGLE_OFFSET);

@@ -38,9 +38,7 @@ public class ShotCommand extends Command {
     @Override
     public void execute() {
 
-        boolean allAtTarget = debouncer.calculate(turret.getAtTarget())
-                           && debouncer.calculate(hood.atTarget())
-                           && debouncer.calculate(shotCalculator.isShotValid());
+        boolean allAtTarget = debouncer.calculate(shotCalculator.isShotValid());
 
         if (allAtTarget) {
             feeder.requestFeed();

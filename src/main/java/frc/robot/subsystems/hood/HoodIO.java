@@ -23,4 +23,7 @@ public interface HoodIO {
 
     /** Stop the hood motor */
     default void stop() {}
+
+    /** Set voltage directly (for SysId) */
+    default void setVoltage(double volts) {}
 }

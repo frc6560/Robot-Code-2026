@@ -8,6 +8,7 @@ import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.controls.PositionVoltage;
+import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.CANcoder;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
@@ -28,6 +29,7 @@ public class TurretIOTalonFX implements TurretIO {
 
     private final MotionMagicVoltage motionMagicRequest = new MotionMagicVoltage(0).withSlot(0);
     private final PositionVoltage positionRequest = new PositionVoltage(0).withSlot(0);
+    private final VoltageOut voltageRequest = new VoltageOut(0);
 
     private final StatusSignal<Angle> motorPosition;
     private final StatusSignal<AngularVelocity> motorVelocity;
@@ -150,5 +152,10 @@ public class TurretIOTalonFX implements TurretIO {
     @Override
     public void stop() {
         turretMotor.set(0);
+    }
+
+    @Override
+    public void setVoltage(double volts) {
+        turretMotor.setControl(voltageRequest.withOutput(volts));
     }
 }

@@ -7,8 +7,10 @@ import com.ctre.phoenix6.configs.MotionMagicConfigs;
 import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
+import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.CANcoder;
 import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.GravityTypeValue;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.ctre.phoenix6.signals.SensorDirectionValue;
@@ -26,6 +28,7 @@ public class HoodIOTalonFX implements HoodIO {
     private final CANcoder absoluteEncoder;
 
     private final MotionMagicVoltage motionMagicRequest = new MotionMagicVoltage(0).withSlot(0);
+    private final VoltageOut voltageRequest = new VoltageOut(0);
 
     private final StatusSignal<Angle> motorPosition;
     private final StatusSignal<AngularVelocity> motorVelocity;
@@ -72,6 +75,8 @@ public class HoodIOTalonFX implements HoodIO {
         slot0.kS = HoodConstants.kS;
         slot0.kV = HoodConstants.kV;
         slot0.kA = HoodConstants.kA;
+        slot0.kG = HoodConstants.kG;
+        slot0.GravityType = GravityTypeValue.Arm_Cosine;
         slot0.kP = HoodConstants.kP;
         slot0.kI = HoodConstants.kI;
         slot0.kD = HoodConstants.kD;
@@ -130,5 +135,10 @@ public class HoodIOTalonFX implements HoodIO {
     @Override
     public void stop() {
         hoodMotor.stopMotor();
+    }
+
+    @Override
+    public void setVoltage(double volts) {
+        hoodMotor.setControl(voltageRequest.withOutput(volts));
     }
 }

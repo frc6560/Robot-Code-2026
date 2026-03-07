@@ -30,4 +30,7 @@ public interface TurretIO {
 
     /** Re-seed the motor encoder from the absolute encoder */
     default void seedMotorEncoder() {}
+
+    /** Set voltage directly (for SysId) */
+    default void setVoltage(double volts) {}
 }

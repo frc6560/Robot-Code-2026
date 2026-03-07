@@ -142,9 +142,10 @@ public final class Constants {
     public static final double kS = 0.14;   // Static friction voltage
     public static final double kV = 0.11;  // Velocity feedforward
     public static final double kA = 0.0;   // Acceleration feedforward
+    public static final double kG = 0.0;   // Gravity feedforward (arm/wrist style - uses cosine)
 
     /** PID Gains */
-    public static final double kP = 2.0;   // Proportional gain
+    public static final double kP = 5.0;   // Proportional gain
     public static final double kI = 0.0;   // Integral gain
     public static final double kD = 0.0;   // Derivative gain
 
@@ -178,8 +179,8 @@ public final class Constants {
 
     /** PID Gains */
     public static final double kP = 0.6;
-    public static final double kI = 0.00;
-    public static final double kD = 0.00;
+    public static final double kI = 0.0;
+    public static final double kD = 0.0;
     public static final double kV = 0.117; 
     public static final double kS = 0.15;
 
@@ -216,7 +217,7 @@ public final class Constants {
 
     /** PID Gains */
     public static final double kP = 5.0;
-    public static final double kI = 0;
+    public static final double kI = 0.05;
     public static final double kD = 0.2;
 
     /** Motion Constraints. IN DEGREES PER SECOND */
@@ -256,7 +257,7 @@ public final class Constants {
 
     public static final double EXTEND_SPEED = 0.5; //tune (0.65)
     public static final double RETRACT_SPEED = -0.5; //tune  (-0.5)
-    public static final double SPIN_SPEED = 0.7; //tune   (0.7))
+    public static final double SPIN_SPEED = 0.85; //tune     (0.7)
     public static final double SPRINGY_EXTEND_SPEED = 0.05; //tune
     public static final double SPRINGY_SPIN_SPEED = 0.7; //tune
 
