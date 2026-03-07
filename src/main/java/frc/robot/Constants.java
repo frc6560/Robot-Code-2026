@@ -131,7 +131,7 @@ public final class Constants {
     }
     public static final double kStdvXYBase = 0.15; 
     public static final double kStdvThetaBase = 1.0; 
-    public static final double JUMP_TOLERANCE = 0.6;
+    public static final double JUMP_TOLERANCE = 2.0;
   }
 
   public static final class HoodConstants{
@@ -166,6 +166,9 @@ public final class Constants {
     /** Hood Angle Limits */
     public static final double HOOD_MIN_ANGLE = 25.1;   // degrees
     public static final double HOOD_MAX_ANGLE = 45.0;  // degrees
+
+    /** Angle at which hood is horizontal (for gravity feedforward calculation) */
+    public static final double HOOD_HORIZONTAL_OFFSET = 25.0;  // degrees - adjust based on mechanism geometry
 
     public static final int HOOD_ABSOLUTE_ENCODER_ID = 22;
 

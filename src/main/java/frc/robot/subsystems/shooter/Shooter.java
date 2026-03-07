@@ -1,13 +1,13 @@
 package frc.robot.subsystems.shooter;
 
-import static edu.wpi.first.units.Units.Volts;
+// import static edu.wpi.first.units.Units.Volts;
 
 import org.littletonrobotics.junction.Logger;
 
-import edu.wpi.first.units.measure.Voltage;
-import edu.wpi.first.wpilibj2.command.Command;
+// import edu.wpi.first.units.measure.Voltage;
+// import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
+// import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants.ShooterConstants;
 
 public class Shooter extends SubsystemBase {
@@ -15,20 +15,20 @@ public class Shooter extends SubsystemBase {
     private final ShooterIOInputsAutoLogged inputs = new ShooterIOInputsAutoLogged();
 
     private double goalRPM = 0.0;
-    private boolean sysIdMode = false;
-    private final SysIdRoutine sysIdRoutine;
+    // private boolean sysIdMode = false;
+    // private final SysIdRoutine sysIdRoutine;
 
     public Shooter(ShooterIO io) {
         this.io = io;
 
-        sysIdRoutine = new SysIdRoutine(
-            new SysIdRoutine.Config(),
-            new SysIdRoutine.Mechanism(
-                (Voltage volts) -> io.setVoltage(volts.in(Volts)),
-                null,
-                this
-            )
-        );
+        // sysIdRoutine = new SysIdRoutine(
+        //     new SysIdRoutine.Config(),
+        //     new SysIdRoutine.Mechanism(
+        //         (Voltage volts) -> io.setVoltage(volts.in(Volts)),
+        //         null,
+        //         this
+        //     )
+        // );
     }
 
     /**
@@ -61,36 +61,33 @@ public class Shooter extends SubsystemBase {
         return Math.abs(getCurrentRPM() - goalRPM) < ShooterConstants.FLYWHEEL_RPM_TOLERANCE;
     }
 
-    public void setSysIdMode(boolean enabled) {
-        sysIdMode = enabled;
-    }
+    // public void setSysIdMode(boolean enabled) {
+    //     sysIdMode = enabled;
+    // }
 
-    public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
-        return sysIdRoutine.quasistatic(direction)
-            .beforeStarting(() -> sysIdMode = true)
-            .finallyDo(() -> sysIdMode = false);
-    }
+    // public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
+    //     return sysIdRoutine.quasistatic(direction)
+    //         .beforeStarting(() -> sysIdMode = true)
+    //         .finallyDo(() -> sysIdMode = false);
+    // }
 
-    public Command sysIdDynamic(SysIdRoutine.Direction direction) {
-        return sysIdRoutine.dynamic(direction)
-            .beforeStarting(() -> sysIdMode = true)
-            .finallyDo(() -> sysIdMode = false);
-    }
+    // public Command sysIdDynamic(SysIdRoutine.Direction direction) {
+    //     return sysIdRoutine.dynamic(direction)
+    //         .beforeStarting(() -> sysIdMode = true)
+    //         .finallyDo(() -> sysIdMode = false);
+    // }
 
     @Override
     public void periodic() {
         io.updateInputs(inputs);
         Logger.processInputs("Shooter", inputs);
 
-        // Only run velocity control if not in SysId mode
-        if (!sysIdMode) {
-            if (goalRPM > 0) {
-                double goalRPS = goalRPM / 60.0; // mechanism RPS
-                io.setVelocityRPS(goalRPS);
-            }
-            else{
-                io.stop();
-            }
+        if (goalRPM > 0) {
+            double goalRPS = goalRPM / 60.0; // mechanism RPS
+            io.setVelocityRPS(goalRPS);
+        }
+        else{
+            io.stop();
         }
 
         Logger.recordOutput("Shooter/GoalRPM", goalRPM);

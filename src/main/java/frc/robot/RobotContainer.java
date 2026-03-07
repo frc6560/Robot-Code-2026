@@ -6,7 +6,7 @@ import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
-import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
+// import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import java.io.File;
@@ -189,36 +189,36 @@ public class RobotContainer {
         Trigger intakeResetTrigger = new Trigger(() -> m_Controls.getButton(3));
         intakeResetTrigger.onTrue(Commands.runOnce(intake::resetExtendPosition, intake));
 
-        // SysID bindings (using D-pad on driver controller)
-        // Hood SysID - D-pad Up/Down for quasistatic, hold B + D-pad for dynamic
-        driverXbox.povUp().and(driverXbox.b().negate())
-            .whileTrue(hood.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
-        driverXbox.povDown().and(driverXbox.b().negate())
-            .whileTrue(hood.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
-        driverXbox.povUp().and(driverXbox.b())
-            .whileTrue(hood.sysIdDynamic(SysIdRoutine.Direction.kForward));
-        driverXbox.povDown().and(driverXbox.b())
-            .whileTrue(hood.sysIdDynamic(SysIdRoutine.Direction.kReverse));
+        // SysID bindings (using D-pad on driver controller) - COMMENTED OUT
+        // // Hood SysID - D-pad Up/Down for quasistatic, hold B + D-pad for dynamic
+        // driverXbox.povUp().and(driverXbox.b().negate())
+        //     .whileTrue(hood.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
+        // driverXbox.povDown().and(driverXbox.b().negate())
+        //     .whileTrue(hood.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
+        // driverXbox.povUp().and(driverXbox.b())
+        //     .whileTrue(hood.sysIdDynamic(SysIdRoutine.Direction.kForward));
+        // driverXbox.povDown().and(driverXbox.b())
+        //     .whileTrue(hood.sysIdDynamic(SysIdRoutine.Direction.kReverse));
 
-        // Flywheel SysID - D-pad Left/Right for quasistatic, hold B + D-pad for dynamic
-        driverXbox.povRight().and(driverXbox.b().negate())
-            .whileTrue(shooter.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
-        driverXbox.povLeft().and(driverXbox.b().negate())
-            .whileTrue(shooter.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
-        driverXbox.povRight().and(driverXbox.b())
-            .whileTrue(shooter.sysIdDynamic(SysIdRoutine.Direction.kForward));
-        driverXbox.povLeft().and(driverXbox.b())
-            .whileTrue(shooter.sysIdDynamic(SysIdRoutine.Direction.kReverse));
+        // // Flywheel SysID - D-pad Left/Right for quasistatic, hold B + D-pad for dynamic
+        // driverXbox.povRight().and(driverXbox.b().negate())
+        //     .whileTrue(shooter.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
+        // driverXbox.povLeft().and(driverXbox.b().negate())
+        //     .whileTrue(shooter.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
+        // driverXbox.povRight().and(driverXbox.b())
+        //     .whileTrue(shooter.sysIdDynamic(SysIdRoutine.Direction.kForward));
+        // driverXbox.povLeft().and(driverXbox.b())
+        //     .whileTrue(shooter.sysIdDynamic(SysIdRoutine.Direction.kReverse));
 
-        // Turret SysID - hold RightBumper + D-pad for quasistatic, hold RightBumper + B + D-pad for dynamic
-        driverXbox.rightBumper().and(driverXbox.povUp()).and(driverXbox.b().negate())
-            .whileTrue(turret.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
-        driverXbox.rightBumper().and(driverXbox.povDown()).and(driverXbox.b().negate())
-            .whileTrue(turret.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
-        driverXbox.rightBumper().and(driverXbox.povUp()).and(driverXbox.b())
-            .whileTrue(turret.sysIdDynamic(SysIdRoutine.Direction.kForward));
-        driverXbox.rightBumper().and(driverXbox.povDown()).and(driverXbox.b())
-            .whileTrue(turret.sysIdDynamic(SysIdRoutine.Direction.kReverse));
+        // // Turret SysID - hold RightBumper + D-pad for quasistatic, hold RightBumper + B + D-pad for dynamic
+        // driverXbox.rightBumper().and(driverXbox.povUp()).and(driverXbox.b().negate())
+        //     .whileTrue(turret.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
+        // driverXbox.rightBumper().and(driverXbox.povDown()).and(driverXbox.b().negate())
+        //     .whileTrue(turret.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
+        // driverXbox.rightBumper().and(driverXbox.povUp()).and(driverXbox.b())
+        //     .whileTrue(turret.sysIdDynamic(SysIdRoutine.Direction.kForward));
+        // driverXbox.rightBumper().and(driverXbox.povDown()).and(driverXbox.b())
+        //     .whileTrue(turret.sysIdDynamic(SysIdRoutine.Direction.kReverse));
     }
 
 

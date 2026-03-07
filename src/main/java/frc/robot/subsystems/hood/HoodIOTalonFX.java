@@ -10,7 +10,6 @@ import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.CANcoder;
 import com.ctre.phoenix6.hardware.TalonFX;
-import com.ctre.phoenix6.signals.GravityTypeValue;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.ctre.phoenix6.signals.SensorDirectionValue;
@@ -75,8 +74,6 @@ public class HoodIOTalonFX implements HoodIO {
         slot0.kS = HoodConstants.kS;
         slot0.kV = HoodConstants.kV;
         slot0.kA = HoodConstants.kA;
-        slot0.kG = HoodConstants.kG;
-        slot0.GravityType = GravityTypeValue.Arm_Cosine;
         slot0.kP = HoodConstants.kP;
         slot0.kI = HoodConstants.kI;
         slot0.kD = HoodConstants.kD;
@@ -129,7 +126,14 @@ public class HoodIOTalonFX implements HoodIO {
     @Override
     public void setTargetAngle(double angleDegrees) {
         double targetMotorRotations = angleDegrees * HoodConstants.HOOD_GEAR_RATIO / 360.0;
-        hoodMotor.setControl(motionMagicRequest.withPosition(targetMotorRotations));
+
+        double currentAngleDegrees = motorPosition.getValueAsDouble() / HoodConstants.HOOD_GEAR_RATIO * 360.0;
+        double angleFromHorizontalRad = Math.toRadians(currentAngleDegrees + HoodConstants.HOOD_HORIZONTAL_OFFSET);
+        double gravityFF = HoodConstants.kG * Math.cos(angleFromHorizontalRad);
+
+        hoodMotor.setControl(motionMagicRequest
+            .withPosition(targetMotorRotations)
+            .withFeedForward(gravityFF));
     }
 
     @Override
