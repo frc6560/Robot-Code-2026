@@ -4,6 +4,8 @@ import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
+import edu.wpi.first.wpilibj2.command.RunCommand;
+import edu.wpi.first.wpilibj2.command.Subsystem;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 // import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
@@ -52,6 +54,12 @@ import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import frc.robot.subsystems.vision.LimelightVision;
 import frc.robot.subsystems.vision.VisionSubsystem;
 
+// Climb Imports
+import frc.robot.subsystems.climb.Climb;
+import frc.robot.subsystems.climb.Climb.ClimbState;
+import frc.robot.subsystems.climb.ClimbIOKraken;
+import frc.robot.subsystems.climb.ClimbIOSim;
+
 
 public class RobotContainer {
     // Controllers
@@ -68,6 +76,7 @@ public class RobotContainer {
     private final Turret turret;
     private final Feeder feeder;
     private final Intake intake;
+    private final Climb climb;
 
     private final ShotCalculator shotCalculator = new ShotCalculator();
     private final PassCalculator passCalculator = new PassCalculator();
@@ -98,15 +107,17 @@ public class RobotContainer {
         turret = new Turret(new TurretIOTalonFX());
         feeder = new Feeder(new FeederIOTalonFX());
         intake = new Intake(new IntakeIOTalonFX());
+        climb = new Climb(new ClimbIOKraken());
       } else {
         hood = new Hood(new HoodIOSim());
         shooter = new Shooter(new ShooterIOSim());
         turret = new Turret(new TurretIOSim());
         feeder = new Feeder(new FeederIOSim());
         intake = new Intake(new IntakeIOSim());
+        climb = new Climb(new ClimbIOSim());
       }
 
-      factory = new AutoCommands(drivebase, feeder, intake);
+      factory = new AutoCommands(drivebase, feeder, intake, climb);
 
       autoChooser = new AutoModeChooser(factory);
       SmartDashboard.putData("Auto Chooser", autoChooser.getAutoChooser());
@@ -138,6 +149,9 @@ public class RobotContainer {
     private void configureBindings() {
         Command driveFieldOrientedAnglularVelocity = drivebase.driveFieldOriented(driveAngularVelocity);
         drivebase.setDefaultCommand(driveFieldOrientedAnglularVelocity);
+
+        climb.setDefaultCommand(new RunCommand(() -> climb.setState(ClimbState.RETRACTED), climb));
+
         driverXbox.a().onTrue(
           Commands.defer(() -> {
             return Commands.runOnce(() -> vision.hardReset("limelight-br"), vision);
@@ -146,8 +160,13 @@ public class RobotContainer {
 
         driverXbox.x()
           .onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
+        
         driverXbox.y()
-          .onTrue(Commands.defer(() -> new ClimbCommand(drivebase), Set.of(drivebase)));
+          .whileTrue(Commands.defer(() -> new ClimbCommand(drivebase, climb), Set.<Subsystem>of(drivebase, climb)));
+
+        driverXbox.b()
+          .onTrue(Commands.runOnce(() -> climb.setState(ClimbState.PULL_UP), climb));
+
         driverXbox.start().
           onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
 
@@ -177,6 +196,15 @@ public class RobotContainer {
         intakeTrigger.onTrue(Commands.runOnce(intake::setExtendOnlyMode, intake));
         intakeRollingTrigger.onTrue(Commands.runOnce(intake::setExtensionMode, intake));
         intakeReleaseTrigger.onTrue(Commands.runOnce(intake::setIdleMode, intake));
+
+        // Climb triggers from custom button board
+        Trigger climbTrigger = new Trigger(m_Controls::getClimbTrigger);
+        Trigger climbResetTrigger = new Trigger(m_Controls::getClimbResetTrigger);
+        Trigger autoAlignTrigger = new Trigger(m_Controls::getAutoAlignTrigger);
+
+        autoAlignTrigger.whileTrue(Commands.defer(() -> new ClimbCommand(drivebase, climb), Set.<Subsystem>of(drivebase, climb)));
+        climbTrigger.onTrue(Commands.runOnce(() -> climb.setState(ClimbState.PULL_UP), climb));
+        climbResetTrigger.onTrue(Commands.runOnce(() -> climb.setState(ClimbState.HOMING), climb));
 
         // Reset buttons
         Trigger visionResetTrigger = new Trigger(() -> m_Controls.getButton(4));

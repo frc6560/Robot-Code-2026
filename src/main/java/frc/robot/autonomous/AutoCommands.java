@@ -1,6 +1,5 @@
 package frc.robot.autonomous;
 
-
 import choreo.auto.AutoFactory;
 import choreo.auto.AutoRoutine;
 import choreo.auto.AutoTrajectory;
@@ -9,10 +8,12 @@ import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import frc.robot.commands.ClimbCommand;
 
+// YOU NEEDED THIS IMPORT:
+import frc.robot.subsystems.climb.Climb; 
+
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
-
 
 // refactor code: add follow and shoot helper
 // add a helper method to sequence commands: sequencePaths(Commands... commands)
@@ -20,16 +21,20 @@ public class AutoCommands {
     private SwerveSubsystem drivetrain;
     private Feeder feeder;
     private Intake intake;
+    private Climb climb;
 
     private AutoFactory autoFactory;
 
+    // ADDED 'Climb climb' TO THE ARGUMENTS HERE:
     public AutoCommands(SwerveSubsystem drivetrain,
         Feeder feeder,
-        Intake intake
+        Intake intake,
+        Climb climb 
     ) {
         this.drivetrain = drivetrain;
         this.feeder = feeder;
         this.intake = intake;
+        this.climb = climb;
         
         autoFactory = new AutoFactory(
             drivetrain::getPose,
@@ -85,7 +90,7 @@ public class AutoCommands {
     }
 
     public Command climb(){
-        return new ClimbCommand(drivetrain);
+        return new ClimbCommand(drivetrain, climb);
     }
 
     public Command intake(){

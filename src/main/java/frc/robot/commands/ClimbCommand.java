@@ -5,6 +5,8 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
+import frc.robot.subsystems.climb.Climb;
+import frc.robot.subsystems.climb.Climb.ClimbState;
 
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Pose2d;
@@ -51,16 +53,18 @@ public class ClimbCommand extends SequentialCommandGroup {
 
     // Subsystems
     private SwerveSubsystem drivetrain;
+    private Climb climb;
 
 
     /** Constructor for our climb command */
-    public ClimbCommand(SwerveSubsystem drivetrain) {
+    public ClimbCommand(SwerveSubsystem drivetrain, Climb climb) {
         this.drivetrain = drivetrain;
+        this.climb = climb;
         this.initialY = drivetrain.getPose().getY();
 
         // Initialize PID controllers (tune these values as needed)
         // Reduced kP and increased kD to prevent overshoot in X and Y
-           this.xController = new PIDController(3, 0.03, 0.1);  // Reduced kP: 4.5→2.5, Increased kD: 0.4→0.8
+        this.xController = new PIDController(3, 0.03, 0.1);  // Reduced kP: 4.5→2.5, Increased kD: 0.4→0.8
         this.yController = new PIDController(2.75, 0.02, 0.1);  // Reduced kP: 4.5→2.5, Increased kD: 0.4→0.8
         this.rotationController = new PIDController(5.5, 0.15, 0.05);  // Reduced kP: 5.0→4.0, Increased kD: 0.5→0.6
         this.rotationController.enableContinuousInput(-Math.PI, Math.PI);
@@ -81,10 +85,16 @@ public class ClimbCommand extends SequentialCommandGroup {
         System.out.println("ClimbCommand initialized at Y=" + initialY);
 
         super.addCommands(
+            // 1. INSTANTLY extend the climb when the auto-align starts
+            Commands.runOnce(() -> climb.setState(ClimbState.EXTENDED), climb),
+            
+            // 2. Execute the driving sequence
             getDriveToPrescore(),
             getDriveInCommand()
         );
-        super.addRequirements(drivetrain);
+        
+        // Require both subsystems so nothing else interrupts them
+        super.addRequirements(drivetrain, climb);
     }
 
     /** Update PID values from SmartDashboard (call this in execute if you want live tuning) */
