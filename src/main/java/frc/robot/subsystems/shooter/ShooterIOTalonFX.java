@@ -140,11 +140,11 @@ public class ShooterIOTalonFX implements ShooterIO {
         if (currentMechanismRPS < rps - rpsTolerance) {
             // Below target - full power
             controlMode = "BangBang_FullPower";
-            leaderMotor.setVoltage(12.0);
+            leaderMotor.setControl(voltageControl.withOutput(12.0));
         } else if (currentMechanismRPS > rps + rpsTolerance) {
             // Above target - coast
             controlMode = "BangBang_Coast";
-            leaderMotor.setVoltage(0.0);
+            leaderMotor.setControl(voltageControl.withOutput(0.0));
         } else {
             // Within tolerance - velocity PID
             controlMode = "VelocityPID";

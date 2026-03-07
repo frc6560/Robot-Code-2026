@@ -98,6 +98,10 @@ public class Intake extends SubsystemBase {
         return inputs.extendPositionRotations;
     }
 
+    public void resetExtendPosition() {
+        io.resetExtendPosition();
+    }
+
     public Mode getMode() {
         return mode;
     }

@@ -67,7 +67,7 @@ public final class Constants {
     public static final Pose2d RED_RIGHT_START = new Pose2d(12.85, 7.25, Rotation2d.fromDegrees(180.0));
     public static final Pose2d RED_LEFT_START = new Pose2d(12.85, 0.75, Rotation2d.fromDegrees(180.0));
 
-    public static final Pose2d BLUE_TESTING_START = new Pose2d(3.70, 4.00, Rotation2d.fromDegrees(90.0));
+    public static final Pose2d BLUE_TESTING_START = new Pose2d(3.70, 4.00, Rotation2d.fromDegrees(0.0));
     public static final Pose2d RED_TESTING_START = new Pose2d(12.85, 4.00, Rotation2d.fromDegrees(180.0));
 
     public static final double PASS_DEADZONE_MIN_Y = 3.657;
@@ -93,7 +93,7 @@ public final class Constants {
   public static class LimelightConstants
   {
     public static final String[] LIMELIGHT_NAMES = {
-      "limelight-br", "limelight-cl","limelight-fr"
+      "limelight-br", "limelight-cl","limelight-cr"
     }; // one limelight for now
 
     
@@ -116,7 +116,7 @@ public final class Constants {
             new Rotation3d(0, Units.degreesToRadians(25.0), Units.degreesToRadians(90.0))
           );
           break;
-        case "limelight-fr":
+        case "limelight-cr":
           limelightPose = new Pose3d(
             -0.257, // front/back
             0.325, // left/right
@@ -230,23 +230,23 @@ public final class Constants {
     public static final double ENCODER_GEAR_RATIO = 127.0 / 168.0; // turret spins once for every ~0.75 encoder rotations. fix.
 
     // Absolute encoder setup
-    public static final double ABSOLUTE_ENCODER_OFFSET = - 0.026; 
+    public static final double ABSOLUTE_ENCODER_OFFSET = -0.135; 
     public static final boolean ABSOLUTE_ENCODER_REVERSED = false; 
 
     // soft limits
-    public static final double LOWER_SOFT_LIMIT = -150.0;
-    public static final double UPPER_SOFT_LIMIT = 270.0;
+    public static final double LOWER_SOFT_LIMIT = -90;
+    public static final double UPPER_SOFT_LIMIT = 280.0;
 
     // Wire protection thresholds - prefer unwinding toward center when outside these bounds
-    public static final double WIRE_PROTECTION_LOWER = -150.0;
-    public static final double WIRE_PROTECTION_UPPER = 270.0;
+    public static final double WIRE_PROTECTION_LOWER = -90;
+    public static final double WIRE_PROTECTION_UPPER = 280.0;
   }
 
   public static final class IntakeConstants{
     public static final boolean EXTENSION_ENABLED = true; 
     public static final int EXTEND_MOTOR_ID = 15; // TODO: set correct ID //completed
     public static final int SPIN_MOTOR_ID = 16; // TODO: set correct ID /completed
-  public static final String CAN_BUS = "rio";
+    public static final String CAN_BUS = "rio";
 
     public static final int RETRACT_LIMIT_SWITCH_ID = 7; // TODO: set correct DIO port
     public static final boolean RETRACT_LIMIT_SWITCH_INVERTED = true; // toDo: confirm if this needs to be true or false based on wiring and testing; eg, does it start as true or false when stowed.
@@ -263,8 +263,8 @@ public final class Constants {
   public static final double MAX_EXTENSION_ROTATIONS = 10.0; // TODO: tune
   public static final double SPRINGY_TRIGGER_ROTATIONS = 5.0; // TODO: tune
 
-  public static final double EXTENDED_POSITION_ROTATIONS = 8.0; // TODO: tune - target position for extension
-  public static final double RETRACTED_POSITION_ROTATIONS = 0.5; // TODO: tune - target position for retraction (not all the way to limit switch)
+  public static final double EXTENDED_POSITION_ROTATIONS = 10.008; // TODO: tune - target position for extension
+  public static final double RETRACTED_POSITION_ROTATIONS = 2.425; // TODO: tune - target position for retraction (not all the way to limit switch)
 
     // Linear actuator geometry
     public static final double EXTEND_GEAR_RATIO = 115.0 / 24.0; // 4.79:1 motor to pinion
@@ -281,8 +281,8 @@ public final class Constants {
     public static final double EXTEND_kD = 0.0;
 
     // Motion Magic constraints (motor rotations/sec)
-    public static final double EXTEND_MAX_VELOCITY = 5.5;
-    public static final double EXTEND_MAX_ACCELERATION = 50.0;
+    public static final double EXTEND_MAX_VELOCITY = 100.0;
+    public static final double EXTEND_MAX_ACCELERATION = 100.0;
 
     public static final double EXTEND_SUPPLY_CURRENT_LIMIT = 35;
     public static final double EXTEND_STATOR_CURRENT_LIMIT = 40;

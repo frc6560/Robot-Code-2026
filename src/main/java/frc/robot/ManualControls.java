@@ -56,7 +56,7 @@ public class ManualControls {
     }
 
     public boolean getIntakeTrigger(){
-      return getButtonRelease(1);
+      return getButtonRelease(1) || getButtonRelease(2);
     }
 
     public boolean getIntakeRollingTrigger(){

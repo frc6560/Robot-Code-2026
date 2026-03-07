@@ -176,6 +176,17 @@ public class RobotContainer {
         intakeTrigger.onTrue(Commands.runOnce(intake::setExtendOnlyMode, intake));
         intakeRollingTrigger.onTrue(Commands.runOnce(intake::setExtensionMode, intake));
         intakeReleaseTrigger.onTrue(Commands.runOnce(intake::setIdleMode, intake));
+
+        // Reset buttons
+        Trigger visionResetTrigger = new Trigger(() -> m_Controls.getButton(4));
+        visionResetTrigger.onTrue(
+            Commands.defer(() -> {
+                return Commands.runOnce(() -> vision.hardReset("limelight-br"), vision);
+            }, Set.of(vision))
+        );
+
+        Trigger intakeResetTrigger = new Trigger(() -> m_Controls.getButton(3));
+        intakeResetTrigger.onTrue(Commands.runOnce(intake::resetExtendPosition, intake));
     }
 
 
