@@ -142,7 +142,7 @@ public final class Constants {
     public static final double kS = 0.14;   // Static friction voltage
     public static final double kV = 0.11;  // Velocity feedforward
     public static final double kA = 0.0;   // Acceleration feedforward
-    public static final double kG = 0.1;   // Gravity feedforward (arm/wrist style - uses cosine)
+    public static final double kG = 0.165;   // Gravity feedforward (arm/wrist style - uses cosine)
 
     /** PID Gains */
     public static final double kP = 5.0;   // Proportional gain
@@ -172,7 +172,7 @@ public final class Constants {
 
     public static final int HOOD_ABSOLUTE_ENCODER_ID = 22;
 
-    public static final double HOOD_ABSOLUTE_ENCODER_OFFSET = 0.0; // for the 15 deg offset
+    public static final double HOOD_ABSOLUTE_ENCODER_OFFSET = -0.808; // for the 15 deg offset
   }
 
   public static final class ShooterConstants{
@@ -234,7 +234,7 @@ public final class Constants {
     public static final double ENCODER_GEAR_RATIO = 127.0 / 168.0; // turret spins once for every ~0.75 encoder rotations. fix.
 
     // Absolute encoder setup
-    public static final double ABSOLUTE_ENCODER_OFFSET = 0.083; 
+    public static final double ABSOLUTE_ENCODER_OFFSET = -0.129; 
     public static final boolean ABSOLUTE_ENCODER_REVERSED = false; 
 
     // soft limits
