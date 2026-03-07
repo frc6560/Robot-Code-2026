@@ -19,20 +19,9 @@ public class Hood extends SubsystemBase {
     private static final double ANGLE_TOLERANCE = 1.5;
     private static final double ANGLE_OFFSET = 25.0;
 
-    // private boolean sysIdMode = false;
-    // private final SysIdRoutine sysIdRoutine;
 
     public Hood(HoodIO io) {
         this.io = io;
-
-        // sysIdRoutine = new SysIdRoutine(
-        //     new SysIdRoutine.Config(),
-        //     new SysIdRoutine.Mechanism(
-        //         (Voltage volts) -> io.setVoltage(volts.in(Volts)),
-        //         null,
-        //         this
-        //     )
-        // );
     }
 
     public double getHoodAngle() {
@@ -61,21 +50,6 @@ public class Hood extends SubsystemBase {
         io.stop();
     }
 
-    // public void setSysIdMode(boolean enabled) {
-    //     sysIdMode = enabled;
-    // }
-
-    // public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
-    //     return sysIdRoutine.quasistatic(direction)
-    //         .beforeStarting(() -> sysIdMode = true)
-    //         .finallyDo(() -> sysIdMode = false);
-    // }
-
-    // public Command sysIdDynamic(SysIdRoutine.Direction direction) {
-    //     return sysIdRoutine.dynamic(direction)
-    //         .beforeStarting(() -> sysIdMode = true)
-    //         .finallyDo(() -> sysIdMode = false);
-    // }
 
     @Override
     public void periodic() {

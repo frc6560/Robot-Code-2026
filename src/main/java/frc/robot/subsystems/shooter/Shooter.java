@@ -15,20 +15,9 @@ public class Shooter extends SubsystemBase {
     private final ShooterIOInputsAutoLogged inputs = new ShooterIOInputsAutoLogged();
 
     private double goalRPM = 0.0;
-    // private boolean sysIdMode = false;
-    // private final SysIdRoutine sysIdRoutine;
 
     public Shooter(ShooterIO io) {
         this.io = io;
-
-        // sysIdRoutine = new SysIdRoutine(
-        //     new SysIdRoutine.Config(),
-        //     new SysIdRoutine.Mechanism(
-        //         (Voltage volts) -> io.setVoltage(volts.in(Volts)),
-        //         null,
-        //         this
-        //     )
-        // );
     }
 
     /**
@@ -60,22 +49,6 @@ public class Shooter extends SubsystemBase {
         if (Math.abs(goalRPM) < 60.0) return false;
         return Math.abs(getCurrentRPM() - goalRPM) < ShooterConstants.FLYWHEEL_RPM_TOLERANCE;
     }
-
-    // public void setSysIdMode(boolean enabled) {
-    //     sysIdMode = enabled;
-    // }
-
-    // public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
-    //     return sysIdRoutine.quasistatic(direction)
-    //         .beforeStarting(() -> sysIdMode = true)
-    //         .finallyDo(() -> sysIdMode = false);
-    // }
-
-    // public Command sysIdDynamic(SysIdRoutine.Direction direction) {
-    //     return sysIdRoutine.dynamic(direction)
-    //         .beforeStarting(() -> sysIdMode = true)
-    //         .finallyDo(() -> sysIdMode = false);
-    // }
 
     @Override
     public void periodic() {

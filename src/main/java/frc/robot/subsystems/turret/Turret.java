@@ -1,14 +1,9 @@
 package frc.robot.subsystems.turret;
 
-// import static edu.wpi.first.units.Units.Volts;
-
 import org.littletonrobotics.junction.Logger;
 
 import edu.wpi.first.math.MathUtil;
-// import edu.wpi.first.units.measure.Voltage;
-// import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-// import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants.TurretConstants;
 
 public class Turret extends SubsystemBase {
@@ -18,20 +13,9 @@ public class Turret extends SubsystemBase {
     private double goalDegrees = 0.0;
     private double goalVelocityDegreesPerSec = 0.0;
     private boolean useVelocityFeedforward = false;
-    // private boolean sysIdMode = false;
-    // private final SysIdRoutine sysIdRoutine;
 
     public Turret(TurretIO io) {
         this.io = io;
-
-        // sysIdRoutine = new SysIdRoutine(
-        //     new SysIdRoutine.Config(),
-        //     new SysIdRoutine.Mechanism(
-        //         (Voltage volts) -> io.setVoltage(volts.in(Volts)),
-        //         null,
-        //         this
-        //     )
-        // );
     }
 
     /**
@@ -149,22 +133,6 @@ public class Turret extends SubsystemBase {
     public boolean getAtTarget(){
         return Math.abs(getTurretAngle() - goalDegrees) < 2.5; // 1.5 degree tolerance
     }
-
-    // public void setSysIdMode(boolean enabled) {
-    //     sysIdMode = enabled;
-    // }
-
-    // public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
-    //     return sysIdRoutine.quasistatic(direction)
-    //         .beforeStarting(() -> sysIdMode = true)
-    //         .finallyDo(() -> sysIdMode = false);
-    // }
-
-    // public Command sysIdDynamic(SysIdRoutine.Direction direction) {
-    //     return sysIdRoutine.dynamic(direction)
-    //         .beforeStarting(() -> sysIdMode = true)
-    //         .finallyDo(() -> sysIdMode = false);
-    // }
 
     @Override
     public void periodic() {
