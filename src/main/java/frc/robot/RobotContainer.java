@@ -201,9 +201,9 @@ public class RobotContainer {
         Trigger climbReleaseTrigger = new Trigger(m_Controls::getClimbReleaseTrigger);
         Trigger climbResetTrigger = new Trigger(m_Controls::getClimbResetTrigger);
 
-        driverXbox.x().onTrue(Commands.runOnce(() -> climb.setState(ClimbState.EXTENDED), climb));
+        climbTrigger.onTrue(Commands.runOnce(() -> climb.setState(ClimbState.PULL_UP), climb));
         climbReleaseTrigger.onTrue(Commands.runOnce(() -> climb.setState(ClimbState.RETRACTED), climb));
-        climbResetTrigger.onTrue(Commands.runOnce(() -> climb.setState(ClimbState.RETRACTED), climb));
+        climbResetTrigger.onTrue(Commands.runOnce(() -> climb.setState(ClimbState.EXTENDED), climb));
 
         // SysID bindings (using D-pad on driver controller) - COMMENTED OUT
         // // Hood SysID - D-pad Up/Down for quasistatic, hold B + D-pad for dynamic
