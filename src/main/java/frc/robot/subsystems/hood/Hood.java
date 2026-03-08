@@ -16,7 +16,7 @@ public class Hood extends SubsystemBase {
     private final HoodIOInputsAutoLogged inputs = new HoodIOInputsAutoLogged();
 
     private double targetAngle = HoodConstants.HOOD_MIN_ANGLE - ANGLE_OFFSET;
-    private static final double ANGLE_TOLERANCE = 3.0;
+    private static final double ANGLE_TOLERANCE = 4.0;
     private static final double ANGLE_OFFSET = 25.0;
 
 

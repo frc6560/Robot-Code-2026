@@ -131,7 +131,7 @@ public class Turret extends SubsystemBase {
     }
 
     public boolean getAtTarget(){
-        return Math.abs(getTurretAngle() - goalDegrees) < 4.0; // sanity check for the wire protection!
+        return Math.abs(getTurretAngle() - goalDegrees) < 5.0; // sanity check for the wire protection!
     }
 
     @Override

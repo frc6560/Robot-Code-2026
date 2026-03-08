@@ -89,7 +89,7 @@ public class ClimberIOTalonFX implements ClimberIO {
         config.CurrentLimits.StatorCurrentLimit = 60.0;
 
         followerMotor.getConfigurator().apply(config);
-        followerMotor.setControl(new Follower(leaderMotor.getDeviceID(), MotorAlignmentValue.Opposed)); 
+        followerMotor.setControl(new Follower(leaderMotor.getDeviceID(), MotorAlignmentValue.Aligned)); 
     }
 
     @Override
