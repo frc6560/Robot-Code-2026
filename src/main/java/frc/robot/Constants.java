@@ -319,7 +319,7 @@ public final class Constants {
     public static final boolean RIGHT_MOTOR_INVERTED = true; 
 
     // Motion Magic / PID Tuning
-    public static final double kP = 0.0; // TODO: Tune
+    public static final double kP = 3; // TODO: Tune
     public static final double kI = 0.0;
     public static final double kD = 0.0;
     public static final double kV = 0.0; // TODO: Tune
