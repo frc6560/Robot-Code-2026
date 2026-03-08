@@ -113,7 +113,7 @@ public class RobotContainer {
         led = new LED(new LEDIOSim(60));
       }
 
-      factory = new AutoCommands(drivebase, feeder, intake);
+      factory = new AutoCommands(drivebase, feeder, intake, shooter);
 
       autoChooser = new AutoModeChooser(factory);
       SmartDashboard.putData("Auto Chooser", autoChooser.getAutoChooser());

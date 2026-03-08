@@ -39,7 +39,7 @@ public final class Constants {
     public static final double kA = 0.173;
 
     public static final double kP_translation = 6.5;
-    public static final double kP_rotation = 3.5;
+    public static final double kP_rotation = 5.0;
 
     public static final double kI_translation = 0.0;
     public static final double kI_rotation = 0.0;
@@ -234,7 +234,7 @@ public final class Constants {
     public static final double ENCODER_GEAR_RATIO = 127.0 / 168.0; // turret spins once for every ~0.75 encoder rotations. fix.
 
     // Absolute encoder setup
-    public static final double ABSOLUTE_ENCODER_OFFSET = 0.086; 
+    public static final double ABSOLUTE_ENCODER_OFFSET = 0.310; 
     public static final boolean ABSOLUTE_ENCODER_REVERSED = false; 
 
     // soft limits

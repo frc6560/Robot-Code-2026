@@ -6,8 +6,10 @@ import choreo.auto.AutoRoutine;
 import choreo.auto.AutoTrajectory;
 import frc.robot.subsystems.feeder.Feeder;
 import frc.robot.subsystems.intake.Intake;
+import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import frc.robot.commands.ClimbCommand;
+import frc.robot.utility.Shooter.ShotCalculator;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -20,16 +22,20 @@ public class AutoCommands {
     private SwerveSubsystem drivetrain;
     private Feeder feeder;
     private Intake intake;
+    private Shooter shooter;
+    private ShotCalculator calculator = new ShotCalculator();
 
     private AutoFactory autoFactory;
 
     public AutoCommands(SwerveSubsystem drivetrain,
         Feeder feeder,
-        Intake intake
+        Intake intake,
+        Shooter shooter
     ) {
         this.drivetrain = drivetrain;
         this.feeder = feeder;
         this.intake = intake;
+        this.shooter = shooter;
         
         autoFactory = new AutoFactory(
             drivetrain::getPose,
@@ -77,11 +83,17 @@ public class AutoCommands {
     }
 
     public Command shoot(){
-        return Commands.run(() -> feeder.requestFeed(), feeder)
-            .withTimeout(3.0)
-            .finallyDo((interrupted) -> {
-                feeder.requestStop();
-            });
+        return Commands.run(() -> {
+            calculator.calculate(drivetrain.getPose(), drivetrain.getFieldVelocity());
+            shooter.setGoal(calculator.getFlywheelRPM());
+            if(shooter.atTarget()){
+                feeder.requestFeed();
+            }
+        }).withTimeout(3.0)
+        .finallyDo((interrupted) -> {
+            feeder.requestStop();
+            shooter.setGoal(0);
+        });
     }
 
     public Command climb(){
@@ -93,7 +105,9 @@ public class AutoCommands {
     }
 
     public Command retract(){
-        return Commands.runOnce(() -> intake.setIdleMode(), intake);
+        return Commands.runOnce(() -> {
+            intake.setIdleMode();
+    }, intake);
     }
 
     /** Right side trench auto */
