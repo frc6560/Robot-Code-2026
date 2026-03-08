@@ -48,7 +48,6 @@ import frc.robot.subsystems.feeder.FeederIOSim;
 import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.intake.IntakeIOTalonFX;
 import frc.robot.subsystems.led.LED;
-import frc.robot.subsystems.led.LEDIO;
 import frc.robot.subsystems.led.LEDIOAddressable;
 import frc.robot.subsystems.led.LEDIOSim;
 import frc.robot.subsystems.intake.IntakeIOSim;
@@ -103,14 +102,14 @@ public class RobotContainer {
         turret = new Turret(new TurretIOTalonFX());
         feeder = new Feeder(new FeederIOTalonFX());
         intake = new Intake(new IntakeIOTalonFX());
-        led = new LED(new LEDIOAddressable(3, 60));
+        led = new LED(new LEDIOAddressable(6, 100));
       } else {
         hood = new Hood(new HoodIOSim());
         shooter = new Shooter(new ShooterIOSim());
         turret = new Turret(new TurretIOSim());
         feeder = new Feeder(new FeederIOSim());
         intake = new Intake(new IntakeIOSim());
-        led = new LED(new LEDIOSim(60));
+        led = new LED(new LEDIOSim(100));
       }
 
       factory = new AutoCommands(drivebase, feeder, intake, shooter);

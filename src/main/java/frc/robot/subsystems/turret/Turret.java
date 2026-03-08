@@ -147,13 +147,9 @@ public class Turret extends SubsystemBase {
 
         Logger.recordOutput("Turret/GoalDegrees", goalDegrees);
         Logger.recordOutput("Turret/GoalVelocityDegreesPerSec", goalVelocityDegreesPerSec);
-        Logger.recordOutput("Turret/UsingVelocityFF", useVelocityFeedforward);
         Logger.recordOutput("Turret/CurrentAngleDegrees", getTurretAngle());
         Logger.recordOutput("Turret/VelocityDegreesPerSec", getTurretVelocity());
         Logger.recordOutput("Turret/ErrorDegrees", getTurretAngle() - goalDegrees);
         Logger.recordOutput("Turret/AtTarget", getAtTarget());
-        Logger.recordOutput("Turret/WireProtectionActive",
-            getTurretAngle() <= TurretConstants.WIRE_PROTECTION_LOWER
-            || getTurretAngle() >= TurretConstants.WIRE_PROTECTION_UPPER);
     }
 }
