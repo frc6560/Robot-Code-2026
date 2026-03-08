@@ -86,10 +86,11 @@ public class ShotCalculator {
         timeOfFlightMap.put(1.520, 0.80);
         timeOfFlightMap.put(1.885, 0.96);
         timeOfFlightMap.put(2.500, 1.06);
-        timeOfFlightMap.put(3.098, 1.17);
-        timeOfFlightMap.put(3.700, 1.19);
-        timeOfFlightMap.put(4.273, 1.26);
-        timeOfFlightMap.put(4.987, 1.33);
+        timeOfFlightMap.put(3.098, 1.13); // 1.17
+        timeOfFlightMap.put(3.700, 1.16); // 1.19
+        timeOfFlightMap.put(4.273, 1.20); // 1.26
+        timeOfFlightMap.put(4.987, 1.26); // 1.33
+        timeOfFlightMap.put(5.602, 1.26);
     }
 
     /** Returns the current hood azimuth in degrees. */

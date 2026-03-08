@@ -44,6 +44,9 @@ import frc.robot.Constants.TurretConstants;
 import frc.robot.utility.LimelightHelpers;
 import frc.robot.utility.LimelightHelpers.PoseEstimate;
 
+import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.StringSubscriber;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
@@ -64,6 +67,8 @@ import swervelib.telemetry.SwerveDriveTelemetry.TelemetryVerbosity;
 
 public class SwerveSubsystem extends SubsystemBase {
   private final SwerveDrive swerveDrive;
+  private final StringSubscriber autoChooserSubscriber;
+  private boolean initialPoseSet = false;
 
   private final SimpleMotorFeedforward driveFF = new SimpleMotorFeedforward(DrivebaseConstants.kS, 
                                                                             DrivebaseConstants.kV, 
@@ -85,14 +90,15 @@ public class SwerveSubsystem extends SubsystemBase {
    *
    * @param directory Directory of swerve drive config files.
    */
-  public SwerveSubsystem(File directory) { 
-    boolean blueAlliance = true;
+  public SwerveSubsystem(File directory) {
+    // Subscribe to the auto chooser's selected value from NetworkTables
+    autoChooserSubscriber = NetworkTableInstance.getDefault()
+        .getStringTopic("/SmartDashboard/Auto Chooser/selected")
+        .subscribe("Idle");
 
-    // these starting positions should change with every new autonomous we run.
-    Pose2d startingPose = blueAlliance ? FieldConstants.BLUE_TESTING_START
-                                       : new Pose2d(new Translation2d(Meter.of(12.83),
-                                                                      Meter.of(7.39)),
-                                                    Rotation2d.fromDegrees(180));
+    // Default starting pose - will be updated once in periodic() based on auto selection
+    Pose2d startingPose = FieldConstants.BLUE_TESTING_START;
+
     // Configure the Telemetry before creating the SwerveDrive to avoid unnecessary objects being created.
     SwerveDriveTelemetry.verbosity = TelemetryVerbosity.HIGH;
     try
@@ -122,6 +128,11 @@ public class SwerveSubsystem extends SubsystemBase {
    */
   public SwerveSubsystem(SwerveDriveConfiguration driveCfg, SwerveControllerConfiguration controllerCfg)
   {
+    // Subscribe to the auto chooser's selected value from NetworkTables
+    autoChooserSubscriber = NetworkTableInstance.getDefault()
+        .getStringTopic("/SmartDashboard/Auto Chooser/selected")
+        .subscribe("Idle");
+
     swerveDrive = new SwerveDrive(driveCfg,
                                   controllerCfg,
                                   Constants.MAX_SPEED,
@@ -133,6 +144,16 @@ public class SwerveSubsystem extends SubsystemBase {
 
   @Override
   public void periodic() {
+    // Set initial pose once based on auto selection (only while disabled)
+    if (!initialPoseSet && DriverStation.isDisabled()) {
+      updateInitialPose();
+    }
+
+    // Reset flag when entering autonomous so pose can be set again next match
+    if (DriverStation.isAutonomousEnabled()) {
+      initialPoseSet = true;  // Lock in the pose once auto starts
+    }
+
     // Update distance to hub on SmartDashboard for debugging
     Transform2d turretTransform = new Transform2d(
             TurretConstants.ROBOT_RELATIVE_TURRET.getX(), 
@@ -213,6 +234,40 @@ public class SwerveSubsystem extends SubsystemBase {
 
   @Override
   public void simulationPeriodic(){
+  }
+
+  /**
+   * Updates the initial pose based on the auto chooser selection and alliance.
+   * Should only be called once before auto starts.
+   */
+  private void updateInitialPose() {
+    String selectedAuto = autoChooserSubscriber.get();
+    boolean isRed = DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red;
+
+    Pose2d startPose;
+    switch (selectedAuto) {
+      case "Right Trench":
+        startPose = isRed ? FieldConstants.RED_RIGHT_START : FieldConstants.BLUE_RIGHT_START;
+        break;
+      case "Left Trench":
+        startPose = isRed ? FieldConstants.RED_LEFT_START : FieldConstants.BLUE_LEFT_START;
+        break;
+      case "Idle":
+      default:
+        startPose = isRed ? FieldConstants.RED_TESTING_START : FieldConstants.BLUE_TESTING_START;
+        break;
+    }
+
+    resetOdometry(startPose);
+    initialPoseSet = true;
+  }
+
+  /**
+   * Resets the initial pose flag, allowing the pose to be set again.
+   * Call this when preparing for a new match.
+   */
+  public void resetInitialPoseFlag() {
+    initialPoseSet = false;
   }
 
   /**

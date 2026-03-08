@@ -234,7 +234,7 @@ public final class Constants {
     public static final double ENCODER_GEAR_RATIO = 127.0 / 168.0; // turret spins once for every ~0.75 encoder rotations. fix.
 
     // Absolute encoder setup
-    public static final double ABSOLUTE_ENCODER_OFFSET = -0.129; 
+    public static final double ABSOLUTE_ENCODER_OFFSET = 0.086; 
     public static final boolean ABSOLUTE_ENCODER_REVERSED = false; 
 
     // soft limits

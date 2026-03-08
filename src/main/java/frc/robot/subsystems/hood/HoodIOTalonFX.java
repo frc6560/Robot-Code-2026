@@ -101,6 +101,7 @@ public class HoodIOTalonFX implements HoodIO {
 
         double raw = absoluteEncoder.getAbsolutePosition().getValueAsDouble();
         double cancoderRotations = raw - Math.floor(raw);
+        if(cancoderRotations > 0.9) cancoderRotations = 0.0;
         double hoodRotations = cancoderRotations / HoodConstants.ABSOLUTE_HOOD_ENCODER_GEAR_RATIO;
         double motorRotations = hoodRotations * HoodConstants.HOOD_GEAR_RATIO;
         hoodMotor.setPosition(motorRotations);

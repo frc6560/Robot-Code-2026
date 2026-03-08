@@ -139,7 +139,9 @@ public class SuperstructureCommand extends Command {
 
         shotCalculator.calculate(pose, velocity);
 
-        shooter.setGoal(shotCalculator.getFlywheelRPM());
+        if(!DriverStation.isAutonomous()){
+            shooter.setGoal(shotCalculator.getFlywheelRPM());
+        }
         turret.setGoalWithVelocity(Units.radiansToDegrees(shotCalculator.getTurretAngle()), 
                                     Units.radiansToDegrees(shotCalculator.getTurretVelocityFF()));
         hood.setGoal(shotCalculator.getHoodAzimuth());
@@ -171,7 +173,9 @@ public class SuperstructureCommand extends Command {
         turret.setGoalWithVelocity(Units.radiansToDegrees(passCalculator.getTurretAngle()), 
                                     Units.radiansToDegrees(passCalculator.getTurretVelocityFF()));
         hood.setGoal(passCalculator.getHoodAzimuth());
-        shooter.setGoal(passCalculator.getFlywheelRPM());
+        if(!DriverStation.isAutonomous()){
+            shooter.setGoal(passCalculator.getFlywheelRPM());
+        }
     }
 
     private boolean trajectoryIntersectsTrench(Translation2d robotPos, Translation2d velocity,
