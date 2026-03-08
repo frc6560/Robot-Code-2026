@@ -296,13 +296,7 @@ public class SuperstructureCommand extends Command {
         if (intersectsAnyTrench) {
             hood.setGoal(15); // Full rumble
             state = SuperstructureState.IDLE; // forces idle state
-            SmartDashboard.putString("SuperstructureCommand/Trench Status", "STOPPED - Trench Detected");
-        } else {
-            SmartDashboard.putString("SuperstructureCommand/Trench Status", "RUNNING - Clear Path");
         }
-
-        // Log current hood state from command perspective
-        SmartDashboard.putBoolean("SuperstructureCommand/Hood At Setpoint", hood.atTarget());
 
         // ========== VISUALIZATION LOGGING FOR ADVANTAGESCOPE ==========
 
@@ -324,43 +318,7 @@ public class SuperstructureCommand extends Command {
         }
         field.getObject("Trajectory Line").setPoses(trajectoryPoses);
 
-        // Current and projected positions (for numerical display)
-        SmartDashboard.putNumber("Trajectory/current_x", robotPos.getX());
-        SmartDashboard.putNumber("Trajectory/current_y", robotPos.getY());
-        SmartDashboard.putNumber("Trajectory/projected_x", projectedPos.getX());
-        SmartDashboard.putNumber("Trajectory/projected_y", projectedPos.getY());
 
-        // Velocity
-        SmartDashboard.putNumber("Trajectory/velocity_x", velocity.getX());
-        SmartDashboard.putNumber("Trajectory/velocity_y", velocity.getY());
-        SmartDashboard.putNumber("Trajectory/velocity_magnitude", velocity.getNorm());
-
-        // Legacy string format for AdvantageScope (if needed)
-        SmartDashboard.putString("Trajectory/trajectory_line", formatPoseArray(trajectoryPoses));
-        SmartDashboard.putString("Trajectory/projected_pose",
-            String.format("%.3f,%.3f,%.3f", projectedPos.getX(), projectedPos.getY(),
-                         projectedPose.getRotation().getRadians()));
-
-        // Intersection status
-        SmartDashboard.putBoolean("Trajectory/intersects_trench", intersectsAnyTrench);
-        SmartDashboard.putBoolean("Trajectory/intersects_blue_left", intersectsBlueLeft);
-        SmartDashboard.putBoolean("Trajectory/intersects_blue_right", intersectsBlueRight);
-        SmartDashboard.putBoolean("Trajectory/intersects_red_left", intersectsRedLeft);
-        SmartDashboard.putBoolean("Trajectory/intersects_red_right", intersectsRedRight);
-
-        // Trench boundaries for visualization (numerical arrays)
-        SmartDashboard.putNumberArray("Trajectory/trench_blue_left",
-            new double[]{4.10 - TRENCH_TOLERANCE, 6.75 - TRENCH_TOLERANCE,
-                        5.25 + TRENCH_TOLERANCE, 9.42 + TRENCH_TOLERANCE});
-        SmartDashboard.putNumberArray("Trajectory/trench_blue_right",
-            new double[]{4.10 - TRENCH_TOLERANCE, -0.70 - TRENCH_TOLERANCE,
-                        5.25 + TRENCH_TOLERANCE, 1.27 + TRENCH_TOLERANCE});
-        SmartDashboard.putNumberArray("Trajectory/trench_red_left",
-            new double[]{11.29 - TRENCH_TOLERANCE, -0.70 - TRENCH_TOLERANCE,
-                        12.44 + TRENCH_TOLERANCE, 1.27 + TRENCH_TOLERANCE});
-        SmartDashboard.putNumberArray("Trajectory/trench_red_right",
-            new double[]{11.29 - TRENCH_TOLERANCE, 6.75 - TRENCH_TOLERANCE,
-                        12.44 + TRENCH_TOLERANCE, 9.42 + TRENCH_TOLERANCE});
 
         // Visualize trench boundaries on field as rectangles (corner poses)
         visualizeTrenchBoundary("Blue Left Trench",
@@ -401,20 +359,6 @@ public class SuperstructureCommand extends Command {
         field.getObject(name + " Center").setPose(new Pose2d(centerX, centerY, new Rotation2d()));
     }
 
-    /**
-     * Format array of poses for AdvantageScope visualization
-     */
-    private String formatPoseArray(Pose2d[] poses) {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < poses.length; i++) {
-            if (i > 0) sb.append(";");
-            sb.append(String.format("%.3f,%.3f,%.3f",
-                poses[i].getX(),
-                poses[i].getY(),
-                poses[i].getRotation().getRadians()));
-        }
-        return sb.toString();
-    }
 
     @Override
     public void end(boolean interrupted) {
