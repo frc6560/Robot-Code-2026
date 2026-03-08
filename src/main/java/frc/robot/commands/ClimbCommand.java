@@ -286,10 +286,10 @@ public class ClimbCommand extends SequentialCommandGroup {
 
         if (alliance.equals(DriverStation.Alliance.Blue)) {
             if (initialY > yThreshold) {
-                targetPose = new Pose2d(1.5753228664398193, 4.183515548706055, new Rotation2d(0));
+                targetPose = new Pose2d(1.614, 4.183515548706055, new Rotation2d(0));
                 selectedTarget = "Blue Upper";
             } else {
-                targetPose = new Pose2d(1.5753228664398193, 3.330711841583252, new Rotation2d(0));
+                targetPose = new Pose2d(1.614, 3.292, new Rotation2d(0));
                 selectedTarget = "Blue Lower";
             }
         } else {
