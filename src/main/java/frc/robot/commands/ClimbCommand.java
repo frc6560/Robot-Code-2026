@@ -4,6 +4,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 
+import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 
 import edu.wpi.first.math.controller.PIDController;
@@ -51,11 +52,13 @@ public class ClimbCommand extends SequentialCommandGroup {
 
     // Subsystems
     private SwerveSubsystem drivetrain;
+    private Intake intake;
 
 
     /** Constructor for our climb command */
-    public ClimbCommand(SwerveSubsystem drivetrain) {
+    public ClimbCommand(SwerveSubsystem drivetrain, Intake intake) {
         this.drivetrain = drivetrain;
+        this.intake = intake;
         this.initialY = drivetrain.getPose().getY();
 
         // Initialize PID controllers (tune these values as needed)
@@ -81,10 +84,11 @@ public class ClimbCommand extends SequentialCommandGroup {
         System.out.println("ClimbCommand initialized at Y=" + initialY);
 
         super.addCommands(
+            Commands.runOnce(() -> intake.setExtensionMode()),
             getDriveToPrescore(),
             getDriveInCommand()
         );
-        super.addRequirements(drivetrain);
+        super.addRequirements(drivetrain, intake);
     }
 
     /** Update PID values from SmartDashboard (call this in execute if you want live tuning) */

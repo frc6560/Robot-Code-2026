@@ -85,7 +85,7 @@ public class AutoCommands {
     }
 
     public Command climb(){
-        return new ClimbCommand(drivetrain);
+        return new ClimbCommand(drivetrain, intake);
     }
 
     public Command intake(){

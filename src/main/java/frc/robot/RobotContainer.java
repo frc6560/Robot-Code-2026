@@ -48,6 +48,10 @@ import frc.robot.subsystems.feeder.FeederIOSim;
 import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.intake.IntakeIOTalonFX;
 import frc.robot.subsystems.intake.IntakeIOSim;
+import frc.robot.subsystems.climb.Climb;
+import frc.robot.subsystems.climb.ClimbIOKraken;
+import frc.robot.subsystems.climb.ClimbIOSim;
+import frc.robot.subsystems.climb.Climb.ClimbState;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import frc.robot.subsystems.vision.LimelightVision;
 import frc.robot.subsystems.vision.VisionSubsystem;
@@ -68,6 +72,7 @@ public class RobotContainer {
     private final Turret turret;
     private final Feeder feeder;
     private final Intake intake;
+    private final Climb climb;
 
     private final ShotCalculator shotCalculator = new ShotCalculator();
     private final PassCalculator passCalculator = new PassCalculator();
@@ -98,12 +103,14 @@ public class RobotContainer {
         turret = new Turret(new TurretIOTalonFX());
         feeder = new Feeder(new FeederIOTalonFX());
         intake = new Intake(new IntakeIOTalonFX());
+        climb = new Climb(new ClimbIOKraken());
       } else {
         hood = new Hood(new HoodIOSim());
         shooter = new Shooter(new ShooterIOSim());
         turret = new Turret(new TurretIOSim());
         feeder = new Feeder(new FeederIOSim());
         intake = new Intake(new IntakeIOSim());
+        climb = new Climb(new ClimbIOSim());
       }
 
       factory = new AutoCommands(drivebase, feeder, intake);
@@ -144,10 +151,10 @@ public class RobotContainer {
           }, Set.of(vision))
         );
 
-        driverXbox.x()
-          .onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
+        // driverXbox.x()
+        //   .onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
         driverXbox.y()
-          .onTrue(Commands.defer(() -> new ClimbCommand(drivebase), Set.of(drivebase)));
+          .onTrue(Commands.defer(() -> new ClimbCommand(drivebase, intake), Set.of(drivebase, intake)));
         driverXbox.start().
           onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
 
@@ -187,7 +194,16 @@ public class RobotContainer {
         );
 
         Trigger intakeResetTrigger = new Trigger(() -> m_Controls.getButton(3));
-        intakeResetTrigger.onTrue(Commands.runOnce(intake::resetExtendPosition, intake));
+        intakeResetTrigger.onTrue(Commands.runOnce(intake::resetPositionCommand, intake));
+
+        // Climb bindings
+        Trigger climbTrigger = new Trigger(m_Controls::getClimbTrigger);
+        Trigger climbReleaseTrigger = new Trigger(m_Controls::getClimbReleaseTrigger);
+        Trigger climbResetTrigger = new Trigger(m_Controls::getClimbResetTrigger);
+
+        driverXbox.x().onTrue(Commands.runOnce(() -> climb.setState(ClimbState.EXTENDED), climb));
+        climbReleaseTrigger.onTrue(Commands.runOnce(() -> climb.setState(ClimbState.RETRACTED), climb));
+        climbResetTrigger.onTrue(Commands.runOnce(() -> climb.setState(ClimbState.HOMING), climb));
 
         // SysID bindings (using D-pad on driver controller) - COMMENTED OUT
         // // Hood SysID - D-pad Up/Down for quasistatic, hold B + D-pad for dynamic
