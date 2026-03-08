@@ -113,7 +113,7 @@ public class RobotContainer {
         climb = new Climb(new ClimbIOSim());
       }
 
-      factory = new AutoCommands(drivebase, feeder, intake);
+      factory = new AutoCommands(drivebase, feeder, intake, climb);
 
       autoChooser = new AutoModeChooser(factory);
       SmartDashboard.putData("Auto Chooser", autoChooser.getAutoChooser());
@@ -154,7 +154,7 @@ public class RobotContainer {
         // driverXbox.x()
         //   .onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
         driverXbox.y()
-          .onTrue(Commands.defer(() -> new ClimbCommand(drivebase, intake), Set.of(drivebase, intake)));
+          .onTrue(Commands.defer(() -> new ClimbCommand(drivebase, intake, climb), Set.of(drivebase, intake, climb)));
         driverXbox.start().
           onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
 

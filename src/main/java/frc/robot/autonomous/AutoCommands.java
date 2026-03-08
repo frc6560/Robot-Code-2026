@@ -6,6 +6,7 @@ import choreo.auto.AutoRoutine;
 import choreo.auto.AutoTrajectory;
 import frc.robot.subsystems.feeder.Feeder;
 import frc.robot.subsystems.intake.Intake;
+import frc.robot.subsystems.climb.Climb;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import frc.robot.commands.ClimbCommand;
 
@@ -20,16 +21,19 @@ public class AutoCommands {
     private SwerveSubsystem drivetrain;
     private Feeder feeder;
     private Intake intake;
+    private Climb climb;
 
     private AutoFactory autoFactory;
 
     public AutoCommands(SwerveSubsystem drivetrain,
         Feeder feeder,
-        Intake intake
+        Intake intake,
+        Climb climb
     ) {
         this.drivetrain = drivetrain;
         this.feeder = feeder;
         this.intake = intake;
+        this.climb = climb;
         
         autoFactory = new AutoFactory(
             drivetrain::getPose,
@@ -85,7 +89,7 @@ public class AutoCommands {
     }
 
     public Command climb(){
-        return new ClimbCommand(drivetrain, intake);
+        return new ClimbCommand(drivetrain, intake, climb);
     }
 
     public Command intake(){
