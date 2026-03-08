@@ -53,10 +53,10 @@ public class Hood extends SubsystemBase {
 
     @Override
     public void periodic() {
-        io.updateInputs(inputs);
-        Logger.processInputs("Hood", inputs);
+        // io.updateInputs(inputs);
+        // Logger.processInputs("Hood", inputs);
 
-        io.setTargetAngle(targetAngle);
+        // io.setTargetAngle(targetAngle);
 
         Logger.recordOutput("Hood/TargetAngleDeg", targetAngle + ANGLE_OFFSET);
         Logger.recordOutput("Hood/CurrentAngleDeg", getHoodAngle() + ANGLE_OFFSET);

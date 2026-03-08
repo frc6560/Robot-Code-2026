@@ -148,91 +148,91 @@ public class Intake extends SubsystemBase {
         io.updateInputs(inputs);
         Logger.processInputs("Intake", inputs);
 
-        if (!IntakeConstants.EXTENSION_ENABLED) {
-            double currentTime = Timer.getFPGATimestamp();
-            boolean spinning = (mode == Mode.EXTENSION || mode == Mode.SPRINGY) && mode != Mode.EXTEND_ONLY;
+        // if (!IntakeConstants.EXTENSION_ENABLED) {
+        //     double currentTime = Timer.getFPGATimestamp();
+        //     boolean spinning = (mode == Mode.EXTENSION || mode == Mode.SPRINGY) && mode != Mode.EXTEND_ONLY;
 
-            if (spinning) {
-                stopExtend();
+        //     if (spinning) {
+        //         stopExtend();
 
-                // Dejam state machine
-                if (dejamReversing) {
-                    setSpinPercent(-IntakeConstants.SPIN_SPEED);
-                    if (currentTime - dejamStartTime > DEJAM_REVERSE_TIME) {
-                        dejamReversing = false;
-                        dejamPausing = true;
-                        dejamStartTime = currentTime;
-                    }
-                } else if (dejamPausing) {
-                    stopSpin();
-                    if (currentTime - dejamStartTime > DEJAM_PAUSE_TIME) {
-                        dejamPausing = false;
-                        jamStartTime = currentTime;
-                    }
-                } else {
-                    setSpinPercent(IntakeConstants.SPIN_SPEED);
+        //         // Dejam state machine
+        //         if (dejamReversing) {
+        //             setSpinPercent(-IntakeConstants.SPIN_SPEED);
+        //             if (currentTime - dejamStartTime > DEJAM_REVERSE_TIME) {
+        //                 dejamReversing = false;
+        //                 dejamPausing = true;
+        //                 dejamStartTime = currentTime;
+        //             }
+        //         } else if (dejamPausing) {
+        //             stopSpin();
+        //             if (currentTime - dejamStartTime > DEJAM_PAUSE_TIME) {
+        //                 dejamPausing = false;
+        //                 jamStartTime = currentTime;
+        //             }
+        //         } else {
+        //             setSpinPercent(IntakeConstants.SPIN_SPEED);
 
-                    // Jam detection
-                    if (inputs.spinCurrentAmps > JAM_CURRENT_THRESHOLD) {
-                        if (currentTime - jamStartTime > JAM_DETECT_TIME) {
-                            dejamReversing = true;
-                            dejamStartTime = currentTime;
-                        }
-                    } else {
-                        jamStartTime = currentTime;
-                    }
-                }
-            } else if (mode == Mode.EXTEND_ONLY) {
-                stopExtend();
-                stopSpin();
-                dejamReversing = false;
-                dejamPausing = false;
-            } else {
-                stopExtend();
-                stopSpin();
-                dejamReversing = false;
-                dejamPausing = false;
-            }
+        //             // Jam detection
+        //             if (inputs.spinCurrentAmps > JAM_CURRENT_THRESHOLD) {
+        //                 if (currentTime - jamStartTime > JAM_DETECT_TIME) {
+        //                     dejamReversing = true;
+        //                     dejamStartTime = currentTime;
+        //                 }
+        //             } else {
+        //                 jamStartTime = currentTime;
+        //             }
+        //         }
+        //     } else if (mode == Mode.EXTEND_ONLY) {
+        //         stopExtend();
+        //         stopSpin();
+        //         dejamReversing = false;
+        //         dejamPausing = false;
+        //     } else {
+        //         stopExtend();
+        //         stopSpin();
+        //         dejamReversing = false;
+        //         dejamPausing = false;
+        //     }
 
-            Logger.recordOutput("Intake/Mode", mode.toString());
-            Logger.recordOutput("Intake/DejamReversing", dejamReversing);
-            Logger.recordOutput("Intake/DejamPausing", dejamPausing);
-            Logger.recordOutput("Intake/SpinCurrent", inputs.spinCurrentAmps);
-            return;
-        }
+        //     Logger.recordOutput("Intake/Mode", mode.toString());
+        //     Logger.recordOutput("Intake/DejamReversing", dejamReversing);
+        //     Logger.recordOutput("Intake/DejamPausing", dejamPausing);
+        //     Logger.recordOutput("Intake/SpinCurrent", inputs.spinCurrentAmps);
+        //     return;
+        // }
 
-        if (isRetracted()) {
-            io.resetExtendPosition();
-        }
+        // if (isRetracted()) {
+        //     io.resetExtendPosition();
+        // }
 
-        if (lastExtendCommand < 0 && isRetracted()) {
-            lastExtendCommand = 0.0;
-            io.setExtendPercent(0.0);
-        }
+        // if (lastExtendCommand < 0 && isRetracted()) {
+        //     lastExtendCommand = 0.0;
+        //     io.setExtendPercent(0.0);
+        // }
 
-        if (mode == Mode.EXTENSION && getExtensionRotations() >= IntakeConstants.SPRINGY_TRIGGER_ROTATIONS) {
-            setSpringyMode();
-        }
+        // if (mode == Mode.EXTENSION && getExtensionRotations() >= IntakeConstants.SPRINGY_TRIGGER_ROTATIONS) {
+        //     setSpringyMode();
+        // }
 
-        switch (mode) {
-            case EXTENSION:
-                setExtendPosition(IntakeConstants.EXTENDED_POSITION_ROTATIONS);
-                setSpinPercent(IntakeConstants.SPIN_SPEED);
-                break;
-            case EXTEND_ONLY:
-                setExtendPosition(IntakeConstants.EXTENDED_POSITION_ROTATIONS);
-                stopSpin();
-                break;
-            case SPRINGY:
-                stopExtend();
-                setSpinPercent(IntakeConstants.SPRINGY_SPIN_SPEED);
-                break;
-            case IDLE:
-            default:
-                setExtendPosition(IntakeConstants.RETRACTED_POSITION_ROTATIONS);
-                stopSpin();
-                break;
-        }
+        // switch (mode) {
+        //     case EXTENSION:
+        //         setExtendPosition(IntakeConstants.EXTENDED_POSITION_ROTATIONS);
+        //         setSpinPercent(IntakeConstants.SPIN_SPEED);
+        //         break;
+        //     case EXTEND_ONLY:
+        //         setExtendPosition(IntakeConstants.EXTENDED_POSITION_ROTATIONS);
+        //         stopSpin();
+        //         break;
+        //     case SPRINGY:
+        //         stopExtend();
+        //         setSpinPercent(IntakeConstants.SPRINGY_SPIN_SPEED);
+        //         break;
+        //     case IDLE:
+        //     default:
+        //         setExtendPosition(IntakeConstants.RETRACTED_POSITION_ROTATIONS);
+        //         stopSpin();
+        //         break;
+        // }
 
         Logger.recordOutput("Intake/Mode", mode.toString());
         Logger.recordOutput("Intake/ExtendCommand", lastExtendCommand);

@@ -312,15 +312,15 @@ public final class Constants {
     
     // Soft Limits (In motor rotations)
     public static final double CLIMB_SOFT_LIMIT_FORWARD = 34;
-    public static final double CLIMB_SOFT_LIMIT_REVERSE = 0.0;
+    public static final double CLIMB_SOFT_LIMIT_REVERSE = -2.0;
 
     // Motor Inversions (Ensure they both spin the carriage in the same direction)
     public static final boolean LEFT_MOTOR_INVERTED = false;
     public static final boolean RIGHT_MOTOR_INVERTED = true; 
 
     // Motion Magic / PID Tuning
-    public static final double kP = 3; // TODO: Tune
-    public static final double kI = 0.0;
+    public static final double kP = 5.0; // Increased to reach exact target
+    public static final double kI = 0.1; // Added to eliminate steady-state error (0.5 rot offset)
     public static final double kD = 0.0;
     public static final double kV = 0.0; // TODO: Tune
     public static final double kG = 0.0; // TODO: Tune
