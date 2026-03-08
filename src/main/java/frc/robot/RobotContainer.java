@@ -154,8 +154,8 @@ public class RobotContainer {
           }, Set.of(vision))
         );
 
-        driverXbox.x()
-          .onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
+        // driverXbox.x()
+        //   .onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
         
         driverXbox.y()
           .whileTrue(Commands.defer(() -> new ClimbCommand(drivebase, climb), Set.<Subsystem>of(drivebase, climb)));
@@ -205,7 +205,7 @@ public class RobotContainer {
         autoAlignTrigger.whileTrue(Commands.defer(() -> new ClimbCommand(drivebase, climb), Set.<Subsystem>of(drivebase, climb)));
 
         // PUSH UP: Pull Up (Execute the final climb)
-        climbTrigger.onTrue(Commands.runOnce(() -> climb.setState(ClimbState.PULL_UP), climb));
+        driverXbox.x().onTrue(Commands.runOnce(() -> climb.setState(ClimbState.PULL_UP), climb));
         
         // LET GO (Release Push Up): Retract (Safely drops arms if you change your mind)
         climbReleaseTrigger.onTrue(Commands.runOnce(() -> climb.setState(ClimbState.RETRACTED), climb));
