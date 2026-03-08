@@ -18,7 +18,7 @@ import edu.wpi.first.units.measure.Temperature;
 import edu.wpi.first.units.measure.Voltage;
 import frc.robot.Constants.ClimbConstants;
 
-public class ClimbIOKraken implements ClimbIO {
+public class ClimbIOTalonFX implements ClimbIO {
     private final TalonFX leaderMotor;
     private final TalonFX followerMotor;
 
@@ -32,7 +32,7 @@ public class ClimbIOKraken implements ClimbIO {
     private final StatusSignal<Current> leaderCurrent, followerCurrent;
     private final StatusSignal<Temperature> leaderTemp, followerTemp;
 
-    public ClimbIOKraken() {
+    public ClimbIOTalonFX() {
         leaderMotor = new TalonFX(ClimbConstants.LEFT_MOTOR_ID, ClimbConstants.CAN_BUS);
         followerMotor = new TalonFX(ClimbConstants.RIGHT_MOTOR_ID, ClimbConstants.CAN_BUS);
 

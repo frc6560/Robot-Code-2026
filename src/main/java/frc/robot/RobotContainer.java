@@ -57,7 +57,7 @@ import frc.robot.subsystems.vision.VisionSubsystem;
 // Climb Imports
 import frc.robot.subsystems.climb.Climb;
 import frc.robot.subsystems.climb.Climb.ClimbState;
-import frc.robot.subsystems.climb.ClimbIOKraken;
+import frc.robot.subsystems.climb.ClimbIOTalonFX;
 import frc.robot.subsystems.climb.ClimbIOSim;
 
 public class RobotContainer {
@@ -104,7 +104,7 @@ public class RobotContainer {
         turret = new Turret(new TurretIOTalonFX());
         feeder = new Feeder(new FeederIOTalonFX());
         intake = new Intake(new IntakeIOTalonFX());
-        climb = new Climb(new ClimbIOKraken());
+        climb = new Climb(new ClimbIOTalonFX());
       } else {
         hood = new Hood(new HoodIOSim());
         shooter = new Shooter(new ShooterIOSim());
