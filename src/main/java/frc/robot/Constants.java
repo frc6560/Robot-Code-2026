@@ -311,7 +311,7 @@ public final class Constants {
     public static final double CLIMB_GEAR_RATIO = 15.0; // motor spins 15 times for every 1 rotation of the climb mechanism. 
     
     // Soft Limits (In motor rotations)
-    public static final double CLIMB_SOFT_LIMIT_FORWARD = 100.0; 
+    public static final double CLIMB_SOFT_LIMIT_FORWARD = 34;
     public static final double CLIMB_SOFT_LIMIT_REVERSE = 0.0;
 
     // Motor Inversions (Ensure they both spin the carriage in the same direction)
@@ -329,8 +329,8 @@ public final class Constants {
 
     // 3-State Climb Heights (Tune these rotations to your actual robot)
     public static final double RETRACTED_ROTATIONS = 0.0;   // Fully pulled down (Starting config)
-    public static final double PULL_UP_ROTATIONS = 20.0;    // Pulling the robot off the ground
-    public static final double EXTENDED_ROTATIONS = 80.0;   // Reaching up for the rung
+    public static final double PULL_UP_ROTATIONS = 11.5;    // Pulling the robot off the ground
+    public static final double EXTENDED_ROTATIONS = 33.0;  // Reaching up for the rung
 
     // Homing Routine Constants
     public static final double HOMING_VOLTS = -2.0;         // Gentle downward voltage to hit the hard stop

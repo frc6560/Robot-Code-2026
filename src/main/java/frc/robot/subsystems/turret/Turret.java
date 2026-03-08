@@ -139,11 +139,11 @@ public class Turret extends SubsystemBase {
         io.updateInputs(inputs);
         Logger.processInputs("Turret", inputs);
 
-        if (useVelocityFeedforward) {
-            io.setTargetAngleWithVelocity(goalDegrees, goalVelocityDegreesPerSec);
-        } else {
-            io.setTargetAngle(goalDegrees);
-        }
+        // if (useVelocityFeedforward) {
+        //     io.setTargetAngleWithVelocity(goalDegrees, goalVelocityDegreesPerSec);
+        // } else {
+        //     io.setTargetAngle(goalDegrees);
+        // }
 
         Logger.recordOutput("Turret/GoalDegrees", goalDegrees);
         Logger.recordOutput("Turret/GoalVelocityDegreesPerSec", goalVelocityDegreesPerSec);
