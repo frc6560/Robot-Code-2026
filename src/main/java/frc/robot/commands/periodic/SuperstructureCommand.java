@@ -245,8 +245,8 @@ public class SuperstructureCommand extends Command {
     private void performTrenchDetection() {
         // Debug: Increment counter and log to verify execute() is being called
         executeCounter++;
-        SmartDashboard.putNumber("SuperstructureCommand/Execute Counter", executeCounter);
-        SmartDashboard.putBoolean("SuperstructureCommand/Execute Running", true);
+        // SmartDashboard.putNumber("SuperstructureCommand/Execute Counter", executeCounter);
+        // SmartDashboard.putBoolean("SuperstructureCommand/Execute Running", true);
 
         // Get current position and velocity
         Translation2d robotPos = poseSupplier.getPose().getTranslation();
