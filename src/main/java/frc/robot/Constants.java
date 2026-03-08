@@ -304,7 +304,7 @@ public final class Constants {
     public static final boolean CLIMB_ENABLED = true;
     
     // Motor IDs
-    public static final int LEFT_MOTOR_ID = 23; 
+    public static final int LEFT_MOTOR_ID = 25; 
     public static final int RIGHT_MOTOR_ID = 24; 
     public static final String CAN_BUS = "rio";
 
