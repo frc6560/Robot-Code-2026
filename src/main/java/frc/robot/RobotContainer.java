@@ -42,6 +42,9 @@ import frc.robot.subsystems.shooter.ShooterIOSim;
 import frc.robot.subsystems.turret.Turret;
 import frc.robot.subsystems.turret.TurretIOTalonFX;
 import frc.robot.subsystems.turret.TurretIOSim;
+import frc.robot.subsystems.climber.Climber;
+import frc.robot.subsystems.climber.ClimberIOSim;
+import frc.robot.subsystems.climber.ClimberIOTalonFX;
 import frc.robot.subsystems.feeder.Feeder;
 import frc.robot.subsystems.feeder.FeederIOTalonFX;
 import frc.robot.subsystems.feeder.FeederIOSim;
@@ -71,6 +74,7 @@ public class RobotContainer {
     private final Turret turret;
     private final Feeder feeder;
     private final Intake intake;
+    private final Climber climber;
     private final LED led;
 
     private final ShotCalculator shotCalculator = new ShotCalculator();
@@ -102,6 +106,7 @@ public class RobotContainer {
         turret = new Turret(new TurretIOTalonFX());
         feeder = new Feeder(new FeederIOTalonFX());
         intake = new Intake(new IntakeIOTalonFX());
+        climber = new Climber(new ClimberIOTalonFX());
         led = new LED(new LEDIOAddressable(6, 100));
       } else {
         hood = new Hood(new HoodIOSim());
@@ -109,11 +114,11 @@ public class RobotContainer {
         turret = new Turret(new TurretIOSim());
         feeder = new Feeder(new FeederIOSim());
         intake = new Intake(new IntakeIOSim());
+        climber = new Climber(new ClimberIOSim());
         led = new LED(new LEDIOSim(100));
       }
 
-      factory = new AutoCommands(drivebase, feeder, intake, shooter);
-
+      factory = new AutoCommands(drivebase, feeder, intake, shooter, climber);
       autoChooser = new AutoModeChooser(factory);
       SmartDashboard.putData("Auto Chooser", autoChooser.getAutoChooser());
 
@@ -153,7 +158,7 @@ public class RobotContainer {
         driverXbox.x()
           .onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
         driverXbox.y()
-          .onTrue(Commands.defer(() -> new ClimbCommand(drivebase), Set.of(drivebase)));
+          .onTrue(Commands.defer(() -> new ClimbCommand(drivebase, intake, climber), Set.of(drivebase)));
         driverXbox.start().
           onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
 

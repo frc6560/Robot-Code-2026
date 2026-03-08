@@ -4,6 +4,8 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 
+import frc.robot.subsystems.climber.Climber;
+import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 
 import edu.wpi.first.math.controller.PIDController;
@@ -51,11 +53,15 @@ public class ClimbCommand extends SequentialCommandGroup {
 
     // Subsystems
     private SwerveSubsystem drivetrain;
+    private Intake intake;
+    private Climber climb;
 
 
     /** Constructor for our climb command */
-    public ClimbCommand(SwerveSubsystem drivetrain) {
+    public ClimbCommand(SwerveSubsystem drivetrain, Intake intake, Climber climb) {
         this.drivetrain = drivetrain;
+        this.intake = intake;
+        this.climb = climb;
         this.initialY = drivetrain.getPose().getY();
 
         // Initialize PID controllers (tune these values as needed)
@@ -66,25 +72,29 @@ public class ClimbCommand extends SequentialCommandGroup {
         this.rotationController.enableContinuousInput(-Math.PI, Math.PI);
 
         // Log PID constants to SmartDashboard for tuning
-        // Dashboard.putNumber("Climb/PID/X_kP", 2.5);
-        // SmartDashboard.putNumber("Climb/PID/X_kD", 0.8);
-        // SmartDashboard.putNumber("Climb/PID/Y_kP", 2.5);
-        // SmartDashboard.putNumber("Climb/PID/Y_kD", 0.8);
-        // SmartDashboard.putNumber("Climb/PID/Rot_kP", 4.0);
-        // SmartDashboard.putNumber("Climb/PID/Rot_kD", 0.6);
+        SmartDashboard.putNumber("Climb/PID/X_kP", 2.5);
+        SmartDashboard.putNumber("Climb/PID/X_kD", 0.8);
+        SmartDashboard.putNumber("Climb/PID/Y_kP", 2.5);
+        SmartDashboard.putNumber("Climb/PID/Y_kD", 0.8);
+        SmartDashboard.putNumber("Climb/PID/Rot_kP", 4.0);
+        SmartDashboard.putNumber("Climb/PID/Rot_kD", 0.6);
 
         setTargets();
 
         // Log initialization
-        // SmartDashboard.putString("Climb/Status", "Initialized");
-        // SmartDashboard.putNumber("Climb/Initial_Y", initialY);
-        // System.out.println("ClimbCommand initialized at Y=" + initialY);
+        SmartDashboard.putString("Climb/Status", "Initialized");
+        SmartDashboard.putNumber("Climb/Initial_Y", initialY);
+        System.out.println("ClimbCommand initialized at Y=" + initialY);
 
         super.addCommands(
-            getDriveToPrescore(),
+            Commands.parallel(
+                Commands.runOnce(() -> intake.setIdleMode()),
+                Commands.runOnce(() -> climb.setState(Climber.ClimbState.EXTENDED)),
+                getDriveToPrescore()
+            ),
             getDriveInCommand()
         );
-        super.addRequirements(drivetrain);
+        super.addRequirements(drivetrain, intake, climb);
     }
 
     /** Update PID values from SmartDashboard (call this in execute if you want live tuning) */
@@ -136,10 +146,10 @@ public class ClimbCommand extends SequentialCommandGroup {
             ChassisSpeeds robotVel = drivetrain.getFieldVelocity();
 
             // Position logging
-            // SmartDashboard.putNumber("Climb/Prescore/Current_X", currentPose.getX());
-            // SmartDashboard.putNumber("Climb/Prescore/Current_Y", currentPose.getY());
-            // SmartDashboard.putNumber("Climb/Prescore/Target_X", prescorePose.getX());
-            // SmartDashboard.putNumber("Climb/Prescore/Target_Y", prescorePose.getY());
+            SmartDashboard.putNumber("Climb/Prescore/Current_X", currentPose.getX());
+            SmartDashboard.putNumber("Climb/Prescore/Current_Y", currentPose.getY());
+            SmartDashboard.putNumber("Climb/Prescore/Target_X", prescorePose.getX());
+            SmartDashboard.putNumber("Climb/Prescore/Target_Y", prescorePose.getY());
 
             // Error logging
             SmartDashboard.putNumber("Climb/Prescore/Error_X", xError);
@@ -148,17 +158,17 @@ public class ClimbCommand extends SequentialCommandGroup {
             SmartDashboard.putNumber("Climb/Prescore/Distance", distance);
 
             // Velocity/Output logging
-            // SmartDashboard.putNumber("Climb/Prescore/Output_X_Vel", xVel);
-            // SmartDashboard.putNumber("Climb/Prescore/Output_Y_Vel", yVel);
-            // SmartDashboard.putNumber("Climb/Prescore/Output_Rot_Vel", rotVel);
+            SmartDashboard.putNumber("Climb/Prescore/Output_X_Vel", xVel);
+            SmartDashboard.putNumber("Climb/Prescore/Output_Y_Vel", yVel);
+            SmartDashboard.putNumber("Climb/Prescore/Output_Rot_Vel", rotVel);
 
             // Actual robot velocity
-            // SmartDashboard.putNumber("Climb/Prescore/Actual_X_Vel", robotVel.vxMetersPerSecond);
-            // SmartDashboard.putNumber("Climb/Prescore/Actual_Y_Vel", robotVel.vyMetersPerSecond);
-            // SmartDashboard.putNumber("Climb/Prescore/Actual_Rot_Vel", robotVel.omegaRadiansPerSecond);
+            SmartDashboard.putNumber("Climb/Prescore/Actual_X_Vel", robotVel.vxMetersPerSecond);
+            SmartDashboard.putNumber("Climb/Prescore/Actual_Y_Vel", robotVel.vyMetersPerSecond);
+            SmartDashboard.putNumber("Climb/Prescore/Actual_Rot_Vel", robotVel.omegaRadiansPerSecond);
 
             // Status
-            //SmartDashboard.putBoolean("Climb/Prescore/At_Target", kAutopilot.atTarget(currentPose, prescoreTarget));
+            SmartDashboard.putBoolean("Climb/Prescore/At_Target", kAutopilot.atTarget(currentPose, prescoreTarget));
         }, drivetrain).until(() -> {
             Rotation2d entryAngle = prescorePose.getRotation().plus(Rotation2d.fromDegrees(180));
             APTarget prescoreTarget = new APTarget(prescorePose)
@@ -194,12 +204,12 @@ public class ClimbCommand extends SequentialCommandGroup {
             double absRotError = Math.abs(rotError);
 
             // Position logging
-            // SmartDashboard.putNumber("Climb/Final/Current_X", currentPose.getX());
-            // SmartDashboard.putNumber("Climb/Final/Current_Y", currentPose.getY());
-            // SmartDashboard.putNumber("Climb/Final/Current_Rot", currentPose.getRotation().getDegrees());
-            // SmartDashboard.putNumber("Climb/Final/Target_X", targetPose.getX());
-            // SmartDashboard.putNumber("Climb/Final/Target_Y", targetPose.getY());
-            // SmartDashboard.putNumber("Climb/Final/Target_Rot", targetPose.getRotation().getDegrees());
+            SmartDashboard.putNumber("Climb/Final/Current_X", currentPose.getX());
+            SmartDashboard.putNumber("Climb/Final/Current_Y", currentPose.getY());
+            SmartDashboard.putNumber("Climb/Final/Current_Rot", currentPose.getRotation().getDegrees());
+            SmartDashboard.putNumber("Climb/Final/Target_X", targetPose.getX());
+            SmartDashboard.putNumber("Climb/Final/Target_Y", targetPose.getY());
+            SmartDashboard.putNumber("Climb/Final/Target_Rot", targetPose.getRotation().getDegrees());
 
             // Error logging
             SmartDashboard.putNumber("Climb/Final/Error_X", xError);
@@ -209,28 +219,28 @@ public class ClimbCommand extends SequentialCommandGroup {
             SmartDashboard.putNumber("Climb/Final/Distance", distance);
 
             // Velocity/Output logging
-            // SmartDashboard.putNumber("Climb/Final/Output_X_Vel", xVel);
-            // SmartDashboard.putNumber("Climb/Final/Output_Y_Vel", yVel);
-            // SmartDashboard.putNumber("Climb/Final/Output_Rot_Vel", rotVel);
+            SmartDashboard.putNumber("Climb/Final/Output_X_Vel", xVel);
+            SmartDashboard.putNumber("Climb/Final/Output_Y_Vel", yVel);
+            SmartDashboard.putNumber("Climb/Final/Output_Rot_Vel", rotVel);
 
-            // // Actual robot velocity
-            // SmartDashboard.putNumber("Climb/Final/Actual_X_Vel", robotVel.vxMetersPerSecond);
-            // SmartDashboard.putNumber("Climb/Final/Actual_Y_Vel", robotVel.vyMetersPerSecond);
-            // SmartDashboard.putNumber("Climb/Final/Actual_Rot_Vel", robotVel.omegaRadiansPerSecond);
+            // Actual robot velocity
+            SmartDashboard.putNumber("Climb/Final/Actual_X_Vel", robotVel.vxMetersPerSecond);
+            SmartDashboard.putNumber("Climb/Final/Actual_Y_Vel", robotVel.vyMetersPerSecond);
+            SmartDashboard.putNumber("Climb/Final/Actual_Rot_Vel", robotVel.omegaRadiansPerSecond);
 
-            // // Status
-            // SmartDashboard.putBoolean("Climb/Final/At_Target", distance < 0.02 && absRotError < 0.017);
-            // SmartDashboard.putBoolean("Climb/Final/Translation_Done", distance < 0.02);
-            // SmartDashboard.putBoolean("Climb/Final/Rotation_Done", absRotError < 0.017);
+            // Status
+            SmartDashboard.putBoolean("Climb/Final/At_Target", distance < 0.02 && absRotError < 0.017);
+            SmartDashboard.putBoolean("Climb/Final/Translation_Done", distance < 0.02);
+            SmartDashboard.putBoolean("Climb/Final/Rotation_Done", absRotError < 0.017);
 
             // Overshoot detection warnings
-            // if (Math.abs(xError) > 0.5) {
-            //     SmartDashboard.putString("Climb/Final/Warning", "Large X error: " + String.format("%.3f", xError));
-            // } else if (Math.abs(yError) > 0.5) {
-            //     SmartDashboard.putString("Climb/Final/Warning", "Large Y error: " + String.format("%.3f", yError));
-            // } else {
-            //     SmartDashboard.putString("Climb/Final/Warning", "None");
-            // }
+            if (Math.abs(xError) > 0.5) {
+                SmartDashboard.putString("Climb/Final/Warning", "Large X error: " + String.format("%.3f", xError));
+            } else if (Math.abs(yError) > 0.5) {
+                SmartDashboard.putString("Climb/Final/Warning", "Large Y error: " + String.format("%.3f", yError));
+            } else {
+                SmartDashboard.putString("Climb/Final/Warning", "None");
+            }
         }, drivetrain).until(() -> {
             Pose2d currentPose = drivetrain.getPose();
             double distance = currentPose.getTranslation().getDistance(targetPose.getTranslation());
@@ -292,11 +302,11 @@ public class ClimbCommand extends SequentialCommandGroup {
         }
 
         // Log target selection
-        // SmartDashboard.putString("Climb/Target_Location", selectedTarget);
-        // SmartDashboard.putNumber("Climb/Target_X", targetPose.getX());
-        // SmartDashboard.putNumber("Climb/Target_Y", targetPose.getY());
-        // SmartDashboard.putNumber("Climb/Target_Rot_Deg", targetPose.getRotation().getDegrees());
-        // System.out.println("ClimbCommand target set to: " + selectedTarget +
-        //                    " at (" + targetPose.getX() + ", " + targetPose.getY() + ")");
+        SmartDashboard.putString("Climb/Target_Location", selectedTarget);
+        SmartDashboard.putNumber("Climb/Target_X", targetPose.getX());
+        SmartDashboard.putNumber("Climb/Target_Y", targetPose.getY());
+        SmartDashboard.putNumber("Climb/Target_Rot_Deg", targetPose.getRotation().getDegrees());
+        System.out.println("ClimbCommand target set to: " + selectedTarget +
+                           " at (" + targetPose.getX() + ", " + targetPose.getY() + ")");
     }
 }

@@ -4,6 +4,7 @@ package frc.robot.autonomous;
 import choreo.auto.AutoFactory;
 import choreo.auto.AutoRoutine;
 import choreo.auto.AutoTrajectory;
+import frc.robot.subsystems.climber.Climber;
 import frc.robot.subsystems.feeder.Feeder;
 import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.shooter.Shooter;
@@ -23,6 +24,7 @@ public class AutoCommands {
     private Feeder feeder;
     private Intake intake;
     private Shooter shooter;
+    private Climber climber;
     private ShotCalculator calculator = new ShotCalculator();
 
     private AutoFactory autoFactory;
@@ -30,7 +32,8 @@ public class AutoCommands {
     public AutoCommands(SwerveSubsystem drivetrain,
         Feeder feeder,
         Intake intake,
-        Shooter shooter
+        Shooter shooter,
+        Climber climber
     ) {
         this.drivetrain = drivetrain;
         this.feeder = feeder;
@@ -97,7 +100,7 @@ public class AutoCommands {
     }
 
     public Command climb(){
-        return new ClimbCommand(drivetrain);
+        return new ClimbCommand(drivetrain, intake, climber);
     }
 
     public Command intake(){
