@@ -5,11 +5,11 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.RunCommand;
-import edu.wpi.first.wpilibj2.command.Subsystem;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
-// import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+// IMPORTANT: Required for the Set.of() fix!
+import edu.wpi.first.wpilibj2.command.Subsystem; 
 
 import java.io.File;
 import java.util.ArrayList;
@@ -60,15 +60,12 @@ import frc.robot.subsystems.climb.Climb.ClimbState;
 import frc.robot.subsystems.climb.ClimbIOKraken;
 import frc.robot.subsystems.climb.ClimbIOSim;
 
-
 public class RobotContainer {
     // Controllers
     private final CommandXboxController driverXbox = new CommandXboxController(0);
     private final ManualControls m_Controls = new ManualControls(1);
 
-     // The robot's subsystems and commands are defined here...
-    private final SwerveSubsystem drivebase  = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(),
-    "swerve/falcon"));
+    private final SwerveSubsystem drivebase  = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(), "swerve/falcon"));
     private final VisionSubsystem vision;
 
     private final Hood hood;
@@ -117,6 +114,7 @@ public class RobotContainer {
         climb = new Climb(new ClimbIOSim());
       }
 
+      // Added climb to the AutoCommands factory
       factory = new AutoCommands(drivebase, feeder, intake, climb);
 
       autoChooser = new AutoModeChooser(factory);
@@ -150,8 +148,6 @@ public class RobotContainer {
         Command driveFieldOrientedAnglularVelocity = drivebase.driveFieldOriented(driveAngularVelocity);
         drivebase.setDefaultCommand(driveFieldOrientedAnglularVelocity);
 
-        climb.setDefaultCommand(new RunCommand(() -> climb.setState(ClimbState.RETRACTED), climb));
-
         driverXbox.a().onTrue(
           Commands.defer(() -> {
             return Commands.runOnce(() -> vision.hardReset("limelight-br"), vision);
@@ -163,7 +159,7 @@ public class RobotContainer {
         
         driverXbox.y()
           .whileTrue(Commands.defer(() -> new ClimbCommand(drivebase, climb), Set.<Subsystem>of(drivebase, climb)));
-
+        
         driverXbox.b()
           .onTrue(Commands.runOnce(() -> climb.setState(ClimbState.PULL_UP), climb));
 
@@ -197,58 +193,38 @@ public class RobotContainer {
         intakeRollingTrigger.onTrue(Commands.runOnce(intake::setExtensionMode, intake));
         intakeReleaseTrigger.onTrue(Commands.runOnce(intake::setIdleMode, intake));
 
-        // Climb triggers from custom button board
+        // ==========================================
+        // CUSTOM BUTTON BOARD CLIMB BINDINGS
+        // ==========================================
         Trigger climbTrigger = new Trigger(m_Controls::getClimbTrigger);
+        Trigger climbReleaseTrigger = new Trigger(m_Controls::getClimbReleaseTrigger);
         Trigger climbResetTrigger = new Trigger(m_Controls::getClimbResetTrigger);
         Trigger autoAlignTrigger = new Trigger(m_Controls::getAutoAlignTrigger);
 
+        // PUSH DOWN: Auto-Align (Hold to run the path & extend arms)
         autoAlignTrigger.whileTrue(Commands.defer(() -> new ClimbCommand(drivebase, climb), Set.<Subsystem>of(drivebase, climb)));
+
+        // PUSH UP: Pull Up (Execute the final climb)
         climbTrigger.onTrue(Commands.runOnce(() -> climb.setState(ClimbState.PULL_UP), climb));
+        
+        // LET GO (Release Push Up): Retract (Safely drops arms if you change your mind)
+        climbReleaseTrigger.onTrue(Commands.runOnce(() -> climb.setState(ClimbState.RETRACTED), climb));
+        
+        // ZERO ROUTINE: Press Reset Button
         climbResetTrigger.onTrue(Commands.runOnce(() -> climb.setState(ClimbState.HOMING), climb));
 
+
         // Reset buttons
-        Trigger visionResetTrigger = new Trigger(() -> m_Controls.getButton(4));
+        Trigger visionResetTrigger = new Trigger(() -> m_Controls.getButton(5));
         visionResetTrigger.onTrue(
             Commands.defer(() -> {
                 return Commands.runOnce(() -> vision.hardReset("limelight-br"), vision);
             }, Set.of(vision))
         );
 
-        Trigger intakeResetTrigger = new Trigger(() -> m_Controls.getButton(3));
+        Trigger intakeResetTrigger = new Trigger(() -> m_Controls.getButton(6));
         intakeResetTrigger.onTrue(Commands.runOnce(intake::resetExtendPosition, intake));
-
-        // SysID bindings (using D-pad on driver controller) - COMMENTED OUT
-        // // Hood SysID - D-pad Up/Down for quasistatic, hold B + D-pad for dynamic
-        // driverXbox.povUp().and(driverXbox.b().negate())
-        //     .whileTrue(hood.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
-        // driverXbox.povDown().and(driverXbox.b().negate())
-        //     .whileTrue(hood.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
-        // driverXbox.povUp().and(driverXbox.b())
-        //     .whileTrue(hood.sysIdDynamic(SysIdRoutine.Direction.kForward));
-        // driverXbox.povDown().and(driverXbox.b())
-        //     .whileTrue(hood.sysIdDynamic(SysIdRoutine.Direction.kReverse));
-
-        // // Flywheel SysID - D-pad Left/Right for quasistatic, hold B + D-pad for dynamic
-        // driverXbox.povRight().and(driverXbox.b().negate())
-        //     .whileTrue(shooter.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
-        // driverXbox.povLeft().and(driverXbox.b().negate())
-        //     .whileTrue(shooter.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
-        // driverXbox.povRight().and(driverXbox.b())
-        //     .whileTrue(shooter.sysIdDynamic(SysIdRoutine.Direction.kForward));
-        // driverXbox.povLeft().and(driverXbox.b())
-        //     .whileTrue(shooter.sysIdDynamic(SysIdRoutine.Direction.kReverse));
-
-        // // Turret SysID - hold RightBumper + D-pad for quasistatic, hold RightBumper + B + D-pad for dynamic
-        // driverXbox.rightBumper().and(driverXbox.povUp()).and(driverXbox.b().negate())
-        //     .whileTrue(turret.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
-        // driverXbox.rightBumper().and(driverXbox.povDown()).and(driverXbox.b().negate())
-        //     .whileTrue(turret.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
-        // driverXbox.rightBumper().and(driverXbox.povUp()).and(driverXbox.b())
-        //     .whileTrue(turret.sysIdDynamic(SysIdRoutine.Direction.kForward));
-        // driverXbox.rightBumper().and(driverXbox.povDown()).and(driverXbox.b())
-        //     .whileTrue(turret.sysIdDynamic(SysIdRoutine.Direction.kReverse));
     }
-
 
     public Command getAutonomousCommand() {
       return autoChooser.getAutoChooser().selectedCommand();

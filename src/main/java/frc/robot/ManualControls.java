@@ -1,14 +1,11 @@
 package frc.robot;
 
 import edu.wpi.first.wpilibj.Joystick;
-import edu.wpi.first.wpilibj.Timer;
-import edu.wpi.first.wpilibj.XboxController;
 
 public class ManualControls {
 
     private final Joystick m_buttonBoard;
 
-    
     private static double deadband(double value, double deadband) {
         if (Math.abs(value) > deadband) {
           if (value > 0.0) {
@@ -19,9 +16,9 @@ public class ManualControls {
         } else {
           return 0.0;
         }
-      }
+    }
 
-      private static double modifyAxis(double value) {
+    private static double modifyAxis(double value) {
         // Deadband
         value = deadband(value, 0.01);
     
@@ -29,16 +26,18 @@ public class ManualControls {
         value = Math.copySign(value * value, value);
     
         return value;
-      }
+    }
 
     public ManualControls(int USB_ID){
         m_buttonBoard = new Joystick(USB_ID);
     }
 
+    // THE FIX: This now reads the continuous physical state (Held down)
     public boolean getButton(int buttonNumber){
-        return m_buttonBoard.getRawButtonPressed(buttonNumber);
+        return m_buttonBoard.getRawButton(buttonNumber);
     }
 
+    // This reads the exact moment you let go
     public boolean getButtonRelease(int buttonNumber){
         return m_buttonBoard.getRawButtonReleased(buttonNumber);
     }
@@ -63,27 +62,30 @@ public class ManualControls {
       return getButton(2);
     }
 
-      public boolean getClimbTrigger(){
-        return getButton(3);
-      }
-  
-      public boolean getClimbReleaseTrigger(){
-        return getButtonRelease(3);
-      }
-  
-      public boolean getAutoAlignTrigger(){
-        return getButton(10);
-      }
+    // CLIMB SWITCH - UP POSITION
+    public boolean getClimbTrigger(){
+      return getButton(9); 
+    }
 
-      public boolean getVisionResetTrigger(){
-        return getButton(5);
-      }
+    // CLIMB SWITCH - LETTING GO OF UP
+    public boolean getClimbReleaseTrigger(){
+      return getButtonRelease(9);
+    }
 
-      public boolean getIntakeResetTrigger(){
-        return getButton(6);
-      }
+    // CLIMB SWITCH - DOWN POSITION
+    public boolean getAutoAlignTrigger(){
+      return getButton(10); // Change this 10 to the ID you found in the Driver Station!
+    }
 
-      public boolean getClimbResetTrigger(){
-        return getButton(7);
-      }
+    public boolean getVisionResetTrigger(){
+      return getButton(5);
+    }
+
+    public boolean getIntakeResetTrigger(){
+      return getButton(6);
+    }
+
+    public boolean getClimbResetTrigger(){
+      return getButton(7);
+    }
 }

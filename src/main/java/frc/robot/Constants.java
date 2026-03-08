@@ -303,23 +303,24 @@ public final class Constants {
   public static final class ClimbConstants {
     public static final boolean CLIMB_ENABLED = true;
     
-    // Motor IDs (Update these to match your actual Phoenix Tuner IDs)
-    public static final int LEFT_MOTOR_ID = 24; 
-    public static final int RIGHT_MOTOR_ID = 25; 
+    // Motor IDs
+    public static final int LEFT_MOTOR_ID = 23; 
+    public static final int RIGHT_MOTOR_ID = 24; 
     public static final String CAN_BUS = "rio";
 
-    public static final double CLIMB_GEAR_RATIO = 15.0; // motor spins 15 times for every 1 rotation of the climb mechanism. 
+    // Gear Ratio
+    public static final double CLIMB_GEAR_RATIO = 15.0; 
     
-    // Soft Limits (In motor rotations)
-    public static final double CLIMB_SOFT_LIMIT_FORWARD = 100.0; 
-    public static final double CLIMB_SOFT_LIMIT_REVERSE = 0.0;
+    // Soft Limits (In motor rotations) BOUNDS: 2.0 (Down) to -30.0 (Up)
+    public static final double CLIMB_SOFT_LIMIT_FORWARD = 2.0; 
+    public static final double CLIMB_SOFT_LIMIT_REVERSE = -30.0;
 
-    // Motor Inversions (Ensure they both spin the carriage in the same direction)
+    // Motor Inversions
     public static final boolean LEFT_MOTOR_INVERTED = false;
     public static final boolean RIGHT_MOTOR_INVERTED = true; 
 
     // Motion Magic / PID Tuning
-    public static final double kP = 0.0; // TODO: Tune
+    public static final double kP = 0.5; // TODO: Tune
     public static final double kI = 0.0;
     public static final double kD = 0.0;
     public static final double kV = 0.0; // TODO: Tune
@@ -327,14 +328,14 @@ public final class Constants {
     public static final double CRUISE_VELOCITY_RPS = 40.0;
     public static final double ACCELERATION_RPS2 = 80.0;
 
-    // 3-State Climb Heights (Tune these rotations to your actual robot)
-    public static final double RETRACTED_ROTATIONS = 0.0;   // Fully pulled down (Starting config)
-    public static final double PULL_UP_ROTATIONS = 20.0;    // Pulling the robot off the ground
-    public static final double EXTENDED_ROTATIONS = 80.0;   // Reaching up for the rung
+    // 3-State Climb Heights (Updated with your exact mechanical values)
+    public static final double RETRACTED_ROTATIONS = 0.0;   
+    public static final double PULL_UP_ROTATIONS = -10.02;    
+    public static final double EXTENDED_ROTATIONS = -28.18;   
 
-    // Homing Routine Constants
-    public static final double HOMING_VOLTS = -2.0;         // Gentle downward voltage to hit the hard stop
-    public static final double HOMING_CURRENT_AMPS = 35.0;  // Amps to trigger the "hard stop detected" logic
-    public static final double HOMING_TIMEOUT_SECS = 2.0;   // Safety timeout
+    // Homing Routine Constants (Positive 2.0V drives it DOWN)
+    public static final double HOMING_VOLTS = 2.0;         
+    public static final double HOMING_CURRENT_AMPS = 35.0;  
+    public static final double HOMING_TIMEOUT_SECS = 2.0;   
   }
 }
