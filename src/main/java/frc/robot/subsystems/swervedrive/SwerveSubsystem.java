@@ -96,11 +96,8 @@ public class SwerveSubsystem extends SubsystemBase {
         .getStringTopic("/SmartDashboard/Auto Chooser/selected")
         .subscribe("Idle");
 
-    // Default starting pose - will be updated once in periodic() based on auto selection
     Pose2d startingPose = FieldConstants.BLUE_TESTING_START;
-
-    // Configure the Telemetry before creating the SwerveDrive to avoid unnecessary objects being created.
-    SwerveDriveTelemetry.verbosity = TelemetryVerbosity.HIGH;
+    SwerveDriveTelemetry.verbosity = TelemetryVerbosity.POSE;
     try
     {
       swerveDrive = new SwerveParser(directory).createSwerveDrive(Constants.MAX_SPEED, startingPose);

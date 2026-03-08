@@ -364,21 +364,6 @@ public class LED extends SubsystemBase {
 
     private void publishTelemetry() {
         Logger.recordOutput("LED/State", currentState.name());
-        Logger.recordOutput("LED/PrevState", previousState == null ? "null" : previousState.name());
-        Logger.recordOutput("LED/Alliance", t_alliance);
-        Logger.recordOutput("LED/GameData", t_gameData);
-        Logger.recordOutput("LED/InactiveFirstAlliance", t_inactiveFirstAlliance);
-        Logger.recordOutput("LED/TeleopSegment", t_teleopSegment);
-        Logger.recordOutput("LED/MyHubActive", t_myHubActive);
-        Logger.recordOutput("LED/IsLoadingBar", t_loadingBarActive);
-        Logger.recordOutput("LED/LoadingToActive", t_loadingToActive);
-        Logger.recordOutput("LED/LoadingProgress", t_loadingProgress);
-        Logger.recordOutput("LED/TimeToNextBoundary", t_timeToNextBoundary);
-        Logger.recordOutput("LED/MatchTime", DriverStation.getMatchTime());
-        Logger.recordOutput("LED/Teleop", DriverStation.isTeleop());
-        Logger.recordOutput("LED/Auto", DriverStation.isAutonomous());
-        Logger.recordOutput("LED/Disabled", DriverStation.isDisabled());
-        Logger.recordOutput("LED/FMSAttached", DriverStation.isFMSAttached());
     }
 
     private static double clamp(double v, double lo, double hi) {
