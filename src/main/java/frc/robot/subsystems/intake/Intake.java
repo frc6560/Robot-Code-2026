@@ -132,10 +132,6 @@ public class Intake extends SubsystemBase {
             io.setExtendPercent(0.0);
         }
 
-        if (mode == Mode.EXTENSION && getExtensionRotations() >= IntakeConstants.SPRINGY_TRIGGER_ROTATIONS) {
-            setSpringyMode();
-        }
-
         switch (mode) {
             case EXTENSION:
                 setExtendPosition(IntakeConstants.EXTENDED_POSITION_ROTATIONS);

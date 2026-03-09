@@ -38,13 +38,13 @@ public final class Constants {
     public static final double kV = 2.004;
     public static final double kA = 0.173;
 
-    public static final double kP_translation = 7.5;
-    public static final double kP_rotation = 5.0;
+    public static final double kP_translation = 3.15; 
+    public static final double kP_rotation = 4.5;
 
     public static final double kI_translation = 0.0;
     public static final double kI_rotation = 0.0;
 
-    public static final double kD_translation = 0.2;
+    public static final double kD_translation = 0.25;
     public static final double kD_rotation = 0.2; 
 
     // Pure pursuit tuning (meters, meters per second)
@@ -327,12 +327,10 @@ public final class Constants {
     public static final double CRUISE_VELOCITY_RPS = 40.0;
     public static final double ACCELERATION_RPS2 = 80.0;
 
-    // 3-State Climb Heights (Tune these rotations to your actual robot)
     public static final double RETRACTED_ROTATIONS = 0.0;   // Fully pulled down (Starting config)
     public static final double PULL_UP_ROTATIONS = 11.5;    // Pulling the robot off the ground
     public static final double EXTENDED_ROTATIONS = 33.0;   // Reaching up for the rung
 
-    // Homing Routine Constants
     public static final double HOMING_VOLTS = -2.0;         // Gentle downward voltage to hit the hard stop
     public static final double HOMING_CURRENT_AMPS = 35.0;  // Amps to trigger the "hard stop detected" logic
     public static final double HOMING_TIMEOUT_SECS = 2.0;   // Safety timeout

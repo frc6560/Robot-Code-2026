@@ -39,7 +39,8 @@ public class AutoCommands {
         this.feeder = feeder;
         this.intake = intake;
         this.shooter = shooter;
-        
+        this.climber = climber;
+
         autoFactory = new AutoFactory(
             drivetrain::getPose,
             drivetrain::resetOdometry,
@@ -100,34 +101,27 @@ public class AutoCommands {
     }
 
     public Command climb(){
-        return new ClimbCommand(drivetrain, intake, climber);
+        return Commands.idle();
+        // return new ClimbCommand(drivetrain, intake, climber);
     }
 
     public Command intake(){
-        return Commands.runOnce(() -> intake.setExtensionMode(), intake);
+        return Commands.runOnce(intake::setExtensionMode, intake);
     }
 
     public Command retract(){
-        return Commands.runOnce(() -> {
-            intake.setIdleMode();
-    }, intake);
+        return Commands.runOnce(intake::setIdleMode, intake);
     }
 
     /** Right side trench auto */
-    public AutoRoutine getTestTrench(){
+    public AutoRoutine getRightAuto(){
         AutoRoutine testRoutine = autoFactory.newRoutine("testTrench");
         
         AutoTrajectory trenchToCenter = testRoutine.trajectory("hpTrenchToCenter");
         AutoTrajectory trenchToShoot = testRoutine.trajectory("hpTrenchToShoot");
-        AutoTrajectory trenchToClimb = testRoutine.trajectory("hpTrenchToClimb");
-        AutoTrajectory trenchToCenterSecondSwipe = testRoutine.trajectory("hpTrenchToCenter2");
+        AutoTrajectory trenchToHp = testRoutine.trajectory("hpTrenchToHP");
 
         trenchToCenter.atTime("intake")
-            .onTrue(
-                intake()
-            );
-
-        trenchToCenterSecondSwipe.atTime("intake")
             .onTrue(
                 intake()
             );
@@ -137,7 +131,12 @@ public class AutoCommands {
                 retract()
             );
         
-        trenchToClimb.atTime("shoot")
+        trenchToHp.atTime("intake")
+            .onTrue(
+                intake()
+            );
+        
+        trenchToHp.atTime("shoot")
             .onTrue(
                 retract()
             );
@@ -149,12 +148,9 @@ public class AutoCommands {
                         cmdWithAccuracy(trenchToCenter) 
                             .beforeStarting(trenchToCenter.resetOdometry()),
                         cmdWithAccuracy(trenchToShoot)
-                            .andThen(Commands.waitSeconds(0.5))
                             .andThen(shoot()), 
-                        cmdWithAccuracy(trenchToCenterSecondSwipe),
-                        cmdWithAccuracy(trenchToClimb)
-                            .andThen(shoot())
-                            .andThen(climb())
+                        cmdWithAccuracy(trenchToHp)
+                            .andThen(Commands.parallel(shoot(), climb()))
                     )
         );
 
@@ -162,20 +158,14 @@ public class AutoCommands {
     }
 
     /** Left side trench auto */
-    public AutoRoutine getTestTrenchL(){
+    public AutoRoutine getLeftAuto(){
         AutoRoutine testRoutine = autoFactory.newRoutine("testTrenchL");
         
         AutoTrajectory trenchToCenter = testRoutine.trajectory("depotTrenchToCenter");
         AutoTrajectory trenchToShoot = testRoutine.trajectory("depotTrenchToShoot");
-        AutoTrajectory trenchToClimb = testRoutine.trajectory("depotTrenchToClimb");
-        AutoTrajectory trenchToCenterSecondSwipe = testRoutine.trajectory("depotTrenchToCenter2");
+        AutoTrajectory trenchToDepot = testRoutine.trajectory("depotTrenchToDepot");
 
         trenchToCenter.atTime("intake")
-            .onTrue(
-                intake()
-            );
-
-        trenchToCenterSecondSwipe.atTime("intake")
             .onTrue(
                 intake()
             );
@@ -184,8 +174,13 @@ public class AutoCommands {
             .onTrue(
                 retract()
             );
+
+        trenchToDepot.atTime("intake")
+            .onTrue(
+                intake()
+            );
         
-        trenchToClimb.atTime("shoot")
+        trenchToDepot.atTime("shoot")
             .onTrue(
                 retract()
             );
@@ -197,12 +192,9 @@ public class AutoCommands {
                         cmdWithAccuracy(trenchToCenter) 
                             .beforeStarting(trenchToCenter.resetOdometry()),
                         cmdWithAccuracy(trenchToShoot)
-                            .andThen(Commands.waitSeconds(0.5))
                             .andThen(shoot()), 
-                        cmdWithAccuracy(trenchToCenterSecondSwipe),
-                        cmdWithAccuracy(trenchToClimb)
-                            .andThen(shoot())
-                            .andThen(climb())
+                        cmdWithAccuracy(trenchToDepot)
+                            .andThen(Commands.parallel(shoot(), climb()))
                     )
         );
 

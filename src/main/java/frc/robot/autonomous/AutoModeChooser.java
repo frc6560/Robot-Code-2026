@@ -35,6 +35,7 @@ public class AutoModeChooser {
         }
     }
 
+    /** because we love turkish autos */
     public Pair<String, AutoRoutine> getRoutine(AutoNames autoName){
         AutoRoutine routine;
         String name;
@@ -44,12 +45,12 @@ public class AutoModeChooser {
                 name = "Idle";
                 break;
             case RIGHT_TRENCH:
-                routine = m_CommandFactory.getTestTrench();
-                name = "Right Trench";
+                routine = m_CommandFactory.getRightAuto();
+                name = "HP Turkish Delight";
                 break;
             case LEFT_TRENCH:
-                routine = m_CommandFactory.getTestTrenchL();
-                name = "Left Trench";
+                routine = m_CommandFactory.getLeftAuto();
+                name = "Depot Turkish Delight";
                 break;
             default:
                 routine = m_CommandFactory.getNoAuto();
