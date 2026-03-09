@@ -203,8 +203,8 @@ public class RobotContainer {
 
         driverXbox.x().onTrue(Commands.runOnce(() -> climb.setState(ClimbState.PULL_UP), climb));
         driverXbox.b().onTrue(Commands.runOnce(() -> climb.setState(ClimbState.RETRACTED), climb));
-        driverXbox.y().onTrue(Commands.runOnce(() -> climb.setState(ClimbState.EXTENDED), climb));
-
+        //driverXbox.y().onTrue(Commands.runOnce(() -> climb.setState(ClimbState.EXTENDED), climb));
+        driverXbox.y().onTrue(Commands.defer(() -> new ClimbCommand(drivebase, intake, climb), Set.of(drivebase, intake, climb)));
         // SysID bindings (using D-pad on driver controller) - COMMENTED OUT
         // // Hood SysID - D-pad Up/Down for quasistatic
         //, hold B + D-pad for dynamic
