@@ -120,6 +120,7 @@ public class AutoCommands {
         AutoTrajectory trenchToCenter = testRoutine.trajectory("hpTrenchToCenter");
         AutoTrajectory trenchToShoot = testRoutine.trajectory("hpTrenchToShoot");
         AutoTrajectory trenchToHp = testRoutine.trajectory("hpTrenchToHP");
+        AutoTrajectory trenchToClimb = testRoutine.trajectory("hpClimb");
 
         trenchToCenter.atTime("intake")
             .onTrue(
@@ -149,8 +150,9 @@ public class AutoCommands {
                             .beforeStarting(trenchToCenter.resetOdometry()),
                         cmdWithAccuracy(trenchToShoot)
                             .andThen(shoot()), 
-                        cmdWithAccuracy(trenchToHp)
-                            .andThen(Commands.parallel(shoot(), climb()))
+                        cmdWithAccuracy(trenchToHp),
+                        cmdWithAccuracy(trenchToClimb)
+                            .andThen(Commands.parallel(climb(), shoot()))
                     )
         );
 
@@ -164,6 +166,7 @@ public class AutoCommands {
         AutoTrajectory trenchToCenter = testRoutine.trajectory("depotTrenchToCenter");
         AutoTrajectory trenchToShoot = testRoutine.trajectory("depotTrenchToShoot");
         AutoTrajectory trenchToDepot = testRoutine.trajectory("depotTrenchToDepot");
+        AutoTrajectory trenchToClimb = testRoutine.trajectory("depotClimb");
 
         trenchToCenter.atTime("intake")
             .onTrue(
@@ -193,8 +196,9 @@ public class AutoCommands {
                             .beforeStarting(trenchToCenter.resetOdometry()),
                         cmdWithAccuracy(trenchToShoot)
                             .andThen(shoot()), 
-                        cmdWithAccuracy(trenchToDepot)
-                            .andThen(Commands.parallel(shoot(), climb()))
+                        cmdWithAccuracy(trenchToDepot),
+                        cmdWithAccuracy(trenchToClimb)
+                            .andThen(Commands.parallel(climb(), shoot()))
                     )
         );
 

@@ -88,5 +88,5 @@
  },
  "events":[
    {"name":"intake", "from":{"target":0, "targetTimestamp":0.0, "offset":{"exp":"0 s", "val":0.0}}, "event":null},
-   {"name":"shoot", "from":{"target":1, "targetTimestamp":1.38447, "offset":{"exp":"0 s", "val":0.0}}, "event":null}]
+   {"name":"shoot", "from":{"target":1, "targetTimestamp":1.38447, "offset":{"exp":"-0.1 s", "val":-0.1}}, "event":null}]
 }
