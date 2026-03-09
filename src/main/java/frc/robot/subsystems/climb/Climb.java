@@ -43,23 +43,41 @@ public class Climb extends SubsystemBase {
 
         if (!ClimbConstants.CLIMB_ENABLED) {
             stop();
+            Logger.recordOutput("Climb/Error", "Climb disabled in constants");
             return;
         }
 
+        double targetPosition = 0.0;
         switch (currentState) {
             case EXTENDED:
-                io.setTarget(ClimbConstants.EXTENDED_ROTATIONS);
+                targetPosition = ClimbConstants.EXTENDED_ROTATIONS;
+                io.setTarget(targetPosition);
                 break;
             case PULL_UP:
-                io.setTarget(ClimbConstants.PULL_UP_ROTATIONS);
+                targetPosition = ClimbConstants.PULL_UP_ROTATIONS;
+                io.setTarget(targetPosition);
                 break;
             case RETRACTED:
             default:
-                io.setTarget(ClimbConstants.RETRACTED_ROTATIONS);
+                targetPosition = ClimbConstants.RETRACTED_ROTATIONS;
+                io.setTarget(targetPosition);
                 break;
         }
 
+        // Calculate errors and status
+        double currentPosition = getPosition();
+        double positionError = Math.abs(targetPosition - currentPosition);
+        boolean atTarget = positionError < 0.5; // Within 0.5 rotations
+
+        // Log state and targets
         Logger.recordOutput("Climb/State", currentState.toString());
-        Logger.recordOutput("Climb/Position", getPosition());
+        Logger.recordOutput("Climb/Position", currentPosition);
+        Logger.recordOutput("Climb/TargetPosition", targetPosition);
+        Logger.recordOutput("Climb/PositionError", positionError);
+        Logger.recordOutput("Climb/AtTarget", atTarget);
+
+        
+
+        
     }
 }
