@@ -150,8 +150,7 @@ public class AutoCommands {
                             .beforeStarting(trenchToCenter.resetOdometry()),
                         cmdWithAccuracy(trenchToShoot)
                             .andThen(shoot()), 
-                        cmdWithAccuracy(trenchToHp),
-                        cmdWithAccuracy(trenchToClimb)
+                        cmdWithAccuracy(trenchToHp)
                             .andThen(Commands.parallel(climb(), shoot()))
                     )
         );
@@ -196,8 +195,7 @@ public class AutoCommands {
                             .beforeStarting(trenchToCenter.resetOdometry()),
                         cmdWithAccuracy(trenchToShoot)
                             .andThen(shoot()), 
-                        cmdWithAccuracy(trenchToDepot),
-                        cmdWithAccuracy(trenchToClimb)
+                        cmdWithAccuracy(trenchToDepot)
                             .andThen(Commands.parallel(climb(), shoot()))
                     )
         );
