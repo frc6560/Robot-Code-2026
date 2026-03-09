@@ -171,7 +171,7 @@ public class RobotContainer {
         Trigger shootReleaseTrigger = new Trigger(m_Controls::getShootReleaseTrigger);
 
         shootTrigger.onTrue(Commands.runOnce(() -> {
-          shotCommand = new ShotCommand(feeder, turret, hood, shooter, shotCalculator, drivebase::getPose);
+          shotCommand = new ShotCommand(feeder, turret, hood, shooter, intake, shotCalculator, drivebase::getPose);
           shotCommand.schedule();
         }));
         shootReleaseTrigger.onTrue(Commands.runOnce(() -> {

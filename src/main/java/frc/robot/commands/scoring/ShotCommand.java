@@ -6,6 +6,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants.FieldConstants;
 import frc.robot.subsystems.feeder.Feeder;
 import frc.robot.subsystems.hood.Hood;
+import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.turret.Turret;
 import frc.robot.utility.Shooter.ShotCalculator;
@@ -20,6 +21,7 @@ public class ShotCommand extends Command {
     private final Turret turret;
     private final Hood hood;
     private final Shooter shooter;
+    private final Intake intake;
     private final ShotCalculator shotCalculator;
     private final PoseSupplier supplier;
 
@@ -30,15 +32,17 @@ public class ShotCommand extends Command {
             Turret turret,
             Hood hood,
             Shooter shooter,
+            Intake intake,
             ShotCalculator shotCalculator,
             PoseSupplier supplier) {
         this.feeder = feeder;
         this.turret = turret;
         this.hood = hood;
         this.shooter = shooter;
+        this.intake = intake;
         this.shotCalculator = shotCalculator;
         this.supplier = supplier;
-        addRequirements(feeder);
+        addRequirements(feeder, intake);
     }
 
     @Override
@@ -46,6 +50,14 @@ public class ShotCommand extends Command {
 
     @Override
     public void execute() {
+        double poseX = supplier.getPose().getX();
+        boolean inScoringZone = poseX < FieldConstants.BLUE_ZONE_X || poseX > FieldConstants.RED_ZONE_X;
+
+        if (inScoringZone) {
+            intake.setOscillatingMode();
+        } else {
+            intake.setIdleMode();
+        }
 
         boolean allAtTarget = debouncer.calculate(shotCalculator.isShotValid())
                 && debouncer.calculate(turret.getAtTarget())
@@ -53,7 +65,7 @@ public class ShotCommand extends Command {
                 && debouncer.calculate(shooter.atTarget());
 
         boolean notAtDeadzone = !(
-            supplier.getPose().getX() > FieldConstants.BLUE_ZONE_X && supplier.getPose().getX() < FieldConstants.RED_ZONE_X
+            poseX > FieldConstants.BLUE_ZONE_X && poseX < FieldConstants.RED_ZONE_X
             && supplier.getPose().getY() > FieldConstants.PASS_DEADZONE_MIN_Y && supplier.getPose().getY() < FieldConstants.PASS_DEADZONE_MAX_Y
         );
         if (allAtTarget && notAtDeadzone) {
@@ -66,6 +78,7 @@ public class ShotCommand extends Command {
     @Override
     public void end(boolean interrupted) {
         feeder.requestStop();
+        intake.setIdleMode();
     }
 
     @Override

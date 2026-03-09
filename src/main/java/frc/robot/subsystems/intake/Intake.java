@@ -12,11 +12,16 @@ public class Intake extends SubsystemBase {
     private double lastExtendCommand = 0.0;
     private Mode mode = Mode.IDLE;
 
+    private double oscillateTimer = 0.0;
+    private boolean oscillateForward = true;
+    private static final double OSCILLATE_PERIOD = 0.4; // seconds per direction
+
     public enum Mode {
         IDLE,
         EXTENSION,
         EXTEND_ONLY,
-        SPRINGY
+        SPRINGY,
+        OSCILLATING
     }
 
     public Intake(IntakeIO io) {
@@ -31,6 +36,11 @@ public class Intake extends SubsystemBase {
 
         this.mode = mode;
         io.setSpringyCurrentLimits(mode == Mode.SPRINGY);
+
+        if (mode == Mode.OSCILLATING) {
+            oscillateTimer = 0.0;
+            oscillateForward = true;
+        }
     }
 
     public void setExtensionMode() {
@@ -43,6 +53,10 @@ public class Intake extends SubsystemBase {
 
     public void setExtendOnlyMode() {
         setMode(Mode.EXTEND_ONLY);
+    }
+
+    public void setOscillatingMode() {
+        setMode(Mode.OSCILLATING);
     }
 
     public void setIdleMode() {
@@ -144,6 +158,18 @@ public class Intake extends SubsystemBase {
             case SPRINGY:
                 stopExtend();
                 setSpinPercent(IntakeConstants.SPRINGY_SPIN_SPEED);
+                break;
+            case OSCILLATING:
+                oscillateTimer += 0.02; // 20ms loop
+                if (oscillateTimer >= OSCILLATE_PERIOD) {
+                    oscillateTimer = 0.0;
+                    oscillateForward = !oscillateForward;
+                }
+                double oscillateTarget = oscillateForward
+                    ? IntakeConstants.EXTENDED_POSITION_ROTATIONS
+                    : IntakeConstants.RETRACTED_POSITION_ROTATIONS;
+                setExtendPosition(oscillateTarget);
+                setSpinPercent(IntakeConstants.SPIN_SPEED);
                 break;
             case IDLE:
             default:
