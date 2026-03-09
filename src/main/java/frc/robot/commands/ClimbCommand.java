@@ -1,3 +1,4 @@
+
 package frc.robot.commands;
 
 import edu.wpi.first.wpilibj2.command.Command;
@@ -5,6 +6,7 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 
 import frc.robot.subsystems.climber.Climber;
+import frc.robot.subsystems.climber.Climber.ClimbState;
 import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 
@@ -19,6 +21,7 @@ import com.therekrab.autopilot.APConstraints;
 import com.therekrab.autopilot.APProfile;
 import com.therekrab.autopilot.APTarget;
 import com.therekrab.autopilot.Autopilot;
+import edu.wpi.first.units.measure.LinearVelocity;
 import static edu.wpi.first.units.Units.Centimeters;
 import static edu.wpi.first.units.Units.Degrees;
 
@@ -87,11 +90,12 @@ public class ClimbCommand extends SequentialCommandGroup {
 
         super.addCommands(
             Commands.parallel(
-                Commands.runOnce(() -> intake.setIdleMode()),
-                Commands.runOnce(() -> climb.setState(Climber.ClimbState.EXTENDED)),
+                Commands.runOnce(() -> intake.setIdleMode(), intake),
+                Commands.runOnce(() -> climb.setState(ClimbState.EXTENDED), climb),
                 getDriveToPrescore()
             ),
-            getDriveInCommand()
+            getDriveInCommand(),
+            Commands.runOnce(() -> climb.setState(ClimbState.RETRACTED), climb)
         );
         super.addRequirements(drivetrain, intake, climb);
     }
@@ -284,10 +288,10 @@ public class ClimbCommand extends SequentialCommandGroup {
 
         if (alliance.equals(DriverStation.Alliance.Blue)) {
             if (initialY > yThreshold) {
-                targetPose = new Pose2d(1.5753228664398193, 4.183515548706055, new Rotation2d(0));
+                targetPose = new Pose2d(1.614, 4.183515548706055, new Rotation2d(0));
                 selectedTarget = "Blue Upper";
             } else {
-                targetPose = new Pose2d(1.5753228664398193, 3.330711841583252, new Rotation2d(0));
+                targetPose = new Pose2d(1.614, 3.292, new Rotation2d(0));
                 selectedTarget = "Blue Lower";
             }
         } else {
@@ -309,3 +313,4 @@ public class ClimbCommand extends SequentialCommandGroup {
                            " at (" + targetPose.getX() + ", " + targetPose.getY() + ")");
     }
 }
+
