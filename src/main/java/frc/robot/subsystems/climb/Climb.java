@@ -51,17 +51,22 @@ public class Climb extends SubsystemBase {
     public Command resetPositionCommand() {
         return Commands.runOnce(() -> {
             manualControl = true;  // Pause periodic control
+            System.out.println("Climb reset started - using voltage control");
         }, this)
         .andThen(Commands.run(() -> {
-            io.setPercent(ClimbConstants.RESET_RETRACT_PERCENT);
+            io.setVoltage(ClimbConstants.HOMING_VOLTS);  // Use voltage instead of percent
+            Logger.recordOutput("Climb/ResetActive", true);
+            Logger.recordOutput("Climb/ResetVoltage", ClimbConstants.HOMING_VOLTS);
         }, this)
         .until(() -> inputs.retractLimitSwitch)
         .withTimeout(ClimbConstants.RESET_TIMEOUT_SECONDS))
         .finallyDo((interrupted) -> {
-            io.setPercent(0.0);
+            io.setVoltage(0.0);
             io.zeroPosition();
             manualControl = false;  // Resume periodic control
             currentState = ClimbState.RETRACTED;
+            Logger.recordOutput("Climb/ResetActive", false);
+            System.out.println("Climb reset finished - Interrupted: " + interrupted + " | Limit switch: " + inputs.retractLimitSwitch);
         });
     }
 
@@ -78,8 +83,10 @@ public class Climb extends SubsystemBase {
 
         // Skip automatic control if manual control is active (e.g., during reset)
         if (manualControl) {
+            Logger.recordOutput("Climb/ManualControlActive", true);
             return;
         }
+        Logger.recordOutput("Climb/ManualControlActive", false);
 
         double targetPosition = 0.0;
         switch (currentState) {
