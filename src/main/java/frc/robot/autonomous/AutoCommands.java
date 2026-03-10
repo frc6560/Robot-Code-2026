@@ -10,6 +10,7 @@ import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import frc.robot.commands.ClimbCommand;
+import frc.robot.commands.ClimbCommandauto;
 import frc.robot.utility.Shooter.ShotCalculator;
 
 import edu.wpi.first.math.geometry.Pose2d;
@@ -104,10 +105,7 @@ public class AutoCommands {
     }
 
     public Command climb(){
-        return Commands.defer(
-            () -> new ClimbCommand(drivetrain, intake, climber),
-            Set.of(drivetrain, intake, climber)
-        );
+        return new ClimbCommandauto (drivetrain);
     }
 
     public Command intake(){
@@ -169,6 +167,7 @@ public class AutoCommands {
         AutoTrajectory trenchToCenter = testRoutine.trajectory("depotTrenchToCenter");
         AutoTrajectory trenchToShoot = testRoutine.trajectory("depotTrenchToShoot");
         AutoTrajectory trenchToDepot = testRoutine.trajectory("depotTrenchToDepot");
+        AutoTrajectory trenchPullout = testRoutine.trajectory("depotPullout");
 
         trenchToCenter.atTime("intake")
             .onTrue(
@@ -199,7 +198,8 @@ public class AutoCommands {
                         cmdWithAccuracy(trenchToShoot)
                             .andThen(shoot()), 
                         cmdWithAccuracy(trenchToDepot)
-                            .andThen(shoot())
+                            .andThen(shoot()),
+                        cmdWithAccuracy(trenchPullout)
                     )
         );
 
