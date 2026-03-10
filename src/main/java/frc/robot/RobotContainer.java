@@ -161,11 +161,6 @@ public class RobotContainer {
           .onTrue(Commands.defer(() -> new ClimbCommand(drivebase, intake, climber), Set.of(drivebase)));
         driverXbox.start().
           onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
-
-
-        driverXbox.leftBumper()
-          .onTrue(Commands.runOnce(intake::setExtensionMode, intake))
-          .onFalse(Commands.runOnce(intake::setIdleMode, intake));
         
         Trigger shootTrigger = new Trigger(m_Controls::getShootTrigger);
         Trigger shootReleaseTrigger = new Trigger(m_Controls::getShootReleaseTrigger);
@@ -184,7 +179,7 @@ public class RobotContainer {
         Trigger intakeTrigger = new Trigger(m_Controls::getIntakeTrigger);
         Trigger intakeOscillatingTrigger = new Trigger(m_Controls::getIntakeRollingTrigger);
         Trigger intakeReleaseTrigger = new Trigger(m_Controls::getIntakeReleaseTrigger);
-        Trigger intakeRollingTrigger = new Trigger(m_Controls::getIntakeRollingTrigger);
+        Trigger intakeRollingTrigger = new Trigger(m_Controls::getRollerTrigger);
         Trigger intakeRollingReleaseTrigger = new Trigger(m_Controls::getRollerReleaseTrigger);
 
         intakeTrigger.onTrue(Commands.runOnce(() -> intake.setExtendMode(Intake.ExtendMode.EXTENSION), intake));
@@ -202,9 +197,6 @@ public class RobotContainer {
                 return Commands.runOnce(() -> vision.hardReset("limelight-br"), vision);
             }, Set.of(vision))
         );
-
-        Trigger intakeResetTrigger = new Trigger(() -> m_Controls.getButton(3));
-        intakeResetTrigger.onTrue(Commands.runOnce(intake::resetExtendPosition, intake));
     }
 
 

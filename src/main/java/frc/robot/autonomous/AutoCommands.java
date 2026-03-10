@@ -155,7 +155,7 @@ public class AutoCommands {
                         cmdWithAccuracy(trenchToShoot)
                             .andThen(shoot()), 
                         cmdWithAccuracy(trenchToHp)
-                            .andThen(Commands.parallel(shoot(), climb()))
+                            .andThen(shoot())
                     )
         );
 
@@ -199,7 +199,7 @@ public class AutoCommands {
                         cmdWithAccuracy(trenchToShoot)
                             .andThen(shoot()), 
                         cmdWithAccuracy(trenchToDepot)
-                            .andThen(Commands.parallel(shoot(), climb()))
+                            .andThen(shoot())
                     )
         );
 

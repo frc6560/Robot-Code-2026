@@ -70,15 +70,7 @@ public class ManualControls {
     public boolean getIntakeRollingTrigger(){
       return getButton(2);
     }
-
-      public boolean getClimbTrigger(){
-        return getButton(3);
-      }
-  
-      public boolean getClimbReleaseTrigger(){
-        return getButtonRelease(3);
-      }
-  
+    
       public boolean getAutoAlignTrigger(){
         return getButton(10);
       }
