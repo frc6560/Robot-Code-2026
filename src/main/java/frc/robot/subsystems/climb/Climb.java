@@ -52,13 +52,22 @@ public class Climb extends SubsystemBase {
         return Commands.runOnce(() -> {
             manualControl = true;  // Pause periodic control
             System.out.println("Climb reset started - using voltage control");
+            System.out.println("  Initial limit switch state: " + inputs.retractLimitSwitch);
+            System.out.println("  Initial position: " + inputs.leftPositionRotations);
         }, this)
         .andThen(Commands.run(() -> {
             io.setVoltage(ClimbConstants.HOMING_VOLTS);  // Use voltage instead of percent
             Logger.recordOutput("Climb/ResetActive", true);
             Logger.recordOutput("Climb/ResetVoltage", ClimbConstants.HOMING_VOLTS);
+            Logger.recordOutput("Climb/ResetLimitSwitch", inputs.retractLimitSwitch);
         }, this)
-        .until(() -> inputs.retractLimitSwitch)
+        .until(() -> {
+            boolean limitHit = inputs.retractLimitSwitch;
+            if (limitHit) {
+                System.out.println("Limit switch triggered! Ending reset.");
+            }
+            return limitHit;
+        })
         .withTimeout(ClimbConstants.RESET_TIMEOUT_SECONDS))
         .finallyDo((interrupted) -> {
             io.setVoltage(0.0);
@@ -116,6 +125,7 @@ public class Climb extends SubsystemBase {
         Logger.recordOutput("Climb/TargetPosition", targetPosition);
         Logger.recordOutput("Climb/PositionError", positionError);
         Logger.recordOutput("Climb/AtTarget", atTarget);
+        Logger.recordOutput("Climb/LimitSwitch", inputs.retractLimitSwitch);
 
         
 
