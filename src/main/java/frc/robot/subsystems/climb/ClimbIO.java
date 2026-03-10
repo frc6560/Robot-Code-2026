@@ -11,13 +11,15 @@ public interface ClimbIO {
     public static class ClimbIOInputs {
         public double leftPositionRotations = 0.0;
         public double rightPositionRotations = 0.0;
-        
+
         public double leftVelocityRPS = 0.0;
         public double rightVelocityRPS = 0.0;
-        
+
         public double[] appliedVolts = new double[]{0.0, 0.0};
         public double[] currentAmps = new double[]{0.0, 0.0};
         public double[] tempCelsius = new double[]{0.0, 0.0};
+
+        public boolean retractLimitSwitch = false;
     }
 
     default void updateInputs(ClimbIOInputs inputs) {}

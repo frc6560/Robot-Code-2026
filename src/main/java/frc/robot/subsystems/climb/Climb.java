@@ -1,6 +1,8 @@
 package frc.robot.subsystems.climb;
 
 import org.littletonrobotics.junction.Logger;
+import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.ClimbConstants;
 
@@ -34,6 +36,27 @@ public class Climb extends SubsystemBase {
 
     public double getPosition() {
         return inputs.leftPositionRotations;
+    }
+
+    public boolean isRetracted() {
+        return inputs.retractLimitSwitch;
+    }
+
+    /**
+     * Returns a command that slowly retracts the climb until the limit switch
+     * triggers, then resets the encoder to zero. Times out after RESET_TIMEOUT_SECONDS
+     * and sets zero at that point as a fallback if the limit switch doesn't work.
+     */
+    public Command resetPositionCommand() {
+        return Commands.run(() -> {
+            io.setPercent(ClimbConstants.RESET_RETRACT_PERCENT);
+        }, this)
+        .until(() -> inputs.retractLimitSwitch)
+        .withTimeout(ClimbConstants.RESET_TIMEOUT_SECONDS)
+        .finallyDo((interrupted) -> {
+            io.setPercent(0.0);
+            io.zeroPosition();
+        });
     }
 
     @Override

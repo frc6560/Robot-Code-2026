@@ -16,11 +16,13 @@ import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Temperature;
 import edu.wpi.first.units.measure.Voltage;
+import edu.wpi.first.wpilibj.DigitalInput;
 import frc.robot.Constants.ClimbConstants;
 
 public class ClimbIOKraken implements ClimbIO {
     private final TalonFX leaderMotor;
     private final TalonFX followerMotor;
+    private final DigitalInput retractLimitSwitch;
 
     private final MotionMagicVoltage motionMagicReq = new MotionMagicVoltage(0).withSlot(0);
     private final VoltageOut voltageReq = new VoltageOut(0);
@@ -35,6 +37,7 @@ public class ClimbIOKraken implements ClimbIO {
     public ClimbIOKraken() {
         leaderMotor = new TalonFX(ClimbConstants.LEFT_MOTOR_ID, ClimbConstants.CAN_BUS);
         followerMotor = new TalonFX(ClimbConstants.RIGHT_MOTOR_ID, ClimbConstants.CAN_BUS);
+        retractLimitSwitch = new DigitalInput(ClimbConstants.RETRACT_LIMIT_SWITCH_DIO);
 
         configureLeaderMotor();
         configureFollowerMotor();
@@ -100,10 +103,13 @@ public class ClimbIOKraken implements ClimbIO {
         inputs.rightPositionRotations = followerPos.getValueAsDouble();
         inputs.leftVelocityRPS = leaderVel.getValueAsDouble();
         inputs.rightVelocityRPS = followerVel.getValueAsDouble();
-        
+
         inputs.appliedVolts[0] = leaderVolts.getValueAsDouble(); inputs.appliedVolts[1] = followerVolts.getValueAsDouble();
         inputs.currentAmps[0] = leaderCurrent.getValueAsDouble(); inputs.currentAmps[1] = followerCurrent.getValueAsDouble();
         inputs.tempCelsius[0] = leaderTemp.getValueAsDouble(); inputs.tempCelsius[1] = followerTemp.getValueAsDouble();
+
+        boolean rawSwitch = retractLimitSwitch.get();
+        inputs.retractLimitSwitch = ClimbConstants.RETRACT_LIMIT_SWITCH_INVERTED ? !rawSwitch : rawSwitch;
     }
 
     @Override
