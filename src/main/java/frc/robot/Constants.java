@@ -320,7 +320,7 @@ public final class Constants {
 
     // Limit Switch
     public static final int RETRACT_LIMIT_SWITCH_DIO = 4;
-    public static final boolean RETRACT_LIMIT_SWITCH_INVERTED = false; 
+    public static final boolean RETRACT_LIMIT_SWITCH_INVERTED = true;  // Inverted: switch is normally closed 
 
     // Motion Magic / PID Tuning
     public static final double kP = 5.0; // Increased to reach exact target
@@ -332,7 +332,7 @@ public final class Constants {
     public static final double ACCELERATION_RPS2 = 80.0;
 
     // 3-State Climb Heights (Tune these rotations to your actual robot)
-    public static final double RETRACTED_ROTATIONS = 0.0;   // Fully pulled down (Starting config)
+    public static final double RETRACTED_ROTATIONS = 0.05;  // Backed off slightly from limit switch
     public static final double PULL_UP_ROTATIONS = 11.5;    // Pulling the robot off the ground
     public static final double EXTENDED_ROTATIONS = 33.0;  // Reaching up for the rung
 

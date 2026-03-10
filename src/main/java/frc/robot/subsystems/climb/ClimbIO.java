@@ -28,4 +28,5 @@ public interface ClimbIO {
     default void setPercent(double percent) {}
     default void setVoltage(double volts) {}
     default void zeroPosition() {}
+    default void setSoftLimitsEnabled(boolean enabled) {}
 }

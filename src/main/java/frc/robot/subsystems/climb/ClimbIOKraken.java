@@ -123,4 +123,13 @@ public class ClimbIOKraken implements ClimbIO {
 
     @Override
     public void zeroPosition() { leaderMotor.setPosition(0.0); }
+
+    @Override
+    public void setSoftLimitsEnabled(boolean enabled) {
+        TalonFXConfiguration config = new TalonFXConfiguration();
+        leaderMotor.getConfigurator().refresh(config);
+        config.SoftwareLimitSwitch.ForwardSoftLimitEnable = enabled;
+        config.SoftwareLimitSwitch.ReverseSoftLimitEnable = enabled;
+        leaderMotor.getConfigurator().apply(config);
+    }
 }

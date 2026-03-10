@@ -51,7 +51,8 @@ public class Climb extends SubsystemBase {
     public Command resetPositionCommand() {
         return Commands.runOnce(() -> {
             manualControl = true;  // Pause periodic control
-            System.out.println("Climb reset started - using voltage control");
+            io.setSoftLimitsEnabled(false);  // Disable soft limits for reset
+            System.out.println("Climb reset started - soft limits disabled");
             System.out.println("  Initial limit switch state: " + inputs.retractLimitSwitch);
             System.out.println("  Initial position: " + inputs.leftPositionRotations);
         }, this)
@@ -69,13 +70,21 @@ public class Climb extends SubsystemBase {
             return limitHit;
         })
         .withTimeout(ClimbConstants.RESET_TIMEOUT_SECONDS))
-        .finallyDo((interrupted) -> {
+        .andThen(Commands.runOnce(() -> {
             io.setVoltage(0.0);
             io.zeroPosition();
-            manualControl = false;  // Resume periodic control
-            currentState = ClimbState.RETRACTED;
+            System.out.println("Limit switch hit - zeroed encoder, backing off...");
+        }))
+        .andThen(Commands.waitSeconds(0.1))  // Brief pause
+        .andThen(Commands.runOnce(() -> {
+            manualControl = false;  // Resume periodic control for position control
+            currentState = ClimbState.RETRACTED;  // This will command it to RETRACTED_ROTATIONS (0.05)
+        }))
+        .andThen(Commands.waitSeconds(0.3))  // Wait for it to back off
+        .finallyDo((interrupted) -> {
+            io.setSoftLimitsEnabled(true);  // Re-enable soft limits
             Logger.recordOutput("Climb/ResetActive", false);
-            System.out.println("Climb reset finished - Interrupted: " + interrupted + " | Limit switch: " + inputs.retractLimitSwitch);
+            System.out.println("Climb reset finished - Soft limits re-enabled");
         });
     }
 
