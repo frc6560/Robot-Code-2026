@@ -200,6 +200,7 @@ public class AutoCommands {
                         cmdWithAccuracy(trenchToDepot)
                             .andThen(shoot()),
                         cmdWithAccuracy(trenchPullout)
+                            .andThen(climb())
                     )
         );
 
