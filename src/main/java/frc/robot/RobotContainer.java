@@ -171,7 +171,7 @@ public class RobotContainer {
         Trigger shootReleaseTrigger = new Trigger(m_Controls::getShootReleaseTrigger);
 
         shootTrigger.onTrue(Commands.runOnce(() -> {
-          shotCommand = new ShotCommand(feeder, turret, hood, shooter, intake, shotCalculator, drivebase::getPose);
+          shotCommand = new ShotCommand(feeder, turret, hood, shooter, shotCalculator, drivebase::getPose);
           shotCommand.schedule();
         }));
         shootReleaseTrigger.onTrue(Commands.runOnce(() -> {
@@ -182,12 +182,18 @@ public class RobotContainer {
 
 
         Trigger intakeTrigger = new Trigger(m_Controls::getIntakeTrigger);
-        Trigger intakeRollingTrigger = new Trigger(m_Controls::getIntakeRollingTrigger);
+        Trigger intakeOscillatingTrigger = new Trigger(m_Controls::getIntakeRollingTrigger);
         Trigger intakeReleaseTrigger = new Trigger(m_Controls::getIntakeReleaseTrigger);
+        Trigger intakeRollingTrigger = new Trigger(m_Controls::getIntakeRollingTrigger);
+        Trigger intakeRollingReleaseTrigger = new Trigger(m_Controls::getRollerReleaseTrigger);
 
-        intakeTrigger.onTrue(Commands.runOnce(intake::setExtendOnlyMode, intake));
-        intakeRollingTrigger.onTrue(Commands.runOnce(intake::setExtensionMode, intake));
-        intakeReleaseTrigger.onTrue(Commands.runOnce(intake::setIdleMode, intake));
+        intakeTrigger.onTrue(Commands.runOnce(() -> intake.setExtendMode(Intake.ExtendMode.EXTENSION), intake));
+        intakeOscillatingTrigger.onTrue(Commands.runOnce(() -> intake.setExtendMode(Intake.ExtendMode.OSCILLATING), intake));
+        intakeReleaseTrigger.onTrue(Commands.runOnce(() -> intake.setExtendMode(Intake.ExtendMode.IDLE), intake));
+
+        intakeRollingTrigger.onTrue(Commands.runOnce(() -> intake.setRollerMode(Intake.RollerMode.ACTIVE), intake));
+        intakeRollingReleaseTrigger.onTrue(Commands.runOnce(() -> intake.setRollerMode(Intake.RollerMode.INACTIVE), intake));
+
 
         // Reset buttons
         Trigger visionResetTrigger = new Trigger(() -> m_Controls.getButton(4));

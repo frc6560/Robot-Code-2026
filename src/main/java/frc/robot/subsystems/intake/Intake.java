@@ -10,12 +10,27 @@ public class Intake extends SubsystemBase {
     private final IntakeIOInputsAutoLogged inputs = new IntakeIOInputsAutoLogged();
 
     private double lastExtendCommand = 0.0;
-    private Mode mode = Mode.IDLE;
+
+    private ExtendMode extendMode = ExtendMode.IDLE;
+    private RollerMode rollerMode = RollerMode.INACTIVE;
+    private boolean springyMode = false;
 
     private double oscillateTimer = 0.0;
     private boolean oscillateForward = true;
     private static final double OSCILLATE_PERIOD = 0.4; // seconds per direction
 
+    public enum ExtendMode {
+        IDLE,
+        EXTENSION,
+        OSCILLATING
+    }
+
+    public enum RollerMode {
+        INACTIVE,
+        ACTIVE
+    }
+
+    // Legacy Mode enum for backwards compatibility
     public enum Mode {
         IDLE,
         EXTENSION,
@@ -29,20 +44,75 @@ public class Intake extends SubsystemBase {
         io.setSpringyCurrentLimits(false);
     }
 
-    public void setMode(Mode mode) {
-        if (this.mode == mode) {
+    // New state machine methods for ExtendMode
+    public void setExtendMode(ExtendMode mode) {
+        if (this.extendMode == mode) {
             return;
         }
 
-        this.mode = mode;
-        io.setSpringyCurrentLimits(mode == Mode.SPRINGY);
+        this.extendMode = mode;
 
-        if (mode == Mode.OSCILLATING) {
+        if (mode == ExtendMode.OSCILLATING) {
             oscillateTimer = 0.0;
             oscillateForward = true;
         }
     }
 
+    public ExtendMode getExtendMode() {
+        return extendMode;
+    }
+
+    // New state machine methods for RollerMode
+    public void setRollerMode(RollerMode mode) {
+        this.rollerMode = mode;
+    }
+
+    public RollerMode getRollerMode() {
+        return rollerMode;
+    }
+
+    // Springy mode flag (affects current limits and spin speed)
+    public void setSpringy(boolean springy) {
+        this.springyMode = springy;
+        io.setSpringyCurrentLimits(springy);
+    }
+
+    public boolean isSpringy() {
+        return springyMode;
+    }
+
+    // Legacy setMode for backwards compatibility - maps to new state machines
+    public void setMode(Mode mode) {
+        switch (mode) {
+            case IDLE:
+                setExtendMode(ExtendMode.IDLE);
+                setRollerMode(RollerMode.INACTIVE);
+                setSpringy(false);
+                break;
+            case EXTENSION:
+                setExtendMode(ExtendMode.EXTENSION);
+                setRollerMode(RollerMode.ACTIVE);
+                setSpringy(false);
+                break;
+            case EXTEND_ONLY:
+                setExtendMode(ExtendMode.EXTENSION);
+                setRollerMode(RollerMode.INACTIVE);
+                setSpringy(false);
+                break;
+            case SPRINGY:
+                setExtendMode(ExtendMode.IDLE);
+                setRollerMode(RollerMode.ACTIVE);
+                setSpringy(true);
+                break;
+            case OSCILLATING:
+                setExtendMode(ExtendMode.OSCILLATING);
+                setRollerMode(RollerMode.ACTIVE);
+                setSpringy(false);
+                break;
+        }
+    }
+
+    // Legacy convenience methods - keep for backwards compatibility
     public void setExtensionMode() {
         setMode(Mode.EXTENSION);
     }
@@ -116,8 +186,18 @@ public class Intake extends SubsystemBase {
         io.resetExtendPosition();
     }
 
+    // Legacy getMode - derives from new state machines
     public Mode getMode() {
-        return mode;
+        if (springyMode) {
+            return Mode.SPRINGY;
+        }
+        if (extendMode == ExtendMode.OSCILLATING) {
+            return Mode.OSCILLATING;
+        }
+        if (extendMode == ExtendMode.EXTENSION) {
+            return rollerMode == RollerMode.ACTIVE ? Mode.EXTENSION : Mode.EXTEND_ONLY;
+        }
+        return Mode.IDLE;
     }
 
     @Override
@@ -126,14 +206,15 @@ public class Intake extends SubsystemBase {
         Logger.processInputs("Intake", inputs);
 
         if (!IntakeConstants.EXTENSION_ENABLED) {
-            if (mode == Mode.EXTENSION || mode == Mode.SPRINGY || mode == Mode.EXTEND_ONLY) {
-                stopExtend();
-                setSpinPercent(mode == Mode.EXTEND_ONLY ? 0.0 : IntakeConstants.SPIN_SPEED);
+            stopExtend();
+            if (rollerMode == RollerMode.ACTIVE) {
+                setSpinPercent(springyMode ? IntakeConstants.SPRINGY_SPIN_SPEED : IntakeConstants.SPIN_SPEED);
             } else {
-                stopExtend();
                 stopSpin();
             }
-            Logger.recordOutput("Intake/Mode", mode.toString());
+            Logger.recordOutput("Intake/ExtendMode", extendMode.toString());
+            Logger.recordOutput("Intake/RollerMode", rollerMode.toString());
+            Logger.recordOutput("Intake/Springy", springyMode);
             return;
         }
 
@@ -146,18 +227,10 @@ public class Intake extends SubsystemBase {
             io.setExtendPercent(0.0);
         }
 
-        switch (mode) {
+        // Handle extension state machine
+        switch (extendMode) {
             case EXTENSION:
                 setExtendPosition(IntakeConstants.EXTENDED_POSITION_ROTATIONS);
-                setSpinPercent(IntakeConstants.SPIN_SPEED);
-                break;
-            case EXTEND_ONLY:
-                setExtendPosition(IntakeConstants.EXTENDED_POSITION_ROTATIONS);
-                stopSpin();
-                break;
-            case SPRINGY:
-                stopExtend();
-                setSpinPercent(IntakeConstants.SPRINGY_SPIN_SPEED);
                 break;
             case OSCILLATING:
                 oscillateTimer += 0.02; // 20ms loop
@@ -169,16 +242,27 @@ public class Intake extends SubsystemBase {
                     ? IntakeConstants.EXTENDED_POSITION_ROTATIONS
                     : IntakeConstants.RETRACTED_POSITION_ROTATIONS;
                 setExtendPosition(oscillateTarget);
-                setSpinPercent(IntakeConstants.SPIN_SPEED);
                 break;
             case IDLE:
             default:
-                setExtendPosition(IntakeConstants.RETRACTED_POSITION_ROTATIONS);
-                stopSpin();
+                if (springyMode) {
+                    stopExtend();
+                } else {
+                    setExtendPosition(IntakeConstants.RETRACTED_POSITION_ROTATIONS);
+                }
                 break;
         }
 
-        Logger.recordOutput("Intake/Mode", mode.toString());
+        // Handle roller state machine
+        if (rollerMode == RollerMode.ACTIVE) {
+            setSpinPercent(IntakeConstants.SPIN_SPEED);
+        } else {
+            stopSpin();
+        }
+
+        Logger.recordOutput("Intake/ExtendMode", extendMode.toString());
+        Logger.recordOutput("Intake/RollerMode", rollerMode.toString());
+        Logger.recordOutput("Intake/Springy", springyMode);
         Logger.recordOutput("Intake/ExtendCommand", lastExtendCommand);
     }
 }

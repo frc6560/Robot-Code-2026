@@ -20,7 +20,6 @@ public class ShotCommand extends Command {
     private final Turret turret;
     private final Hood hood;
     private final Shooter shooter;
-    private final Intake intake;
     private final ShotCalculator shotCalculator;
     private final PoseSupplier supplier;
 
@@ -31,17 +30,15 @@ public class ShotCommand extends Command {
             Turret turret,
             Hood hood,
             Shooter shooter,
-            Intake intake,
             ShotCalculator shotCalculator,
             PoseSupplier supplier) {
         this.feeder = feeder;
         this.turret = turret;
         this.hood = hood;
         this.shooter = shooter;
-        this.intake = intake;
         this.shotCalculator = shotCalculator;
         this.supplier = supplier;
-        addRequirements(feeder, intake);
+        addRequirements(feeder);
     }
 
     @Override
@@ -51,12 +48,6 @@ public class ShotCommand extends Command {
     public void execute() {
         double poseX = supplier.getPose().getX();
         boolean inScoringZone = poseX < FieldConstants.BLUE_ZONE_X || poseX > FieldConstants.RED_ZONE_X;
-
-        if (inScoringZone) {
-            intake.setOscillatingMode();
-        } else {
-            intake.setIdleMode();
-        }
 
         boolean allAtTarget = debouncer.calculate(shotCalculator.isShotValid())
                 && debouncer.calculate(turret.getAtTarget())
@@ -77,7 +68,6 @@ public class ShotCommand extends Command {
     @Override
     public void end(boolean interrupted) {
         feeder.requestStop();
-        intake.setIdleMode();
     }
 
     @Override

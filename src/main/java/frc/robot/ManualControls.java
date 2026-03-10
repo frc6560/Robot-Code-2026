@@ -43,6 +43,14 @@ public class ManualControls {
         return m_buttonBoard.getRawButtonReleased(buttonNumber);
     }
 
+    public boolean getRollerTrigger(){
+      return getButton(3);
+    }
+
+    public boolean getRollerReleaseTrigger(){
+      return getButtonRelease(3);
+    }
+
     public boolean getShootTrigger(){
       return getButton(12);
     }
