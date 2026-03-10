@@ -11,6 +11,7 @@ public class Climb extends SubsystemBase {
     private final ClimbIOInputsAutoLogged inputs = new ClimbIOInputsAutoLogged();
 
     private ClimbState currentState = ClimbState.RETRACTED;
+    private boolean manualControl = false;  // Flag to pause periodic control
 
     public enum ClimbState {
         RETRACTED,
@@ -44,18 +45,23 @@ public class Climb extends SubsystemBase {
 
     /**
      * Returns a command that slowly retracts the climb until the limit switch
-     * triggers, then resets the encoder to zero. Times out after RESET_TIMEOUT_SECONDS
-     * and sets zero at that point as a fallback if the limit switch doesn't work.
+     * triggers, then resets the encoder to zero. Pauses the periodic control
+     * to allow direct percent control.
      */
     public Command resetPositionCommand() {
-        return Commands.run(() -> {
+        return Commands.runOnce(() -> {
+            manualControl = true;  // Pause periodic control
+        }, this)
+        .andThen(Commands.run(() -> {
             io.setPercent(ClimbConstants.RESET_RETRACT_PERCENT);
         }, this)
         .until(() -> inputs.retractLimitSwitch)
-        .withTimeout(ClimbConstants.RESET_TIMEOUT_SECONDS)
+        .withTimeout(ClimbConstants.RESET_TIMEOUT_SECONDS))
         .finallyDo((interrupted) -> {
             io.setPercent(0.0);
             io.zeroPosition();
+            manualControl = false;  // Resume periodic control
+            currentState = ClimbState.RETRACTED;
         });
     }
 
@@ -67,6 +73,11 @@ public class Climb extends SubsystemBase {
         if (!ClimbConstants.CLIMB_ENABLED) {
             stop();
             Logger.recordOutput("Climb/Error", "Climb disabled in constants");
+            return;
+        }
+
+        // Skip automatic control if manual control is active (e.g., during reset)
+        if (manualControl) {
             return;
         }
 

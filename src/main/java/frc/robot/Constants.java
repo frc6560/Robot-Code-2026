@@ -337,7 +337,7 @@ public final class Constants {
     public static final double EXTENDED_ROTATIONS = 33.0;  // Reaching up for the rung
 
     // Homing/Reset Routine Constants
-    public static final double RESET_RETRACT_PERCENT = -0.15;  // Gentle retract speed for limit switch homing
+    public static final double RESET_RETRACT_PERCENT = 0.15;  // Gentle retract speed (positive needed due to motor setup)
     public static final double RESET_TIMEOUT_SECONDS = 3.0;    // Safety timeout for reset command
     public static final double HOMING_VOLTS = -2.0;            // Gentle downward voltage to hit the hard stop
     public static final double HOMING_CURRENT_AMPS = 35.0;     // Amps to trigger the "hard stop detected" logic
