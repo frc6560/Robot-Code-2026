@@ -28,6 +28,7 @@ import frc.robot.subsystems.superstructure.Feeder;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import frc.robot.subsystems.vision.LimelightVision;
 import frc.robot.subsystems.vision.VisionSubsystem;
+import frc.robot.subsystems.superstructure.ControllerRumbleSubsystem;
 import frc.robot.subsystems.superstructure.LEDSubsystem;
 
 
@@ -48,6 +49,8 @@ public class RobotContainer {
     private final Feeder  feeder  = new Feeder();
 
     private final LEDSubsystem leds = new LEDSubsystem(drivebase::getPose);
+    private final ControllerRumbleSubsystem controllerRumble =
+            new ControllerRumbleSubsystem(driverXbox, operatorXbox);
 
     private final ShotCalculator shotCalculator = new ShotCalculator();
 

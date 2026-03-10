@@ -400,7 +400,37 @@ public class LEDSubsystem extends SubsystemBase {
     // 2026 SHIFT HELPERS
     // ═══════════════════════════════════════════════════════════════════════════
 
-    private TeleopSegment getTeleopSegment(double matchTimeRemainingSeconds) {
+    public static Optional<Double> getUpcomingAllianceActivationBoundary(
+            Alliance myAlliance,
+            String gameData,
+            double matchTimeRemainingSeconds) {
+        TeleopSegment seg = getTeleopSegment(matchTimeRemainingSeconds);
+        if (seg == TeleopSegment.UNKNOWN || seg == TeleopSegment.ENDGAME) {
+            return Optional.empty();
+        }
+
+        Optional<Alliance> inactiveFirstOpt = parseInactiveFirstAlliance(gameData);
+        if (inactiveFirstOpt.isEmpty()) {
+            return Optional.empty();
+        }
+
+        Alliance inactiveFirst = inactiveFirstOpt.get();
+        boolean activeNow = (seg == TeleopSegment.TRANSITION)
+                || isMyHubActiveDuringShift(myAlliance, inactiveFirst, seg);
+
+        TeleopSegment nextSeg = nextTeleopSegment(seg);
+        boolean activeAfter = (nextSeg == TeleopSegment.TRANSITION || nextSeg == TeleopSegment.ENDGAME)
+                ? true
+                : isMyHubActiveDuringShift(myAlliance, inactiveFirst, nextSeg);
+
+        if (activeAfter && !activeNow) {
+            return Optional.of(nextBoundaryMatchTimeRemaining(seg));
+        }
+
+        return Optional.empty();
+    }
+
+    private static TeleopSegment getTeleopSegment(double matchTimeRemainingSeconds) {
         // DS can return <0 when not synced/valid
         if (matchTimeRemainingSeconds < 0) return TeleopSegment.UNKNOWN;
 
@@ -415,7 +445,7 @@ public class LEDSubsystem extends SubsystemBase {
         return TeleopSegment.UNKNOWN;
     }
 
-    private TeleopSegment nextTeleopSegment(TeleopSegment seg) {
+    private static TeleopSegment nextTeleopSegment(TeleopSegment seg) {
         return switch (seg) {
             case TRANSITION -> TeleopSegment.SHIFT_1;
             case SHIFT_1    -> TeleopSegment.SHIFT_2;
@@ -431,7 +461,7 @@ public class LEDSubsystem extends SubsystemBase {
      * Seconds until the next segment boundary (when match time crosses the next "*_END" value).
      * Returns -1 if unknown.
      */
-    private double secondsUntilNextBoundary(double matchTimeRemainingSeconds, TeleopSegment seg) {
+    private static double secondsUntilNextBoundary(double matchTimeRemainingSeconds, TeleopSegment seg) {
         if (matchTimeRemainingSeconds < 0) return -1.0;
 
         double boundary = switch (seg) {
@@ -450,7 +480,7 @@ public class LEDSubsystem extends SubsystemBase {
 
 
     /** Returns the match-time-remaining value of the next boundary for a given segment (seconds remaining). */
-    private double nextBoundaryMatchTimeRemaining(TeleopSegment seg) {
+    private static double nextBoundaryMatchTimeRemaining(TeleopSegment seg) {
         return switch (seg) {
             case TRANSITION -> TELEOP_TRANSITION_END;
             case SHIFT_1    -> SHIFT_1_END;
@@ -468,7 +498,7 @@ public class LEDSubsystem extends SubsystemBase {
      *  - 'R' => Red hub inactive first (SHIFT 1)
      *  - 'B' => Blue hub inactive first (SHIFT 1)
      */
-    private Optional<Alliance> parseInactiveFirstAlliance(String gameData) {
+    private static Optional<Alliance> parseInactiveFirstAlliance(String gameData) {
         if (gameData == null || gameData.isEmpty()) return Optional.empty();
 
         char c = Character.toUpperCase(gameData.charAt(0));
@@ -486,7 +516,7 @@ public class LEDSubsystem extends SubsystemBase {
      *
      * Outside SHIFT 1–4, we treat both hubs active (handled elsewhere).
      */
-    private boolean isMyHubActiveDuringShift(Alliance myAlliance, Alliance inactiveFirst, TeleopSegment seg) {
+    private static boolean isMyHubActiveDuringShift(Alliance myAlliance, Alliance inactiveFirst, TeleopSegment seg) {
         boolean inactiveFirstActive = switch (seg) {
             case SHIFT_1 -> false;
             case SHIFT_2 -> true;
