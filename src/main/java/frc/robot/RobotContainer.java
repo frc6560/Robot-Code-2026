@@ -207,7 +207,7 @@ public class RobotContainer {
         driverXbox.a().onTrue(Commands.defer(() -> new ClimbCommand(drivebase, intake, climb), Set.of(drivebase, intake, climb)));
 
         // Climb reset using limit switch - hold back + right bumper to zero the climb encoder
-        driverXbox.back().and(driverXbox.rightBumper()).onTrue(climb.resetPositionCommand());
+        driverXbox.rightBumper().onTrue(climb.resetPositionCommand());
         // SysID bindings (using D-pad on driver controller) - COMMENTED OUT
         // // Hood SysID - D-pad Up/Down for quasistatic
         //, hold B + D-pad for dynamic
