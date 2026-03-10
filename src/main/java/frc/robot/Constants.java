@@ -20,7 +20,7 @@ import swervelib.math.Matter;
  * not put anything functional in this class.
  */
 public final class Constants {
-  public static final double ROBOT_MASS = (148 - 20.3) * 0.453592; // TODO: replace with true robot mass
+  public static final double ROBOT_MASS = 62.59; // TODO: replace with true robot mass
   public static final Matter CHASSIS    = new Matter(new Translation3d(0, 0, Units.inchesToMeters(8)), ROBOT_MASS);
   public static final double LOOP_TIME  = 0.13; //s, 20ms + 110ms sprk max velocity lag
   public static final double MAX_SPEED  = Units.feetToMeters(14.5);
@@ -234,7 +234,7 @@ public final class Constants {
     public static final double ENCODER_GEAR_RATIO = 127.0 / 168.0; // turret spins once for every ~0.75 encoder rotations. fix.
 
     // Absolute encoder setup
-    public static final double ABSOLUTE_ENCODER_OFFSET = 0.310; 
+    public static final double ABSOLUTE_ENCODER_OFFSET = 0.315; 
     public static final boolean ABSOLUTE_ENCODER_REVERSED = false; 
 
     // soft limits

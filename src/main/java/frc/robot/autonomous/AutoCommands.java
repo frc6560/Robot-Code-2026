@@ -92,6 +92,7 @@ public class AutoCommands {
             shooter.setGoal(calculator.getFlywheelRPM());
             if(shooter.atTarget()){
                 feeder.requestFeed();
+                intake.setOscillatingMode();
             }
         }).withTimeout(3.0)
         .finallyDo((interrupted) -> {

@@ -12,7 +12,6 @@ import frc.robot.subsystems.turret.Turret;
 import frc.robot.utility.Shooter.ShotCalculator;
 
 public class ShotCommand extends Command {
-
     public interface PoseSupplier {
         Pose2d getPose();
     }
