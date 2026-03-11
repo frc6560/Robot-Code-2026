@@ -71,21 +71,16 @@ public class LimelightVision{
             return;
         }
 
-        // Calculates standard deviation dynamically. Only use rotation in certain circumstances.
-        boolean useRotation = poseEstimate.tagCount > 1 && 
-                            poseEstimate.avgTagDist < Units.feetToMeters(5); // be AGGRESSIVE. this is only to tune out drift in edge cases.
+        // Calculates standard deviation dynamically. never use rotation.
 
         kStdvXY = Math.pow(poseEstimate.avgTagDist, 2) 
                             / poseEstimate.tagCount;
-        kStdvTheta = 
-            useRotation ? Math.pow(poseEstimate.avgTagDist, 2) 
-                            / poseEstimate.tagCount 
-                        : Double.POSITIVE_INFINITY;
+        kStdvTheta = LimelightConstants.kStdvThetaBase; 
 
         drivebase.getSwerveDrive().setVisionMeasurementStdDevs(
             VecBuilder.fill(kStdvXY * LimelightConstants.kStdvXYBase,
                              kStdvXY * LimelightConstants.kStdvXYBase,
-                            kStdvTheta * LimelightConstants.kStdvThetaBase)
+                            kStdvTheta)
         );
 
         // Adds our vision measurement
