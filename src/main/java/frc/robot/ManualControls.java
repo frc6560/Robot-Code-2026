@@ -75,6 +75,14 @@ public class ManualControls {
         return getButton(10);
       }
 
+      public boolean getClimbTrigger(){
+        return getButton(9);
+      }
+
+      public boolean getDeclimbTrigger(){
+        return getButtonRelease(9) || getButtonRelease(10);
+      }
+
       public boolean getVisionResetTrigger(){
         return getButton(5);
       }

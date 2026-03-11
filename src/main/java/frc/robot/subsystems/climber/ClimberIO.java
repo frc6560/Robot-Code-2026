@@ -12,6 +12,7 @@ public interface ClimberIO {
         public double[] appliedVolts = new double[] {0.0, 0.0};
         public double[] currentAmps = new double[] {0.0, 0.0};
         public double[] tempCelsius = new double[] {0.0, 0.0};
+        public boolean retractLimitSwitch = false;
     }
 
     default void updateInputs(ClimberIOInputs inputs) {}
@@ -21,6 +22,8 @@ public interface ClimberIO {
     default void setPercent(double pct) {}
 
     default void setVoltage(double volts) {}
+
+    default void setSoftLimits(boolean enabled) {}
 
     default void zeroPosition() {}
 }

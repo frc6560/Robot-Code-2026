@@ -16,11 +16,13 @@ import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Temperature;
 import edu.wpi.first.units.measure.Voltage;
+import edu.wpi.first.wpilibj.DigitalInput;
 import frc.robot.Constants.ClimbConstants;
 
 public class ClimberIOTalonFX implements ClimberIO {
     private final TalonFX leaderMotor;
     private final TalonFX followerMotor;
+    private final DigitalInput retractLimitSwitch;
 
     private final MotionMagicVoltage motionMagicReq = new MotionMagicVoltage(0).withSlot(0);
     private final VoltageOut voltageReq = new VoltageOut(0);
@@ -35,6 +37,7 @@ public class ClimberIOTalonFX implements ClimberIO {
     public ClimberIOTalonFX() {
         leaderMotor = new TalonFX(ClimbConstants.LEFT_MOTOR_ID, ClimbConstants.CAN_BUS);
         followerMotor = new TalonFX(ClimbConstants.RIGHT_MOTOR_ID, ClimbConstants.CAN_BUS);
+        retractLimitSwitch = new DigitalInput(ClimbConstants.RETRACT_LIMIT_SWITCH_DIO);
 
         configureLeaderMotor();
         configureFollowerMotor();
@@ -104,6 +107,9 @@ public class ClimberIOTalonFX implements ClimberIO {
         inputs.appliedVolts[0] = leaderVolts.getValueAsDouble(); inputs.appliedVolts[1] = followerVolts.getValueAsDouble();
         inputs.currentAmps[0] = leaderCurrent.getValueAsDouble(); inputs.currentAmps[1] = followerCurrent.getValueAsDouble();
         inputs.tempCelsius[0] = leaderTemp.getValueAsDouble(); inputs.tempCelsius[1] = followerTemp.getValueAsDouble();
+
+        boolean rawSwitch = retractLimitSwitch.get();
+        inputs.retractLimitSwitch = ClimbConstants.RETRACT_LIMIT_SWITCH_INVERTED ? !rawSwitch : rawSwitch;
     }
 
     @Override
@@ -117,4 +123,13 @@ public class ClimberIOTalonFX implements ClimberIO {
 
     @Override
     public void zeroPosition() { leaderMotor.setPosition(0.0); }
+
+    @Override
+    public void setSoftLimits(boolean enabled) {
+        TalonFXConfiguration config = new TalonFXConfiguration();
+        leaderMotor.getConfigurator().refresh(config);
+        config.SoftwareLimitSwitch.ForwardSoftLimitEnable = enabled;
+        config.SoftwareLimitSwitch.ReverseSoftLimitEnable = enabled;
+        leaderMotor.getConfigurator().apply(config);
+    }
 }

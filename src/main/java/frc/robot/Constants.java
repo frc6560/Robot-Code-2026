@@ -318,21 +318,28 @@ public final class Constants {
     public static final boolean LEFT_MOTOR_INVERTED = false;
     public static final boolean RIGHT_MOTOR_INVERTED = true; 
 
+    // Limit Switch
+    public static final int RETRACT_LIMIT_SWITCH_DIO = 4;
+    public static final boolean RETRACT_LIMIT_SWITCH_INVERTED = true; 
+
     // Motion Magic / PID Tuning
-    public static final double kP = 3; // TODO: Tune
-    public static final double kI = 0.0;
+    public static final double kP = 3; 
+    public static final double kI = 0.1;
     public static final double kD = 0.0;
-    public static final double kV = 0.0; // TODO: Tune
-    public static final double kG = 0.0; // TODO: Tune
+    public static final double kV = 0.0; 
+    public static final double kG = 0.5;
+
     public static final double CRUISE_VELOCITY_RPS = 40.0;
     public static final double ACCELERATION_RPS2 = 80.0;
 
-    public static final double RETRACTED_ROTATIONS = 0.0;   // Fully pulled down (Starting config)
-    public static final double PULL_UP_ROTATIONS = 11.5;    // Pulling the robot off the ground
-    public static final double EXTENDED_ROTATIONS = 33.0;   // Reaching up for the rung
+    public static final double RETRACTED_ROTATIONS = 0.05;   
+    public static final double PULL_UP_ROTATIONS = 11.5;    
+    public static final double EXTENDED_ROTATIONS = 33.0;   
+    public static final double RESET_RETRACT_PERCENT = 0.40;  
+    public static final double RESET_TIMEOUT_SECONDS = 3.0;  
+    public static final double HOMING_VOLTS = -6.0;         
+    public static final double HOMING_CURRENT_AMPS = 35.0;
+    public static final double HOMING_TIMEOUT_SECS = 2.0;  
 
-    public static final double HOMING_VOLTS = -2.0;         // Gentle downward voltage to hit the hard stop
-    public static final double HOMING_CURRENT_AMPS = 35.0;  // Amps to trigger the "hard stop detected" logic
-    public static final double HOMING_TIMEOUT_SECS = 2.0;   // Safety timeout
   }
 }
