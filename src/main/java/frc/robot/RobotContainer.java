@@ -107,7 +107,7 @@ public class RobotContainer {
         feeder = new Feeder(new FeederIOTalonFX());
         intake = new Intake(new IntakeIOTalonFX());
         climber = new Climber(new ClimberIOTalonFX());
-        led = new LED(new LEDIOAddressable(6, 57));
+        led = new LED(new LEDIOAddressable(5, 57));
       } else {
         hood = new Hood(new HoodIOSim());
         shooter = new Shooter(new ShooterIOSim());
