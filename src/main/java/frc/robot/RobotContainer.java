@@ -157,11 +157,6 @@ public class RobotContainer {
         //   .onTrue(Commands.defer(() -> new ClimbCommand(drivebase, intake, climb), Set.of(drivebase, intake, climb)));
         driverXbox.start().
           onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
-
-
-        driverXbox.leftBumper()
-          .onTrue(Commands.runOnce(intake::setExtensionMode, intake))
-          .onFalse(Commands.runOnce(intake::setIdleMode, intake));
         
         Trigger shootTrigger = new Trigger(m_Controls::getShootTrigger);
         Trigger shootReleaseTrigger = new Trigger(m_Controls::getShootReleaseTrigger);
@@ -204,7 +199,7 @@ public class RobotContainer {
         driverXbox.x().onTrue(Commands.runOnce(() -> climb.setState(ClimbState.PULL_UP), climb));
         driverXbox.b().onTrue(Commands.runOnce(() -> climb.setState(ClimbState.RETRACTED), climb));
         driverXbox.y().onTrue(Commands.runOnce(() -> climb.setState(ClimbState.EXTENDED), climb));
-        driverXbox.a().onTrue(Commands.defer(() -> new ClimbCommand(drivebase, intake, climb), Set.of(drivebase, intake, climb)));
+        driverXbox.leftBumper().onTrue(Commands.defer(() -> new ClimbCommand(drivebase, intake, climb), Set.of(drivebase, intake, climb)));
 
         // Climb reset using limit switch - hold back + right bumper to zero the climb encoder
         driverXbox.rightBumper().onTrue(climb.resetPositionCommand());

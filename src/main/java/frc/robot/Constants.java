@@ -130,7 +130,7 @@ public final class Constants {
       return limelightPose;
     }
     public static final double kStdvXYBase = 0.05; 
-    public static final double kStdvThetaBase = 1.0; 
+    public static final double kStdvThetaBase = 1.0; // it just causes problems.
     public static final double JUMP_TOLERANCE = 2.0;
   }
 
