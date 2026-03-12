@@ -10,6 +10,7 @@ import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import frc.robot.commands.ClimbCommand;
+import frc.robot.commands.ClimbCommandauto;
 import frc.robot.utility.Shooter.ShotCalculator;
 
 import edu.wpi.first.math.geometry.Pose2d;
@@ -104,7 +105,22 @@ public class AutoCommands {
     }
 
     public Command climb(){
-        return new ClimbCommand(drivetrain, intake, climber);
+        return new ClimbCommandauto(drivetrain);
+    }
+
+    public Command retractFully(){
+        return Commands.runOnce(() -> {
+            intake.setIdleMode();
+            intake.setExtendPosition(0.0);  // Full retract to zero for climbing
+        }, intake);
+    }
+
+    public Command actuate(){
+        return Commands.runOnce(() -> climber.setState(Climber.ClimbState.EXTENDED), climber);
+    }
+
+    public Command deactuate(){
+        return Commands.runOnce(() -> climber.setState(Climber.ClimbState.PULL_UP), climber);
     }
 
     public Command intake(){
@@ -199,6 +215,9 @@ public class AutoCommands {
                         cmdWithAccuracy(trenchToDepot)
                             .andThen(shoot()),
                         cmdWithAccuracy(trenchPullout)
+                            .andThen(retractFully())
+                            .andThen(Commands.parallel(climb(), actuate()))
+                            .andThen(deactuate())
                     )
         );
 
