@@ -10,7 +10,6 @@ import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import frc.robot.commands.ClimbCommand;
-import frc.robot.commands.ClimbCommandauto;
 import frc.robot.utility.Shooter.ShotCalculator;
 
 import edu.wpi.first.math.geometry.Pose2d;
@@ -105,7 +104,7 @@ public class AutoCommands {
     }
 
     public Command climb(){
-        return new ClimbCommandauto (drivetrain);
+        return new ClimbCommand(drivetrain, intake, climber);
     }
 
     public Command intake(){
@@ -200,7 +199,6 @@ public class AutoCommands {
                         cmdWithAccuracy(trenchToDepot)
                             .andThen(shoot()),
                         cmdWithAccuracy(trenchPullout)
-                            .andThen(climb())
                     )
         );
 

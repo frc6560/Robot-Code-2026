@@ -41,7 +41,6 @@ public class Turret extends SubsystemBase {
         double currentPosition = getTurretAngle();
         double wrappedTarget = wrapAngle(targetFieldAngle);
 
-        // Find all valid physical positions that achieve this field angle
         // Candidates are: wrappedTarget, wrappedTarget + 360, wrappedTarget - 360
         double[] candidates = {
             wrappedTarget - 360,
@@ -49,7 +48,6 @@ public class Turret extends SubsystemBase {
             wrappedTarget + 360
         };
 
-        // Filter to only valid positions within soft limits
         double bestPosition = wrappedTarget; // default fallback
         double bestScore = Double.MAX_VALUE;
         boolean foundValid = false;
@@ -76,7 +74,6 @@ public class Turret extends SubsystemBase {
             }
         }
 
-        // Clamp as final safety (should already be within limits if foundValid)
         return MathUtil.clamp(bestPosition, TurretConstants.LOWER_SOFT_LIMIT, TurretConstants.UPPER_SOFT_LIMIT);
     }
 
