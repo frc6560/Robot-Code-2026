@@ -2,7 +2,6 @@ package frc.robot;
 
 import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
@@ -18,11 +17,8 @@ import edu.wpi.first.wpilibj.RobotBase;
 
 import swervelib.SwerveInputStream;
 import edu.wpi.first.math.geometry.Pose3d;
-import edu.wpi.first.math.kinematics.ChassisSpeeds;
-import frc.robot.Constants.HoodConstants;
 import frc.robot.Constants.LimelightConstants;
 import frc.robot.Constants.OperatorConstants;
-import frc.robot.Constants.ShooterConstants;
 import edu.wpi.first.networktables.GenericEntry;
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
 import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
@@ -150,16 +146,9 @@ public class RobotContainer {
     private void configureBindings() {
         Command driveFieldOrientedAnglularVelocity = drivebase.driveFieldOriented(driveAngularVelocity);
         drivebase.setDefaultCommand(driveFieldOrientedAnglularVelocity);
-        driverXbox.a().onTrue(
-          Commands.defer(() -> {
-            return Commands.runOnce(() -> vision.hardReset("limelight-br"), vision);
-          }, Set.of(vision))
-        );
 
         driverXbox.x()
           .onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
-        driverXbox.y()
-          .onTrue(Commands.defer(() -> new ClimbCommand(drivebase, intake, climber), Set.of(drivebase)));
         driverXbox.start().
           onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
 
@@ -202,6 +191,13 @@ public class RobotContainer {
         climbTrigger.onTrue(Commands.runOnce(() -> climber.setState(Climber.ClimbState.EXTENDED)));
         pullupTrigger.onTrue(Commands.runOnce(() -> climber.setState(Climber.ClimbState.PULL_UP), climber));
         declimbTrigger.onTrue(Commands.runOnce(() -> climber.resetPositionCommand().schedule(), climber));
+
+        // --- RESETS ---
+        Trigger resetPoseTrigger = new Trigger(m_Controls::getVisionResetTrigger);
+        resetPoseTrigger.onTrue(Commands.runOnce(() -> vision.hardReset("limelight-br"), vision));
+
+        Trigger resetIntakeTrigger = new Trigger(m_Controls::getIntakeResetTrigger);
+        resetIntakeTrigger.onTrue(Commands.runOnce(intake::resetExtendPosition));
     }
 
 

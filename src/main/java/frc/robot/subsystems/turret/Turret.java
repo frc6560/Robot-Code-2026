@@ -131,6 +131,10 @@ public class Turret extends SubsystemBase {
         return Math.abs(getTurretAngle() - goalDegrees) < 8.0; // sanity check for the wire protection!
     }
 
+    public boolean getAtTarget(double toleranceDegrees){
+        return Math.abs(getTurretAngle() - goalDegrees) < toleranceDegrees;
+    }
+
     @Override
     public void periodic() {
         io.updateInputs(inputs);

@@ -44,18 +44,23 @@ public class ShotCommand extends Command {
     @Override
     public void initialize() {}
 
+    private static final double PASSING_TURRET_TOLERANCE_DEG = 15.0;
+    private static final double SHOOTING_TURRET_TOLERANCE_DEG = 5.0;
+
     @Override
     public void execute() {
         double poseX = supplier.getPose().getX();
-        boolean inScoringZone = poseX < FieldConstants.BLUE_ZONE_X || poseX > FieldConstants.RED_ZONE_X;
+        boolean inPassingZone = poseX > FieldConstants.BLUE_ZONE_X && poseX < FieldConstants.RED_ZONE_X;
+
+        double turretTolerance = inPassingZone ? PASSING_TURRET_TOLERANCE_DEG : SHOOTING_TURRET_TOLERANCE_DEG;
 
         boolean allAtTarget = debouncer.calculate(shotCalculator.isShotValid())
-                && debouncer.calculate(turret.getAtTarget())
+                && debouncer.calculate(turret.getAtTarget(turretTolerance))
                 && debouncer.calculate(hood.atTarget())
                 && debouncer.calculate(shooter.atTarget());
 
         boolean notAtDeadzone = !(
-            poseX > FieldConstants.BLUE_ZONE_X && poseX < FieldConstants.RED_ZONE_X
+            inPassingZone
             && supplier.getPose().getY() > FieldConstants.PASS_DEADZONE_MIN_Y && supplier.getPose().getY() < FieldConstants.PASS_DEADZONE_MAX_Y
         );
         if (allAtTarget && notAtDeadzone) {

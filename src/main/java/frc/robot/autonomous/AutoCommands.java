@@ -215,9 +215,6 @@ public class AutoCommands {
                         cmdWithAccuracy(trenchToDepot)
                             .andThen(shoot()),
                         cmdWithAccuracy(trenchPullout)
-                            .andThen(retractFully())
-                            .andThen(Commands.parallel(climb(), actuate()))
-                            .andThen(deactuate())
                     )
         );
 
