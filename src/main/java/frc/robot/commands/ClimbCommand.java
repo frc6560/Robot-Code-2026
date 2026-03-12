@@ -132,7 +132,7 @@ public class ClimbCommand extends SequentialCommandGroup {
 
             double distance = currentPose.getTranslation().getDistance(prescorePose.getTranslation());
             double rotError = prescorePose.getRotation().getRadians() - currentPose.getRotation().getRadians();
-
+            
             // Get robot velocity for logging
             ChassisSpeeds robotVel = drivetrain.getFieldVelocity();
 
