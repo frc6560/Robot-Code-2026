@@ -66,3 +66,4 @@ public class ClimberIOSim implements ClimberIO {
     @Override
     public void zeroPosition() { simulatedEncoderOffset = leftSim.getAngularPositionRad() / (2.0 * Math.PI); }
 }
+

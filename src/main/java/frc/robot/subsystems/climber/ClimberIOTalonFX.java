@@ -103,7 +103,7 @@ public class ClimberIOTalonFX implements ClimberIO {
         inputs.rightPositionRotations = followerPos.getValueAsDouble();
         inputs.leftVelocityRPS = leaderVel.getValueAsDouble();
         inputs.rightVelocityRPS = followerVel.getValueAsDouble();
-        
+
         inputs.appliedVolts[0] = leaderVolts.getValueAsDouble(); inputs.appliedVolts[1] = followerVolts.getValueAsDouble();
         inputs.currentAmps[0] = leaderCurrent.getValueAsDouble(); inputs.currentAmps[1] = followerCurrent.getValueAsDouble();
         inputs.tempCelsius[0] = leaderTemp.getValueAsDouble(); inputs.tempCelsius[1] = followerTemp.getValueAsDouble();
@@ -125,7 +125,7 @@ public class ClimberIOTalonFX implements ClimberIO {
     public void zeroPosition() { leaderMotor.setPosition(0.0); }
 
     @Override
-    public void setSoftLimits(boolean enabled) {
+    public void setSoftLimitsEnabled(boolean enabled) {
         TalonFXConfiguration config = new TalonFXConfiguration();
         leaderMotor.getConfigurator().refresh(config);
         config.SoftwareLimitSwitch.ForwardSoftLimitEnable = enabled;
@@ -133,3 +133,4 @@ public class ClimberIOTalonFX implements ClimberIO {
         leaderMotor.getConfigurator().apply(config);
     }
 }
+
