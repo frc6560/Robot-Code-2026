@@ -1,4 +1,5 @@
 
+
 package frc.robot.commands;
 
 import edu.wpi.first.wpilibj2.command.Command;
@@ -130,9 +131,14 @@ public class ClimbCommand extends SequentialCommandGroup {
                 output.targetAngle().getRadians()
             );
 
+            // Calculate errors for logging
             double distance = currentPose.getTranslation().getDistance(prescorePose.getTranslation());
+            double xError = prescorePose.getX() - currentPose.getX();
+            double yError = prescorePose.getY() - currentPose.getY();
             double rotError = prescorePose.getRotation().getRadians() - currentPose.getRotation().getRadians();
-            
+
+            drivetrain.drive(ChassisSpeeds.fromFieldRelativeSpeeds(xVel, yVel, rotVel, currentPose.getRotation()));
+
             // Get robot velocity for logging
             ChassisSpeeds robotVel = drivetrain.getFieldVelocity();
 
@@ -142,6 +148,9 @@ public class ClimbCommand extends SequentialCommandGroup {
             SmartDashboard.putNumber("Climb/Prescore/Target_X", prescorePose.getX());
             SmartDashboard.putNumber("Climb/Prescore/Target_Y", prescorePose.getY());
 
+            // Error logging
+            SmartDashboard.putNumber("Climb/Prescore/Error_X", xError);
+            SmartDashboard.putNumber("Climb/Prescore/Error_Y", yError);
             SmartDashboard.putNumber("Climb/Prescore/Error_Rot", rotError);
             SmartDashboard.putNumber("Climb/Prescore/Distance", distance);
 
@@ -298,4 +307,5 @@ public class ClimbCommand extends SequentialCommandGroup {
                            " at (" + targetPose.getX() + ", " + targetPose.getY() + ")");
     }
 }
+
 
