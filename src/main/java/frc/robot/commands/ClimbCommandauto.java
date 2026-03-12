@@ -60,7 +60,7 @@ public class ClimbCommandauto extends SequentialCommandGroup {
 
         // Initialize PID controllers (tune these values as needed)
         // Reduced kP and increased kD to prevent overshoot in X and Y
-           this.xController = new PIDController(3, 0.03, 0.1);  // Reduced kP: 4.5→2.5, Increased kD: 0.4→0.8
+        this.xController = new PIDController(3, 0.03, 0.1);  // Reduced kP: 4.5→2.5, Increased kD: 0.4→0.8
         this.yController = new PIDController(2.75, 0.02, 0.1);  // Reduced kP: 4.5→2.5, Increased kD: 0.4→0.8
         this.rotationController = new PIDController(5.5, 0.15, 0.05);  // Reduced kP: 5.0→4.0, Increased kD: 0.5→0.6
         this.rotationController.enableContinuousInput(-Math.PI, Math.PI);
@@ -73,18 +73,16 @@ public class ClimbCommandauto extends SequentialCommandGroup {
         SmartDashboard.putNumber("Climb/PID/Rot_kP", 4.0);
         SmartDashboard.putNumber("Climb/PID/Rot_kD", 0.6);
 
-        setTargets();
-
         // Log initialization
         SmartDashboard.putString("Climb/Status", "Initialized");
         SmartDashboard.putNumber("Climb/Initial_Y", initialY);
         System.out.println("ClimbCommand initialized at Y=" + initialY);
 
         super.addCommands(
+            Commands.runOnce(() -> setTargets()),  // Set targets when command starts, not during construction
             getDriveToPrescore(),
             getDriveInCommand()
         );
-        super.addRequirements(drivetrain);
     }
 
     /** Update PID values from SmartDashboard (call this in execute if you want live tuning) */

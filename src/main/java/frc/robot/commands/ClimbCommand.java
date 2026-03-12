@@ -82,14 +82,13 @@ public class ClimbCommand extends SequentialCommandGroup {
         SmartDashboard.putNumber("Climb/PID/Rot_kP", 4.0);
         SmartDashboard.putNumber("Climb/PID/Rot_kD", 0.6);
 
-        setTargets();
-
         // Log initialization
         SmartDashboard.putString("Climb/Status", "Initialized");
         SmartDashboard.putNumber("Climb/Initial_Y", initialY);
         System.out.println("ClimbCommand initialized at Y=" + initialY);
 
         super.addCommands(
+            Commands.runOnce(() -> setTargets()),  // Set targets when command starts, not during construction
             Commands.parallel(
                 Commands.runOnce(() -> intake.setIdleMode(), intake),
                 Commands.runOnce(() -> climb.setState(ClimbState.EXTENDED), climb),
@@ -98,7 +97,7 @@ public class ClimbCommand extends SequentialCommandGroup {
             getDriveInCommand(),
             Commands.runOnce(() -> climb.setState(ClimbState.RETRACTED), climb)
         );
-        super.addRequirements(drivetrain, intake, climb);
+        // Don't manually add requirements - SequentialCommandGroup inherits from child commands
     }
 
     /** Update PID values from SmartDashboard (call this in execute if you want live tuning) */

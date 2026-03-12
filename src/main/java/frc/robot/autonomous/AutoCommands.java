@@ -105,7 +105,10 @@ public class AutoCommands {
     }
 
     public Command climb(){
-        return new ClimbCommandauto(drivetrain);
+        return Commands.defer(
+            () -> new ClimbCommandauto(drivetrain),
+            Set.of(drivetrain)
+        );
     }
 
     public Command retractFully(){
@@ -215,6 +218,7 @@ public class AutoCommands {
                         cmdWithAccuracy(trenchToDepot)
                             .andThen(shoot()),
                         cmdWithAccuracy(trenchPullout)
+                            .andThen(climb())
                     )
         );
 
