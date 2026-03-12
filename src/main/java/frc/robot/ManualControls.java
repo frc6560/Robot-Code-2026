@@ -71,15 +71,15 @@ public class ManualControls {
       return getButton(2);
     }
     
-      public boolean getAutoAlignTrigger(){
-        return getButton(10);
-      }
-
-      public boolean getClimbTrigger(){
+      public boolean getPullupTrigger(){
         return getButton(9);
       }
 
       public boolean getDeclimbTrigger(){
+        return getButton(10);
+      }
+
+      public boolean getClimbTrigger(){
         return getButtonRelease(9) || getButtonRelease(10);
       }
 

@@ -161,6 +161,8 @@ public class RobotContainer {
           .onTrue(Commands.defer(() -> new ClimbCommand(drivebase, intake, climber), Set.of(drivebase)));
         driverXbox.start().
           onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
+
+        // --- SHOTS ---
         
         Trigger shootTrigger = new Trigger(m_Controls::getShootTrigger);
         Trigger shootReleaseTrigger = new Trigger(m_Controls::getShootReleaseTrigger);
@@ -175,6 +177,7 @@ public class RobotContainer {
           }
         }));
 
+        // --- INTAKE ---
 
         Trigger intakeTrigger = new Trigger(m_Controls::getIntakeTrigger);
         Trigger intakeOscillatingTrigger = new Trigger(m_Controls::getIntakeRollingTrigger);
@@ -190,6 +193,14 @@ public class RobotContainer {
         intakeRollingReleaseTrigger.onTrue(Commands.runOnce(() -> intake.setRollerMode(Intake.RollerMode.INACTIVE), intake));
 
 
+        // --- CLIMBER ---
+        Trigger climbTrigger = new Trigger(m_Controls::getClimbTrigger);
+        Trigger declimbTrigger = new Trigger(m_Controls::getDeclimbTrigger);
+        Trigger pullupTrigger = new Trigger(m_Controls::getPullupTrigger);
+        
+        climbTrigger.onTrue(Commands.runOnce(() -> climber.setState(Climber.ClimbState.EXTENDED), climber));
+        declimbTrigger.onTrue(Commands.runOnce(() -> climber.setState(Climber.ClimbState.RETRACTED), climber));
+        pullupTrigger.onTrue(Commands.runOnce(() -> climber.setState(Climber.ClimbState.PULL_UP), climber));
         // Reset buttons
         Trigger visionResetTrigger = new Trigger(() -> m_Controls.getButton(4));
         visionResetTrigger.onTrue(
