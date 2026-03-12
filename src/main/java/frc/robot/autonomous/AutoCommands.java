@@ -5,6 +5,7 @@ import choreo.auto.AutoFactory;
 import choreo.auto.AutoRoutine;
 import choreo.auto.AutoTrajectory;
 import frc.robot.subsystems.climber.Climber;
+import frc.robot.subsystems.climber.Climber.ClimbState;
 import frc.robot.subsystems.feeder.Feeder;
 import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.shooter.Shooter;
@@ -104,25 +105,6 @@ public class AutoCommands {
         });
     }
 
-    public Command climb(){
-        return new ClimbCommandauto(drivetrain);
-    }
-
-    public Command retractFully(){
-        return Commands.runOnce(() -> {
-            intake.setIdleMode();
-            intake.setExtendPosition(0.0);  // Full retract to zero for climbing
-        }, intake);
-    }
-
-    public Command actuate(){
-        return Commands.runOnce(() -> climber.setState(Climber.ClimbState.EXTENDED), climber);
-    }
-
-    public Command deactuate(){
-        return Commands.runOnce(() -> climber.setState(Climber.ClimbState.PULL_UP), climber);
-    }
-
     public Command intake(){
         return Commands.runOnce(intake::setExtensionMode, intake);
     }
@@ -172,6 +154,7 @@ public class AutoCommands {
                     )
         );
 
+
         return testRoutine;
     }
 
@@ -183,6 +166,7 @@ public class AutoCommands {
         AutoTrajectory trenchToShoot = testRoutine.trajectory("depotTrenchToShoot");
         AutoTrajectory trenchToDepot = testRoutine.trajectory("depotTrenchToDepot");
         AutoTrajectory trenchPullout = testRoutine.trajectory("depotPullout");
+        AutoTrajectory trenchToCenterSecondSwipe = testRoutine.trajectory("depotDepotToCenter");
 
         trenchToCenter.atTime("intake")
             .onTrue(
@@ -204,6 +188,11 @@ public class AutoCommands {
                 retract()
             );
 
+        trenchToCenterSecondSwipe.atTime("intake")
+            .onTrue(
+                intake()
+            );
+        
         testRoutine
             .active()
                 .onTrue(
@@ -214,7 +203,8 @@ public class AutoCommands {
                             .andThen(shoot()), 
                         cmdWithAccuracy(trenchToDepot)
                             .andThen(shoot()),
-                        cmdWithAccuracy(trenchPullout)
+                        cmdWithAccuracy(trenchPullout),
+                        cmdWithAccuracy(trenchToCenterSecondSwipe)
                     )
         );
 
