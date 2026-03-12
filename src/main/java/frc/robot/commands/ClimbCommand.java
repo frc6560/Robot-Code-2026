@@ -124,24 +124,17 @@ public class ClimbCommand extends SequentialCommandGroup {
             double xVel = output.vx().in(edu.wpi.first.units.Units.MetersPerSecond);
             double yVel = output.vy().in(edu.wpi.first.units.Units.MetersPerSecond);
 
-            // Calculate rotation velocity to finish with translation
-            double distance = currentPose.getTranslation().getDistance(prescorePose.getTranslation());
-            double translationSpeed = 2;
-            double timeRemaining = (translationSpeed > 0.01) ? (distance / translationSpeed) : 0.0;
-            double rotError = prescorePose.getRotation().getRadians() - currentPose.getRotation().getRadians();
-            double rotVel;
-            if (timeRemaining > 0.05) {
-                rotVel = rotError / timeRemaining;
-            } else {
-                rotVel = rotationController.calculate(
-                    currentPose.getRotation().getRadians(),
-                    prescorePose.getRotation().getRadians()
-                );
-            }
+            // Use Autopilot's target angle for rotation control (like AutoAlign)
+            double rotVel = rotationController.calculate(
+                currentPose.getRotation().getRadians(),
+                output.targetAngle().getRadians()
+            );
 
             // Calculate errors for logging
+            double distance = currentPose.getTranslation().getDistance(prescorePose.getTranslation());
             double xError = prescorePose.getX() - currentPose.getX();
             double yError = prescorePose.getY() - currentPose.getY();
+            double rotError = prescorePose.getRotation().getRadians() - currentPose.getRotation().getRadians();
 
             drivetrain.drive(ChassisSpeeds.fromFieldRelativeSpeeds(xVel, yVel, rotVel, currentPose.getRotation()));
 
