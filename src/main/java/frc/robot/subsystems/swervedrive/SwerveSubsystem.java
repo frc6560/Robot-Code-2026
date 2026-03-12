@@ -224,8 +224,13 @@ public class SwerveSubsystem extends SubsystemBase {
    * Should only be called once before auto starts.
    */
   private void updateInitialPose() {
+    var alliance = DriverStation.getAlliance();
+    if (alliance.isEmpty()) {
+      return;  // Don't set pose yet - alliance unknown
+    }
+
     String selectedAuto = autoChooserSubscriber.get();
-    boolean isRed = DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red;
+    boolean isRed = alliance.get() == Alliance.Red;
 
     Pose2d startPose;
     switch (selectedAuto) {

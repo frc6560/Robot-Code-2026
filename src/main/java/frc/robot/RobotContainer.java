@@ -199,41 +199,9 @@ public class RobotContainer {
         Trigger declimbTrigger = new Trigger(m_Controls::getDeclimbTrigger);
         Trigger pullupTrigger = new Trigger(m_Controls::getPullupTrigger);
 
-        Trigger climbResetTrigger = new Trigger(m_Controls::getClimbResetTrigger);
-
-        climbResetTrigger.onTrue(Commands.runOnce(() -> climber.resetPositionCommand().schedule(), climber));
-
-        // Climb trigger: run auto align command
-        climbTrigger.onTrue(Commands.defer(() -> new ClimbCommand(drivebase, intake, climber), Set.of(drivebase, intake, climber)));
-
-        // Pull up: set state to PULL_UP
+        climbTrigger.onTrue(Commands.runOnce(() -> climber.setState(Climber.ClimbState.EXTENDED)));
         pullupTrigger.onTrue(Commands.runOnce(() -> climber.setState(Climber.ClimbState.PULL_UP), climber));
-
-        // Declimb: if in PULL_UP, run declimb sequence; otherwise cancel auto align
-        declimbTrigger.onTrue(Commands.either(
-            // If in PULL_UP: push up, drive forward, then stow
-            Commands.sequence(
-                Commands.runOnce(() -> climber.setState(Climber.ClimbState.EXTENDED), climber),
-                Commands.run(() -> drivebase.drive(new ChassisSpeeds(1.0, 0, 0)), drivebase).withTimeout(0.3),
-                Commands.runOnce(() -> climber.setState(Climber.ClimbState.RETRACTED), climber)
-            ),
-            // If not in PULL_UP: cancel any running climb command on drivebase
-            Commands.runOnce(() -> {
-                Command currentCommand = drivebase.getCurrentCommand();
-                if (currentCommand != null) {
-                    currentCommand.cancel();
-                }
-            }),
-            // Condition: check if climber is in PULL_UP state
-            () -> climber.getState() == Climber.ClimbState.PULL_UP
-        ));
-        // Reset buttons
-        Trigger visionResetTrigger = new Trigger(() -> m_Controls.getButton(4));
-        visionResetTrigger.onTrue(
-            Commands.defer(() -> {
-                return Commands.runOnce(() -> vision.hardReset("limelight-br"), vision);
-            }, Set.of(vision))
-        );
+        declimbTrigger.onTrue(Commands.runOnce(() -> climber.resetPositionCommand().schedule(), climber));
     }
 
 

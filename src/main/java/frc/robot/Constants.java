@@ -319,7 +319,7 @@ public final class Constants {
     public static final boolean RIGHT_MOTOR_INVERTED = true;
 
     // Limit Switch
-    public static final int RETRACT_LIMIT_SWITCH_DIO = 4;
+    public static final int RETRACT_LIMIT_SWITCH_DIO = 1;
     public static final boolean RETRACT_LIMIT_SWITCH_INVERTED = true;  // Inverted: switch is normally closed 
 
     // Motion Magic / PID Tuning

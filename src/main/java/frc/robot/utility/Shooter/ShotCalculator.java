@@ -62,9 +62,9 @@ public class ShotCalculator {
     public void populateLUTs(){
         // Units are in meters/RPM/degrees/seconds.
         // shooter RPM
-        flywheelRPMMap.put(1.593, 1550.0);
-        flywheelRPMMap.put(1.885, 1650.0);
-        flywheelRPMMap.put(2.500, 1750.0);
+        flywheelRPMMap.put(1.593, 1450.0);
+        flywheelRPMMap.put(1.885, 1550.0);
+        flywheelRPMMap.put(2.500, 1650.0);
         flywheelRPMMap.put(3.098, 1850.0);
         flywheelRPMMap.put(3.700, 1900.0);
         flywheelRPMMap.put(4.273, 2050.0);
