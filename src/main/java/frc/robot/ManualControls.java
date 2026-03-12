@@ -92,6 +92,10 @@ public class ManualControls {
       }
 
       public boolean getClimbResetTrigger(){
-        return getButton(7);
+        return getButton(11);
+      }
+
+      public boolean getClimbResetReleaseTrigger(){
+        return getButtonRelease(11);
       }
 }
