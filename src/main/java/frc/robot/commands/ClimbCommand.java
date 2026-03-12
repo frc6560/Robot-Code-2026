@@ -124,26 +124,14 @@ public class ClimbCommand extends SequentialCommandGroup {
             double xVel = output.vx().in(edu.wpi.first.units.Units.MetersPerSecond);
             double yVel = output.vy().in(edu.wpi.first.units.Units.MetersPerSecond);
 
-            // Calculate rotation velocity to finish with translation
+            // Use Autopilot's target angle for rotation control (like AutoAlign)
+            double rotVel = rotationController.calculate(
+                currentPose.getRotation().getRadians(),
+                output.targetAngle().getRadians()
+            );
+
             double distance = currentPose.getTranslation().getDistance(prescorePose.getTranslation());
-            double translationSpeed = 2;
-            double timeRemaining = (translationSpeed > 0.01) ? (distance / translationSpeed) : 0.0;
             double rotError = prescorePose.getRotation().getRadians() - currentPose.getRotation().getRadians();
-            double rotVel;
-            if (timeRemaining > 0.05) {
-                rotVel = rotError / timeRemaining;
-            } else {
-                rotVel = rotationController.calculate(
-                    currentPose.getRotation().getRadians(),
-                    prescorePose.getRotation().getRadians()
-                );
-            }
-
-            // Calculate errors for logging
-            double xError = prescorePose.getX() - currentPose.getX();
-            double yError = prescorePose.getY() - currentPose.getY();
-
-            drivetrain.drive(ChassisSpeeds.fromFieldRelativeSpeeds(xVel, yVel, rotVel, currentPose.getRotation()));
 
             // Get robot velocity for logging
             ChassisSpeeds robotVel = drivetrain.getFieldVelocity();
@@ -154,9 +142,6 @@ public class ClimbCommand extends SequentialCommandGroup {
             SmartDashboard.putNumber("Climb/Prescore/Target_X", prescorePose.getX());
             SmartDashboard.putNumber("Climb/Prescore/Target_Y", prescorePose.getY());
 
-            // Error logging
-            SmartDashboard.putNumber("Climb/Prescore/Error_X", xError);
-            SmartDashboard.putNumber("Climb/Prescore/Error_Y", yError);
             SmartDashboard.putNumber("Climb/Prescore/Error_Rot", rotError);
             SmartDashboard.putNumber("Climb/Prescore/Distance", distance);
 
