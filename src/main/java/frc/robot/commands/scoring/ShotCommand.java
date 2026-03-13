@@ -45,7 +45,7 @@ public class ShotCommand extends Command {
     public void initialize() {}
 
     private static final double PASSING_TURRET_TOLERANCE_DEG = 15.0;
-    private static final double SHOOTING_TURRET_TOLERANCE_DEG = 5.0;
+    private static final double SHOOTING_TURRET_TOLERANCE_DEG = 8.0;
 
     @Override
     public void execute() {
