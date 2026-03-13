@@ -53,11 +53,13 @@ public class ShotCommand extends Command {
         boolean inPassingZone = poseX > FieldConstants.BLUE_ZONE_X && poseX < FieldConstants.RED_ZONE_X;
 
         double turretTolerance = inPassingZone ? PASSING_TURRET_TOLERANCE_DEG : SHOOTING_TURRET_TOLERANCE_DEG;
+        boolean hoodAtTolerance = inPassingZone ? true : hood.atTarget();
+        boolean shooterAtTolerance = inPassingZone ? true : shooter.atTarget();
 
         boolean allAtTarget = debouncer.calculate(shotCalculator.isShotValid())
                 && debouncer.calculate(turret.getAtTarget(turretTolerance))
-                && debouncer.calculate(hood.atTarget())
-                && debouncer.calculate(shooter.atTarget());
+                && debouncer.calculate(hoodAtTolerance)
+                && debouncer.calculate(shooterAtTolerance);
 
         boolean notAtDeadzone = !(
             inPassingZone

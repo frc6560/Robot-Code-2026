@@ -120,6 +120,7 @@ public class AutoCommands {
         AutoTrajectory trenchToCenter = testRoutine.trajectory("hpTrenchToCenter");
         AutoTrajectory trenchToShoot = testRoutine.trajectory("hpTrenchToShoot");
         AutoTrajectory trenchToHp = testRoutine.trajectory("hpTrenchToHP");
+        AutoTrajectory hpToCenter = testRoutine.trajectory("hpHpToCenter");
 
         trenchToCenter.atTime("intake")
             .onTrue(
@@ -140,6 +141,11 @@ public class AutoCommands {
             .onTrue(
                 retract()
             );
+        
+        hpToCenter.atTime("intake")
+            .onTrue(
+                intake()
+            );
 
         testRoutine
             .active()
@@ -150,7 +156,8 @@ public class AutoCommands {
                         cmdWithAccuracy(trenchToShoot)
                             .andThen(shoot()), 
                         cmdWithAccuracy(trenchToHp)
-                            .andThen(shoot())
+                            .andThen(shoot()),
+                        cmdWithAccuracy(hpToCenter)
                     )
         );
 
