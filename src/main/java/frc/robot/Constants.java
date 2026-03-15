@@ -172,7 +172,7 @@ public final class Constants {
 
     public static final int HOOD_ABSOLUTE_ENCODER_ID = 22;
 
-    public static final double HOOD_ABSOLUTE_ENCODER_OFFSET = -0.736; // for the 15 deg offset
+    public static final double HOOD_ABSOLUTE_ENCODER_OFFSET = -0.479; // tune frequently.
   }
 
   public static final class ShooterConstants{
@@ -234,7 +234,7 @@ public final class Constants {
     public static final double ENCODER_GEAR_RATIO = 127.0 / 168.0; // turret spins once for every ~0.75 encoder rotations. fix.
 
     // Absolute encoder setup
-    public static final double ABSOLUTE_ENCODER_OFFSET = 0.391; 
+    public static final double ABSOLUTE_ENCODER_OFFSET = 0.377; 
     public static final boolean ABSOLUTE_ENCODER_REVERSED = false; 
 
     // soft limits

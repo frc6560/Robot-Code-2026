@@ -65,7 +65,7 @@ public class ShotCalculator {
         flywheelRPMMap.put(1.593, 1450.0);
         flywheelRPMMap.put(1.885, 1550.0);
         flywheelRPMMap.put(2.500, 1650.0);
-        flywheelRPMMap.put(3.098, 1850.0);
+        flywheelRPMMap.put(3.098, 1750.0); 
         flywheelRPMMap.put(3.700, 1900.0);
         flywheelRPMMap.put(4.273, 2050.0);
         flywheelRPMMap.put(4.987, 2150.0);

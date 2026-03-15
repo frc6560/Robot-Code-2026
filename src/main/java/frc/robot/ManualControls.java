@@ -51,13 +51,13 @@ public class ManualControls {
       return getButtonRelease(3);
     }
 
-    public boolean getShootTrigger(){
-      return getButton(12);
-    }
+    // public boolean getShootTrigger(){
+    //   return getButton(12);
+    // } // deprecated for now
 
-    public boolean getShootReleaseTrigger(){
-      return getButtonRelease(12);
-    }
+    // public boolean getShootReleaseTrigger(){
+    //   return getButtonRelease(12);
+    // }
 
     public boolean getIntakeReleaseTrigger(){
       return getButton(1);
@@ -71,15 +71,15 @@ public class ManualControls {
       return getButton(2);
     }
     
-      public boolean getPullupTrigger(){
+      public boolean getUngatedShootTrigger(){
         return getButton(9);
       }
 
-      public boolean getDeclimbTrigger(){
+      public boolean getShootReleaseTrigger(){
         return getButton(10);
       }
 
-      public boolean getClimbTrigger(){
+      public boolean getShootTrigger(){
         return getButtonRelease(9) || getButtonRelease(10);
       }
 

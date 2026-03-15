@@ -156,6 +156,7 @@ public class RobotContainer {
         
         Trigger shootTrigger = new Trigger(m_Controls::getShootTrigger);
         Trigger shootReleaseTrigger = new Trigger(m_Controls::getShootReleaseTrigger);
+        Trigger ungatedShootTrigger = new Trigger(m_Controls::getUngatedShootTrigger);
 
         shootTrigger.onTrue(Commands.runOnce(() -> {
           shotCommand = new ShotCommand(feeder, turret, hood, shooter, shotCalculator, drivebase::getPose);
@@ -166,6 +167,11 @@ public class RobotContainer {
             shotCommand.cancel();
           }
         }));
+        ungatedShootTrigger.onTrue(Commands.sequence(Commands.runOnce(() -> {
+          if (shotCommand != null) {
+            shotCommand.cancel();
+          }
+        }), Commands.runOnce(feeder::requestFeed)));
 
         // --- INTAKE ---
 
@@ -183,14 +189,14 @@ public class RobotContainer {
         intakeRollingReleaseTrigger.onTrue(Commands.runOnce(() -> intake.setRollerMode(Intake.RollerMode.INACTIVE), intake));
 
 
-        // --- CLIMBER ---
-        Trigger climbTrigger = new Trigger(m_Controls::getClimbTrigger);
-        Trigger declimbTrigger = new Trigger(m_Controls::getDeclimbTrigger);
-        Trigger pullupTrigger = new Trigger(m_Controls::getPullupTrigger);
+        // --- CLIMBER --- (deprecated for now)
+        // Trigger climbTrigger = new Trigger(m_Controls::getClimbTrigger);
+        // Trigger declimbTrigger = new Trigger(m_Controls::getDeclimbTrigger);
+        // Trigger pullupTrigger = new Trigger(m_Controls::getPullupTrigger);
 
-        climbTrigger.onTrue(Commands.runOnce(() -> climber.setState(Climber.ClimbState.EXTENDED)));
-        pullupTrigger.onTrue(Commands.runOnce(() -> climber.setState(Climber.ClimbState.PULL_UP), climber));
-        declimbTrigger.onTrue(Commands.runOnce(() -> climber.resetPositionCommand().schedule(), climber));
+        // climbTrigger.onTrue(Commands.runOnce(() -> climber.setState(Climber.ClimbState.EXTENDED)));
+        // pullupTrigger.onTrue(Commands.runOnce(() -> climber.setState(Climber.ClimbState.PULL_UP), climber));
+        // declimbTrigger.onTrue(Commands.runOnce(() -> climber.resetPositionCommand().schedule(), climber));
 
         // --- RESETS ---
         Trigger resetPoseTrigger = new Trigger(m_Controls::getVisionResetTrigger);
