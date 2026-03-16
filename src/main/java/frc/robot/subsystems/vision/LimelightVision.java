@@ -20,6 +20,8 @@ public class LimelightVision{
     private double kStdvXY = Double.POSITIVE_INFINITY;
     private double kStdvTheta = Double.POSITIVE_INFINITY;
 
+    private boolean measurementAccepted = true;
+
     private SwerveSubsystem drivebase;
 
     public LimelightVision(SwerveSubsystem drivebase, String name, Pose3d cameraPose) {
@@ -45,9 +47,12 @@ public class LimelightVision{
     Pose2d nullPose = new Pose2d();
 
     public void updateLimelightEstimate(PoseEstimate poseEstimate){
+        measurementAccepted = true;
+
         if(poseEstimate == null){
             return;
         }
+        
         robotPose2d = poseEstimate.pose;
         latency = poseEstimate.latency / 1000.0; // in seconds
         
@@ -62,22 +67,27 @@ public class LimelightVision{
 
         // Rejects null measurements
         if(robotPose2d == null || robotPose2d.equals(nullPose)){
-            return;
+            measurementAccepted = false;
         }
 
         // Rejects measurements when spinning too fast (motion blur)
         if(Math.abs(drivebase.getRobotVelocity().omegaRadiansPerSecond) > Units.degreesToRadians(720)){
-            return;
+            measurementAccepted = false;
         }
 
         // Rejects bad measurements, like sudden jumps in vision pose
         if(robotPose2d.getTranslation()
             .getDistance(drivebase.getPose().getTranslation()) > LimelightConstants.JUMP_TOLERANCE){
+            measurementAccepted = false;
+        }
+
+        SmartDashboard.putBoolean(this.name + "/MeasurementAccepted", measurementAccepted);
+
+        if(!measurementAccepted){
             return;
         }
 
         // Calculates standard deviation dynamically. never use rotation.
-
         kStdvXY = Math.pow(poseEstimate.avgTagDist, 2) 
                             / poseEstimate.tagCount;
         kStdvTheta = LimelightConstants.kStdvThetaBase; 
@@ -87,6 +97,7 @@ public class LimelightVision{
                              kStdvXY * LimelightConstants.kStdvXYBase,
                             kStdvTheta)
         );
+        SmartDashboard.putBoolean(this.name + "/MeasurementAccepted", measurementAccepted);
 
         // Adds our vision measurement
         drivebase.getSwerveDrive().addVisionMeasurement(
