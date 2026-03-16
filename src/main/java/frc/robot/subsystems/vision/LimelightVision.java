@@ -52,7 +52,7 @@ public class LimelightVision{
         if(poseEstimate == null){
             return;
         }
-        
+
         robotPose2d = poseEstimate.pose;
         latency = poseEstimate.latency / 1000.0; // in seconds
         
@@ -97,7 +97,6 @@ public class LimelightVision{
                              kStdvXY * LimelightConstants.kStdvXYBase,
                             kStdvTheta)
         );
-        SmartDashboard.putBoolean(this.name + "/MeasurementAccepted", measurementAccepted);
 
         // Adds our vision measurement
         drivebase.getSwerveDrive().addVisionMeasurement(
