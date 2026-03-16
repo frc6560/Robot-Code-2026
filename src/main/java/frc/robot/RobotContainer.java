@@ -16,6 +16,7 @@ import edu.wpi.first.wpilibj.RobotBase;
 
 import swervelib.SwerveInputStream;
 import edu.wpi.first.math.geometry.Pose3d;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import frc.robot.Constants.LimelightConstants;
 import frc.robot.Constants.OperatorConstants;
 import edu.wpi.first.networktables.GenericEntry;
@@ -142,8 +143,41 @@ public class RobotContainer {
     }
 
 
+    private static final double MAX_SHOOTING_VELOCITY_MPS = 2.0;
+    private static final double MAX_PASSING_VELOCITY_MPS = 3.0;
+
+    private boolean isShotCommandActive() {
+        return shotCommand != null && shotCommand.isScheduled();
+    }
+
+    private boolean isInPassingZone() {
+        double poseX = drivebase.getPose().getX();
+        return poseX > Constants.FieldConstants.BLUE_ZONE_X && poseX < Constants.FieldConstants.RED_ZONE_X;
+    }
+
+    private ChassisSpeeds clampSpeedsForShooting(ChassisSpeeds speeds) {
+        if (!isShotCommandActive()) {
+            return speeds;
+        }
+
+        double maxVelocity = isInPassingZone() ? MAX_PASSING_VELOCITY_MPS : MAX_SHOOTING_VELOCITY_MPS;
+
+        double vx = speeds.vxMetersPerSecond;
+        double vy = speeds.vyMetersPerSecond;
+        double translationSpeed = Math.hypot(vx, vy);
+
+        if (translationSpeed > maxVelocity) {
+            double scale = maxVelocity / translationSpeed;
+            vx *= scale;
+            vy *= scale;
+        }
+
+        return new ChassisSpeeds(vx, vy, speeds.omegaRadiansPerSecond);
+    }
+
     private void configureBindings() {
-        Command driveFieldOrientedAnglularVelocity = drivebase.driveFieldOriented(driveAngularVelocity);
+        Command driveFieldOrientedAnglularVelocity = drivebase.driveFieldOriented(
+            () -> clampSpeedsForShooting(driveAngularVelocity.get()));
         drivebase.setDefaultCommand(driveFieldOrientedAnglularVelocity);
 
         driverXbox.x()

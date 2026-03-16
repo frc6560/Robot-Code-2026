@@ -65,6 +65,11 @@ public class LimelightVision{
             return;
         }
 
+        // Rejects measurements when spinning too fast (motion blur)
+        if(Math.abs(drivebase.getRobotVelocity().omegaRadiansPerSecond) > Units.degreesToRadians(720)){
+            return;
+        }
+
         // Rejects bad measurements, like sudden jumps in vision pose
         if(robotPose2d.getTranslation()
             .getDistance(drivebase.getPose().getTranslation()) > LimelightConstants.JUMP_TOLERANCE){
