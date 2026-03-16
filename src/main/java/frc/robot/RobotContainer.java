@@ -5,7 +5,6 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
-// import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import java.io.File;
@@ -187,16 +186,6 @@ public class RobotContainer {
 
         intakeRollingTrigger.onTrue(Commands.runOnce(() -> intake.setRollerMode(Intake.RollerMode.ACTIVE), intake));
         intakeRollingReleaseTrigger.onTrue(Commands.runOnce(() -> intake.setRollerMode(Intake.RollerMode.INACTIVE), intake));
-
-
-        // --- CLIMBER --- (deprecated for now)
-        // Trigger climbTrigger = new Trigger(m_Controls::getClimbTrigger);
-        // Trigger declimbTrigger = new Trigger(m_Controls::getDeclimbTrigger);
-        // Trigger pullupTrigger = new Trigger(m_Controls::getPullupTrigger);
-
-        // climbTrigger.onTrue(Commands.runOnce(() -> climber.setState(Climber.ClimbState.EXTENDED)));
-        // pullupTrigger.onTrue(Commands.runOnce(() -> climber.setState(Climber.ClimbState.PULL_UP), climber));
-        // declimbTrigger.onTrue(Commands.runOnce(() -> climber.resetPositionCommand().schedule(), climber));
 
         // --- RESETS ---
         Trigger resetPoseTrigger = new Trigger(m_Controls::getVisionResetTrigger);

@@ -17,7 +17,6 @@ import frc.robot.Constants.FieldConstants;
 import frc.robot.Constants.TurretConstants;
 
 public class ShotCalculator {
-
     /** State container for turret position and velocity. */
     public record TurretState(double positionRadians, double velocityRadiansPerSecond) {}
 

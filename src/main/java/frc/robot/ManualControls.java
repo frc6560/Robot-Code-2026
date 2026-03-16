@@ -51,14 +51,6 @@ public class ManualControls {
       return getButtonRelease(3);
     }
 
-    // public boolean getShootTrigger(){
-    //   return getButton(12);
-    // } // deprecated for now
-
-    // public boolean getShootReleaseTrigger(){
-    //   return getButtonRelease(12);
-    // }
-
     public boolean getIntakeReleaseTrigger(){
       return getButton(1);
     }
@@ -89,13 +81,5 @@ public class ManualControls {
 
       public boolean getIntakeResetTrigger(){
         return getButton(6);
-      }
-
-      public boolean getClimbResetTrigger(){
-        return getButton(11);
-      }
-
-      public boolean getClimbResetReleaseTrigger(){
-        return getButtonRelease(11);
       }
 }
