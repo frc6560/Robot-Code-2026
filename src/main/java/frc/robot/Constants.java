@@ -110,10 +110,10 @@ public final class Constants {
           break;
         case "limelight-cl":
           limelightPose = new Pose3d(
-            -0.257, // front/back
-            -0.325, // left/right
-            0.336, // height
-            new Rotation3d(0, Units.degreesToRadians(25.0), Units.degreesToRadians(90.0))
+            -0.293, // front/back. this is temporary.
+            -0.296, // left/right 
+            0.499, // height
+            new Rotation3d(0, Units.degreesToRadians(0.0), Units.degreesToRadians(180.0))
           );
           break;
         case "limelight-cr":
@@ -172,7 +172,7 @@ public final class Constants {
 
     public static final int HOOD_ABSOLUTE_ENCODER_ID = 22;
 
-    public static final double HOOD_ABSOLUTE_ENCODER_OFFSET = -0.479; // tune frequently.
+    public static final double HOOD_ABSOLUTE_ENCODER_OFFSET = -0.575; // tune frequently.
   }
 
   public static final class ShooterConstants{

@@ -23,7 +23,7 @@ public class ShotCommand extends Command {
     private final ShotCalculator shotCalculator;
     private final PoseSupplier supplier;
 
-    Debouncer debouncer = new Debouncer(0.25);
+    Debouncer debouncer = new Debouncer(0.05);
 
     public ShotCommand(
             Feeder feeder,
