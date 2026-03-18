@@ -98,7 +98,7 @@ public class ShotCalculator {
     }
 
     public double getTurretTolerance (){
-        double radius = FieldConstants.HUB_WIDTH / 2.0; // in meters, half the width of the hub
+        double radius = FieldConstants.HUB_TOLERANCE / 2.0; // in meters, half the width of the hub
         return Math.toDegrees(Math.atan2(radius, distanceToVirtualTarget)); // in degrees
     }
 

@@ -72,7 +72,7 @@ public final class Constants {
 
     public static final double PASS_DEADZONE_MIN_Y = 3.657;
     public static final double PASS_DEADZONE_MAX_Y = 4.343;
-    public static final double HUB_WIDTH = 1.05;
+    public static final double HUB_TOLERANCE = 0.65;
 
     // A list of pass poses
     public static final Translation2d BLUE_BOTTOM_PASS_POS = new Translation2d(2.24, 2.36);

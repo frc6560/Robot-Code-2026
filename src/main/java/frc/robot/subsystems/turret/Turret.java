@@ -13,6 +13,8 @@ public class Turret extends SubsystemBase {
     private double goalDegrees = 0.0;
     private double goalVelocityDegreesPerSec = 0.0;
     private boolean useVelocityFeedforward = false;
+    private boolean atTarget = false;
+    private double tolerance = 0.0;
 
     public Turret(TurretIO io) {
         this.io = io;
@@ -127,12 +129,10 @@ public class Turret extends SubsystemBase {
         io.seedMotorEncoder();
     }
 
-    public boolean getAtTarget(){
-        return Math.abs(getTurretAngle() - goalDegrees) < 8.0; // sanity check for the wire protection!
-    }
-
     public boolean getAtTarget(double toleranceDegrees){
-        return Math.abs(getTurretAngle() - goalDegrees) < toleranceDegrees;
+        tolerance = toleranceDegrees;
+        atTarget = Math.abs(getTurretAngle() - goalDegrees) < toleranceDegrees;
+        return atTarget;
     }
 
     @Override
@@ -151,6 +151,7 @@ public class Turret extends SubsystemBase {
         Logger.recordOutput("Turret/CurrentAngleDegrees", getTurretAngle());
         Logger.recordOutput("Turret/VelocityDegreesPerSec", getTurretVelocity());
         Logger.recordOutput("Turret/ErrorDegrees", getTurretAngle() - goalDegrees);
-        Logger.recordOutput("Turret/AtTarget", getAtTarget());
+        Logger.recordOutput("Turret/AtTarget", atTarget);
+        Logger.recordOutput("Turret/ToleranceDegrees", tolerance);
     }
 }
