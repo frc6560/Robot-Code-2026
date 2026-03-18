@@ -52,7 +52,7 @@ public class ShotCommand extends Command {
         double poseX = supplier.getPose().getX();
         boolean inPassingZone = poseX > FieldConstants.BLUE_ZONE_X && poseX < FieldConstants.RED_ZONE_X;
 
-        double turretTolerance = inPassingZone ? PASSING_TURRET_TOLERANCE_DEG : SHOOTING_TURRET_TOLERANCE_DEG;
+        double turretTolerance = inPassingZone ? PASSING_TURRET_TOLERANCE_DEG : shotCalculator.getTurretTolerance();
         boolean hoodAtTolerance = inPassingZone ? true : hood.atTarget();
         boolean shooterAtTolerance = inPassingZone ? true : shooter.atTarget();
 
