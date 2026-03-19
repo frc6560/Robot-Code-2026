@@ -67,7 +67,7 @@ public final class Constants {
     public static final Pose2d RED_RIGHT_START = new Pose2d(12.85, 7.25, Rotation2d.fromDegrees(180.0));
     public static final Pose2d RED_LEFT_START = new Pose2d(12.85, 0.75, Rotation2d.fromDegrees(180.0));
 
-    public static final Pose2d BLUE_TESTING_START = new Pose2d(3.70, 4.00, Rotation2d.fromDegrees(0.0));
+    public static final Pose2d BLUE_TESTING_START = new Pose2d(4.7, 3.1, Rotation2d.fromDegrees(90.0));
     public static final Pose2d RED_TESTING_START = new Pose2d(12.85, 4.00, Rotation2d.fromDegrees(180.0));
 
     public static final double PASS_DEADZONE_MIN_Y = 3.657;

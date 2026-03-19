@@ -187,13 +187,17 @@ public class RobotContainer {
 
         driverXbox.leftTrigger()
           .onTrue(Commands.runOnce(() -> {
-            hood.setGoal(flywheelRPMEntry.getDouble(25.0));
-            shooter.setGoal(hoodAngleEntry.getDouble(1500.0));
+            hood.setGoal(hoodAngleEntry.getDouble(25.0));
+            shooter.setGoal(flywheelRPMEntry.getDouble(1500.0));
           }))
           .onFalse(Commands.runOnce(() -> {
             hood.setGoal(25.0);
             shooter.setGoal(0.0);
           }));
+
+        driverXbox.rightBumper()
+        .onTrue(Commands.runOnce(feeder::requestFeed))
+        .onFalse(Commands.runOnce(feeder::requestStop));
 
         // --- SHOTS ---
         
