@@ -43,7 +43,7 @@ public class ShotCalculator {
     private static final InterpolatingDoubleTreeMap timeOfFlightMap = new InterpolatingDoubleTreeMap();
 
     private static final double MIN_DISTANCE = 1.593;
-    private static final double MAX_DISTANCE = 5.602;
+    private static final double MAX_DISTANCE = 6.050;
 
     public Translation2d virtualTargetPose;
     private double distanceToVirtualTarget = 0.0; 
@@ -64,32 +64,35 @@ public class ShotCalculator {
         flywheelRPMMap.put(1.593, 1450.0);
         flywheelRPMMap.put(1.885, 1550.0);
         flywheelRPMMap.put(2.500, 1650.0);
-        flywheelRPMMap.put(3.098, 1750.0); 
-        flywheelRPMMap.put(3.700, 1900.0);
-        flywheelRPMMap.put(4.273, 2050.0);
-        flywheelRPMMap.put(4.987, 2150.0);
-        flywheelRPMMap.put(5.602, 2300.0);
+        flywheelRPMMap.put(3.098, 1750.0); // everything before this inclusive needs tuning.
+        flywheelRPMMap.put(3.742, 1900.0);
+        flywheelRPMMap.put(4.357, 2000.0);
+        flywheelRPMMap.put(4.943, 2100.0);
+        flywheelRPMMap.put(5.590, 2200.0);
+        flywheelRPMMap.put(6.050, 2500.0);
 
         // hood azimuth
         hoodAzimuthMap.put(1.593, 25.0);
         hoodAzimuthMap.put(1.885, 25.0);
         hoodAzimuthMap.put(2.500, 27.0);
-        hoodAzimuthMap.put(3.098, 29.0);
-        hoodAzimuthMap.put(3.700, 32.0);
-        hoodAzimuthMap.put(4.273, 35.0);
-        hoodAzimuthMap.put(4.987, 38.0);
-        hoodAzimuthMap.put(5.602, 44.0);
+        hoodAzimuthMap.put(3.098, 29.0); // everything before this inclusive needs tuning.
+        hoodAzimuthMap.put(3.742, 29.0);
+        hoodAzimuthMap.put(4.357, 31.0);
+        hoodAzimuthMap.put(4.943, 34.0);
+        hoodAzimuthMap.put(5.590, 36.0);
+        hoodAzimuthMap.put(6.050, 40.0);
 
 
         // time of flight 
         timeOfFlightMap.put(1.520, 0.80);
         timeOfFlightMap.put(1.885, 0.96);
         timeOfFlightMap.put(2.500, 1.06);
-        timeOfFlightMap.put(3.098, 1.13); // 1.17
-        timeOfFlightMap.put(3.700, 1.16); // 1.19
-        timeOfFlightMap.put(4.273, 1.20); // 1.26
-        timeOfFlightMap.put(4.987, 1.26); // 1.33
-        timeOfFlightMap.put(5.602, 1.26);
+        timeOfFlightMap.put(3.098, 1.13); // everything before this inclusive needs tuning.
+        timeOfFlightMap.put(3.742, 1.12); 
+        timeOfFlightMap.put(4.357, 1.17); 
+        timeOfFlightMap.put(4.943, 1.17); 
+        timeOfFlightMap.put(5.590, 1.18);
+        timeOfFlightMap.put(6.050, 1.18);
     }
 
     /** Returns the current hood azimuth in degrees. */
