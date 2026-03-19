@@ -185,6 +185,16 @@ public class RobotContainer {
         driverXbox.start().
           onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
 
+        driverXbox.leftTrigger()
+          .onTrue(Commands.runOnce(() -> {
+            hood.setGoal(flywheelRPMEntry.getDouble(25.0));
+            shooter.setGoal(hoodAngleEntry.getDouble(1500.0));
+          }))
+          .onFalse(Commands.runOnce(() -> {
+            hood.setGoal(25.0);
+            shooter.setGoal(0.0);
+          }));
+
         // --- SHOTS ---
         
         Trigger shootTrigger = new Trigger(m_Controls::getShootTrigger);
