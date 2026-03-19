@@ -143,7 +143,7 @@ public final class Constants {
     public static final double kS = 0.14;   // Static friction voltage
     public static final double kV = 0.11;  // Velocity feedforward
     public static final double kA = 0.0;   // Acceleration feedforward
-    public static final double kG = 0.165;   // Gravity feedforward (arm/wrist style - uses cosine)
+    public static final double kG = 0.168;   // Gravity feedforward (arm/wrist style - uses cosine)
 
     /** PID Gains */
     public static final double kP = 5.0;   // Proportional gain
