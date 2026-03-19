@@ -113,7 +113,7 @@ public final class Constants {
           limelightPose = new Pose3d(
             -0.257, // front/back. this is temporary.
             -0.325, // left/right 
-            0.366, // height
+            0.336, // height
             new Rotation3d(0, Units.degreesToRadians(25.0), Units.degreesToRadians(90.0))
           );
           break;
