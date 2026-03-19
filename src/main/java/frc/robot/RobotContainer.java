@@ -137,7 +137,7 @@ public class RobotContainer {
         passCalculator
       );
 
-      hood.setDefaultCommand(superstructureCommand);
+      // hood.setDefaultCommand(superstructureCommand);
 
       configureBindings();
     }
