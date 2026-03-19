@@ -13,9 +13,13 @@ import java.util.List;
 import java.util.Set;
 
 import edu.wpi.first.wpilibj.RobotBase;
+import edu.wpi.first.wpilibj.DriverStation;
 
 import swervelib.SwerveInputStream;
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import frc.robot.Constants.LimelightConstants;
 import frc.robot.Constants.OperatorConstants;
@@ -182,6 +186,24 @@ public class RobotContainer {
 
         driverXbox.x()
           .onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
+        driverXbox.y()
+          .onTrue(Commands.runOnce(() -> {
+            // Set field-relative angle based on alliance
+            java.util.Optional<DriverStation.Alliance> alliance = DriverStation.getAlliance();
+            double frAngleRad = 0.0; // Blue: 0°, Red: 180°
+            if (alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red) {
+                frAngleRad = Math.PI;
+            }
+
+            // Calculate turret angle: fieldRelativeAngle - robotRotation
+            double turretAngleRad = edu.wpi.first.math.MathUtil.angleModulus(
+                frAngleRad - drivebase.getPose().getRotation().getRadians()
+            );
+
+            turret.setGoal(Math.toDegrees(turretAngleRad));
+            hood.setGoal(Constants.HoodConstants.HOOD_SUBWOOFER_SHOT_ANGLE);
+            shooter.setGoal(Constants.ShooterConstants.SUBWOOFER_SHOT_RPM);
+          }));
         driverXbox.start().
           onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
 

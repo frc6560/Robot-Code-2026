@@ -174,6 +174,7 @@ public final class Constants {
     public static final int HOOD_ABSOLUTE_ENCODER_ID = 22;
 
     public static final double HOOD_ABSOLUTE_ENCODER_OFFSET = -0.575; // tune frequently.
+    public static final double HOOD_SUBWOOFER_SHOT_ANGLE = 67.0;
   }
 
   public static final class ShooterConstants{
@@ -204,6 +205,7 @@ public final class Constants {
     public static final boolean RIGHT_FLYWHEEL_OPPOSED = true; 
 
     public static final int FLYWHEEL_STATOR_CURRENT_LIMIT = 50;
+    public static final double SUBWOOFER_SHOT_RPM = 6767.0;
   }
 
   public static final class TurretConstants{ 
