@@ -4,21 +4,15 @@ package frc.robot.autonomous;
 import choreo.auto.AutoFactory;
 import choreo.auto.AutoRoutine;
 import choreo.auto.AutoTrajectory;
-import frc.robot.subsystems.climber.Climber;
-import frc.robot.subsystems.climber.Climber.ClimbState;
 import frc.robot.subsystems.feeder.Feeder;
 import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
-import frc.robot.commands.ClimbCommand;
-import frc.robot.commands.ClimbCommandauto;
 import frc.robot.utility.Shooter.ShotCalculator;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
-
-import java.util.Set;
 
 
 // refactor code: add follow and shoot helper
@@ -28,7 +22,6 @@ public class AutoCommands {
     private Feeder feeder;
     private Intake intake;
     private Shooter shooter;
-    private Climber climber;
     private ShotCalculator calculator = new ShotCalculator();
 
     private AutoFactory autoFactory;
@@ -36,14 +29,12 @@ public class AutoCommands {
     public AutoCommands(SwerveSubsystem drivetrain,
         Feeder feeder,
         Intake intake,
-        Shooter shooter,
-        Climber climber
+        Shooter shooter
     ) {
         this.drivetrain = drivetrain;
         this.feeder = feeder;
         this.intake = intake;
         this.shooter = shooter;
-        this.climber = climber;
 
         autoFactory = new AutoFactory(
             drivetrain::getPose,
