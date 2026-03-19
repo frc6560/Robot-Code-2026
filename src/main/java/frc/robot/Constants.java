@@ -111,10 +111,10 @@ public final class Constants {
           break;
         case "limelight-cl":
           limelightPose = new Pose3d(
-            -0.293, // front/back. this is temporary.
-            -0.296, // left/right 
-            0.499, // height
-            new Rotation3d(0, Units.degreesToRadians(0.0), Units.degreesToRadians(180.0))
+            -0.257, // front/back. this is temporary.
+            -0.325, // left/right 
+            0.366, // height
+            new Rotation3d(0, Units.degreesToRadians(25.0), Units.degreesToRadians(90.0))
           );
           break;
         case "limelight-cr":
@@ -240,11 +240,11 @@ public final class Constants {
 
     // soft limits
     public static final double LOWER_SOFT_LIMIT = -170.0;
-    public static final double UPPER_SOFT_LIMIT = 280.0;
+    public static final double UPPER_SOFT_LIMIT = 270.0;
 
     // Wire protection thresholds - prefer unwinding toward center when outside these bounds
     public static final double WIRE_PROTECTION_LOWER = -170.0;
-    public static final double WIRE_PROTECTION_UPPER = 280.0;
+    public static final double WIRE_PROTECTION_UPPER = 270.0;
   }
 
   public static final class IntakeConstants{
