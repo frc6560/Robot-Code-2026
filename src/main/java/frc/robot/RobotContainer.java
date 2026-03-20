@@ -187,7 +187,9 @@ public class RobotContainer {
         driverXbox.x()
           .onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
         driverXbox.y()
-          .onTrue(Commands.runOnce(() -> {
+          .whileTrue(Commands.run(() -> {
+            SmartDashboard.putBoolean("StationaryShooting/Active", true);
+
             // Set field-relative angle based on alliance
             java.util.Optional<DriverStation.Alliance> alliance = DriverStation.getAlliance();
             double frAngleRad = 0.0; // Blue: 0°, Red: 180°
@@ -200,10 +202,15 @@ public class RobotContainer {
                 frAngleRad - drivebase.getPose().getRotation().getRadians()
             );
 
+            SmartDashboard.putNumber("StationaryShooting/TurretGoalDeg", Math.toDegrees(turretAngleRad));
+            SmartDashboard.putNumber("StationaryShooting/HoodGoalDeg", Constants.HoodConstants.HOOD_SUBWOOFER_SHOT_ANGLE);
+            SmartDashboard.putNumber("StationaryShooting/ShooterGoalRPM", Constants.ShooterConstants.SUBWOOFER_SHOT_RPM);
+
             turret.setGoal(Math.toDegrees(turretAngleRad));
             hood.setGoal(Constants.HoodConstants.HOOD_SUBWOOFER_SHOT_ANGLE);
             shooter.setGoal(Constants.ShooterConstants.SUBWOOFER_SHOT_RPM);
-          }));
+          }, turret, hood, shooter)
+          .finallyDo(() -> SmartDashboard.putBoolean("StationaryShooting/Active", false)));
         driverXbox.start().
           onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
 
