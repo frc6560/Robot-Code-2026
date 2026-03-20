@@ -43,6 +43,14 @@ public class ManualControls {
         return m_buttonBoard.getRawButtonReleased(buttonNumber);
     }
 
+    public boolean getButtonActivated(int buttonNumber){
+        return m_buttonBoard.getRawButton(buttonNumber);
+    }
+
+    public boolean getShootIntent(){
+      return !getButtonActivated(10);
+    }
+
     public boolean getRollerTrigger(){
       return getButton(3);
     }

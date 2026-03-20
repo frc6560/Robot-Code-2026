@@ -132,7 +132,7 @@ public class RobotContainer {
     private static final double MAX_PASSING_VELOCITY_MPS = Double.POSITIVE_INFINITY;
 
     private boolean isShotCommandActive() {
-        return shotCommand != null && shotCommand.isScheduled();
+        return m_Controls.getShootIntent();
     }
 
     private boolean isInPassingZone() {
