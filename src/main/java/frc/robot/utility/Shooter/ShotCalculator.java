@@ -61,10 +61,10 @@ public class ShotCalculator {
     public void populateLUTs(){
         // Units are in meters/RPM/degrees/seconds.
         // shooter RPM
-        flywheelRPMMap.put(1.593, 1450.0);
-        flywheelRPMMap.put(1.885, 1550.0);
-        flywheelRPMMap.put(2.500, 1650.0);
-        flywheelRPMMap.put(3.098, 1750.0); // everything before this inclusive needs tuning.
+        flywheelRPMMap.put(1.628, 1500.0);
+        flywheelRPMMap.put(1.942, 1500.0);
+        flywheelRPMMap.put(2.573, 1700.0);
+        flywheelRPMMap.put(3.219, 1800.0); 
         flywheelRPMMap.put(3.742, 1900.0);
         flywheelRPMMap.put(4.357, 2000.0);
         flywheelRPMMap.put(4.943, 2100.0);
@@ -72,10 +72,10 @@ public class ShotCalculator {
         flywheelRPMMap.put(6.050, 2500.0);
 
         // hood azimuth
-        hoodAzimuthMap.put(1.593, 25.0);
-        hoodAzimuthMap.put(1.885, 25.0);
-        hoodAzimuthMap.put(2.500, 27.0);
-        hoodAzimuthMap.put(3.098, 29.0); // everything before this inclusive needs tuning.
+        hoodAzimuthMap.put(1.628, 25.0);
+        hoodAzimuthMap.put(1.942, 25.0);
+        hoodAzimuthMap.put(2.573, 25.0);
+        hoodAzimuthMap.put(3.219, 27.0); 
         hoodAzimuthMap.put(3.742, 29.0);
         hoodAzimuthMap.put(4.357, 31.0);
         hoodAzimuthMap.put(4.943, 34.0);
@@ -85,9 +85,9 @@ public class ShotCalculator {
 
         // time of flight 
         timeOfFlightMap.put(1.520, 0.80);
-        timeOfFlightMap.put(1.885, 0.96);
-        timeOfFlightMap.put(2.500, 1.06);
-        timeOfFlightMap.put(3.098, 1.13); // everything before this inclusive needs tuning.
+        timeOfFlightMap.put(1.885, 0.93);
+        timeOfFlightMap.put(2.500, 1.07);
+        timeOfFlightMap.put(3.098, 1.12); // everything before this inclusive needs tuning.
         timeOfFlightMap.put(3.742, 1.12); 
         timeOfFlightMap.put(4.357, 1.17); 
         timeOfFlightMap.put(4.943, 1.17); 
