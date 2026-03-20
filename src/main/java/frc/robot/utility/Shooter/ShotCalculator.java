@@ -87,7 +87,7 @@ public class ShotCalculator {
         timeOfFlightMap.put(1.520, 0.80);
         timeOfFlightMap.put(1.885, 0.93);
         timeOfFlightMap.put(2.500, 1.07);
-        timeOfFlightMap.put(3.098, 1.12); // everything before this inclusive needs tuning.
+        timeOfFlightMap.put(3.098, 1.12); 
         timeOfFlightMap.put(3.742, 1.12); 
         timeOfFlightMap.put(4.357, 1.17); 
         timeOfFlightMap.put(4.943, 1.17); 
