@@ -216,13 +216,13 @@ public final class Constants {
     /** Characterization Gains */
     public static final double kS = 0.1;
     public static final double kV = 0.2;
-    public static final double kA = 0.01;
+    public static final double kA = 0.05; // old: 0.01
     public static final double kG = 0.0;
 
     /** PID Gains */
-    public static final double kP = 5.0;
+    public static final double kP = 8.0; // old: 5.0
     public static final double kI = 0.05;
-    public static final double kD = 0.2;
+    public static final double kD = 0.3; // old: 0.2
 
     /** Motion Constraints. IN DEGREES PER SECOND */
     public static final double kMaxV = 450;
