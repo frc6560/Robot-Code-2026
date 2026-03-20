@@ -42,7 +42,7 @@ public class ShotCalculator {
     private static final InterpolatingDoubleTreeMap flywheelRPMMap = new InterpolatingDoubleTreeMap();
     private static final InterpolatingDoubleTreeMap timeOfFlightMap = new InterpolatingDoubleTreeMap();
 
-    private static final double MIN_DISTANCE = 1.593;
+    private static final double MIN_DISTANCE = 1.628;
     private static final double MAX_DISTANCE = 6.050;
 
     public Translation2d virtualTargetPose;
