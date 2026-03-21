@@ -78,17 +78,52 @@ public class PassCalculator {
         if (alliance.isEmpty()) {
             return;
         }
+
+        // Check if robot is within DEAD_RAD of our alliance hub center
+        Translation2d hubCenter = (alliance.get() == Alliance.Blue)
+            ? FieldConstants.BLUE_HUB_CENTER
+            : FieldConstants.RED_HUB_CENTER;
+        double distanceToHub = robotPose.getTranslation().getDistance(hubCenter);
+        boolean inHubDeadzone = distanceToHub < FieldConstants.DEAD_RAD;
+        edu.wpi.first.wpilibj.smartdashboard.SmartDashboard.putBoolean("PassCalc/InHubDeadzone", inHubDeadzone);
+        edu.wpi.first.wpilibj.smartdashboard.SmartDashboard.putNumber("PassCalc/DistanceToHub", distanceToHub);
+        if (inHubDeadzone) {
+            return; // if we're near our hub, we don't calculate a pass
+        }
+
+        // Check if robot is in opponent rectangular deadzone
+        double robotX = robotPose.getX();
+        double robotY = robotPose.getY();
+        boolean inOpponentDeadzone = false;
+        if (alliance.get() == Alliance.Blue) {
+            // Check Red side deadzone for Blue alliance
+            inOpponentDeadzone = robotX >= FieldConstants.RED_DEADZONE_MIN_X && robotX <= FieldConstants.RED_DEADZONE_MAX_X &&
+                robotY >= FieldConstants.PASS_DEADZONE_MIN_Y && robotY <= FieldConstants.PASS_DEADZONE_MAX_Y;
+            edu.wpi.first.wpilibj.smartdashboard.SmartDashboard.putBoolean("PassCalc/InRedDeadzone", inOpponentDeadzone);
+            if (inOpponentDeadzone) {
+                return; // if we're in opponent deadzone, we don't calculate a pass
+            }
+        } else {
+            // Check Blue side deadzone for Red alliance
+            inOpponentDeadzone = robotX >= FieldConstants.BLUE_DEADZONE_MIN_X && robotX <= FieldConstants.BLUE_DEADZONE_MAX_X &&
+                robotY >= FieldConstants.PASS_DEADZONE_MIN_Y && robotY <= FieldConstants.PASS_DEADZONE_MAX_Y;
+            edu.wpi.first.wpilibj.smartdashboard.SmartDashboard.putBoolean("PassCalc/InBlueDeadzone", inOpponentDeadzone);
+            if (inOpponentDeadzone) {
+                return; // if we're in opponent deadzone, we don't calculate a pass
+            }
+        }
+
         Translation2d targetPassLocation;
 
         // Calculates our target passing location.
         if(robotPose.getY() < FieldConstants.PASS_DEADZONE_MIN_Y){
-            targetPassLocation = (alliance.get() == Alliance.Blue) 
-                ? FieldConstants.BLUE_BOTTOM_PASS_POS 
+            targetPassLocation = (alliance.get() == Alliance.Blue)
+                ? FieldConstants.BLUE_BOTTOM_PASS_POS
                 : FieldConstants.RED_BOTTOM_PASS_POS;
         }
         else if(robotPose.getY() > FieldConstants.PASS_DEADZONE_MAX_Y){
-            targetPassLocation = (alliance.get() == Alliance.Blue) 
-                ? FieldConstants.BLUE_TOP_PASS_POS 
+            targetPassLocation = (alliance.get() == Alliance.Blue)
+                ? FieldConstants.BLUE_TOP_PASS_POS
                 : FieldConstants.RED_TOP_PASS_POS;
         }
         else{
