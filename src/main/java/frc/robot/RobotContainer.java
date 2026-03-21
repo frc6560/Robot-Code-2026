@@ -128,7 +128,7 @@ public class RobotContainer {
     }
 
 
-    private static final double MAX_SHOOTING_VELOCITY_MPS = 0.9;
+    private static final double MAX_SHOOTING_VELOCITY_MPS = 1.2;
     private static final double MAX_PASSING_VELOCITY_MPS = Double.POSITIVE_INFINITY;
 
     private boolean isShotCommandActive() {
