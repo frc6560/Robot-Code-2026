@@ -106,15 +106,28 @@ public class SuperstructureCommand extends Command {
         double robotX = robotPose.getX();
         double robotY = robotPose.getY();
 
-        // Check if in PASS zone (middle of field)
-        if (robotX > FieldConstants.BLUE_ZONE_X && robotX < FieldConstants.RED_ZONE_X) {
+        // Check if in our alliance zone -> SHOOT
+        boolean inOurZone = (alliance.get() == Alliance.Blue && robotX < FieldConstants.BLUE_ZONE_X)
+                         || (alliance.get() == Alliance.Red && robotX > FieldConstants.RED_ZONE_X);
+
+        if (inOurZone) {
+            state = SuperstructureState.SHOOT;
+        } else {
+            // Pass zone is everywhere except our zone
+            SmartDashboard.putBoolean("SuperstructureCmd/InPassZone", true);
+
             // Check hub deadzone
             Translation2d hubCenter = (alliance.get() == Alliance.Blue)
                 ? FieldConstants.BLUE_HUB_CENTER
                 : FieldConstants.RED_HUB_CENTER;
             double distanceToHub = robotPose.getTranslation().getDistance(hubCenter);
-            if (distanceToHub < FieldConstants.DEAD_RAD) {
+            boolean inHubDeadzone = distanceToHub < FieldConstants.DEAD_RAD;
+            SmartDashboard.putBoolean("SuperstructureCmd/InHubDeadzone", inHubDeadzone);
+            SmartDashboard.putNumber("SuperstructureCmd/DistanceToHub", distanceToHub);
+
+            if (inHubDeadzone) {
                 state = SuperstructureState.IDLE;
+                SmartDashboard.putString("SuperstructureCmd/State", state.toString());
                 return;
             }
 
@@ -125,25 +138,25 @@ public class SuperstructureCommand extends Command {
                                       robotX <= FieldConstants.RED_DEADZONE_MAX_X &&
                                       robotY >= FieldConstants.PASS_DEADZONE_MIN_Y &&
                                       robotY <= FieldConstants.PASS_DEADZONE_MAX_Y;
+                SmartDashboard.putBoolean("SuperstructureCmd/InRedDeadzone", inOpponentDeadzone);
             } else {
                 inOpponentDeadzone = robotX >= FieldConstants.BLUE_DEADZONE_MIN_X &&
                                       robotX <= FieldConstants.BLUE_DEADZONE_MAX_X &&
                                       robotY >= FieldConstants.PASS_DEADZONE_MIN_Y &&
                                       robotY <= FieldConstants.PASS_DEADZONE_MAX_Y;
+                SmartDashboard.putBoolean("SuperstructureCmd/InBlueDeadzone", inOpponentDeadzone);
             }
 
             if (inOpponentDeadzone) {
                 state = SuperstructureState.IDLE;
+                SmartDashboard.putString("SuperstructureCmd/State", state.toString());
                 return;
             }
 
             state = SuperstructureState.PASS;
-        } else if ((alliance.get() == Alliance.Blue && robotX < FieldConstants.BLUE_ZONE_X)
-                    || (alliance.get() == Alliance.Red && robotX > FieldConstants.RED_ZONE_X)) {
-            state = SuperstructureState.SHOOT;
-        } else {
-            state = SuperstructureState.IDLE;
         }
+
+        SmartDashboard.putString("SuperstructureCmd/State", state.toString());
     }
 
     private void updateBehavior() {

@@ -79,6 +79,17 @@ public class PassCalculator {
             return;
         }
 
+        double robotX = robotPose.getX();
+
+        // Check if in our alliance zone -> don't calculate pass
+        boolean inOurZone = (alliance.get() == Alliance.Blue && robotX < FieldConstants.BLUE_ZONE_X)
+                         || (alliance.get() == Alliance.Red && robotX > FieldConstants.RED_ZONE_X);
+        edu.wpi.first.wpilibj.smartdashboard.SmartDashboard.putBoolean("PassCalc/InPassZone", !inOurZone);
+
+        if (inOurZone) {
+            return; // don't calculate pass in our own zone
+        }
+
         // Check if robot is within DEAD_RAD of our alliance hub center
         Translation2d hubCenter = (alliance.get() == Alliance.Blue)
             ? FieldConstants.BLUE_HUB_CENTER
@@ -92,7 +103,6 @@ public class PassCalculator {
         }
 
         // Check if robot is in opponent rectangular deadzone
-        double robotX = robotPose.getX();
         double robotY = robotPose.getY();
         boolean inOpponentDeadzone = false;
         if (alliance.get() == Alliance.Blue) {

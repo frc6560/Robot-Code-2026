@@ -72,7 +72,7 @@ public final class Constants {
 
     public static final double PASS_DEADZONE_MIN_Y = 3.657;
     public static final double PASS_DEADZONE_MAX_Y = 4.343;
-    public static final double DEAD_RAD = 1.1;
+    public static final double DEAD_RAD = 1.6;
     public static final double HUB_TOLERANCE = 0.65;
 
     // Opponent side rectangular deadzones (no pass calculations in these areas)
