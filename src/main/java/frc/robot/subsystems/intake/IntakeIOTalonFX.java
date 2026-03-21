@@ -2,7 +2,6 @@ package frc.robot.subsystems.intake;
 
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusSignal;
-import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.hardware.TalonFX;
@@ -14,19 +13,17 @@ import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Temperature;
 import edu.wpi.first.units.measure.Voltage;
-import edu.wpi.first.wpilibj.DigitalInput;
 import frc.robot.Constants.IntakeConstants;
 
 public class IntakeIOTalonFX implements IntakeIO {
-    private final TalonFX extendMotor;
+    private final TalonFX extendIntakeMotor;
     private final TalonFX spinMotor;
-    private final DigitalInput retractLimitSwitch;
 
-    private final StatusSignal<Angle> extendPosition;
-    private final StatusSignal<AngularVelocity> extendVelocity;
-    private final StatusSignal<Voltage> extendVoltage;
-    private final StatusSignal<Current> extendCurrent;
-    private final StatusSignal<Temperature> extendTemp;
+    private final StatusSignal<Angle> extendIntakePosition;
+    private final StatusSignal<AngularVelocity> extendIntakeVelocity;
+    private final StatusSignal<Voltage> extendIntakeVoltage;
+    private final StatusSignal<Current> extendIntakeCurrent;
+    private final StatusSignal<Temperature> extendIntakeTemp;
 
     private final StatusSignal<AngularVelocity> spinVelocity;
     private final StatusSignal<Voltage> spinVoltage;
@@ -36,18 +33,17 @@ public class IntakeIOTalonFX implements IntakeIO {
     private final MotionMagicVoltage positionControl = new MotionMagicVoltage(0);
 
     public IntakeIOTalonFX() {
-        extendMotor = new TalonFX(IntakeConstants.EXTEND_MOTOR_ID, IntakeConstants.CAN_BUS);
+        extendIntakeMotor = new TalonFX(IntakeConstants.EXTEND_INTAKE_MOTOR_ID, IntakeConstants.CAN_BUS);
         spinMotor = new TalonFX(IntakeConstants.SPIN_MOTOR_ID, IntakeConstants.CAN_BUS);
-        retractLimitSwitch = new DigitalInput(IntakeConstants.RETRACT_LIMIT_SWITCH_ID);
 
-        configureExtendMotor();
+        configureExtendIntakeMotor();
         configureSpinMotor();
 
-        extendPosition = extendMotor.getPosition();
-        extendVelocity = extendMotor.getVelocity();
-        extendVoltage = extendMotor.getMotorVoltage();
-        extendCurrent = extendMotor.getSupplyCurrent();
-        extendTemp = extendMotor.getDeviceTemp();
+        extendIntakePosition = extendIntakeMotor.getPosition();
+        extendIntakeVelocity = extendIntakeMotor.getVelocity();
+        extendIntakeVoltage = extendIntakeMotor.getMotorVoltage();
+        extendIntakeCurrent = extendIntakeMotor.getSupplyCurrent();
+        extendIntakeTemp = extendIntakeMotor.getDeviceTemp();
 
         spinVelocity = spinMotor.getVelocity();
         spinVoltage = spinMotor.getMotorVoltage();
@@ -56,38 +52,38 @@ public class IntakeIOTalonFX implements IntakeIO {
 
         BaseStatusSignal.setUpdateFrequencyForAll(
             50.0,
-            extendPosition, extendVelocity, extendVoltage, extendCurrent, extendTemp,
+            extendIntakePosition, extendIntakeVelocity, extendIntakeVoltage, extendIntakeCurrent, extendIntakeTemp,
             spinVelocity, spinVoltage, spinCurrent, spinTemp
         );
 
-        extendMotor.optimizeBusUtilization();
+        extendIntakeMotor.optimizeBusUtilization();
         spinMotor.optimizeBusUtilization();
     }
 
-    private void configureExtendMotor() {
+    private void configureExtendIntakeMotor() {
         TalonFXConfiguration config = new TalonFXConfiguration();
         config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
-        config.MotorOutput.Inverted = IntakeConstants.EXTEND_MOTOR_INVERTED
+        config.MotorOutput.Inverted = IntakeConstants.EXTEND_INTAKE_MOTOR_INVERTED
             ? InvertedValue.Clockwise_Positive
             : InvertedValue.CounterClockwise_Positive;
 
         config.CurrentLimits.SupplyCurrentLimitEnable = true;
-        config.CurrentLimits.SupplyCurrentLimit = IntakeConstants.EXTEND_SUPPLY_CURRENT_LIMIT;
+        config.CurrentLimits.SupplyCurrentLimit = IntakeConstants.EXTEND_INTAKE_SUPPLY_CURRENT_LIMIT;
         config.CurrentLimits.StatorCurrentLimitEnable = true;
-        config.CurrentLimits.StatorCurrentLimit = IntakeConstants.EXTEND_STATOR_CURRENT_LIMIT;
+        config.CurrentLimits.StatorCurrentLimit = IntakeConstants.EXTEND_INTAKE_STATOR_CURRENT_LIMIT;
 
-        // Motion Magic configuration
-        config.Slot0.kS = IntakeConstants.EXTEND_kS;
-        config.Slot0.kV = IntakeConstants.EXTEND_kV;
-        config.Slot0.kA = IntakeConstants.EXTEND_kA;
-        config.Slot0.kP = IntakeConstants.EXTEND_kP;
-        config.Slot0.kI = IntakeConstants.EXTEND_kI;
-        config.Slot0.kD = IntakeConstants.EXTEND_kD;
+        config.Slot0.kS = IntakeConstants.EXTEND_INTAKE_kS;
+        config.Slot0.kV = IntakeConstants.EXTEND_INTAKE_kV;
+        config.Slot0.kA = IntakeConstants.EXTEND_INTAKE_kA;
+        config.Slot0.kP = IntakeConstants.EXTEND_INTAKE_kP;
+        config.Slot0.kI = IntakeConstants.EXTEND_INTAKE_kI;
+        config.Slot0.kD = IntakeConstants.EXTEND_INTAKE_kD;
 
-        config.MotionMagic.MotionMagicCruiseVelocity = IntakeConstants.EXTEND_MAX_VELOCITY;
-        config.MotionMagic.MotionMagicAcceleration = IntakeConstants.EXTEND_MAX_ACCELERATION;
+        // Motion Magic is only used for the fixed latch-release quarter turn.
+        config.MotionMagic.MotionMagicCruiseVelocity = IntakeConstants.EXTEND_INTAKE_MAX_VELOCITY;
+        config.MotionMagic.MotionMagicAcceleration = IntakeConstants.EXTEND_INTAKE_MAX_ACCELERATION;
 
-        extendMotor.getConfigurator().apply(config);
+        extendIntakeMotor.getConfigurator().apply(config);
     }
 
     private void configureSpinMotor() {
@@ -108,33 +104,35 @@ public class IntakeIOTalonFX implements IntakeIO {
     @Override
     public void updateInputs(IntakeIOInputs inputs) {
         BaseStatusSignal.refreshAll(
-            extendPosition, extendVelocity, extendVoltage, extendCurrent, extendTemp,
+            extendIntakePosition, extendIntakeVelocity, extendIntakeVoltage, extendIntakeCurrent, extendIntakeTemp,
             spinVelocity, spinVoltage, spinCurrent, spinTemp
         );
 
-        inputs.extendPositionRotations = extendPosition.getValueAsDouble();
-        inputs.extendVelocityRPS = extendVelocity.getValueAsDouble();
-        inputs.extendAppliedVolts = extendVoltage.getValueAsDouble();
-        inputs.extendCurrentAmps = extendCurrent.getValueAsDouble();
-        inputs.extendTempCelsius = extendTemp.getValueAsDouble();
+        inputs.extendIntakePositionRotations = extendIntakePosition.getValueAsDouble();
+        inputs.extendIntakeVelocityRPS = extendIntakeVelocity.getValueAsDouble();
+        inputs.extendIntakeAppliedVolts = extendIntakeVoltage.getValueAsDouble();
+        inputs.extendIntakeCurrentAmps = extendIntakeCurrent.getValueAsDouble();
+        inputs.extendIntakeTempCelsius = extendIntakeTemp.getValueAsDouble();
 
         inputs.spinVelocityRPS = spinVelocity.getValueAsDouble();
         inputs.spinAppliedVolts = spinVoltage.getValueAsDouble();
         inputs.spinCurrentAmps = spinCurrent.getValueAsDouble();
         inputs.spinTempCelsius = spinTemp.getValueAsDouble();
-
-        boolean rawSwitch = retractLimitSwitch.get();
-        inputs.retractLimitSwitch = IntakeConstants.RETRACT_LIMIT_SWITCH_INVERTED ? !rawSwitch : rawSwitch;
     }
 
     @Override
-    public void setExtendPercent(double percent) {
-        extendMotor.set(percent);
+    public void setExtendIntakePercent(double percent) {
+        extendIntakeMotor.set(percent);
     }
 
     @Override
-    public void setExtendPosition(double rotations) {
-        extendMotor.setControl(positionControl.withPosition(rotations));
+    public void setExtendIntakePosition(double rotations) {
+        extendIntakeMotor.setControl(positionControl.withPosition(rotations));
+    }
+
+    @Override
+    public void stopExtendIntake() {
+        extendIntakeMotor.set(0.0);
     }
 
     @Override
@@ -143,24 +141,8 @@ public class IntakeIOTalonFX implements IntakeIO {
     }
 
     @Override
-    public void resetExtendPosition() {
-        extendMotor.setPosition(0.0);
-    }
-
-    @Override
-    public void setSpringyCurrentLimits(boolean springy) {
-        CurrentLimitsConfigs limits = new CurrentLimitsConfigs();
-        if (springy) {
-            limits.SupplyCurrentLimitEnable = true;
-            limits.SupplyCurrentLimit = IntakeConstants.EXTEND_SPRINGY_SUPPLY_CURRENT_LIMIT;
-            limits.StatorCurrentLimitEnable = true;
-            limits.StatorCurrentLimit = IntakeConstants.EXTEND_SPRINGY_STATOR_CURRENT_LIMIT;
-        } else {
-            limits.SupplyCurrentLimitEnable = true;
-            limits.SupplyCurrentLimit = IntakeConstants.EXTEND_SUPPLY_CURRENT_LIMIT;
-            limits.StatorCurrentLimitEnable = true;
-            limits.StatorCurrentLimit = IntakeConstants.EXTEND_STATOR_CURRENT_LIMIT;
-        }
-        extendMotor.getConfigurator().apply(limits);
+    public void resetExtendIntakePosition() {
+        // Treat the latched start position as zero so the release target stays mechanical-relative.
+        extendIntakeMotor.setPosition(0.0);
     }
 }

@@ -116,6 +116,7 @@ public class RobotContainer {
         hood,
         shooter,
         turret,
+        intake,
         drivebase::getPose,
         drivebase::getFieldVelocity,
         shotCalculator,

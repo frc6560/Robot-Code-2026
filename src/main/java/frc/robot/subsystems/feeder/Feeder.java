@@ -4,6 +4,7 @@ import org.littletonrobotics.junction.Logger;
 
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.Constants.FeederConstants;
 
 public class Feeder extends SubsystemBase {
     private final FeederIO io;
@@ -12,9 +13,6 @@ public class Feeder extends SubsystemBase {
     private static final double PAN_RUNNING_RPM = -5.0;
     private static final double PUSHER_RUNNING_RPM = 2500.0;
     private static final double IDLE_RPM = 0.0;
-
-    private static final double PAN_GEAR_RATIO = 324/2688;
-    private static final double PUSHER_GEAR_RATIO = 1.0 / 2.5;
 
     private static final double PAN_SPEED_TOLERANCE_RPM = 20.0;
 
@@ -43,15 +41,15 @@ public class Feeder extends SubsystemBase {
     }
 
     public boolean hasBall() {
-        return true; // Always assume ball is present (no beam break sensor)
+        return true;
     }
 
     public double getPanActualRPM() {
-        return inputs.panVelocityRPS * 60.0 * PAN_GEAR_RATIO;
+        return inputs.panVelocityRPS * 60.0 * FeederConstants.PAN_GEAR_RATIO;
     }
 
     public double getPusherActualRPM() {
-        return inputs.pusherVelocityRPS * 60.0 * PUSHER_GEAR_RATIO;
+        return inputs.pusherVelocityRPS * 60.0 * FeederConstants.PUSHER_GEAR_RATIO;
     }
 
     public boolean panAtSpeed() {

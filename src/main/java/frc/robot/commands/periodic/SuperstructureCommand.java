@@ -14,6 +14,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants.FieldConstants;
 import frc.robot.subsystems.hood.Hood;
+import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.turret.Turret;
 import frc.robot.utility.Shooter.PassCalculator;
@@ -38,6 +39,7 @@ public class SuperstructureCommand extends Command {
     private final Hood hood;
     private final Shooter shooter;
     private final Turret turret;
+    private final Intake intake;
     private final PoseSupplier poseSupplier;
     private final VelocitySupplier velocitySupplier;
     private final ShotCalculator shotCalculator;
@@ -59,6 +61,7 @@ public class SuperstructureCommand extends Command {
             Hood hood,
             Shooter shooter,
             Turret turret,
+            Intake intake,
             PoseSupplier poseSupplier,
             VelocitySupplier velocitySupplier,
             ShotCalculator shotCalculator,
@@ -66,6 +69,7 @@ public class SuperstructureCommand extends Command {
         this.hood = hood;
         this.shooter = shooter;
         this.turret = turret;
+        this.intake = intake;
         this.poseSupplier = poseSupplier;
         this.velocitySupplier = velocitySupplier;
         this.passCalculator = passCalculator;
@@ -76,6 +80,8 @@ public class SuperstructureCommand extends Command {
     @Override
     public void initialize() {
         shooter.setIdle();
+        // Fire the one-shot intake unlatch when the superstructure comes online at match start.
+        intake.requestRelease();
 
         // Log that the command has started
         executeCounter = 0; // Reset counter on initialize

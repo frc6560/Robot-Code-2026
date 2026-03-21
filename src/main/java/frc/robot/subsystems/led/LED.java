@@ -37,8 +37,6 @@ public class LED extends SubsystemBase {
         PREGAME_SHIFT_RIGHT,
         PREGAME_SHIFT_FORWARD,
         PREGAME_SHIFT_BACK,
-        CLIMB_ACTUATING,
-        CLIMB_AUTO_ALIGN,
         AUTO_STOW_ACTIVATED,
         HUB_ACTIVE_SHOOT,
         HUB_INACTIVE_PASS,
@@ -57,8 +55,6 @@ public class LED extends SubsystemBase {
     // Robot state
     private boolean mechanismsStowed = false;
     private boolean autoStowActive = false;
-    private boolean climbActuating = false;
-    private boolean autoAlignActive = false;
     private boolean shiftLeft = false;
     private boolean shiftRight = false;
     private boolean shiftForward = false;
@@ -87,8 +83,6 @@ public class LED extends SubsystemBase {
     // Public setters
     public void setMechanismsStowed(boolean stowed) { this.mechanismsStowed = stowed; }
     public void setAutoStowActive(boolean active) { this.autoStowActive = active; }
-    public void setClimbActuating(boolean actuating) { this.climbActuating = actuating; }
-    public void setAutoAlignActive(boolean active) { this.autoAlignActive = active; }
     public void setShiftLeft(boolean active) { this.shiftLeft = active; }
     public void setShiftRight(boolean active) { this.shiftRight = active; }
     public void setShiftForward(boolean active) { this.shiftForward = active; }
@@ -134,9 +128,6 @@ public class LED extends SubsystemBase {
 
     private LEDState resolveInGameState() {
         if (autoStowActive) return LEDState.AUTO_STOW_ACTIVATED;
-        if (climbActuating) {
-            return autoAlignActive ? LEDState.CLIMB_AUTO_ALIGN : LEDState.CLIMB_ACTUATING;
-        }
         return resolveHubGameplayState();
     }
 
@@ -291,8 +282,6 @@ public class LED extends SubsystemBase {
             case PREGAME_SHIFT_FORWARD -> animateSwipe(SwipeDirection.INWARD, 255, 255, 255);
             case PREGAME_SHIFT_BACK -> animateSwipe(SwipeDirection.OUTWARD, 255, 255, 255);
             case AUTO_STOW_ACTIVATED -> setSolid(255, 0, 0);
-            case CLIMB_ACTUATING -> setSolid(0, 0, 255);
-            case CLIMB_AUTO_ALIGN -> setSolid(0, 0, 255);
             case HUB_ACTIVE_SHOOT -> setSolid(0, 255, 255);
             case HUB_INACTIVE_PASS -> setSolid(255, 255, 255);
             case LOADING_TO_ACTIVE -> renderLoadingBar(true);

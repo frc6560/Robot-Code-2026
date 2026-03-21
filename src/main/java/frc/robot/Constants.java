@@ -247,101 +247,63 @@ public final class Constants {
     public static final double WIRE_PROTECTION_UPPER = 270.0;
   }
 
-  public static final class IntakeConstants{
-    public static final boolean EXTENSION_ENABLED = true; 
-    public static final int EXTEND_MOTOR_ID = 15; // TODO: set correct ID //completed
-    public static final int SPIN_MOTOR_ID = 16; // TODO: set correct ID /completed
+  public static final class FeederConstants {
     public static final String CAN_BUS = "rio";
 
-    public static final int RETRACT_LIMIT_SWITCH_ID = 7; // TODO: set correct DIO port
-    public static final boolean RETRACT_LIMIT_SWITCH_INVERTED = true; // toDo: confirm if this needs to be true or false based on wiring and testing; eg, does it start as true or false when stowed.
+    public static final int PAN_MOTOR_ID = 14;
+    public static final int PUSHER_MOTOR_ID = 23;
+    // These replace the removed climb motors as revolver assist rollers.
+    public static final int LEFT_PUSHER_ASSIST_MOTOR_ID = 24;
+    public static final int RIGHT_PUSHER_ASSIST_MOTOR_ID = 25;
 
-    public static final boolean EXTEND_MOTOR_INVERTED = true; //TODO
-    public static final boolean SPIN_MOTOR_INVERTED = true; //TODO update: complete
+    public static final double PAN_GEAR_RATIO = 324.0 / 2688.0;
+    public static final double PUSHER_GEAR_RATIO = 1.0 / 2.5;
 
-    public static final double EXTEND_SPEED = 0.5; //tune (0.65)
-    public static final double RETRACT_SPEED = -0.5; //tune  (-0.5)
-    public static final double SPIN_SPEED = 0.85; //tune     (0.7)
-    public static final double SPRINGY_EXTEND_SPEED = 0.05; //tune
-    public static final double SPRINGY_SPIN_SPEED = 0.7; //tune
+    public static final boolean PAN_MOTOR_INVERTED = true;
+    public static final boolean PUSHER_MOTOR_INVERTED = true;
+    public static final boolean LEFT_PUSHER_ASSIST_MOTOR_INVERTED = true;
+    public static final boolean RIGHT_PUSHER_ASSIST_MOTOR_INVERTED = false;
 
-  public static final double MAX_EXTENSION_ROTATIONS = 10.0; // TODO: tune
-  public static final double SPRINGY_TRIGGER_ROTATIONS = 5.0; // TODO: tune
+    // Match pusher speed magnitude while forcing the assist rollers to counter-rotate.
+    public static final double LEFT_PUSHER_ASSIST_DIRECTION = 1.0;
+    public static final double RIGHT_PUSHER_ASSIST_DIRECTION = -1.0;
 
-  public static final double EXTENDED_POSITION_ROTATIONS = 10.008; // TODO: tune - target position for extension
-  public static final double RETRACTED_POSITION_ROTATIONS = 2.425; // TODO: tune - target position for retraction (not all the way to limit switch)
+    public static final double PAN_kP = 0.25;
+    public static final double PUSHER_kP = 0.15;
+    public static final double VELOCITY_kV = 0.12;
 
-    // Linear actuator geometry
-    public static final double EXTEND_GEAR_RATIO = 115.0 / 24.0; // 4.79:1 motor to pinion
-    public static final double PINION_DIAMETER_INCHES = 1.751;
-    public static final double INCHES_PER_PINION_ROTATION = Math.PI * PINION_DIAMETER_INCHES;
-    public static final double MAX_EXTENSION_INCHES = 11.0;
+    public static final int SUPPLY_CURRENT_LIMIT = 40;
+    public static final int STATOR_CURRENT_LIMIT = 40;
+  }
 
-    // Motion Magic PID gains
-    public static final double EXTEND_kS = 0.1;
-    public static final double EXTEND_kV = 0.12;
-    public static final double EXTEND_kA = 0.0;
-    public static final double EXTEND_kP = 0.5;
-    public static final double EXTEND_kI = 0.0;
-    public static final double EXTEND_kD = 0.0;
+  public static final class IntakeConstants{
+    public static final int EXTEND_INTAKE_MOTOR_ID = 15;
+    public static final int SPIN_MOTOR_ID = 16;
+    public static final String CAN_BUS = "rio";
 
-    // Motion Magic constraints (motor rotations/sec)
-    public static final double EXTEND_MAX_VELOCITY = 100.0;
-    public static final double EXTEND_MAX_ACCELERATION = 100.0;
+    public static final boolean EXTEND_INTAKE_MOTOR_INVERTED = true;
+    public static final boolean SPIN_MOTOR_INVERTED = true;
 
-    public static final double EXTEND_SUPPLY_CURRENT_LIMIT = 35;
-    public static final double EXTEND_STATOR_CURRENT_LIMIT = 40;
+    public static final double SPIN_SPEED = 0.85;
 
-    public static final double EXTEND_SPRINGY_SUPPLY_CURRENT_LIMIT = 12;
-    public static final double EXTEND_SPRINGY_STATOR_CURRENT_LIMIT = 20;
+    // One quarter rotation is the requested one-time latch release at match start.
+    public static final double EXTEND_INTAKE_RELEASE_ROTATIONS = 0.25;
+    public static final double EXTEND_INTAKE_RELEASE_TOLERANCE_ROTATIONS = 0.03;
+
+    public static final double EXTEND_INTAKE_kS = 0.1;
+    public static final double EXTEND_INTAKE_kV = 0.12;
+    public static final double EXTEND_INTAKE_kA = 0.0;
+    public static final double EXTEND_INTAKE_kP = 0.5;
+    public static final double EXTEND_INTAKE_kI = 0.0;
+    public static final double EXTEND_INTAKE_kD = 0.0;
+
+    public static final double EXTEND_INTAKE_MAX_VELOCITY = 30.0;
+    public static final double EXTEND_INTAKE_MAX_ACCELERATION = 60.0;
+
+    public static final double EXTEND_INTAKE_SUPPLY_CURRENT_LIMIT = 35;
+    public static final double EXTEND_INTAKE_STATOR_CURRENT_LIMIT = 40;
 
     public static final double SPIN_SUPPLY_CURRENT_LIMIT = 30;
     public static final double SPIN_STATOR_CURRENT_LIMIT = 40;
-
-    public static final double INTAKE_RUN_TIME = 3.5;
-  }
-
-  public static final class ClimbConstants {
-    public static final boolean CLIMB_ENABLED = true;
-    
-    // Motor IDs (Update these to match your actual Phoenix Tuner IDs)
-    public static final int LEFT_MOTOR_ID = 24; 
-    public static final int RIGHT_MOTOR_ID = 25; 
-    public static final String CAN_BUS = "rio";
-
-    public static final double CLIMB_GEAR_RATIO = 15.0; // motor spins 15 times for every 1 rotation of the climb mechanism. 
-    
-    // Soft Limits (In motor rotations)
-    public static final double CLIMB_SOFT_LIMIT_FORWARD = 34;
-    public static final double CLIMB_SOFT_LIMIT_REVERSE = -2.0;
-
-    // Motor Inversions (Ensure they both spin the carriage in the same direction)
-    public static final boolean LEFT_MOTOR_INVERTED = false;
-    public static final boolean RIGHT_MOTOR_INVERTED = true;
-
-    // Limit Switch
-    public static final int RETRACT_LIMIT_SWITCH_DIO = 1;
-    public static final boolean RETRACT_LIMIT_SWITCH_INVERTED = true;  // Inverted: switch is normally closed 
-
-    // Motion Magic / PID Tuning
-    public static final double kP = 5.0; // Increased to reach exact target
-    public static final double kI = 0.1; // Added to eliminate steady-state error under load
-    public static final double kD = 0.0;
-    public static final double kV = 0.0; // TODO: Tune
-    public static final double kG = 0.5; // Gravity compensation for retracting under load
-    public static final double CRUISE_VELOCITY_RPS = 40.0;
-    public static final double ACCELERATION_RPS2 = 80.0;
-
-    // 3-State Climb Heights (Tune these rotations to your actual robot)
-    public static final double RETRACTED_ROTATIONS = 0.015;  // Backed off slightly from limit switch
-    public static final double PULL_UP_ROTATIONS = 11.5;    // Pulling the robot off the ground
-    public static final double EXTENDED_ROTATIONS = 33.0;  // Reaching up for the rung
-
-    // Homing/Reset Routine Constants
-    public static final double RESET_RETRACT_PERCENT = 0.40;  // Higher percent needed to overcome static friction in manual mode
-    public static final double RESET_TIMEOUT_SECONDS = 3.0;    // Safety timeout for reset command
-    public static final double HOMING_VOLTS = -6.0;            // Retract voltage for limit switch homing (negative = down)
-    public static final double HOMING_CURRENT_AMPS = 35.0;     // Amps to trigger the "hard stop detected" logic
-    public static final double HOMING_TIMEOUT_SECS = 2.0;      // Safety timeout
   }
 }

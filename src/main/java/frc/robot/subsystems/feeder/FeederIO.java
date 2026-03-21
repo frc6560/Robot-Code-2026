@@ -16,17 +16,23 @@ public interface FeederIO {
         public double pusherAppliedVolts = 0.0;
         public double pusherCurrentAmps = 0.0;
         public double pusherTempCelsius = 0.0;
+
+        public double leftPusherAssistVelocityRPS = 0.0;
+        public double leftPusherAssistAppliedVolts = 0.0;
+        public double leftPusherAssistCurrentAmps = 0.0;
+        public double leftPusherAssistTempCelsius = 0.0;
+
+        public double rightPusherAssistVelocityRPS = 0.0;
+        public double rightPusherAssistAppliedVolts = 0.0;
+        public double rightPusherAssistCurrentAmps = 0.0;
+        public double rightPusherAssistTempCelsius = 0.0;
     }
 
-    /** Updates the set of loggable inputs */
     default void updateInputs(FeederIOInputs inputs) {}
 
-    /** Set the pan motor velocity in RPM (mechanism side) */
     default void setPanRPM(double rpm) {}
 
-    /** Set the pusher motor velocity in RPM (mechanism side) */
     default void setPusherRPM(double rpm) {}
 
-    /** Stop both motors */
     default void stop() {}
 }
