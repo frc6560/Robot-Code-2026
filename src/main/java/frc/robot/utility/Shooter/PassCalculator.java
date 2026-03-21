@@ -113,21 +113,23 @@ public class PassCalculator {
             }
         }
 
-        Translation2d targetPassLocation;
-
         // Calculates our target passing location.
-        if(robotPose.getY() < FieldConstants.PASS_DEADZONE_MIN_Y){
-            targetPassLocation = (alliance.get() == Alliance.Blue)
-                ? FieldConstants.BLUE_BOTTOM_PASS_POS
-                : FieldConstants.RED_BOTTOM_PASS_POS;
-        }
-        else if(robotPose.getY() > FieldConstants.PASS_DEADZONE_MAX_Y){
+        // Use the average of min/max Y as the threshold between top and bottom
+        double yThreshold = (FieldConstants.PASS_DEADZONE_MIN_Y + FieldConstants.PASS_DEADZONE_MAX_Y) / 2.0;
+        boolean useTopPass = robotPose.getY() > yThreshold;
+        edu.wpi.first.wpilibj.smartdashboard.SmartDashboard.putBoolean("PassCalc/UseTopPass", useTopPass);
+        edu.wpi.first.wpilibj.smartdashboard.SmartDashboard.putNumber("PassCalc/YThreshold", yThreshold);
+
+        Translation2d targetPassLocation;
+        if(useTopPass){
             targetPassLocation = (alliance.get() == Alliance.Blue)
                 ? FieldConstants.BLUE_TOP_PASS_POS
                 : FieldConstants.RED_TOP_PASS_POS;
         }
         else{
-            return; // if we're in the deadzone, we don't calculate a pass
+            targetPassLocation = (alliance.get() == Alliance.Blue)
+                ? FieldConstants.BLUE_BOTTOM_PASS_POS
+                : FieldConstants.RED_BOTTOM_PASS_POS;
         }
 
         // gets the turret's robot relative transform
