@@ -134,7 +134,7 @@ public final class Constants {
       }
       return limelightPose;
     }
-    public static final double kStdvXYBase = 0.05; 
+    public static final double kStdvXYBase = 0.03; 
     public static final double kStdvThetaBase = 9999.0; // disables rotation updates. trust the gyro!
     public static final double JUMP_TOLERANCE = 2.0;
   }
