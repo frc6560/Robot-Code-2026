@@ -115,7 +115,7 @@ public class PassCalculator {
 
         // Calculates our target passing location.
         // Use the average of min/max Y as the threshold between top and bottom
-        double yThreshold = (FieldConstants.PASS_DEADZONE_MIN_Y + FieldConstants.PASS_DEADZONE_MAX_Y) / 2.0;
+        double yThreshold = (FieldConstants.PASS_DEADZONE_MIN_Y + FieldConstants.PASS_DEADZONE_MAX_Y) / 2.0; //too lazy 
         boolean useTopPass = robotPose.getY() > yThreshold;
         edu.wpi.first.wpilibj.smartdashboard.SmartDashboard.putBoolean("PassCalc/UseTopPass", useTopPass);
         edu.wpi.first.wpilibj.smartdashboard.SmartDashboard.putNumber("PassCalc/YThreshold", yThreshold);
