@@ -27,27 +27,21 @@ import frc.robot.utility.Shooter.ShotCalculator;
 import frc.robot.subsystems.hood.Hood;
 import frc.robot.subsystems.hood.HoodIO;
 import frc.robot.subsystems.hood.HoodIOTalonFX;
-import frc.robot.subsystems.hood.HoodIOSim;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.shooter.ShooterIO;
 import frc.robot.subsystems.shooter.ShooterIOTalonFX;
-import frc.robot.subsystems.shooter.ShooterIOSim;
 import frc.robot.subsystems.turret.Turret;
 import frc.robot.subsystems.turret.TurretIO;
 import frc.robot.subsystems.turret.TurretIOTalonFX;
-import frc.robot.subsystems.turret.TurretIOSim;
 import frc.robot.subsystems.feeder.Feeder;
 import frc.robot.subsystems.feeder.FeederIO;
 import frc.robot.subsystems.feeder.FeederIOTalonFX;
-import frc.robot.subsystems.feeder.FeederIOSim;
 import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.intake.IntakeIO;
 import frc.robot.subsystems.intake.IntakeIOTalonFX;
 import frc.robot.subsystems.led.LED;
 import frc.robot.subsystems.led.LEDIO;
 import frc.robot.subsystems.led.LEDIOAddressable;
-import frc.robot.subsystems.led.LEDIOSim;
-import frc.robot.subsystems.intake.IntakeIOSim;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import frc.robot.subsystems.vision.LimelightVision;
 import frc.robot.subsystems.vision.VisionSubsystem;
@@ -88,39 +82,20 @@ public class RobotContainer {
 
     public RobotContainer() {
       // Initialize subsystems with appropriate IO implementations
-      switch (Constants.currentMode) {
-        case REAL:
-          hood = new Hood(new HoodIOTalonFX());
-          shooter = new Shooter(new ShooterIOTalonFX());
-          turret = new Turret(new TurretIOTalonFX());
-          feeder = new Feeder(new FeederIOTalonFX());
-          intake = new Intake(new IntakeIOTalonFX());
-          led = new LED(new LEDIOAddressable(5, 57));
-          break;
-        case SIM:
-          hood = new Hood(new HoodIOSim());
-          shooter = new Shooter(new ShooterIOSim());
-          turret = new Turret(new TurretIOSim());
-          feeder = new Feeder(new FeederIOSim());
-          intake = new Intake(new IntakeIOSim());
-          led = new LED(new LEDIOSim(57));
-          break;
-        case REPLAY:
-           hood = new Hood(new HoodIO() {});
-           shooter = new Shooter(new ShooterIO() {});
-           turret = new Turret(new TurretIO() {});
-           feeder = new Feeder(new FeederIO() {});
-           intake = new Intake(new IntakeIO() {});
-           led = new LED(new LEDIO() {});
-          break;
-        default:
+      if (Robot.isReal()) {
+        hood = new Hood(new HoodIOTalonFX());
+        shooter = new Shooter(new ShooterIOTalonFX());
+        turret = new Turret(new TurretIOTalonFX());
+        feeder = new Feeder(new FeederIOTalonFX());
+        intake = new Intake(new IntakeIOTalonFX());
+        led = new LED(new LEDIOAddressable(5, 57));
+      } else {
           hood = new Hood(new HoodIO() {});
           shooter = new Shooter(new ShooterIO() {});
           turret = new Turret(new TurretIO() {});
           feeder = new Feeder(new FeederIO() {});
           intake = new Intake(new IntakeIO() {});
           led = new LED(new LEDIO() {});
-          break;
       }
 
       factory = new AutoCommands(drivebase, feeder, intake, shooter);
@@ -151,7 +126,7 @@ public class RobotContainer {
     }
 
 
-    private static final double MAX_SHOOTING_VELOCITY_MPS = 1.0;
+    private static final double MAX_SHOOTING_VELOCITY_MPS = 1.2;
     private static final double MAX_PASSING_VELOCITY_MPS = Double.POSITIVE_INFINITY;
 
     private boolean isShotCommandActive() {
