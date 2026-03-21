@@ -102,9 +102,41 @@ public class SuperstructureCommand extends Command {
             return;
         }
 
-        double robotX = poseSupplier.getPose().getX();
+        Pose2d robotPose = poseSupplier.getPose();
+        double robotX = robotPose.getX();
+        double robotY = robotPose.getY();
 
+        // Check if in PASS zone (middle of field)
         if (robotX > FieldConstants.BLUE_ZONE_X && robotX < FieldConstants.RED_ZONE_X) {
+            // Check hub deadzone
+            Translation2d hubCenter = (alliance.get() == Alliance.Blue)
+                ? FieldConstants.BLUE_HUB_CENTER
+                : FieldConstants.RED_HUB_CENTER;
+            double distanceToHub = robotPose.getTranslation().getDistance(hubCenter);
+            if (distanceToHub < FieldConstants.DEAD_RAD) {
+                state = SuperstructureState.IDLE;
+                return;
+            }
+
+            // Check opponent rectangular deadzone
+            boolean inOpponentDeadzone = false;
+            if (alliance.get() == Alliance.Blue) {
+                inOpponentDeadzone = robotX >= FieldConstants.RED_DEADZONE_MIN_X &&
+                                      robotX <= FieldConstants.RED_DEADZONE_MAX_X &&
+                                      robotY >= FieldConstants.PASS_DEADZONE_MIN_Y &&
+                                      robotY <= FieldConstants.PASS_DEADZONE_MAX_Y;
+            } else {
+                inOpponentDeadzone = robotX >= FieldConstants.BLUE_DEADZONE_MIN_X &&
+                                      robotX <= FieldConstants.BLUE_DEADZONE_MAX_X &&
+                                      robotY >= FieldConstants.PASS_DEADZONE_MIN_Y &&
+                                      robotY <= FieldConstants.PASS_DEADZONE_MAX_Y;
+            }
+
+            if (inOpponentDeadzone) {
+                state = SuperstructureState.IDLE;
+                return;
+            }
+
             state = SuperstructureState.PASS;
         } else if ((alliance.get() == Alliance.Blue && robotX < FieldConstants.BLUE_ZONE_X)
                     || (alliance.get() == Alliance.Red && robotX > FieldConstants.RED_ZONE_X)) {
