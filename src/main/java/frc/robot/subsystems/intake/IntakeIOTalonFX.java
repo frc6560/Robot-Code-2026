@@ -2,165 +2,100 @@ package frc.robot.subsystems.intake;
 
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusSignal;
-import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
-import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
-import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Temperature;
 import edu.wpi.first.units.measure.Voltage;
-import edu.wpi.first.wpilibj.DigitalInput;
 import frc.robot.Constants.IntakeConstants;
 
 public class IntakeIOTalonFX implements IntakeIO {
-    private final TalonFX extendMotor;
-    private final TalonFX spinMotor;
-    private final DigitalInput retractLimitSwitch;
+    private final TalonFX leftMotor;
+    private final TalonFX rightMotor;
 
-    private final StatusSignal<Angle> extendPosition;
-    private final StatusSignal<AngularVelocity> extendVelocity;
-    private final StatusSignal<Voltage> extendVoltage;
-    private final StatusSignal<Current> extendCurrent;
-    private final StatusSignal<Temperature> extendTemp;
+    private final StatusSignal<AngularVelocity> leftVelocity;
+    private final StatusSignal<Voltage> leftVoltage;
+    private final StatusSignal<Current> leftCurrent;
+    private final StatusSignal<Temperature> leftTemp;
 
-    private final StatusSignal<AngularVelocity> spinVelocity;
-    private final StatusSignal<Voltage> spinVoltage;
-    private final StatusSignal<Current> spinCurrent;
-    private final StatusSignal<Temperature> spinTemp;
-
-    private final MotionMagicVoltage positionControl = new MotionMagicVoltage(0);
+    private final StatusSignal<AngularVelocity> rightVelocity;
+    private final StatusSignal<Voltage> rightVoltage;
+    private final StatusSignal<Current> rightCurrent;
+    private final StatusSignal<Temperature> rightTemp;
 
     public IntakeIOTalonFX() {
-        extendMotor = new TalonFX(IntakeConstants.EXTEND_MOTOR_ID, IntakeConstants.CAN_BUS);
-        spinMotor = new TalonFX(IntakeConstants.SPIN_MOTOR_ID, IntakeConstants.CAN_BUS);
-        retractLimitSwitch = new DigitalInput(IntakeConstants.RETRACT_LIMIT_SWITCH_ID);
+        leftMotor = new TalonFX(IntakeConstants.LEFT_MOTOR_ID, IntakeConstants.CAN_BUS);
+        rightMotor = new TalonFX(IntakeConstants.RIGHT_MOTOR_ID, IntakeConstants.CAN_BUS);
 
-        configureExtendMotor();
-        configureSpinMotor();
+        configureMotor(leftMotor, IntakeConstants.LEFT_MOTOR_INVERTED);
+        configureMotor(rightMotor, IntakeConstants.RIGHT_MOTOR_INVERTED);
 
-        extendPosition = extendMotor.getPosition();
-        extendVelocity = extendMotor.getVelocity();
-        extendVoltage = extendMotor.getMotorVoltage();
-        extendCurrent = extendMotor.getSupplyCurrent();
-        extendTemp = extendMotor.getDeviceTemp();
+        leftVelocity = leftMotor.getVelocity();
+        leftVoltage = leftMotor.getMotorVoltage();
+        leftCurrent = leftMotor.getSupplyCurrent();
+        leftTemp = leftMotor.getDeviceTemp();
 
-        spinVelocity = spinMotor.getVelocity();
-        spinVoltage = spinMotor.getMotorVoltage();
-        spinCurrent = spinMotor.getSupplyCurrent();
-        spinTemp = spinMotor.getDeviceTemp();
+        rightVelocity = rightMotor.getVelocity();
+        rightVoltage = rightMotor.getMotorVoltage();
+        rightCurrent = rightMotor.getSupplyCurrent();
+        rightTemp = rightMotor.getDeviceTemp();
 
         BaseStatusSignal.setUpdateFrequencyForAll(
             50.0,
-            extendPosition, extendVelocity, extendVoltage, extendCurrent, extendTemp,
-            spinVelocity, spinVoltage, spinCurrent, spinTemp
+            leftVelocity, leftVoltage, leftCurrent, leftTemp,
+            rightVelocity, rightVoltage, rightCurrent, rightTemp
         );
 
-        extendMotor.optimizeBusUtilization();
-        spinMotor.optimizeBusUtilization();
+        leftMotor.optimizeBusUtilization();
+        rightMotor.optimizeBusUtilization();
     }
 
-    private void configureExtendMotor() {
-        TalonFXConfiguration config = new TalonFXConfiguration();
-        config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
-        config.MotorOutput.Inverted = IntakeConstants.EXTEND_MOTOR_INVERTED
-            ? InvertedValue.Clockwise_Positive
-            : InvertedValue.CounterClockwise_Positive;
-
-        config.CurrentLimits.SupplyCurrentLimitEnable = true;
-        config.CurrentLimits.SupplyCurrentLimit = IntakeConstants.EXTEND_SUPPLY_CURRENT_LIMIT;
-        config.CurrentLimits.StatorCurrentLimitEnable = true;
-        config.CurrentLimits.StatorCurrentLimit = IntakeConstants.EXTEND_STATOR_CURRENT_LIMIT;
-
-        // Motion Magic configuration
-        config.Slot0.kS = IntakeConstants.EXTEND_kS;
-        config.Slot0.kV = IntakeConstants.EXTEND_kV;
-        config.Slot0.kA = IntakeConstants.EXTEND_kA;
-        config.Slot0.kP = IntakeConstants.EXTEND_kP;
-        config.Slot0.kI = IntakeConstants.EXTEND_kI;
-        config.Slot0.kD = IntakeConstants.EXTEND_kD;
-
-        config.MotionMagic.MotionMagicCruiseVelocity = IntakeConstants.EXTEND_MAX_VELOCITY;
-        config.MotionMagic.MotionMagicAcceleration = IntakeConstants.EXTEND_MAX_ACCELERATION;
-
-        extendMotor.getConfigurator().apply(config);
-    }
-
-    private void configureSpinMotor() {
+    private void configureMotor(TalonFX motor, boolean inverted) {
         TalonFXConfiguration config = new TalonFXConfiguration();
         config.MotorOutput.NeutralMode = NeutralModeValue.Coast;
-        config.MotorOutput.Inverted = IntakeConstants.SPIN_MOTOR_INVERTED
+        config.MotorOutput.Inverted = inverted
             ? InvertedValue.Clockwise_Positive
             : InvertedValue.CounterClockwise_Positive;
 
         config.CurrentLimits.SupplyCurrentLimitEnable = true;
-        config.CurrentLimits.SupplyCurrentLimit = IntakeConstants.SPIN_SUPPLY_CURRENT_LIMIT;
+        config.CurrentLimits.SupplyCurrentLimit = IntakeConstants.SUPPLY_CURRENT_LIMIT;
         config.CurrentLimits.StatorCurrentLimitEnable = true;
-        config.CurrentLimits.StatorCurrentLimit = IntakeConstants.SPIN_STATOR_CURRENT_LIMIT;
+        config.CurrentLimits.StatorCurrentLimit = IntakeConstants.STATOR_CURRENT_LIMIT;
 
-        spinMotor.getConfigurator().apply(config);
+        motor.getConfigurator().apply(config);
     }
 
     @Override
     public void updateInputs(IntakeIOInputs inputs) {
         BaseStatusSignal.refreshAll(
-            extendPosition, extendVelocity, extendVoltage, extendCurrent, extendTemp,
-            spinVelocity, spinVoltage, spinCurrent, spinTemp
+            leftVelocity, leftVoltage, leftCurrent, leftTemp,
+            rightVelocity, rightVoltage, rightCurrent, rightTemp
         );
 
-        inputs.extendPositionRotations = extendPosition.getValueAsDouble();
-        inputs.extendVelocityRPS = extendVelocity.getValueAsDouble();
-        inputs.extendAppliedVolts = extendVoltage.getValueAsDouble();
-        inputs.extendCurrentAmps = extendCurrent.getValueAsDouble();
-        inputs.extendTempCelsius = extendTemp.getValueAsDouble();
+        inputs.leftVelocityRPS = leftVelocity.getValueAsDouble();
+        inputs.leftAppliedVolts = leftVoltage.getValueAsDouble();
+        inputs.leftCurrentAmps = leftCurrent.getValueAsDouble();
+        inputs.leftTempCelsius = leftTemp.getValueAsDouble();
 
-        inputs.spinVelocityRPS = spinVelocity.getValueAsDouble();
-        inputs.spinAppliedVolts = spinVoltage.getValueAsDouble();
-        inputs.spinCurrentAmps = spinCurrent.getValueAsDouble();
-        inputs.spinTempCelsius = spinTemp.getValueAsDouble();
-
-        boolean rawSwitch = retractLimitSwitch.get();
-        inputs.retractLimitSwitch = IntakeConstants.RETRACT_LIMIT_SWITCH_INVERTED ? !rawSwitch : rawSwitch;
+        inputs.rightVelocityRPS = rightVelocity.getValueAsDouble();
+        inputs.rightAppliedVolts = rightVoltage.getValueAsDouble();
+        inputs.rightCurrentAmps = rightCurrent.getValueAsDouble();
+        inputs.rightTempCelsius = rightTemp.getValueAsDouble();
     }
 
     @Override
-    public void setExtendPercent(double percent) {
-        extendMotor.set(percent);
+    public void setRollerPercent(double percent) {
+        leftMotor.set(percent);
+        rightMotor.set(percent);
     }
 
     @Override
-    public void setExtendPosition(double rotations) {
-        extendMotor.setControl(positionControl.withPosition(rotations));
-    }
-
-    @Override
-    public void setSpinPercent(double percent) {
-        spinMotor.set(percent);
-    }
-
-    @Override
-    public void resetExtendPosition() {
-        extendMotor.setPosition(0.0);
-    }
-
-    @Override
-    public void setSpringyCurrentLimits(boolean springy) {
-        CurrentLimitsConfigs limits = new CurrentLimitsConfigs();
-        if (springy) {
-            limits.SupplyCurrentLimitEnable = true;
-            limits.SupplyCurrentLimit = IntakeConstants.EXTEND_SPRINGY_SUPPLY_CURRENT_LIMIT;
-            limits.StatorCurrentLimitEnable = true;
-            limits.StatorCurrentLimit = IntakeConstants.EXTEND_SPRINGY_STATOR_CURRENT_LIMIT;
-        } else {
-            limits.SupplyCurrentLimitEnable = true;
-            limits.SupplyCurrentLimit = IntakeConstants.EXTEND_SUPPLY_CURRENT_LIMIT;
-            limits.StatorCurrentLimitEnable = true;
-            limits.StatorCurrentLimit = IntakeConstants.EXTEND_STATOR_CURRENT_LIMIT;
-        }
-        extendMotor.getConfigurator().apply(limits);
+    public void stop() {
+        leftMotor.set(0);
+        rightMotor.set(0);
     }
 }

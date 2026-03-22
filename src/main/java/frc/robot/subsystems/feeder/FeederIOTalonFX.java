@@ -13,19 +13,21 @@ import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Temperature;
 import edu.wpi.first.units.measure.Voltage;
+import frc.robot.Constants.FeederConstants;
 
 public class FeederIOTalonFX implements FeederIO {
     private final TalonFX panMotor;
     private final TalonFX pusherMotor;
-
-    private static final int PAN_MOTOR_ID = 14;
-    private static final int PUSHER_MOTOR_ID = 23;
-
-    private static final double PAN_GEAR_RATIO =  324/2688;
-    private static final double PUSHER_GEAR_RATIO = 1.0 / 2.5;
+    private final TalonFX floorMotor;
+    private final TalonFX wallMotor;
 
     private final VelocityVoltage panRequest = new VelocityVoltage(0);
     private final VelocityVoltage pusherRequest = new VelocityVoltage(0);
+    private final VelocityVoltage floorRequest = new VelocityVoltage(0);
+    private final VelocityVoltage wallRequest = new VelocityVoltage(0);
+
+    private static final double PAN_GEAR_RATIO = FeederConstants.PAN_GEAR_RATIO;
+    private static final double PUSHER_GEAR_RATIO = FeederConstants.PUSHER_GEAR_RATIO;
 
     private final StatusSignal<Angle> panPosition;
     private final StatusSignal<AngularVelocity> panVelocity;
@@ -40,11 +42,15 @@ public class FeederIOTalonFX implements FeederIO {
     private final StatusSignal<Temperature> pusherTemp;
 
     public FeederIOTalonFX() {
-        panMotor = new TalonFX(PAN_MOTOR_ID);
-        pusherMotor = new TalonFX(PUSHER_MOTOR_ID);
+        panMotor = new TalonFX(FeederConstants.PAN_MOTOR_ID, FeederConstants.CAN_BUS);
+        pusherMotor = new TalonFX(FeederConstants.PUSHER_MOTOR_ID, FeederConstants.CAN_BUS);
+        floorMotor = new TalonFX(FeederConstants.FLOOR_ID, FeederConstants.CAN_BUS);
+        wallMotor = new TalonFX(FeederConstants.WALL_ID, FeederConstants.CAN_BUS);
 
-        configureMotor(panMotor, 0.25, 40, true);
-        configureMotor(pusherMotor, 0.15, 40, true);
+        configureMotor(panMotor, FeederConstants.PAN_kP, FeederConstants.SUPPLY_CURRENT_LIMIT, FeederConstants.PAN_MOTOR_INVERTED);
+        configureMotor(pusherMotor, FeederConstants.PUSHER_kP, FeederConstants.SUPPLY_CURRENT_LIMIT, FeederConstants.PUSHER_MOTOR_INVERTED);
+        configureMotor(wallMotor, FeederConstants.WALL_kP, FeederConstants.SUPPLY_CURRENT_LIMIT, FeederConstants.WALL_MOTOR_INVERTED);
+        configureMotor(floorMotor, FeederConstants.FLOOR_kP, FeederConstants.SUPPLY_CURRENT_LIMIT, FeederConstants.FLOOR_MOTOR_INVERTED);
 
         panPosition = panMotor.getPosition();
         panVelocity = panMotor.getVelocity();
@@ -71,14 +77,14 @@ public class FeederIOTalonFX implements FeederIO {
     private void configureMotor(TalonFX motor, double kP, int currentLimit, boolean inverted) {
         TalonFXConfiguration config = new TalonFXConfiguration();
         config.Slot0.kP = kP;
-        config.Slot0.kV = 0.12;
+        config.Slot0.kV = FeederConstants.kV;
         config.MotorOutput.Inverted = inverted
             ? InvertedValue.Clockwise_Positive
             : InvertedValue.CounterClockwise_Positive;
         config.CurrentLimits.SupplyCurrentLimitEnable = true;
         config.CurrentLimits.SupplyCurrentLimit = currentLimit;
         config.CurrentLimits.StatorCurrentLimitEnable = true;
-        config.CurrentLimits.StatorCurrentLimit = 40;
+        config.CurrentLimits.StatorCurrentLimit = FeederConstants.STATOR_CURRENT_LIMIT;
         motor.getConfigurator().apply(config);
         motor.setNeutralMode(NeutralModeValue.Brake);
     }
@@ -115,6 +121,16 @@ public class FeederIOTalonFX implements FeederIO {
     @Override
     public void setPusherRPM(double rpm) {
         pusherMotor.setControl(pusherRequest.withVelocity(rpmToRps(rpm, PUSHER_GEAR_RATIO)));
+    }
+    
+    @Override
+    public void setWallRPM(double rpm) {
+        wallMotor.setControl(wallRequest.withVelocity(rpmToRps(rpm, FeederConstants.WALL_GEAR_RATIO)));
+    }
+
+    @Override
+    public void setFloorRPM(double rpm) {
+        floorMotor.setControl(floorRequest.withVelocity(rpmToRps(rpm, FeederConstants.FLOOR_GEAR_RATIO)));
     }
 
     @Override

@@ -5,29 +5,20 @@ import org.littletonrobotics.junction.AutoLog;
 public interface IntakeIO {
     @AutoLog
     public static class IntakeIOInputs {
-        public double extendPositionRotations = 0.0;
-        public double extendVelocityRPS = 0.0;
-        public double extendAppliedVolts = 0.0;
-        public double extendCurrentAmps = 0.0;
-        public double extendTempCelsius = 0.0;
+        public double leftVelocityRPS = 0.0;
+        public double leftAppliedVolts = 0.0;
+        public double leftCurrentAmps = 0.0;
+        public double leftTempCelsius = 0.0;
 
-        public double spinVelocityRPS = 0.0;
-        public double spinAppliedVolts = 0.0;
-        public double spinCurrentAmps = 0.0;
-        public double spinTempCelsius = 0.0;
-
-        public boolean retractLimitSwitch = false;
+        public double rightVelocityRPS = 0.0;
+        public double rightAppliedVolts = 0.0;
+        public double rightCurrentAmps = 0.0;
+        public double rightTempCelsius = 0.0;
     }
 
     default void updateInputs(IntakeIOInputs inputs) {}
 
-    default void setExtendPercent(double percent) {}
+    default void setRollerPercent(double percent) {}
 
-    default void setExtendPosition(double rotations) {}
-
-    default void setSpinPercent(double percent) {}
-
-    default void resetExtendPosition() {}
-
-    default void setSpringyCurrentLimits(boolean springy) {}
+    default void stop() {}
 }

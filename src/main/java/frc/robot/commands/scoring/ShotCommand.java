@@ -6,7 +6,6 @@ import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants.FieldConstants;
 import frc.robot.subsystems.feeder.Feeder;
 import frc.robot.subsystems.hood.Hood;
-import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.turret.Turret;
 import frc.robot.utility.Shooter.ShotCalculator;
@@ -63,16 +62,12 @@ public class ShotCommand extends Command {
             inPassingZone
             && supplier.getPose().getY() > FieldConstants.PASS_DEADZONE_MIN_Y && supplier.getPose().getY() < FieldConstants.PASS_DEADZONE_MAX_Y
         );
-        if (allAtTarget && notAtDeadzone) {
-            feeder.requestFeed();
-        } else {
-            feeder.requestStop();
-        }
+        feeder.setShooting(allAtTarget && notAtDeadzone);
     }
 
     @Override
     public void end(boolean interrupted) {
-        feeder.requestStop();
+        feeder.setShooting(false);
     }
 
     @Override

@@ -86,22 +86,25 @@ public class AutoCommands {
             calculator.calculate(drivetrain.getPose(), drivetrain.getFieldVelocity());
             shooter.setGoal(calculator.getFlywheelRPM());
             if(shooter.atTarget()){
-                feeder.requestFeed();
-                intake.setOscillatingMode();
+                feeder.setShooting(true);
+                feeder.setIntaking(true);
+                intake.activate();
             }
         }).withTimeout(3.0)
         .finallyDo((interrupted) -> {
-            feeder.requestStop();
+            feeder.setShooting(false);
+            feeder.setIntaking(false);
+            intake.deactivate();
             shooter.setGoal(0);
         });
     }
 
     public Command intake(){
-        return Commands.runOnce(intake::setExtensionMode, intake);
+        return Commands.runOnce(intake::activate, intake);
     }
 
     public Command retract(){
-        return Commands.runOnce(intake::setIdleMode, intake);
+        return Commands.runOnce(intake::deactivate, intake);
     }
 
     /** Right side trench auto */

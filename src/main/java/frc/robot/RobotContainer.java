@@ -187,29 +187,26 @@ public class RobotContainer {
           if (shotCommand != null) {
             shotCommand.cancel();
           }
-        }), Commands.runOnce(feeder::requestFeed)));
+        }), Commands.runOnce(() -> feeder.setShooting(true))));
+        ungatedShootTrigger.onFalse(Commands.runOnce(() -> feeder.setShooting(false)));
 
         // --- INTAKE ---
 
         Trigger intakeTrigger = new Trigger(m_Controls::getIntakeTrigger);
-        Trigger intakeOscillatingTrigger = new Trigger(m_Controls::getIntakeRollingTrigger);
         Trigger intakeReleaseTrigger = new Trigger(m_Controls::getIntakeReleaseTrigger);
-        Trigger intakeRollingTrigger = new Trigger(m_Controls::getRollerTrigger);
-        Trigger intakeRollingReleaseTrigger = new Trigger(m_Controls::getRollerReleaseTrigger);
 
-        intakeTrigger.onTrue(Commands.runOnce(() -> intake.setExtendMode(Intake.ExtendMode.EXTENSION), intake));
-        intakeOscillatingTrigger.onTrue(Commands.runOnce(() -> intake.setExtendMode(Intake.ExtendMode.OSCILLATING), intake));
-        intakeReleaseTrigger.onTrue(Commands.runOnce(() -> intake.setExtendMode(Intake.ExtendMode.IDLE), intake));
-
-        intakeRollingTrigger.onTrue(Commands.runOnce(() -> intake.setRollerMode(Intake.RollerMode.ACTIVE), intake));
-        intakeRollingReleaseTrigger.onTrue(Commands.runOnce(() -> intake.setRollerMode(Intake.RollerMode.INACTIVE), intake));
+        intakeTrigger.onTrue(Commands.runOnce(() -> {
+            intake.activate();
+            feeder.setIntaking(true);
+        }));
+        intakeReleaseTrigger.onTrue(Commands.runOnce(() -> {
+            intake.deactivate();
+            feeder.setIntaking(false);
+        }));
 
         // --- RESETS ---
         Trigger resetPoseTrigger = new Trigger(m_Controls::getVisionResetTrigger);
         resetPoseTrigger.onTrue(Commands.runOnce(() -> vision.hardReset("limelight-br"), vision));
-
-        Trigger resetIntakeTrigger = new Trigger(m_Controls::getIntakeResetTrigger);
-        resetIntakeTrigger.onTrue(Commands.runOnce(intake::resetExtendPosition));
     }
 
 

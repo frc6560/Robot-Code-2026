@@ -5,32 +5,28 @@ import edu.wpi.first.math.system.plant.LinearSystemId;
 import edu.wpi.first.wpilibj.simulation.DCMotorSim;
 
 public class IntakeIOSim implements IntakeIO {
-    private final DCMotorSim extendSim;
-    private final DCMotorSim spinSim;
+    private final DCMotorSim leftSim;
+    private final DCMotorSim rightSim;
 
-    private double extendAppliedVolts = 0.0;
-    private double spinAppliedVolts = 0.0;
-    private double extendPosition = 0.0;
+    private double appliedVolts = 0.0;
 
-    private static final double EXTEND_GEARING = 64.0 / 14.0;
-    private static final double SPIN_GEARING = 1.0;
-    private static final double EXTEND_MOI = 0.001;
-    private static final double SPIN_MOI = 0.001;
+    private static final double GEARING = 1.0;
+    private static final double MOI = 0.001;
 
     public IntakeIOSim() {
-        extendSim = new DCMotorSim(
+        leftSim = new DCMotorSim(
             LinearSystemId.createDCMotorSystem(
                 DCMotor.getKrakenX60(1),
-                EXTEND_MOI,
-                EXTEND_GEARING
+                MOI,
+                GEARING
             ),
             DCMotor.getKrakenX60(1)
         );
-        spinSim = new DCMotorSim(
+        rightSim = new DCMotorSim(
             LinearSystemId.createDCMotorSystem(
                 DCMotor.getKrakenX60(1),
-                SPIN_MOI,
-                SPIN_GEARING
+                MOI,
+                GEARING
             ),
             DCMotor.getKrakenX60(1)
         );
@@ -38,45 +34,30 @@ public class IntakeIOSim implements IntakeIO {
 
     @Override
     public void updateInputs(IntakeIOInputs inputs) {
-        extendSim.setInputVoltage(extendAppliedVolts);
-        spinSim.setInputVoltage(spinAppliedVolts);
+        leftSim.setInputVoltage(appliedVolts);
+        rightSim.setInputVoltage(appliedVolts);
 
-        extendSim.update(0.02);
-        spinSim.update(0.02);
+        leftSim.update(0.02);
+        rightSim.update(0.02);
 
-        extendPosition += extendSim.getAngularVelocityRPM() / 60.0 * 0.02;
+        inputs.leftVelocityRPS = leftSim.getAngularVelocityRPM() / 60.0;
+        inputs.leftAppliedVolts = appliedVolts;
+        inputs.leftCurrentAmps = Math.abs(leftSim.getCurrentDrawAmps());
+        inputs.leftTempCelsius = 25.0;
 
-        inputs.extendPositionRotations = extendPosition;
-        inputs.extendVelocityRPS = extendSim.getAngularVelocityRPM() / 60.0;
-        inputs.extendAppliedVolts = extendAppliedVolts;
-        inputs.extendCurrentAmps = Math.abs(extendSim.getCurrentDrawAmps());
-        inputs.extendTempCelsius = 25.0;
-
-        inputs.spinVelocityRPS = spinSim.getAngularVelocityRPM() / 60.0;
-        inputs.spinAppliedVolts = spinAppliedVolts;
-        inputs.spinCurrentAmps = Math.abs(spinSim.getCurrentDrawAmps());
-        inputs.spinTempCelsius = 25.0;
-
-        inputs.retractLimitSwitch = extendPosition <= 0.1;
+        inputs.rightVelocityRPS = rightSim.getAngularVelocityRPM() / 60.0;
+        inputs.rightAppliedVolts = appliedVolts;
+        inputs.rightCurrentAmps = Math.abs(rightSim.getCurrentDrawAmps());
+        inputs.rightTempCelsius = 25.0;
     }
 
     @Override
-    public void setExtendPercent(double percent) {
-        extendAppliedVolts = percent * 12.0;
+    public void setRollerPercent(double percent) {
+        appliedVolts = percent * 12.0;
     }
 
     @Override
-    public void setSpinPercent(double percent) {
-        spinAppliedVolts = percent * 12.0;
-    }
-
-    @Override
-    public void resetExtendPosition() {
-        extendPosition = 0.0;
-    }
-
-    @Override
-    public void setSpringyCurrentLimits(boolean springy) {
-        // No-op in simulation
+    public void stop() {
+        appliedVolts = 0.0;
     }
 }
