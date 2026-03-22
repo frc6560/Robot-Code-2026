@@ -16,6 +16,18 @@ public interface FeederIO {
         public double pusherAppliedVolts = 0.0;
         public double pusherCurrentAmps = 0.0;
         public double pusherTempCelsius = 0.0;
+
+        public double floorPositionRotations = 0.0;
+        public double floorVelocityRPS = 0.0;
+        public double floorAppliedVolts = 0.0;
+        public double floorCurrentAmps = 0.0;
+        public double floorTempCelsius = 0.0;
+
+        public double wallPositionRotations = 0.0;
+        public double wallVelocityRPS = 0.0;
+        public double wallAppliedVolts = 0.0;
+        public double wallCurrentAmps = 0.0;
+        public double wallTempCelsius = 0.0;
     }
 
     /** Updates the set of loggable inputs */

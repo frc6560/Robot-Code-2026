@@ -53,20 +53,22 @@ public class Feeder extends SubsystemBase {
         io.updateInputs(inputs);
         Logger.processInputs("Feeder", inputs);
 
+        // Floor and wall run when intaking or shooting
         if (intaking || shooting) {
-            io.setPanRPM(FeederConstants.PAN_RUNNING_RPM);
-        } else {
-            io.setPanRPM(FeederConstants.IDLE_RPM);
-        }
-
-        if (shooting) {
-            io.setPusherRPM(FeederConstants.PUSHER_RUNNING_RPM);
             io.setFloorRPM(FeederConstants.FLOOR_RPM);
             io.setWallRPM(FeederConstants.WALL_RPM);
         } else {
-            io.setPusherRPM(FeederConstants.IDLE_RPM);
             io.setFloorRPM(FeederConstants.IDLE_RPM);
             io.setWallRPM(FeederConstants.IDLE_RPM);
+        }
+
+        // Pan and pusher run only when shooting
+        if (shooting) {
+            io.setPanRPM(FeederConstants.PAN_RUNNING_RPM);
+            io.setPusherRPM(FeederConstants.PUSHER_RUNNING_RPM);
+        } else {
+            io.setPanRPM(FeederConstants.IDLE_RPM);
+            io.setPusherRPM(FeederConstants.IDLE_RPM);
         }
 
         Logger.recordOutput("Feeder/Intaking", intaking);
