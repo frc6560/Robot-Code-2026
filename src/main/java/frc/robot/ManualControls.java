@@ -58,18 +58,6 @@ public class ManualControls {
     public boolean getRollerReleaseTrigger(){
       return getButtonRelease(3);
     }
-
-    public boolean getIntakeReleaseTrigger(){
-      return getButton(1);
-    }
-
-    public boolean getIntakeTrigger(){
-      return getButtonRelease(1) || getButtonRelease(2);
-    }
-
-    public boolean getIntakeRollingTrigger(){
-      return getButton(2);
-    }
     
       public boolean getUngatedShootTrigger(){
         return getButton(9);

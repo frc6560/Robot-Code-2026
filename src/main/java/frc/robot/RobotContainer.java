@@ -192,8 +192,8 @@ public class RobotContainer {
 
         // --- INTAKE ---
 
-        Trigger intakeTrigger = new Trigger(m_Controls::getIntakeTrigger);
-        Trigger intakeReleaseTrigger = new Trigger(m_Controls::getIntakeReleaseTrigger);
+        Trigger intakeTrigger = new Trigger(m_Controls::getRollerTrigger);
+        Trigger intakeReleaseTrigger = new Trigger(m_Controls::getRollerReleaseTrigger);
 
         intakeTrigger.onTrue(Commands.runOnce(() -> {
             intake.activate();

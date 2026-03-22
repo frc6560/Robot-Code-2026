@@ -100,11 +100,23 @@ public class AutoCommands {
     }
 
     public Command intake(){
-        return Commands.runOnce(intake::activate, intake);
+        return Commands.runOnce(() -> {
+            intake.activate();
+            feeder.setIntaking(true);
+        }, intake, feeder);
     }
 
     public Command retract(){
-        return Commands.runOnce(intake::deactivate, intake);
+        return Commands.runOnce(() -> {
+            intake.deactivate();
+            feeder.setIntaking(false);
+        }, intake, feeder);
+    }
+
+    public Command floorPulse() {
+        return Commands.runOnce(() -> feeder.setIntaking(true))
+            .andThen(Commands.waitSeconds(0.1))
+            .finallyDo(() -> feeder.setIntaking(false));
     }
 
     /** Right side trench auto */
@@ -145,16 +157,18 @@ public class AutoCommands {
             .active()
                 .onTrue(
                     Commands.sequence(
-                        cmdWithAccuracy(trenchToCenter) 
-                            .beforeStarting(trenchToCenter.resetOdometry()),
+                        Commands.parallel(
+                            floorPulse(),
+                            cmdWithAccuracy(trenchToCenter)
+                                .beforeStarting(trenchToCenter.resetOdometry())
+                        ),
                         cmdWithAccuracy(trenchToShoot)
-                            .andThen(shoot()), 
+                            .andThen(shoot()),
                         cmdWithAccuracy(trenchToHp)
                             .andThen(shoot()),
                         cmdWithAccuracy(hpToCenter)
                     )
         );
-
 
         return testRoutine;
     }
@@ -198,10 +212,13 @@ public class AutoCommands {
             .active()
                 .onTrue(
                     Commands.sequence(
-                        cmdWithAccuracy(trenchToCenter) 
-                            .beforeStarting(trenchToCenter.resetOdometry()),
+                        Commands.parallel(
+                            floorPulse(),
+                            cmdWithAccuracy(trenchToCenter)
+                                .beforeStarting(trenchToCenter.resetOdometry())
+                        ),
                         cmdWithAccuracy(trenchToShoot)
-                            .andThen(shoot()), 
+                            .andThen(shoot()),
                         cmdWithAccuracy(trenchToDepot)
                             .andThen(shoot()),
                         cmdWithAccuracy(trenchPullout),

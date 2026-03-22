@@ -253,9 +253,10 @@ public final class Constants {
 
   public static final class IntakeConstants {
     // CAN IDs
-    public static final int LEFT_MOTOR_ID = 15;
-    public static final int RIGHT_MOTOR_ID = 16;
+    public static final int LEFT_MOTOR_ID = 24;
+    public static final int RIGHT_MOTOR_ID = 25;
     public static final String CAN_BUS = "rio";
+
 
     // Motor Inversions (opposed motors)
     public static final boolean LEFT_MOTOR_INVERTED = false;
@@ -274,7 +275,7 @@ public final class Constants {
     public static final int PAN_MOTOR_ID = 14;
     public static final int PUSHER_MOTOR_ID = 23;
     public static final int WALL_ID = 0; // placeholder. ask derek for actual ids.
-    public static final int FLOOR_ID = 0; // placeholder. ask derek for actual ids.
+    public static final int FLOOR_ID = 15; // placeholder. ask derek for actual ids.
     public static final String CAN_BUS = "rio";
 
     // Gear Ratios
@@ -295,10 +296,10 @@ public final class Constants {
     public static final int STATOR_CURRENT_LIMIT = 40;
 
     // Motor Inversions
-    public static final boolean PAN_MOTOR_INVERTED = true;
+    public static final boolean PAN_MOTOR_INVERTED = false;
     public static final boolean PUSHER_MOTOR_INVERTED = true;
     public static final boolean WALL_MOTOR_INVERTED = false; // tune
-    public static final boolean FLOOR_MOTOR_INVERTED = false; // tune
+    public static final boolean FLOOR_MOTOR_INVERTED = true; // tune
 
     // RPM Settings
     public static final double PAN_RUNNING_RPM = 3000.0;
@@ -310,49 +311,5 @@ public final class Constants {
 
     // Tolerances
     public static final double PAN_SPEED_TOLERANCE_RPM = 500.0;
-  }
-
-  public static final class ClimbConstants {
-    public static final boolean CLIMB_ENABLED = true;
-    
-    // Motor IDs (Update these to match your actual Phoenix Tuner IDs)
-    public static final int LEFT_MOTOR_ID = 24; 
-    public static final int RIGHT_MOTOR_ID = 25; 
-    public static final String CAN_BUS = "rio";
-
-    public static final double CLIMB_GEAR_RATIO = 15.0; // motor spins 15 times for every 1 rotation of the climb mechanism. 
-    
-    // Soft Limits (In motor rotations)
-    public static final double CLIMB_SOFT_LIMIT_FORWARD = 34;
-    public static final double CLIMB_SOFT_LIMIT_REVERSE = -2.0;
-
-    // Motor Inversions (Ensure they both spin the carriage in the same direction)
-    public static final boolean LEFT_MOTOR_INVERTED = false;
-    public static final boolean RIGHT_MOTOR_INVERTED = true;
-
-    // Limit Switch
-    public static final int RETRACT_LIMIT_SWITCH_DIO = 1;
-    public static final boolean RETRACT_LIMIT_SWITCH_INVERTED = true;  // Inverted: switch is normally closed 
-
-    // Motion Magic / PID Tuning
-    public static final double kP = 5.0; // Increased to reach exact target
-    public static final double kI = 0.1; // Added to eliminate steady-state error under load
-    public static final double kD = 0.0;
-    public static final double kV = 0.0; // TODO: Tune
-    public static final double kG = 0.5; // Gravity compensation for retracting under load
-    public static final double CRUISE_VELOCITY_RPS = 40.0;
-    public static final double ACCELERATION_RPS2 = 80.0;
-
-    // 3-State Climb Heights (Tune these rotations to your actual robot)
-    public static final double RETRACTED_ROTATIONS = 0.015;  // Backed off slightly from limit switch
-    public static final double PULL_UP_ROTATIONS = 11.5;    // Pulling the robot off the ground
-    public static final double EXTENDED_ROTATIONS = 33.0;  // Reaching up for the rung
-
-    // Homing/Reset Routine Constants
-    public static final double RESET_RETRACT_PERCENT = 0.40;  // Higher percent needed to overcome static friction in manual mode
-    public static final double RESET_TIMEOUT_SECONDS = 3.0;    // Safety timeout for reset command
-    public static final double HOMING_VOLTS = -6.0;            // Retract voltage for limit switch homing (negative = down)
-    public static final double HOMING_CURRENT_AMPS = 35.0;     // Amps to trigger the "hard stop detected" logic
-    public static final double HOMING_TIMEOUT_SECS = 2.0;      // Safety timeout
   }
 }
