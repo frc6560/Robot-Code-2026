@@ -267,7 +267,12 @@ public final class Constants {
     public static final double STATOR_CURRENT_LIMIT = 40;
 
     // Roller Speed
-    public static final double ROLLER_SPEED = 0.85;
+    public static final double ROLLER_RPM = 2500.0;
+    public static final double ROLLER_GEARING = 1.25;
+
+    // Velocity PID Gains
+    public static final double kP = 0.15;
+    public static final double kV = 0.12;
   }
 
   public static final class FeederConstants {

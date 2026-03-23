@@ -18,7 +18,7 @@ public interface IntakeIO {
 
     default void updateInputs(IntakeIOInputs inputs) {}
 
-    default void setRollerPercent(double percent) {}
+    default void setRollerRPM(double rpm) {}
 
     default void stop() {}
 }

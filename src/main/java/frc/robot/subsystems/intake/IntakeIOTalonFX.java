@@ -3,6 +3,7 @@ package frc.robot.subsystems.intake;
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
@@ -16,6 +17,8 @@ import frc.robot.Constants.IntakeConstants;
 public class IntakeIOTalonFX implements IntakeIO {
     private final TalonFX leftMotor;
     private final TalonFX rightMotor;
+
+    private final VelocityVoltage velocityRequest = new VelocityVoltage(0).withSlot(0);
 
     private final StatusSignal<AngularVelocity> leftVelocity;
     private final StatusSignal<Voltage> leftVoltage;
@@ -66,6 +69,9 @@ public class IntakeIOTalonFX implements IntakeIO {
         config.CurrentLimits.StatorCurrentLimitEnable = true;
         config.CurrentLimits.StatorCurrentLimit = IntakeConstants.STATOR_CURRENT_LIMIT;
 
+        config.Slot0.kP = IntakeConstants.kP;
+        config.Slot0.kV = IntakeConstants.kV;
+
         motor.getConfigurator().apply(config);
     }
 
@@ -88,9 +94,10 @@ public class IntakeIOTalonFX implements IntakeIO {
     }
 
     @Override
-    public void setRollerPercent(double percent) {
-        leftMotor.set(percent);
-        rightMotor.set(percent);
+    public void setRollerRPM(double rpm) {
+        double rps = rpm / 60.0 * IntakeConstants.ROLLER_GEARING;
+        leftMotor.setControl(velocityRequest.withVelocity(rps));
+        rightMotor.setControl(velocityRequest.withVelocity(rps));
     }
 
     @Override

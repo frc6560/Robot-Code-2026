@@ -43,7 +43,7 @@ public class Intake extends SubsystemBase {
 
         switch (state) {
             case ACTIVE:
-                io.setRollerPercent(IntakeConstants.ROLLER_SPEED);
+                io.setRollerRPM(IntakeConstants.ROLLER_RPM);
                 break;
             case IDLE:
             default:

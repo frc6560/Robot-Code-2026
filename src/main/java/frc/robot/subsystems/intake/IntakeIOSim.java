@@ -52,8 +52,10 @@ public class IntakeIOSim implements IntakeIO {
     }
 
     @Override
-    public void setRollerPercent(double percent) {
-        appliedVolts = percent * 12.0;
+    public void setRollerRPM(double rpm) {
+        // Simple feedforward approximation for sim: target velocity -> voltage
+        double targetRPS = rpm / 60.0;
+        appliedVolts = targetRPS * 0.12 * 12.0; // kV * nominal voltage
     }
 
     @Override
