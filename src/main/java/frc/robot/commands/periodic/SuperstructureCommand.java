@@ -110,11 +110,12 @@ public class SuperstructureCommand extends Command {
         boolean inOurZone = (alliance.get() == Alliance.Blue && robotX < FieldConstants.BLUE_ZONE_X)
                          || (alliance.get() == Alliance.Red && robotX > FieldConstants.RED_ZONE_X);
 
+        SmartDashboard.putBoolean("SuperstructureCmd/InPassZone", !inOurZone);
+
         if (inOurZone) {
             state = SuperstructureState.SHOOT;
         } else {
             // Pass zone is everywhere except our zone
-            SmartDashboard.putBoolean("SuperstructureCmd/InPassZone", true);
 
             // Check hub deadzone
             Translation2d hubCenter = (alliance.get() == Alliance.Blue)
