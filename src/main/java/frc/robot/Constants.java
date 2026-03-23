@@ -301,7 +301,7 @@ public final class Constants {
     public static final int STATOR_CURRENT_LIMIT = 40;
 
     // Motor Inversions
-    public static final boolean PAN_MOTOR_INVERTED = false;
+    public static final boolean PAN_MOTOR_INVERTED = true;
     public static final boolean PUSHER_MOTOR_INVERTED = true;
     public static final boolean WALL_MOTOR_INVERTED = false; // tune
     public static final boolean FLOOR_MOTOR_INVERTED = true; // tune
