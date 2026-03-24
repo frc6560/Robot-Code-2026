@@ -9,8 +9,15 @@ public class Feeder extends SubsystemBase {
     private final FeederIO io;
     private final FeederIOInputsAutoLogged inputs = new FeederIOInputsAutoLogged();
 
+    public enum FeederState {
+        IDLE,
+        SPINNING_UP,
+        FEEDING
+    }
+
     private boolean intaking = false;
     private boolean shooting = false;
+    private FeederState state = FeederState.IDLE;
 
     public Feeder(FeederIO io) {
         this.io = io;
@@ -48,6 +55,10 @@ public class Feeder extends SubsystemBase {
         return shooting;
     }
 
+    public FeederState getState() {
+        return state;
+    }
+
     @Override
     public void periodic() {
         io.updateInputs(inputs);
@@ -62,17 +73,33 @@ public class Feeder extends SubsystemBase {
             io.setWallRPM(FeederConstants.IDLE_RPM);
         }
 
-        // Pan and pusher run only when shooting
+        // State machine for pan and pusher (spinning up before feeding)
         if (shooting) {
-            io.setPanRPM(FeederConstants.PAN_RUNNING_RPM);
-            io.setPusherRPM(FeederConstants.PUSHER_RUNNING_RPM);
+            switch (state) {
+                case IDLE:
+                    state = FeederState.SPINNING_UP;
+                    // Fall through to start spinning immediately
+                case SPINNING_UP:
+                    io.setPanRPM(FeederConstants.PAN_RUNNING_RPM);
+                    io.setPusherRPM(FeederConstants.IDLE_RPM);
+                    if (panAtSpeed()) {
+                        state = FeederState.FEEDING;
+                    }
+                    break;
+                case FEEDING:
+                    io.setPanRPM(FeederConstants.PAN_RUNNING_RPM);
+                    io.setPusherRPM(FeederConstants.PUSHER_RUNNING_RPM);
+                    break;
+            }
         } else {
+            state = FeederState.IDLE;
             io.setPanRPM(FeederConstants.IDLE_RPM);
             io.setPusherRPM(FeederConstants.IDLE_RPM);
         }
 
         Logger.recordOutput("Feeder/Intaking", intaking);
         Logger.recordOutput("Feeder/Shooting", shooting);
+        Logger.recordOutput("Feeder/State", state.toString());
         Logger.recordOutput("Feeder/PanActualRPM", getPanActualRPM());
         Logger.recordOutput("Feeder/PusherActualRPM", getPusherActualRPM());
         Logger.recordOutput("Feeder/PanAtSpeed", panAtSpeed());
