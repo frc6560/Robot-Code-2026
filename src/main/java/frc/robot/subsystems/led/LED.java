@@ -1,8 +1,11 @@
 package frc.robot.subsystems.led;
 
+import java.util.Optional;
+
 import org.littletonrobotics.junction.Logger;
 
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
@@ -11,6 +14,12 @@ public class LED extends SubsystemBase {
     private static final double SWIPE_STEP_SEC = 0.03;
     private static final int SWIPE_TRAIL = 12;
     private static final double BLINK_PERIOD_SEC = 0.1;
+
+    // Hub shift timing (seconds remaining in teleop)
+    private static final double SHIFT_1_END = 105.0;
+    private static final double SHIFT_2_END = 80.0;
+    private static final double SHIFT_3_END = 55.0;
+    private static final double SHIFT_4_END = 30.0;
 
     // Colors: 00b6ae = ready, ffffff = not ready
     private static final int READY_R = 0x00;
@@ -87,6 +96,63 @@ public class LED extends SubsystemBase {
         Logger.recordOutput("LED/State", currentState.name());
         Logger.recordOutput("LED/ShootIntent", shootIntent);
         Logger.recordOutput("LED/ReadyToShoot", readyToShoot);
+
+        publishHubShiftInfo();
+    }
+
+    private void publishHubShiftInfo() {
+        double matchTime = DriverStation.getMatchTime();
+        Logger.recordOutput("HubShift/MatchTimeRemaining", matchTime);
+
+        // Determine current shift (1-4) based on match time
+        int currentShift = 0;
+        if (matchTime > SHIFT_1_END) {
+            currentShift = 0; // Transition period
+        } else if (matchTime > SHIFT_2_END) {
+            currentShift = 1;
+        } else if (matchTime > SHIFT_3_END) {
+            currentShift = 2;
+        } else if (matchTime > SHIFT_4_END) {
+            currentShift = 3;
+        } else {
+            currentShift = 4; // Endgame
+        }
+        Logger.recordOutput("HubShift/CurrentShift", currentShift);
+
+        // Parse game data to determine which alliance is inactive first
+        String gameData = DriverStation.getGameSpecificMessage();
+        Optional<Alliance> myAllianceOpt = DriverStation.getAlliance();
+
+        boolean myHubActive = true; // Default to active
+        String inactiveFirstAlliance = "Unknown";
+
+        if (gameData != null && !gameData.isEmpty() && myAllianceOpt.isPresent()) {
+            char firstChar = Character.toUpperCase(gameData.charAt(0));
+            Alliance inactiveFirst = (firstChar == 'R') ? Alliance.Red : (firstChar == 'B') ? Alliance.Blue : null;
+
+            if (inactiveFirst != null) {
+                inactiveFirstAlliance = (inactiveFirst == Alliance.Red) ? "Red" : "Blue";
+                Alliance myAlliance = myAllianceOpt.get();
+                boolean iAmInactiveFirst = (myAlliance == inactiveFirst);
+
+                // Shifts 1 and 3: inactive-first alliance is inactive
+                // Shifts 2 and 4: inactive-first alliance is active
+                boolean inactiveFirstIsActive = (currentShift == 2 || currentShift == 4);
+                myHubActive = iAmInactiveFirst ? inactiveFirstIsActive : !inactiveFirstIsActive;
+
+                // During transition (shift 0) or endgame (shift 4+), both are active
+                if (currentShift == 0 || currentShift >= 4) {
+                    myHubActive = true;
+                }
+            }
+        }
+
+        Logger.recordOutput("HubShift/InactiveFirstAlliance", inactiveFirstAlliance);
+        Logger.recordOutput("HubShift/MyHubActive", myHubActive);
+        Logger.recordOutput("HubShift/Shift1EndTime", SHIFT_1_END);
+        Logger.recordOutput("HubShift/Shift2EndTime", SHIFT_2_END);
+        Logger.recordOutput("HubShift/Shift3EndTime", SHIFT_3_END);
+        Logger.recordOutput("HubShift/Shift4EndTime", SHIFT_4_END);
     }
 
     private LEDState resolveState() {

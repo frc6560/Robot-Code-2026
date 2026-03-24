@@ -198,7 +198,7 @@ public final class Constants {
     public static final double PASS_RPM = 1600.0; 
     public static final double FLYWHEEL_GEAR_RATIO = 1.25; 
     public static final double FLYWHEEL_IDLE_RPM = 500; //kraken x60 
-    public static final double FLYWHEEL_RPM_TOLERANCE = 200.0; 
+    public static final double FLYWHEEL_RPM_TOLERANCE = 80.0; 
 
     /** Current Limits */
     public static final double FLYWHEEL_SUPPLY_CURRENT_LIMIT = 50.0; // Amps
@@ -308,7 +308,7 @@ public final class Constants {
 
     // RPM Settings
     public static final double PAN_RUNNING_RPM = -5.0;
-    public static final double PUSHER_RUNNING_RPM = 2500.0;
+    public static final double PUSHER_RUNNING_RPM = 3500.0;
     public static final double IDLE_RPM = 0.0;
 
     public static final double WALL_RPM = 1000.0;
