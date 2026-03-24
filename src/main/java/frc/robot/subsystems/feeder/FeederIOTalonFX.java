@@ -161,8 +161,9 @@ public class FeederIOTalonFX implements FeederIO {
     }
 
     @Override
+    /** Mechanism only */
     public void setPusherRPM(double rpm) {
-        pusherMotor.setControl(pusherRequest.withVelocity(rpmToRps(rpm, PUSHER_GEAR_RATIO)));
+        pusherMotor.setControl(pusherRequest.withVelocity(rpm / 60.0));
     }
     
     @Override
