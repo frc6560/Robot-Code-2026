@@ -315,6 +315,6 @@ public final class Constants {
     public static final double FLOOR_RPM = 3000.0;
 
     // Tolerances
-    public static final double PAN_SPEED_TOLERANCE_RPM = 500.0;
+    public static final double PAN_SPEED_TOLERANCE_RPM = 50.0;
   }
 }

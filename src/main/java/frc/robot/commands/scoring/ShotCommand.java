@@ -6,6 +6,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants.FieldConstants;
 import frc.robot.subsystems.feeder.Feeder;
 import frc.robot.subsystems.hood.Hood;
+import frc.robot.subsystems.led.LED;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.turret.Turret;
 import frc.robot.utility.Shooter.ShotCalculator;
@@ -21,6 +22,9 @@ public class ShotCommand extends Command {
     private final Shooter shooter;
     private final ShotCalculator shotCalculator;
     private final PoseSupplier supplier;
+    private final LED led;
+
+    private boolean isReady = false;
 
     Debouncer debouncer = new Debouncer(0.05);
 
@@ -30,18 +34,22 @@ public class ShotCommand extends Command {
             Hood hood,
             Shooter shooter,
             ShotCalculator shotCalculator,
-            PoseSupplier supplier) {
+            PoseSupplier supplier,
+            LED led) {
         this.feeder = feeder;
         this.turret = turret;
         this.hood = hood;
         this.shooter = shooter;
         this.shotCalculator = shotCalculator;
         this.supplier = supplier;
+        this.led = led;
         addRequirements(feeder);
     }
 
     @Override
-    public void initialize() {}
+    public void initialize() {
+        led.setShootIntent(true);
+    }
 
     private static final double PASSING_TURRET_TOLERANCE_DEG = 15.0;
 
@@ -62,12 +70,17 @@ public class ShotCommand extends Command {
             inPassingZone
             && supplier.getPose().getY() > FieldConstants.PASS_DEADZONE_MIN_Y && supplier.getPose().getY() < FieldConstants.PASS_DEADZONE_MAX_Y
         );
-        feeder.setShooting(allAtTarget && notAtDeadzone);
+
+        isReady = allAtTarget && notAtDeadzone;
+        feeder.setShooting(isReady);
+        led.setReadyToShoot(isReady);
     }
 
     @Override
     public void end(boolean interrupted) {
         feeder.setShooting(false);
+        led.setShootIntent(false);
+        led.setReadyToShoot(false);
     }
 
     @Override
