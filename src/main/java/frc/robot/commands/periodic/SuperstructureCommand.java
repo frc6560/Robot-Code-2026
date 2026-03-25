@@ -104,12 +104,13 @@ public class SuperstructureCommand extends Command {
 
         double robotX = poseSupplier.getPose().getX();
 
-        if (robotX > FieldConstants.BLUE_ZONE_X && robotX < FieldConstants.RED_ZONE_X) {
+        if ((alliance.get() == Alliance.Blue && robotX > FieldConstants.BLUE_ZONE_X)
+                || (alliance.get() == Alliance.Red && robotX < FieldConstants.RED_ZONE_X)) {
             state = SuperstructureState.PASS;
         } else if ((alliance.get() == Alliance.Blue && robotX < FieldConstants.BLUE_ZONE_X)
                     || (alliance.get() == Alliance.Red && robotX > FieldConstants.RED_ZONE_X)) {
-            state = SuperstructureState.SHOOT;
-        } else {
+                state = SuperstructureState.SHOOT;
+            } else {
             state = SuperstructureState.IDLE;
         }
     }
