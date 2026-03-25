@@ -1,7 +1,12 @@
 package frc.robot.commands.scoring;
 
+import java.util.Optional;
+
 import edu.wpi.first.math.filter.Debouncer;
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants.FieldConstants;
 import frc.robot.subsystems.feeder.Feeder;
@@ -48,8 +53,18 @@ public class ShotCommand extends Command {
 
     @Override
     public void execute() {
-        double poseX = supplier.getPose().getX();
-        boolean inPassingZone = poseX > FieldConstants.BLUE_ZONE_X && poseX < FieldConstants.RED_ZONE_X;
+        Pose2d robotPose = supplier.getPose();
+        double robotX = robotPose.getX();
+        double robotY = robotPose.getY();
+
+        Optional<Alliance> alliance = DriverStation.getAlliance();
+
+        // Check if in our alliance zone
+        boolean inOurZone = alliance.isPresent() &&
+                            ((alliance.get() == Alliance.Blue && robotX < FieldConstants.BLUE_ZONE_X) ||
+                             (alliance.get() == Alliance.Red && robotX > FieldConstants.RED_ZONE_X));
+
+        boolean inPassingZone = !inOurZone;
 
         double turretTolerance = inPassingZone ? PASSING_TURRET_TOLERANCE_DEG : shotCalculator.getTurretTolerance();
         boolean hoodAtTolerance = inPassingZone ? true : hood.atTarget();
@@ -59,11 +74,35 @@ public class ShotCommand extends Command {
 
         boolean allAtTarget = debouncer.calculate(raw);
 
-        boolean notAtDeadzone = !(
-            inPassingZone
-            && supplier.getPose().getY() > FieldConstants.PASS_DEADZONE_MIN_Y && supplier.getPose().getY() < FieldConstants.PASS_DEADZONE_MAX_Y
-        );
-        if (allAtTarget && notAtDeadzone) {
+        // Check deadzones when in passing zone
+        boolean inDeadzone = false;
+        if (inPassingZone && alliance.isPresent()) {
+            // Check hub deadzone
+            Translation2d hubCenter = (alliance.get() == Alliance.Blue)
+                ? FieldConstants.BLUE_HUB_CENTER
+                : FieldConstants.RED_HUB_CENTER;
+            double distanceToHub = robotPose.getTranslation().getDistance(hubCenter);
+            if (distanceToHub < FieldConstants.DEAD_RAD) {
+                inDeadzone = true;
+            }
+
+            // Check opponent rectangular deadzone
+            if (!inDeadzone) {
+                if (alliance.get() == Alliance.Blue) {
+                    inDeadzone = robotX >= FieldConstants.RED_DEADZONE_MIN_X &&
+                                 robotX <= FieldConstants.RED_DEADZONE_MAX_X &&
+                                 robotY >= FieldConstants.PASS_DEADZONE_MIN_Y &&
+                                 robotY <= FieldConstants.PASS_DEADZONE_MAX_Y;
+                } else {
+                    inDeadzone = robotX >= FieldConstants.BLUE_DEADZONE_MIN_X &&
+                                 robotX <= FieldConstants.BLUE_DEADZONE_MAX_X &&
+                                 robotY >= FieldConstants.PASS_DEADZONE_MIN_Y &&
+                                 robotY <= FieldConstants.PASS_DEADZONE_MAX_Y;
+                }
+            }
+        }
+
+        if (allAtTarget && !inDeadzone) {
             feeder.requestFeed();
         } else {
             feeder.requestStop();
