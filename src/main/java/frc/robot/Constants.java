@@ -284,7 +284,7 @@ public final class Constants {
     public static final String CAN_BUS = "rio";
 
     // Gear Ratios
-    public static final double PAN_GEAR_RATIO = 324.0 /2688.0;
+    public static final double PAN_GEAR_RATIO = 324 / 2688;
     public static final double PUSHER_GEAR_RATIO = 1.0 / 2.5;
     public static final double WALL_GEAR_RATIO = 1.0 / 2.5; 
     public static final double FLOOR_GEAR_RATIO = 1.0 / 2.5; 
@@ -307,8 +307,8 @@ public final class Constants {
     public static final boolean FLOOR_MOTOR_INVERTED = true; // tune
 
     // RPM Settings
-    public static final double PAN_RUNNING_RPM = 3000.0;
-    public static final double PUSHER_RUNNING_RPM = 3500.0;
+    public static final double PAN_RUNNING_RPM = 5.0;
+    public static final double PUSHER_RUNNING_RPM = 7000.0;
     public static final double IDLE_RPM = 0.0;
 
     public static final double WALL_RPM = 1000.0;
