@@ -4,5 +4,6 @@ package frc.robot.autonomous;
 public enum AutoNames {
     IDLE,
     RIGHT_TRENCH,
-    LEFT_TRENCH
+    LEFT_TRENCH,
+    RIGHT_TWOSWIPE
 }

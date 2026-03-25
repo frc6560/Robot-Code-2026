@@ -113,12 +113,6 @@ public class AutoCommands {
         }, intake, feeder);
     }
 
-    public Command floorPulse() {
-        return Commands.runOnce(() -> feeder.setIntaking(true))
-            .andThen(Commands.waitSeconds(0.1))
-            .finallyDo(() -> feeder.setIntaking(false));
-    }
-
     /** Right side trench auto */
     public AutoRoutine getRightAuto(){
         AutoRoutine testRoutine = autoFactory.newRoutine("testTrench");
@@ -157,11 +151,8 @@ public class AutoCommands {
             .active()
                 .onTrue(
                     Commands.sequence(
-                        Commands.parallel(
-                            floorPulse(),
-                            cmdWithAccuracy(trenchToCenter)
-                                .beforeStarting(trenchToCenter.resetOdometry())
-                        ),
+                        cmdWithAccuracy(trenchToCenter)
+                            .beforeStarting(trenchToCenter.resetOdometry()),
                         cmdWithAccuracy(trenchToShoot)
                             .andThen(shoot()),
                         cmdWithAccuracy(trenchToHp)
@@ -212,17 +203,59 @@ public class AutoCommands {
             .active()
                 .onTrue(
                     Commands.sequence(
-                        Commands.parallel(
-                            floorPulse(),
-                            cmdWithAccuracy(trenchToCenter)
-                                .beforeStarting(trenchToCenter.resetOdometry())
-                        ),
+                        cmdWithAccuracy(trenchToCenter)
+                            .beforeStarting(trenchToCenter.resetOdometry()),
                         cmdWithAccuracy(trenchToShoot)
                             .andThen(shoot()),
                         cmdWithAccuracy(trenchToDepot)
                             .andThen(shoot()),
                         cmdWithAccuracy(trenchPullout),
                         cmdWithAccuracy(trenchToCenterSecondSwipe)
+                    )
+        );
+
+        return testRoutine;
+    }
+
+    
+    /** Two swipe HP side auto. Runs the first swipe as before, but then runs a loop for the second swipe */
+    public AutoRoutine getRightTwoSwipe(){
+        AutoRoutine testRoutine = autoFactory.newRoutine("twoSwipeHumanPlayer");
+
+        AutoTrajectory trenchToCenter = testRoutine.trajectory("hpTrenchToCenter");
+        AutoTrajectory trenchToShoot = testRoutine.trajectory("hpFirstSwipeBack");
+        AutoTrajectory trenchToCenterSecondSwipe = testRoutine.trajectory("hpSecondSwipe");
+
+        trenchToCenter.atTime("intake")
+            .onTrue(
+                intake()
+            );
+        
+        trenchToShoot.atTime("shoot")
+            .onTrue(
+                retract()
+            );
+        
+        trenchToCenterSecondSwipe.atTime("intake")
+            .onTrue(
+                intake()
+            );
+        
+        trenchToCenterSecondSwipe.atTime("retract")
+            .onTrue(
+                retract()
+            );
+
+        testRoutine
+            .active()
+                .onTrue(
+                    Commands.sequence(
+                        cmdWithAccuracy(trenchToCenter)
+                            .beforeStarting(trenchToCenter.resetOdometry()),
+                        cmdWithAccuracy(trenchToShoot)
+                            .andThen(shoot()),
+                        cmdWithAccuracy(trenchToCenterSecondSwipe)
+                            .andThen(shoot())
                     )
         );
 

@@ -52,6 +52,10 @@ public class AutoModeChooser {
                 routine = m_CommandFactory.getLeftAuto();
                 name = "Depot Turkish Delight";
                 break;
+            case RIGHT_TWOSWIPE:
+                routine = m_CommandFactory.getRightTwoSwipe();
+                name = "Two Swipe Turkish Delight";
+                break;
             default:
                 routine = m_CommandFactory.getNoAuto();
                 name = "Idle";
