@@ -198,7 +198,7 @@ public final class Constants {
     public static final double PASS_RPM = 1600.0; 
     public static final double FLYWHEEL_GEAR_RATIO = 1.25; 
     public static final double FLYWHEEL_IDLE_RPM = 500; //kraken x60 
-    public static final double FLYWHEEL_RPM_TOLERANCE = 80.0; 
+    public static final double FLYWHEEL_RPM_TOLERANCE = 200.0; 
 
     /** Current Limits */
     public static final double FLYWHEEL_SUPPLY_CURRENT_LIMIT = 50.0; // Amps
@@ -284,7 +284,7 @@ public final class Constants {
     public static final String CAN_BUS = "rio";
 
     // Gear Ratios
-    public static final double PAN_GEAR_RATIO = 324/2688;
+    public static final double PAN_GEAR_RATIO = 324.0 /2688.0;
     public static final double PUSHER_GEAR_RATIO = 1.0 / 2.5;
     public static final double WALL_GEAR_RATIO = 1.0 / 2.5; 
     public static final double FLOOR_GEAR_RATIO = 1.0 / 2.5; 
@@ -301,13 +301,13 @@ public final class Constants {
     public static final int STATOR_CURRENT_LIMIT = 40;
 
     // Motor Inversions
-    public static final boolean PAN_MOTOR_INVERTED = true;
+    public static final boolean PAN_MOTOR_INVERTED = false;
     public static final boolean PUSHER_MOTOR_INVERTED = true;
     public static final boolean WALL_MOTOR_INVERTED = false; // tune
     public static final boolean FLOOR_MOTOR_INVERTED = true; // tune
 
     // RPM Settings
-    public static final double PAN_RUNNING_RPM = -5.0;
+    public static final double PAN_RUNNING_RPM = 3000.0;
     public static final double PUSHER_RUNNING_RPM = 3500.0;
     public static final double IDLE_RPM = 0.0;
 

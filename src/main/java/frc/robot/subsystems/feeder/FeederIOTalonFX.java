@@ -157,7 +157,7 @@ public class FeederIOTalonFX implements FeederIO {
 
     @Override
     public void setPanRPM(double rpm) {
-        panMotor.setControl(panRequest.withVelocity(rpmToRps(rpm, PAN_GEAR_RATIO)));
+        panMotor.setControl(panRequest.withVelocity(rpm / 60.0));
     }
 
     @Override
