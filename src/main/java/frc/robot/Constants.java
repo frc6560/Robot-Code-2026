@@ -177,7 +177,7 @@ public final class Constants {
 
     public static final int HOOD_ABSOLUTE_ENCODER_ID = 22;
 
-    public static final double HOOD_ABSOLUTE_ENCODER_OFFSET = -0.575; // tune frequently.
+    public static final double HOOD_ABSOLUTE_ENCODER_OFFSET = -0.234; // tune frequently.
   }
 
   public static final class ShooterConstants{
@@ -307,7 +307,7 @@ public final class Constants {
     public static final boolean FLOOR_MOTOR_INVERTED = true; // tune
 
     // RPM Settings
-    public static final double PAN_RUNNING_RPM = 5.0;
+    public static final double PAN_RUNNING_RPM = 7000.0;
     public static final double PUSHER_RUNNING_RPM = 7000.0;
     public static final double IDLE_RPM = 0.0;
 
@@ -315,6 +315,6 @@ public final class Constants {
     public static final double FLOOR_RPM = 3000.0;
 
     // Tolerances
-    public static final double PAN_SPEED_TOLERANCE_RPM = 50.0;
+    public static final double PAN_SPEED_TOLERANCE_RPM = Double.POSITIVE_INFINITY;
   }
 }
