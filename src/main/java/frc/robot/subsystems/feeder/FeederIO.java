@@ -39,9 +39,6 @@ public interface FeederIO {
     /** Set the pusher motor velocity in RPM (mechanism side) */
     default void setPusherRPM(double rpm) {}
 
-    /** Sets the wall motor velocity in RPM */
-    default void setWallRPM(double rpm) {}
-
     /** Sets the floor motor velocity in RPM */
     default void setFloorRPM(double rpm) {}
 

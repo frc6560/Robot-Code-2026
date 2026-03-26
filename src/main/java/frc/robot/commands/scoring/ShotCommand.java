@@ -88,7 +88,7 @@ public class ShotCommand extends Command {
         boolean notAtDeadzone = !(
             (inOpponentZone
             && supplier.getPose().getY() > FieldConstants.PASS_DEADZONE_MIN_Y && supplier.getPose().getY() < FieldConstants.PASS_DEADZONE_MAX_Y)
-            || distanceToHub < 1.3
+            || inPassingZone && distanceToHub < 1.3
         );
 
         isReady = allAtTarget && notAtDeadzone;

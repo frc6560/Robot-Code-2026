@@ -42,13 +42,13 @@ public final class Constants {
     public static final double kV = 2.004;
     public static final double kA = 0.173;
 
-    public static final double kP_translation = 3.0; 
-    public static final double kP_rotation = 3.8;
+    public static final double kP_translation = 3.0; // originally 3.0
+    public static final double kP_rotation = 3.8; // originally 3.8
 
     public static final double kI_translation = 0.0;
     public static final double kI_rotation = 0.0;
 
-    public static final double kD_translation = 0.2;
+    public static final double kD_translation = 0.2; // originally 0.2
     public static final double kD_rotation = 0.2; 
 
     // Pure pursuit tuning (meters, meters per second)
@@ -198,7 +198,8 @@ public final class Constants {
     public static final double PASS_RPM = 1600.0; 
     public static final double FLYWHEEL_GEAR_RATIO = 1.25; 
     public static final double FLYWHEEL_IDLE_RPM = 500; //kraken x60 
-    public static final double FLYWHEEL_RPM_TOLERANCE = 200.0; 
+    public static final double BANGBANG_TOLERANCE = 80.0;
+    public static final double FLYWHEEL_RPM_TOLERANCE = 100.0; 
 
     /** Current Limits */
     public static final double FLYWHEEL_SUPPLY_CURRENT_LIMIT = 50.0; // Amps
@@ -221,7 +222,7 @@ public final class Constants {
     public static final double kS = 0.1;
     public static final double kV = 0.2;
     public static final double kA = 0.05; // old: 0.01
-    public static final double kG = 0.0;
+    public static final double kG = 0.3;
 
     /** PID Gains */
     public static final double kP = 8.0; // old: 5.0
@@ -279,7 +280,6 @@ public final class Constants {
     // CAN IDs
     public static final int PAN_MOTOR_ID = 14;
     public static final int PUSHER_MOTOR_ID = 23;
-    public static final int WALL_ID = 0; // placeholder. ask derek for actual ids.
     public static final int FLOOR_ID = 15; // placeholder. ask derek for actual ids.
     public static final String CAN_BUS = "rio";
 

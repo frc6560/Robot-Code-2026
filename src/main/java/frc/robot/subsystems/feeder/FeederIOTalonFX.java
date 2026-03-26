@@ -19,7 +19,6 @@ public class FeederIOTalonFX implements FeederIO {
     private final TalonFX panMotor;
     private final TalonFX pusherMotor;
     private final TalonFX floorMotor;
-    private final TalonFX wallMotor;
 
     private final VelocityVoltage panRequest = new VelocityVoltage(0);
     private final VelocityVoltage pusherRequest = new VelocityVoltage(0);
@@ -47,21 +46,13 @@ public class FeederIOTalonFX implements FeederIO {
     private final StatusSignal<Current> floorCurrent;
     private final StatusSignal<Temperature> floorTemp;
 
-    private final StatusSignal<Angle> wallPosition;
-    private final StatusSignal<AngularVelocity> wallVelocity;
-    private final StatusSignal<Voltage> wallVoltage;
-    private final StatusSignal<Current> wallCurrent;
-    private final StatusSignal<Temperature> wallTemp;
-
     public FeederIOTalonFX() {
         panMotor = new TalonFX(FeederConstants.PAN_MOTOR_ID, FeederConstants.CAN_BUS);
         pusherMotor = new TalonFX(FeederConstants.PUSHER_MOTOR_ID, FeederConstants.CAN_BUS);
         floorMotor = new TalonFX(FeederConstants.FLOOR_ID, FeederConstants.CAN_BUS);
-        wallMotor = new TalonFX(FeederConstants.WALL_ID, FeederConstants.CAN_BUS);
 
         configureMotor(panMotor, FeederConstants.PAN_kP, FeederConstants.SUPPLY_CURRENT_LIMIT, FeederConstants.PAN_MOTOR_INVERTED);
         configureMotor(pusherMotor, FeederConstants.PUSHER_kP, FeederConstants.SUPPLY_CURRENT_LIMIT, FeederConstants.PUSHER_MOTOR_INVERTED);
-        configureMotor(wallMotor, FeederConstants.WALL_kP, FeederConstants.SUPPLY_CURRENT_LIMIT, FeederConstants.WALL_MOTOR_INVERTED);
         configureMotor(floorMotor, FeederConstants.FLOOR_kP, FeederConstants.SUPPLY_CURRENT_LIMIT, FeederConstants.FLOOR_MOTOR_INVERTED);
 
         panPosition = panMotor.getPosition();
@@ -82,24 +73,17 @@ public class FeederIOTalonFX implements FeederIO {
         floorCurrent = floorMotor.getSupplyCurrent();
         floorTemp = floorMotor.getDeviceTemp();
 
-        wallPosition = wallMotor.getPosition();
-        wallVelocity = wallMotor.getVelocity();
-        wallVoltage = wallMotor.getMotorVoltage();
-        wallCurrent = wallMotor.getSupplyCurrent();
-        wallTemp = wallMotor.getDeviceTemp();
 
         BaseStatusSignal.setUpdateFrequencyForAll(
             50.0,
             panPosition, panVelocity, panVoltage, panCurrent, panTemp,
             pusherPosition, pusherVelocity, pusherVoltage, pusherCurrent, pusherTemp,
-            floorPosition, floorVelocity, floorVoltage, floorCurrent, floorTemp,
-            wallPosition, wallVelocity, wallVoltage, wallCurrent, wallTemp
+            floorPosition, floorVelocity, floorVoltage, floorCurrent, floorTemp
         );
 
         panMotor.optimizeBusUtilization();
         pusherMotor.optimizeBusUtilization();
         floorMotor.optimizeBusUtilization();
-        wallMotor.optimizeBusUtilization();
     }
 
     private void configureMotor(TalonFX motor, double kP, int currentLimit, boolean inverted) {
@@ -126,8 +110,7 @@ public class FeederIOTalonFX implements FeederIO {
         BaseStatusSignal.refreshAll(
             panPosition, panVelocity, panVoltage, panCurrent, panTemp,
             pusherPosition, pusherVelocity, pusherVoltage, pusherCurrent, pusherTemp,
-            floorPosition, floorVelocity, floorVoltage, floorCurrent, floorTemp,
-            wallPosition, wallVelocity, wallVoltage, wallCurrent, wallTemp
+            floorPosition, floorVelocity, floorVoltage, floorCurrent, floorTemp
         );
 
         inputs.panPositionRotations = panPosition.getValueAsDouble();
@@ -147,12 +130,6 @@ public class FeederIOTalonFX implements FeederIO {
         inputs.floorAppliedVolts = floorVoltage.getValueAsDouble();
         inputs.floorCurrentAmps = floorCurrent.getValueAsDouble();
         inputs.floorTempCelsius = floorTemp.getValueAsDouble();
-
-        inputs.wallPositionRotations = wallPosition.getValueAsDouble();
-        inputs.wallVelocityRPS = wallVelocity.getValueAsDouble();
-        inputs.wallAppliedVolts = wallVoltage.getValueAsDouble();
-        inputs.wallCurrentAmps = wallCurrent.getValueAsDouble();
-        inputs.wallTempCelsius = wallTemp.getValueAsDouble();
     }
 
     @Override
@@ -164,11 +141,6 @@ public class FeederIOTalonFX implements FeederIO {
     /** Mechanism only */
     public void setPusherRPM(double rpm) {
         pusherMotor.setControl(pusherRequest.withVelocity(rpm / 60.0));
-    }
-    
-    @Override
-    public void setWallRPM(double rpm) {
-        wallMotor.setControl(wallRequest.withVelocity(rpmToRps(rpm, FeederConstants.WALL_GEAR_RATIO)));
     }
 
     @Override

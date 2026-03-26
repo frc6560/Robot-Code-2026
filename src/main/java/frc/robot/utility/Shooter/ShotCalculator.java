@@ -67,7 +67,7 @@ public class ShotCalculator {
         flywheelRPMMap.put(3.219, 1800.0); 
         flywheelRPMMap.put(3.742, 1900.0);
         flywheelRPMMap.put(4.357, 2000.0);
-        flywheelRPMMap.put(4.943, 2100.0);
+        flywheelRPMMap.put(4.943, 2400.0);
         flywheelRPMMap.put(5.590, 2200.0);
         flywheelRPMMap.put(6.050, 2500.0);
 
@@ -78,7 +78,7 @@ public class ShotCalculator {
         hoodAzimuthMap.put(3.219, 27.0); 
         hoodAzimuthMap.put(3.742, 29.0);
         hoodAzimuthMap.put(4.357, 31.0);
-        hoodAzimuthMap.put(4.943, 34.0);
+        hoodAzimuthMap.put(4.943, 36.0);
         hoodAzimuthMap.put(5.590, 36.0);
         hoodAzimuthMap.put(6.050, 40.0);
 

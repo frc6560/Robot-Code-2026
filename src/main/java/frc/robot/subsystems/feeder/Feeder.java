@@ -67,10 +67,8 @@ public class Feeder extends SubsystemBase {
         // Floor and wall run when intaking or shooting
         if (intaking || shooting) {
             io.setFloorRPM(FeederConstants.FLOOR_RPM);
-            io.setWallRPM(FeederConstants.WALL_RPM);
         } else {
             io.setFloorRPM(FeederConstants.IDLE_RPM);
-            io.setWallRPM(FeederConstants.IDLE_RPM);
         }
 
         // State machine for pan and pusher (spinning up before feeding)

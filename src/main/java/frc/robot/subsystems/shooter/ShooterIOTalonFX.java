@@ -126,7 +126,7 @@ public class ShooterIOTalonFX implements ShooterIO {
 
     @Override
     public void setVelocityRPS(double rps) {
-        double rpsTolerance = ShooterConstants.FLYWHEEL_RPM_TOLERANCE / 60.0;
+        double rpsTolerance = ShooterConstants.BANGBANG_TOLERANCE / 60.0;
         if (Math.abs(rps) < 1.0) {
             controlMode = "Off";
             leaderMotor.setControl(coastControl);
