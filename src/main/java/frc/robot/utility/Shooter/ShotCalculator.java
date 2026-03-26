@@ -68,8 +68,8 @@ public class ShotCalculator {
         flywheelRPMMap.put(3.742, 1900.0);
         flywheelRPMMap.put(4.357, 2000.0);
         flywheelRPMMap.put(4.943, 2400.0);
-        flywheelRPMMap.put(5.590, 2200.0);
-        flywheelRPMMap.put(6.050, 2500.0);
+        flywheelRPMMap.put(5.590, 2700.0); // interpolated
+        flywheelRPMMap.put(6.050, 2800.0);
 
         // hood azimuth
         hoodAzimuthMap.put(1.628, 25.9);
