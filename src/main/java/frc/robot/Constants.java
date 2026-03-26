@@ -222,7 +222,7 @@ public final class Constants {
     public static final double kS = 0.1;
     public static final double kV = 0.2;
     public static final double kA = 0.05; // old: 0.01
-    public static final double kG = 0.3;
+    public static final double kG = 1.5;
 
     /** PID Gains */
     public static final double kP = 8.0; // old: 5.0
@@ -244,11 +244,11 @@ public final class Constants {
     public static final boolean ABSOLUTE_ENCODER_REVERSED = false; 
 
     // soft limits
-    public static final double LOWER_SOFT_LIMIT = -170.0;
+    public static final double LOWER_SOFT_LIMIT = -80.0;
     public static final double UPPER_SOFT_LIMIT = 270.0;
 
     // Wire protection thresholds - prefer unwinding toward center when outside these bounds
-    public static final double WIRE_PROTECTION_LOWER = -170.0;
+    public static final double WIRE_PROTECTION_LOWER = -80.0;
     public static final double WIRE_PROTECTION_UPPER = 270.0;
   }
 
