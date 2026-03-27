@@ -75,7 +75,7 @@ public class ManualControls {
         return getButton(5);
       }
 
-      public boolean getIntakeResetTrigger(){
+      public boolean getstationaryshoot(){
         return getButton(6);
       }
 }

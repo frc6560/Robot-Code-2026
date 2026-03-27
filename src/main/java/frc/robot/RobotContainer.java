@@ -160,13 +160,14 @@ public class RobotContainer {
     }
 
     private void configureBindings() {
+      Trigger stationaryTrigger = new Trigger(m_Controls::getstationaryshoot);
         Command driveFieldOrientedAnglularVelocity = drivebase.driveFieldOriented(
             () -> clampSpeedsForShooting(driveAngularVelocity.get()));
         drivebase.setDefaultCommand(driveFieldOrientedAnglularVelocity);
 
         driverXbox.x()
           .onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
-        driverXbox.y()
+        stationaryTrigger
           .whileTrue(Commands.run(() -> {
             SmartDashboard.putBoolean("StationaryShooting/Active", true);
 
