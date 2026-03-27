@@ -222,7 +222,7 @@ public final class Constants {
     public static final double kS = 0.1;
     public static final double kV = 0.2;
     public static final double kA = 0.05; // old: 0.01
-    public static final double kG = 1.5;
+    public static final double kG = 0.6;
 
     /** PID Gains */
     public static final double kP = 8.0; // old: 5.0
@@ -268,11 +268,11 @@ public final class Constants {
     public static final double STATOR_CURRENT_LIMIT = 40;
 
     // Roller Speed
-    public static final double ROLLER_RPM = 2500.0;
-    public static final double ROLLER_GEARING = 1.25;
+    public static final double ROLLER_RPM = 2100.0;
+    public static final double ROLLER_GEARING = 1.5;
 
     // Velocity PID Gains
-    public static final double kP = 0.15;
+    public static final double kP = 0.5;
     public static final double kV = 0.12;
   }
 

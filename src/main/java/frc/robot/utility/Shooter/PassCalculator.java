@@ -40,6 +40,10 @@ public class PassCalculator {
         hoodAzimuthMap.put(6.927, 44.0);
         hoodAzimuthMap.put(7.777, 44.0);
         hoodAzimuthMap.put(8.766, 44.0);
+        hoodAzimuthMap.put(10.000, 44.0);
+        hoodAzimuthMap.put(11.000, 44.0);
+        hoodAzimuthMap.put(12.000, 44.0);
+
 
         flywheelRPMMap.put(4.077, 1900.0);
         flywheelRPMMap.put(4.980, 2100.0);
@@ -47,6 +51,9 @@ public class PassCalculator {
         flywheelRPMMap.put(6.927, 2400.0);
         flywheelRPMMap.put(7.777, 2500.0);
         flywheelRPMMap.put(8.766, 2600.0);
+        flywheelRPMMap.put(10.000, 2918.0);
+        flywheelRPMMap.put(11.000, 3668.0);
+        flywheelRPMMap.put(12.000, 3917.0);
 
         timeOfFlightMap.put(4.077, 1.25);
         timeOfFlightMap.put(4.980, 1.26);
@@ -54,6 +61,9 @@ public class PassCalculator {
         timeOfFlightMap.put(6.927, 1.33);
         timeOfFlightMap.put(7.777, 1.39);
         timeOfFlightMap.put(8.766, 1.47);
+        timeOfFlightMap.put(10.000, 1.501);
+        timeOfFlightMap.put(11.000, 1.547);
+        timeOfFlightMap.put(12.000, 1.592);
     }
 
     public double getTurretAngle() {
