@@ -85,19 +85,29 @@ public class LED extends SubsystemBase {
         io.updateInputs(inputs);
         Logger.processInputs("LED", inputs);
 
-        LEDState nextState = resolveState();
-        if (nextState != currentState) {
-            currentState = nextState;
-            animTimer.reset();
-        }
-        renderState();
+        // TEST: Force LEDs to white
+        Logger.recordOutput("LED/Test/PeriodicCalled", true);
+        Logger.recordOutput("LED/Test/ColorR", 255);
+        Logger.recordOutput("LED/Test/ColorG", 255);
+        Logger.recordOutput("LED/Test/ColorB", 255);
+        setSolid(255, 255, 255);
         io.setData();
+        Logger.recordOutput("LED/Test/SetDataCalled", true);
+        return;
 
-        Logger.recordOutput("LED/State", currentState.name());
-        Logger.recordOutput("LED/ShootIntent", shootIntent);
-        Logger.recordOutput("LED/ReadyToShoot", readyToShoot);
+        // LEDState nextState = resolveState();
+        // if (nextState != currentState) {
+        //     currentState = nextState;
+        //     animTimer.reset();
+        // }
+        // renderState();
+        // io.setData();
 
-        publishHubShiftInfo();
+        // Logger.recordOutput("LED/State", currentState.name());
+        // Logger.recordOutput("LED/ShootIntent", shootIntent);
+        // Logger.recordOutput("LED/ReadyToShoot", readyToShoot);
+
+        // publishHubShiftInfo();
     }
 
     private void publishHubShiftInfo() {
@@ -211,7 +221,12 @@ public class LED extends SubsystemBase {
     }
 
     private void setSolid(int r, int g, int b) {
+        Logger.recordOutput("LED/Test/SetSolidCalled", true);
+        Logger.recordOutput("LED/Test/SetSolidR", r);
+        Logger.recordOutput("LED/Test/SetSolidG", g);
+        Logger.recordOutput("LED/Test/SetSolidB", b);
         io.setAllRGB(r, g, b);
+        Logger.recordOutput("LED/Test/SetAllRGBCalled", true);
     }
 
     private void animateSwipe(SwipeDirection dir, int r, int g, int b) {

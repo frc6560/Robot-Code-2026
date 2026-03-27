@@ -178,6 +178,9 @@ public final class Constants {
     public static final int HOOD_ABSOLUTE_ENCODER_ID = 22;
 
     public static final double HOOD_ABSOLUTE_ENCODER_OFFSET = -0.234; // tune frequently.
+
+    /** Stationary shooting angle */
+    public static final double HOOD_SUBWOOFER_SHOT_ANGLE = 28.0; // degrees
   }
 
   public static final class ShooterConstants{
@@ -205,10 +208,13 @@ public final class Constants {
     public static final double FLYWHEEL_SUPPLY_CURRENT_LIMIT = 50.0; // Amps
 
     /** Motor Inversion Settings */
-    public static final boolean LEFT_FLYWHEEL_INVERTED = false; 
-    public static final boolean RIGHT_FLYWHEEL_OPPOSED = true; 
+    public static final boolean LEFT_FLYWHEEL_INVERTED = false;
+    public static final boolean RIGHT_FLYWHEEL_OPPOSED = true;
 
     public static final int FLYWHEEL_STATOR_CURRENT_LIMIT = 50;
+
+    /** Stationary shooting RPM */
+    public static final double SUBWOOFER_SHOT_RPM = 1860;
   }
 
   public static final class TurretConstants{ 

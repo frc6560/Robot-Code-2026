@@ -1,5 +1,6 @@
 package frc.robot;
 
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
@@ -165,8 +166,26 @@ public class RobotContainer {
 
         driverXbox.x()
           .onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
-        driverXbox.start().
-          onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
+        driverXbox.y()
+          .whileTrue(Commands.run(() -> {
+            SmartDashboard.putBoolean("StationaryShooting/Active", true);
+
+            // Set field-relative angle based on alliance
+            java.util.Optional<DriverStation.Alliance> alliance = DriverStation.getAlliance();
+            double frAngleRad = 0.0; // Blue: 0°, Red: 180°
+            if (alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red) {
+                frAngleRad = Math.PI;
+            }
+
+            SmartDashboard.putNumber("StationaryShooting/TurretGoalDeg", Math.toDegrees(frAngleRad));
+            SmartDashboard.putNumber("StationaryShooting/HoodGoalDeg", Constants.HoodConstants.HOOD_SUBWOOFER_SHOT_ANGLE);
+            SmartDashboard.putNumber("StationaryShooting/ShooterGoalRPM", Constants.ShooterConstants.SUBWOOFER_SHOT_RPM);
+
+            turret.setGoal(Math.toDegrees(frAngleRad));
+            hood.setGoal(Constants.HoodConstants.HOOD_SUBWOOFER_SHOT_ANGLE);
+            shooter.setGoal(Constants.ShooterConstants.SUBWOOFER_SHOT_RPM);
+          }, turret, hood, shooter)
+          .finallyDo(() -> SmartDashboard.putBoolean("StationaryShooting/Active", false)));
 
         // --- SHOTS ---
         
