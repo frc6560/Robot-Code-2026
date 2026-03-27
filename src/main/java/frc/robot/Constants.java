@@ -244,11 +244,11 @@ public final class Constants {
     public static final boolean ABSOLUTE_ENCODER_REVERSED = false; 
 
     // soft limits
-    public static final double LOWER_SOFT_LIMIT = -80.0;
+    public static final double LOWER_SOFT_LIMIT = -100.0;
     public static final double UPPER_SOFT_LIMIT = 270.0;
 
     // Wire protection thresholds - prefer unwinding toward center when outside these bounds
-    public static final double WIRE_PROTECTION_LOWER = -80.0;
+    public static final double WIRE_PROTECTION_LOWER = -100.0;
     public static final double WIRE_PROTECTION_UPPER = 270.0;
   }
 
