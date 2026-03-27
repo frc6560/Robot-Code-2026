@@ -147,9 +147,9 @@ public class TurretIOTalonFX implements TurretIO {
 
         // Constant force spring compensation - push away from center at extreme angles
         double springCompensationVolts = 0.0;
-        if (angleDegrees < 180.0) {
+        if (angleDegrees > 180.0) {
             springCompensationVolts = TurretConstants.kG;
-        } else if (angleDegrees > -60.0) {
+        } else if (angleDegrees < -60.0) {
             springCompensationVolts = -TurretConstants.kG;
         }
 
