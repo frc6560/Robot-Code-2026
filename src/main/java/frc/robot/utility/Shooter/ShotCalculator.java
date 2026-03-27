@@ -64,11 +64,11 @@ public class ShotCalculator {
         flywheelRPMMap.put(1.628, 1500.0);
         flywheelRPMMap.put(1.942, 1500.0);
         flywheelRPMMap.put(2.573, 1700.0);
-        flywheelRPMMap.put(3.219, 1800.0); 
-        flywheelRPMMap.put(3.742, 1900.0);
-        flywheelRPMMap.put(4.357, 2000.0);
+        flywheelRPMMap.put(3.219, 2000.0); 
+        flywheelRPMMap.put(3.742, 2100.0);
+        flywheelRPMMap.put(4.357, 2200.0);
         flywheelRPMMap.put(4.943, 2400.0);
-        flywheelRPMMap.put(5.590, 2700.0); // interpolated
+        flywheelRPMMap.put(5.590, 2700.0); 
         flywheelRPMMap.put(6.050, 2800.0);
 
         // hood azimuth
@@ -76,21 +76,21 @@ public class ShotCalculator {
         hoodAzimuthMap.put(1.942, 25.9);
         hoodAzimuthMap.put(2.573, 25.9);
         hoodAzimuthMap.put(3.219, 27.0); 
-        hoodAzimuthMap.put(3.742, 29.0);
-        hoodAzimuthMap.put(4.357, 31.0);
+        hoodAzimuthMap.put(3.742, 31.0);
+        hoodAzimuthMap.put(4.357, 33.0);
         hoodAzimuthMap.put(4.943, 36.0);
-        hoodAzimuthMap.put(5.590, 36.0);
+        hoodAzimuthMap.put(5.590, 38.0);
         hoodAzimuthMap.put(6.050, 40.0);
 
 
         // time of flight 
-        timeOfFlightMap.put(1.520, 0.80);
-        timeOfFlightMap.put(1.885, 0.93);
-        timeOfFlightMap.put(2.500, 1.07);
-        timeOfFlightMap.put(3.098, 1.111); 
-        timeOfFlightMap.put(3.742, 1.111); 
+        timeOfFlightMap.put(1.628, 0.801);
+        timeOfFlightMap.put(1.942, 0.931);
+        timeOfFlightMap.put(2.573, 1.071);
+        timeOfFlightMap.put(3.219, 1.251); 
+        timeOfFlightMap.put(3.742, 1.271); 
         timeOfFlightMap.put(4.357, 1.161); 
-        timeOfFlightMap.put(4.943, 1.162); 
+        timeOfFlightMap.put(4.943, 1.162); //adjust
         timeOfFlightMap.put(5.590, 1.172);
         timeOfFlightMap.put(6.050, 1.172);
     }
