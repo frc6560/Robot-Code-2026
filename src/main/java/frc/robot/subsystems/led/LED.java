@@ -214,15 +214,42 @@ public class LED extends SubsystemBase {
 
     private void renderState() {
         switch (currentState) {
-            case PREGAME_NOT_STOWED -> setSolid(255, 0, 0);
-            case PREGAME_READY -> setSolid(0, 0, 255);
-            case PREGAME_SHIFT_LEFT -> animateSwipe(SwipeDirection.LEFT, 255, 255, 255);
-            case PREGAME_SHIFT_RIGHT -> animateSwipe(SwipeDirection.RIGHT, 255, 255, 255);
-            case PREGAME_SHIFT_FORWARD -> animateSwipe(SwipeDirection.INWARD, 255, 255, 255);
-            case PREGAME_SHIFT_BACK -> animateSwipe(SwipeDirection.OUTWARD, 255, 255, 255);
-            case SHOOT_READY -> renderShootState(READY_R, READY_G, READY_B);
-            case SHOOT_NOT_READY -> renderShootState(NOT_READY_R, NOT_READY_G, NOT_READY_B);
-            case OFF -> setSolid(0, 0, 0);
+            case PREGAME_NOT_STOWED -> {
+                setSolid(255, 0, 0);
+                Logger.recordOutput("LED/Color", "Red (255,0,0)");
+            }
+            case PREGAME_READY -> {
+                setSolid(0, 0, 255);
+                Logger.recordOutput("LED/Color", "Blue (0,0,255)");
+            }
+            case PREGAME_SHIFT_LEFT -> {
+                animateSwipe(SwipeDirection.LEFT, 255, 255, 255);
+                Logger.recordOutput("LED/Color", "White Swipe Left");
+            }
+            case PREGAME_SHIFT_RIGHT -> {
+                animateSwipe(SwipeDirection.RIGHT, 255, 255, 255);
+                Logger.recordOutput("LED/Color", "White Swipe Right");
+            }
+            case PREGAME_SHIFT_FORWARD -> {
+                animateSwipe(SwipeDirection.INWARD, 255, 255, 255);
+                Logger.recordOutput("LED/Color", "White Swipe Inward");
+            }
+            case PREGAME_SHIFT_BACK -> {
+                animateSwipe(SwipeDirection.OUTWARD, 255, 255, 255);
+                Logger.recordOutput("LED/Color", "White Swipe Outward");
+            }
+            case SHOOT_READY -> {
+                renderShootState(READY_R, READY_G, READY_B);
+                Logger.recordOutput("LED/Color", "Cyan/Ready (0,182,174)");
+            }
+            case SHOOT_NOT_READY -> {
+                renderShootState(NOT_READY_R, NOT_READY_G, NOT_READY_B);
+                Logger.recordOutput("LED/Color", "White/Not Ready (255,255,255)");
+            }
+            case OFF -> {
+                setSolid(0, 0, 0);
+                Logger.recordOutput("LED/Color", "Off (0,0,0)");
+            }
         }
     }
 
