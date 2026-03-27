@@ -98,23 +98,19 @@ public class LED extends SubsystemBase {
         io.updateInputs(inputs);
         Logger.processInputs("LED", inputs);
 
-        // Calculate ready to shoot based on tolerances
-        if (shootIntent) {
-            boolean shotValid = shotCalculator.isShotValid();
-            double turretTolerance = shotCalculator.getTurretTolerance();
-            boolean turretReady = turret.getAtTarget(turretTolerance);
-            boolean hoodReady = hood.atTarget();
-            boolean shooterReady = shooter.atTarget();
+        // Always calculate ready to shoot based on tolerances
+        boolean shotValid = shotCalculator.isShotValid();
+        double turretTolerance = shotCalculator.getTurretTolerance();
+        boolean turretReady = turret.getAtTarget(turretTolerance);
+        boolean hoodReady = hood.atTarget();
+        boolean shooterReady = shooter.atTarget();
 
-            readyToShoot = shotValid && turretReady && hoodReady && shooterReady;
+        readyToShoot = shotValid && turretReady && hoodReady && shooterReady;
 
-            Logger.recordOutput("LED/ShotValid", shotValid);
-            Logger.recordOutput("LED/TurretReady", turretReady);
-            Logger.recordOutput("LED/HoodReady", hoodReady);
-            Logger.recordOutput("LED/ShooterReady", shooterReady);
-        } else {
-            readyToShoot = false;
-        }
+        Logger.recordOutput("LED/ShotValid", shotValid);
+        Logger.recordOutput("LED/TurretReady", turretReady);
+        Logger.recordOutput("LED/HoodReady", hoodReady);
+        Logger.recordOutput("LED/ShooterReady", shooterReady);
 
         LEDState nextState = resolveState();
         if (nextState != currentState) {
@@ -210,6 +206,9 @@ public class LED extends SubsystemBase {
     }
 
     private LEDState resolveInGameState() {
+        if (!shootIntent) {
+            return LEDState.OFF; // No shoot intent, LEDs off
+        }
         return readyToShoot ? LEDState.SHOOT_READY : LEDState.SHOOT_NOT_READY;
     }
 
