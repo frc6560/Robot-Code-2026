@@ -93,14 +93,12 @@ public class ShotCommand extends Command {
 
         isReady = allAtTarget && notAtDeadzone;
         feeder.setShooting(isReady);
-        led.setReadyToShoot(isReady);
     }
 
     @Override
     public void end(boolean interrupted) {
         feeder.setShooting(false);
         led.setShootIntent(false);
-        led.setReadyToShoot(false);
     }
 
     @Override

@@ -88,14 +88,14 @@ public class RobotContainer {
         turret = new Turret(new TurretIOTalonFX());
         feeder = new Feeder(new FeederIOTalonFX());
         intake = new Intake(new IntakeIOTalonFX());
-        led = new LED(new LEDIOAddressable(5, 57));
+        led = new LED(new LEDIOAddressable(5, 57), hood, shooter, turret, shotCalculator);
       } else {
           hood = new Hood(new HoodIO() {});
           shooter = new Shooter(new ShooterIO() {});
           turret = new Turret(new TurretIO() {});
           feeder = new Feeder(new FeederIO() {});
           intake = new Intake(new IntakeIO() {});
-          led = new LED(new LEDIO() {});
+          led = new LED(new LEDIO() {}, hood, shooter, turret, shotCalculator);
       }
 
       factory = new AutoCommands(drivebase, feeder, intake, shooter);
@@ -121,6 +121,7 @@ public class RobotContainer {
       );
 
       hood.setDefaultCommand(superstructureCommand);
+      led.setDefaultCommand(Commands.run(() -> {}, led));               
 
       configureBindings();
     }
