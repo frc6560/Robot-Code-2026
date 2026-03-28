@@ -215,11 +215,11 @@ public class LED extends SubsystemBase {
     private void renderState() {
         switch (currentState) {
             case PREGAME_NOT_STOWED -> {
-                setSolid(255, 0, 0);
+                animateSwipe(SwipeDirection.LEFT,255, 0, 0);
                 Logger.recordOutput("LED/Color", "Red (255,0,0)");
             }
             case PREGAME_READY -> {
-                setSolid(0, 0, 255);
+                animateSwipe(SwipeDirection.LEFT,0, 0, 255);
                 Logger.recordOutput("LED/Color", "Blue (0,0,255)");
             }
             case PREGAME_SHIFT_LEFT -> {
