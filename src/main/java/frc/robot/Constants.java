@@ -98,7 +98,7 @@ public final class Constants {
   public static class LimelightConstants
   {
     public static final String[] LIMELIGHT_NAMES = {
-      "limelight-br", "limelight-cl","limelight-cr"
+      "limelight-br", "limelight-cl","limelight-cr","limelight-back"
     }; // one limelight for now
 
     
@@ -127,6 +127,14 @@ public final class Constants {
             0.325, // left/right
             0.336, // height
             new Rotation3d(0, Units.degreesToRadians(25.0), Units.degreesToRadians(-90.0))
+          );
+          break;
+        case "limelight-back":
+          limelightPose = new Pose3d(
+            -0.293, // front/back
+            -0.296, // left/right
+            0.499, // height
+            new Rotation3d(0, Units.degreesToRadians(0), Units.degreesToRadians(180.0))
           );
           break;
         default:
