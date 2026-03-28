@@ -84,7 +84,7 @@ public class SwerveSubsystem extends SubsystemBase {
         .subscribe("Idle");
 
     Pose2d startingPose = FieldConstants.BLUE_TESTING_START;
-    SwerveDriveTelemetry.verbosity = TelemetryVerbosity.POSE;
+    SwerveDriveTelemetry.verbosity = TelemetryVerbosity.LOW;
     try
     {
       swerveDrive = new SwerveParser(directory).createSwerveDrive(Constants.MAX_SPEED, startingPose);

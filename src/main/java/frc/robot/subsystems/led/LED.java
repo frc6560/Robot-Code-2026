@@ -16,7 +16,7 @@ import frc.robot.utility.Shooter.ShotCalculator;
 public class LED extends SubsystemBase {
 
     private static final double SWIPE_STEP_SEC = 0.03;
-    private static final int SWIPE_TRAIL = 12;
+    private static final int SWIPE_TRAIL = 35 ;
     private static final double BLINK_PERIOD_SEC = 0.1;
 
     // Hub shift timing (seconds remaining in teleop)

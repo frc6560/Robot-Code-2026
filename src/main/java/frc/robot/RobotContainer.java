@@ -88,7 +88,7 @@ public class RobotContainer {
         turret = new Turret(new TurretIOTalonFX());
         feeder = new Feeder(new FeederIOTalonFX());
         intake = new Intake(new IntakeIOTalonFX());
-        led = new LED(new LEDIOAddressable(5, 57), hood, shooter, turret, shotCalculator);
+        led = new LED(new LEDIOAddressable(3, 65), hood, shooter, turret, shotCalculator);
       } else {
           hood = new Hood(new HoodIO() {});
           shooter = new Shooter(new ShooterIO() {});
