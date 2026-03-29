@@ -27,8 +27,8 @@ public class LED extends SubsystemBase {
 
     // Colors: 00b6ae = ready, ffffff = not ready
     private static final int READY_R = 0x00;
-    private static final int READY_G = 0xb6;
-    private static final int READY_B = 0xae;
+    private static final int READY_G = 90;
+    private static final int READY_B = 250;
 
     private static final int NOT_READY_R = 0xff;
     private static final int NOT_READY_G = 0xff;
