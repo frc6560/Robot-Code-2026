@@ -153,5 +153,6 @@ public class Turret extends SubsystemBase {
         Logger.recordOutput("Turret/ErrorDegrees", getTurretAngle() - goalDegrees);
         Logger.recordOutput("Turret/AtTarget", atTarget);
         Logger.recordOutput("Turret/ToleranceDegrees", tolerance);
+        Logger.recordOutput("Turret/UsingFF", io.getFF());
     }
 }

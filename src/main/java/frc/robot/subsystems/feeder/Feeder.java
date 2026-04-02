@@ -17,6 +17,7 @@ public class Feeder extends SubsystemBase {
 
     private boolean intaking = false;
     private boolean shooting = false;
+    private boolean outtaking = false;
     private FeederState state = FeederState.IDLE;
 
     public Feeder(FeederIO io) {
@@ -55,6 +56,14 @@ public class Feeder extends SubsystemBase {
         return shooting;
     }
 
+    public void setOuttaking(boolean outtaking) {
+        this.outtaking = outtaking;
+    }
+
+    public boolean isOuttaking() {
+        return outtaking;
+    }
+
     public FeederState getState() {
         return state;
     }
@@ -64,8 +73,10 @@ public class Feeder extends SubsystemBase {
         io.updateInputs(inputs);
         Logger.processInputs("Feeder", inputs);
 
-        // Floor and wall run when intaking or shooting
-        if (intaking || shooting) {
+        // Floor and wall run when intaking or shooting, reverse when outtaking
+        if (outtaking) {
+            io.setFloorRPM(-FeederConstants.FLOOR_RPM);
+        } else if (intaking || shooting) {
             io.setFloorRPM(FeederConstants.FLOOR_RPM);
         } else {
             io.setFloorRPM(FeederConstants.IDLE_RPM);
@@ -97,6 +108,7 @@ public class Feeder extends SubsystemBase {
 
         Logger.recordOutput("Feeder/Intaking", intaking);
         Logger.recordOutput("Feeder/Shooting", shooting);
+        Logger.recordOutput("Feeder/Outtaking", outtaking);
         Logger.recordOutput("Feeder/State", state.toString());
         Logger.recordOutput("Feeder/PanActualRPM", getPanActualRPM());
         Logger.recordOutput("Feeder/PusherActualRPM", getPusherActualRPM());

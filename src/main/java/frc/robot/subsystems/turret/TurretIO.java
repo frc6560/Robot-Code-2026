@@ -33,4 +33,7 @@ public interface TurretIO {
 
     /** Set voltage directly (for SysId) */
     default void setVoltage(double volts) {}
+
+    /** Gets kG FF data. */
+    default boolean getFF() { return false; }
 }

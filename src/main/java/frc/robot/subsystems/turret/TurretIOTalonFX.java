@@ -27,6 +27,8 @@ public class TurretIOTalonFX implements TurretIO {
     private final TalonFX turretMotor;
     private final CANcoder absoluteEncoder;
 
+    private boolean usingFF = false;
+
     private final MotionMagicVoltage motionMagicRequest = new MotionMagicVoltage(0).withSlot(0);
     private final PositionVoltage positionRequest = new PositionVoltage(0).withSlot(0);
     private final VoltageOut voltageRequest = new VoltageOut(0);
@@ -142,15 +144,18 @@ public class TurretIOTalonFX implements TurretIO {
 
     @Override
     public void setTargetAngleWithVelocity(double angleDegrees, double velocityDegreesPerSec) {
+        usingFF = false;
         double targetMotorRotations = angleDegrees * TurretConstants.MOTOR_GEAR_RATIO / 360.0;
         double targetMotorVelocityRPS = velocityDegreesPerSec * TurretConstants.MOTOR_GEAR_RATIO / 360.0;
 
         // Constant force spring compensation - push away from center at extreme angles
         double springCompensationVolts = 0.0;
         if (angleDegrees > 180.0) {
+            usingFF = true;
             springCompensationVolts = TurretConstants.kG;
-        } else if (angleDegrees < -60.0) {
-            springCompensationVolts = -TurretConstants.kG;
+        } else if (angleDegrees < -35.0) {
+            usingFF = true;
+            springCompensationVolts = TurretConstants.kG;
         }
 
         turretMotor.setControl(positionRequest
@@ -167,5 +172,10 @@ public class TurretIOTalonFX implements TurretIO {
     @Override
     public void setVoltage(double volts) {
         turretMotor.setControl(voltageRequest.withOutput(volts));
+    }
+
+    @Override
+    public boolean getFF(){
+        return usingFF;
     }
 }

@@ -127,8 +127,8 @@ public class RobotContainer {
     }
 
 
-    private static final double MAX_SHOOTING_VELOCITY_MPS = 1.0;
-    private static final double MAX_PASSING_VELOCITY_MPS = Double.POSITIVE_INFINITY;
+    private static final double MAX_SHOOTING_VELOCITY_MPS = 1.2;
+    private static final double MAX_PASSING_VELOCITY_MPS = 3.0;
 
     private boolean isShotCommandActive() {
         return driverXbox.rightBumper().getAsBoolean();
@@ -203,6 +203,16 @@ public class RobotContainer {
         intakeReleaseTrigger.onTrue(Commands.runOnce(() -> {
             intake.deactivate();
             feeder.setIntaking(false);
+        }));
+
+        // --- OUTTAKE/DEJAM ---
+        driverXbox.b().onTrue(Commands.runOnce(() -> {
+            intake.activateOuttake();
+            feeder.setOuttaking(true);
+        }));
+        driverXbox.b().onFalse(Commands.runOnce(() -> {
+            intake.deactivate();
+            feeder.setOuttaking(false);
         }));
 
         // --- RESETS ---

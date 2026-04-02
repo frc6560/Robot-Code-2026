@@ -11,7 +11,8 @@ public class Intake extends SubsystemBase {
 
     public enum State {
         IDLE,
-        ACTIVE
+        ACTIVE,
+        OUTTAKE
     }
 
     private State state = State.IDLE;
@@ -26,6 +27,10 @@ public class Intake extends SubsystemBase {
 
     public void deactivate() {
         state = State.IDLE;
+    }
+
+    public void activateOuttake() {
+        state = State.OUTTAKE;
     }
 
     public State getState() {
@@ -44,6 +49,9 @@ public class Intake extends SubsystemBase {
         switch (state) {
             case ACTIVE:
                 io.setRollerRPM(IntakeConstants.ROLLER_RPM);
+                break;
+            case OUTTAKE:
+                io.setRollerRPM(-IntakeConstants.ROLLER_RPM);
                 break;
             case IDLE:
             default:
