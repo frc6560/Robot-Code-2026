@@ -121,6 +121,14 @@ public class Robot extends LoggedRobot
   @Override
   public void autonomousInit()
   {
+    // Log match metadata
+    Logger.recordOutput("Match/EventName", DriverStation.getEventName());
+    Logger.recordOutput("Match/MatchNumber", DriverStation.getMatchNumber());
+    Logger.recordOutput("Match/MatchType", DriverStation.getMatchType().toString());
+    if (DriverStation.getAlliance().isPresent()) {
+      Logger.recordOutput("Match/Alliance", DriverStation.getAlliance().get().toString());
+    }
+
     for(String limelightName : LimelightConstants.LIMELIGHT_NAMES){
       LimelightHelpers.SetIMUMode(limelightName, 4);
     }
@@ -144,6 +152,14 @@ public class Robot extends LoggedRobot
   @Override
   public void teleopInit()
   {
+    // Log match metadata (in case teleop starts without auto)
+    Logger.recordOutput("Match/EventName", DriverStation.getEventName());
+    Logger.recordOutput("Match/MatchNumber", DriverStation.getMatchNumber());
+    Logger.recordOutput("Match/MatchType", DriverStation.getMatchType().toString());
+    if (DriverStation.getAlliance().isPresent()) {
+      Logger.recordOutput("Match/Alliance", DriverStation.getAlliance().get().toString());
+    }
+
     if (m_autonomousCommand != null)
     {
       m_autonomousCommand.cancel();

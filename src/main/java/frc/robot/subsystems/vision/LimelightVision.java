@@ -1,6 +1,8 @@
 package frc.robot.subsystems.vision;
 
 
+import org.littletonrobotics.junction.Logger;
+
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
@@ -50,12 +52,20 @@ public class LimelightVision{
         measurementAccepted = true;
 
         if(poseEstimate == null){
+            Logger.recordOutput("Vision/" + this.name + "/PoseEstimateNull", true);
             return;
         }
 
         robotPose2d = poseEstimate.pose;
         latency = poseEstimate.latency / 1000.0; // in seconds
-        
+
+        // Log vision data to AdvantageKit
+        Logger.recordOutput("Vision/" + this.name + "/TagCount", poseEstimate.tagCount);
+        Logger.recordOutput("Vision/" + this.name + "/AvgTagDist", poseEstimate.avgTagDist);
+        Logger.recordOutput("Vision/" + this.name + "/Latency", latency);
+        Logger.recordOutput("Vision/" + this.name + "/RobotPose", robotPose2d);
+        Logger.recordOutput("Vision/" + this.name + "/PoseEstimateNull", false);
+
         SmartDashboard.putNumber(this.name + "/TagCount", poseEstimate.tagCount);
         SmartDashboard.putNumber(this.name + "/AvgTagDist", poseEstimate.avgTagDist);
         SmartDashboard.putNumber(this.name + "/Latency", latency);
@@ -81,6 +91,7 @@ public class LimelightVision{
             measurementAccepted = false;
         }
 
+        Logger.recordOutput("Vision/" + this.name + "/MeasurementAccepted", measurementAccepted);
         SmartDashboard.putBoolean(this.name + "/MeasurementAccepted", measurementAccepted);
 
         if(!measurementAccepted){
@@ -88,9 +99,12 @@ public class LimelightVision{
         }
 
         // Calculates standard deviation dynamically. never use rotation.
-        kStdvXY = Math.pow(poseEstimate.avgTagDist, 2) 
+        kStdvXY = Math.pow(poseEstimate.avgTagDist, 2)
                             / poseEstimate.tagCount;
-        kStdvTheta = LimelightConstants.kStdvThetaBase; 
+        kStdvTheta = LimelightConstants.kStdvThetaBase;
+
+        Logger.recordOutput("Vision/" + this.name + "/StdDevXY", kStdvXY * LimelightConstants.kStdvXYBase);
+        Logger.recordOutput("Vision/" + this.name + "/StdDevTheta", kStdvTheta);
 
         drivebase.getSwerveDrive().setVisionMeasurementStdDevs(
             VecBuilder.fill(kStdvXY * LimelightConstants.kStdvXYBase,
@@ -120,6 +134,7 @@ public class LimelightVision{
     }
 
     public void disableVision(boolean isDisabled){
+        Logger.recordOutput("Vision/" + this.name + "/Disabled", isDisabled);
         if(isDisabled){
             // 0 is the disabled pipeline. 1 is the enabled pipeline. Apply for all cameras.
             LimelightHelpers.setPipelineIndex(this.name, 0);
