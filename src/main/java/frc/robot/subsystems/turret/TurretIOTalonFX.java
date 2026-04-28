@@ -155,7 +155,7 @@ public class TurretIOTalonFX implements TurretIO {
             springCompensationVolts = TurretConstants.kG;
         } else if (angleDegrees < -35.0) {
             usingFF = true;
-            springCompensationVolts = TurretConstants.kG;
+            springCompensationVolts = -TurretConstants.kG;
         }
 
         turretMotor.setControl(positionRequest

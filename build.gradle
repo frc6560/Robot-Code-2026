@@ -113,3 +113,11 @@ wpi.java.configureTestTasks(test)
 tasks.withType(JavaCompile) {
     options.compilerArgs.add '-XDstringConcat=inline'
 }
+
+tasks.register('runPathGui', JavaExec) {
+    group = "application"
+    description = "Run Pathing GUI"
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'frc.robot.utility.Pathing.gui.PathGuiMain'
+    workingDir = projectDir
+}

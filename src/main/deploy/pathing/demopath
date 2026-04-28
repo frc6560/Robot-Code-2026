@@ -1,0 +1,6 @@
+PATH v1
+startPose x=6.733333 y=7.303333 theta=0.000000 vx=0.000000 vy=0.000000 omega=0.000000
+endPose x=5.933333 y=2.503333 theta=0.000000 vx=0.000000 vy=0.000000 omega=0.000000
+startControl x=4.116667 y=2.853333 theta=0.000000
+endControl x=10.866667 y=7.303333 theta=0.000000
+limits maxVel=5.000000 maxAt=4.000000 maxOmega=3.141593 maxAlpha=6.283185 maxCentripetal=3.000000

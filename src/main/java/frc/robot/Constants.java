@@ -58,6 +58,8 @@ public final class Constants {
   }
 
   public static final class FieldConstants{
+    public static final double FIELD_LENGTH = 16.54;
+    public static final double FIELD_WIDTH = 8.07;
 
     public static final Translation2d BLUE_HUB_CENTER = new Translation2d(4.62, 4.03);
     public static final Translation2d RED_HUB_CENTER = new Translation2d(11.92, 4.03);
@@ -229,9 +231,9 @@ public final class Constants {
     /** Characterization Gains */
     public static final double kS = 0.1;
     public static final double kV = 0.2;
-    public static final double kA = 0.05; // old: 0.01
+    public static final double kA = 0.05;
+
     public static final double kG = 0.6;
-    public static final double kG_RIGHT = 2.0;
 
     /** PID Gains */
     public static final double kP = 8.0; // old: 5.0

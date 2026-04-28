@@ -1,6 +1,8 @@
 package frc.robot.utility.Pathing;
 
 import frc.robot.utility.Setpoint;
+import frc.robot.utility.Pathing.profile.AdaptiveSampler;
+import frc.robot.utility.Pathing.profile.VelocityProfile;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Pose2d;
@@ -18,21 +20,16 @@ public class Path {
     private final Pose2d startControlHeading;
     private final Pose2d endControlHeading;
 
-    private TrapezoidProfile.State currentState;
-    private final TrapezoidProfile.State endState;
-
     private final TrapezoidProfile.State startRotation;
     private TrapezoidProfile.State currentRotation;
     private final TrapezoidProfile.State endRotation;
 
-    // Profiles handling translation and rotation
-    private final TrapezoidProfile translationProfile;
     private final TrapezoidProfile rotationProfile;
 
-    private final double maxCentripetal;
-
-    private final int LOOKUP_RES = 1000;
-    private double[] arcLengthChart = new double[LOOKUP_RES + 1];
+    // Curve-sampling + velocity planning
+    private final AdaptiveSampler sampler;
+    private final VelocityProfile velocityProfile;
+    private double currentArc;
 
     private double x3 = 0.0;
     private double x2 = 0.0;
@@ -45,19 +42,19 @@ public class Path {
     private double y0 = 0.0;
 
 
-    /** Defines a {@link Path} in 2 dimensions. Translation is handled via a Bézier curve and trapezoidal profile.
-     * Rotation is handled using a separate profile controlled by maxOmega and maxAlpha.
+    /** Defines a {@link Path} in 2 dimensions. Translation follows a Bézier curve with a
+     * planned velocity profile that respects the tangential-accel and centripetal-accel
+     * limits ahead of time. Rotation is handled by a separate trapezoidal profile.
      *
      * @param startPose The start pose
      * @param endPose The end pose
-     * @param startControlHeading The control point for the start of the curve, which defines the initial heading. Quintic bezier curves have an additional two control points.
-     * @param endControlHeading The control point for the end of the curve, which defines the final heading.
-     * @param maxVelocity Maximum velocity
-     * @param maxAt Max tangential acceleration allowed on the path
-     * @param maxOmega Maximum angular velocity, in radians/s
-     * @param maxAlpha Maximum angular acceleration, in radians/s^2
-     * @param maxCentripetal Maximum centripetal acceleration for turns, in m/s^2 (use 0 to disable curvature limiting)
-     *
+     * @param startControlHeading Control point defining the initial heading
+     * @param endControlHeading Control point defining the final heading
+     * @param maxVelocity Max path-tangent velocity
+     * @param maxAt Max tangential acceleration
+     * @param maxOmega Max angular velocity, rad/s
+     * @param maxAlpha Max angular acceleration, rad/s^2
+     * @param maxCentripetal Max centripetal acceleration; 0 disables the curvature cap
      */
     public Path(Setpoint startPose, Setpoint endPose, Pose2d startControlHeading, Pose2d endControlHeading,
                         double maxVelocity, double maxAt, double maxOmega, double maxAlpha, double maxCentripetal) {
@@ -65,32 +62,32 @@ public class Path {
         this.endPose = endPose;
         this.startControlHeading = startControlHeading;
         this.endControlHeading = endControlHeading;
-        this.maxCentripetal = maxCentripetal;
 
-        // Actually defines our curve
-        // defines x component for the cubic Bézier curve
         this.x3 = -startPose.x + 3 * startControlHeading.getX() - 3 * endControlHeading.getX() + endPose.x;
         this.x2 = 3 * startPose.x - 6 * startControlHeading.getX() + 3 * endControlHeading.getX();
         this.x1 = -3 * startPose.x + 3 * startControlHeading.getX();
         this.x0 = startPose.x;
 
-        // defines y components as well.
         this.y3 = -startPose.y + 3 * startControlHeading.getY() - 3 * endControlHeading.getY() + endPose.y;
         this.y2 = 3 * startPose.y - 6 * startControlHeading.getY() + 3 * endControlHeading.getY();
         this.y1 = -3 * startPose.y + 3 * startControlHeading.getY();
         this.y0 = startPose.y;
 
-        // generate a lookup table for arc length to time
-        generateLookupTable();
+        // Adaptive sampling concentrates samples where the curve bends.
+        this.sampler = new AdaptiveSampler(this::calculatePosition, this::getCurvature,
+                0.005 /* 5 mm chord tolerance */, 6 /* ~64 min samples */, 12);
 
-        // Sets up the trapezoidal profile start and end states... as well as the actual profiles
-        // translation
-        this.currentState = new TrapezoidProfile.State(0, startPose.getSpeed());
-        this.endState = new TrapezoidProfile.State(getArcLength(), endPose.getSpeed());
+        this.velocityProfile = new VelocityProfile(
+                sampler.sSamples(),
+                sampler.kSamples(),
+                maxVelocity,
+                maxAt,
+                maxCentripetal,
+                startPose.getSpeed(),
+                endPose.getSpeed());
 
-        this.translationProfile = new TrapezoidProfile(new TrapezoidProfile.Constraints(maxVelocity, maxAt));
+        this.currentArc = 0.0;
 
-        // rotation
         this.startRotation = new TrapezoidProfile.State(startPose.theta, startPose.omega);
         this.currentRotation = new TrapezoidProfile.State(startPose.theta, startPose.omega);
         this.endRotation = new TrapezoidProfile.State(endPose.theta, endPose.omega);
@@ -130,11 +127,24 @@ public class Path {
     }
 
 
-    /** This is a helper method to obtain the net arc length of the curve. Uses a discrete approximation of numerical integration. See below for more information!
-     * @return The arc length of the path
-     */
+    /** @return The arc length of the path */
     public double getArcLength(){
-        return arcLengthChart[LOOKUP_RES];
+        return sampler.getArcLength();
+    }
+
+    /** Exposed so {@link PathGroup} can reuse the same planner across stitched segments. */
+    public VelocityProfile getVelocityProfile() {
+        return velocityProfile;
+    }
+
+    /** Exposed so {@link PathGroup} can concatenate per-segment arc-length samples. */
+    public double[] getSamplerArcs() {
+        return sampler.sSamples();
+    }
+
+    /** Exposed so {@link PathGroup} can concatenate per-segment curvature samples. */
+    public double[] getSamplerCurvatures() {
+        return sampler.kSamples();
     }
 
 
@@ -182,52 +192,9 @@ public class Path {
     }
 
 
-    /** This generates a lookup table to obtain different arc lengths.
-     * @return An array of arc lengths for the path at different time intervals, with resolution 1/1000 of the total time.
-     */
-    public void generateLookupTable(){
-        arcLengthChart[0] = 0.0; // start here
-        Translation2d p0 = calculatePosition(0.0);
-        for(int i = 1; i <= LOOKUP_RES; i++){
-            double t = (double)i / LOOKUP_RES; // time parameter
-            Translation2d p1 = calculatePosition(t);
-            arcLengthChart[i] = arcLengthChart[i - 1] + p0.getDistance(p1);
-            p0 = p1;
-        }
-    }
-
-
-    /** This gives a decent approximation of the best time value for a certain arc length.
-     * Uses binary search with linear interpolation for smooth results.
-     * @param arcLength The arc length starting from start pose
-     * @return A time value corresponding to our length
-    */
+    /** Inverse of the arc-length parametrization, delegated to the adaptive sampler. */
     public double getTimeForArcLength(double arcLength){
-        if(arcLength < 0 || arcLength > getArcLength()){
-            throw new IllegalArgumentException("you're chopped. (arc length in 0, total arc length)");
-        }
-        int low = 0;
-        int high = LOOKUP_RES;
-
-        // Binary search to find the two closest lookup table entries
-        while (low <= high){
-            int mid = (low + high) / 2;
-            if (arcLengthChart[mid] < arcLength){
-                low = mid + 1;
-            } else{
-                high = mid - 1;
-            }
-        }
-
-        // Linear interpolation between lookup table entries
-        if (low > 0 && low < LOOKUP_RES) {
-            double lowerArc = arcLengthChart[low - 1];
-            double upperArc = arcLengthChart[low];
-            double fraction = (arcLength - lowerArc) / (upperArc - lowerArc);
-            return ((low - 1) + fraction) / LOOKUP_RES;
-        }
-
-        return (double)low / LOOKUP_RES;
+        return sampler.getTimeForArcLength(arcLength);
     }
 
 
@@ -247,7 +214,7 @@ public class Path {
     }
 
 
-    /** This is another helper method to compute the normalized velocity vector T(t). 
+    /** This is another helper method to compute the normalized velocity vector T(t).
      * @param t the time parameter
      * @return A normalized vector representing the direction of the path at time t.
      */
@@ -256,10 +223,10 @@ public class Path {
             throw new IllegalArgumentException("you're chopped. (t in 0, 1)");
         }
         Translation2d tangentVector = calculateFirstDerivative(t);
-        return tangentVector.div(tangentVector.getNorm() + 0.001); 
+        return tangentVector.div(tangentVector.getNorm() + 0.001);
     }
 
-    
+
     /** Calculates the next position of the path for the robot to target. Returns as a Setpoint object.
      * The reason we need the current rotation is because mod 360 shenanigans
      * @param rotation the current rotation of the robot
@@ -267,23 +234,12 @@ public class Path {
      * @return the next setpoint for the robot to follow
      */
     public Setpoint calculate(double rotation, double dt){
-        // Translation
-        TrapezoidProfile.State translationalSetpoint = translationProfile.calculate(dt, currentState, endState);
-        double timeParam = getTimeForArcLength(translationalSetpoint.position);
+        // Translation: advance along arc length using the pre-planned v(s).
+        double vPlanned = velocityProfile.velocityAt(currentArc);
+        currentArc = Math.min(currentArc + vPlanned * dt, getArcLength());
+        double timeParam = sampler.getTimeForArcLength(currentArc);
         Translation2d translationalTarget = calculatePosition(timeParam);
-
-        // Apply curvature-based velocity limiting
-        double constrainedVelocity = translationalSetpoint.velocity;
-        if (maxCentripetal > 0) {
-            double curvature = Math.abs(getCurvature(timeParam));
-            if (curvature > 1e-6) {  // Avoid division by zero on straight sections
-                double maxVelAtCurvature = Math.sqrt(maxCentripetal / curvature);
-                constrainedVelocity = Math.min(translationalSetpoint.velocity, maxVelAtCurvature);
-            }
-        }
-
-        currentState.position = translationalSetpoint.position;
-        currentState.velocity = translationalSetpoint.velocity;
+        double commandedVelocity = velocityProfile.velocityAt(currentArc);
 
         // Rotation
         double rotationalPose = rotation;
@@ -303,8 +259,8 @@ public class Path {
         return new Setpoint(translationalTarget.getX(),
                             translationalTarget.getY(),
                             rotationalSetpoint.position,
-                            normalizedVel.getX() * constrainedVelocity,
-                            normalizedVel.getY() * constrainedVelocity,
+                            normalizedVel.getX() * commandedVelocity,
+                            normalizedVel.getY() * commandedVelocity,
                             rotationalSetpoint.velocity);
     }
 }

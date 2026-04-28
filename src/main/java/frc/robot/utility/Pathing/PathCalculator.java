@@ -4,16 +4,16 @@ import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.DriverStation.Alliance;
 
-import frc.robot.Constants;
 import frc.robot.utility.Setpoint;
+import frc.robot.utility.Pathing.obstacle.AStarPlanner;
+import frc.robot.utility.Pathing.obstacle.ObstacleField;
 
-// TODO LIST:
-// equalize headings
+import java.util.List;
 
-/** A method to generate a smooth path to a pose of our choice. */
+/** Builds a smooth path from start to end, routing around obstacles declared in the
+ *  shared {@link ObstacleField}. All obstacle logic is delegated to the field + A*; the
+ *  old reef-specific circle code has been removed. */
 public class PathCalculator {
     public Setpoint startPose;
     public Setpoint endPose;
@@ -23,228 +23,172 @@ public class PathCalculator {
     public double waypointFinalControlLength;
     public double endInitialControlLength;
 
-    public final double RADIUS = 1.8; // radius of the circle around the reef in meters
+    // Default kinematic limits — callers that want tuning can extend this ctor.
+    private final double maxVelocity;
+    private final double maxAccel;
+    private final double maxOmega;
+    private final double maxAlpha;
+    private final double maxCentripetal;
 
-    public final Pose2d BLUE_REEF_CENTER = new Pose2d(4.48, 4, new Rotation2d(0));
-    public final Pose2d RED_REEF_CENTER = new Pose2d(13.05, 4, new Rotation2d(0));
+    private final ObstacleField field;
+    private final boolean blockedStraightLine;
 
-    public Pose2d reefCenter;
-
-    public boolean hasObstacle; 
-
-    /** Designed to return a path from our start to end pose, while avoiding any possible obstacles.
-     * @param currentPose the current pose of the robot
-     * @param finalPose the target pose
-     */
-    public PathCalculator(Setpoint currentPose, Setpoint finalPose){
-        this.startPose = currentPose;
-        this.endPose = finalPose;
-
-        this.hasObstacle = getObstacleExists(currentPose.getSetpointPose(), finalPose.getSetpointPose());
-
-        Alliance alliance = DriverStation.getAlliance().orElse(Alliance.Red); 
-        
-        reefCenter = (alliance == Alliance.Blue) ? BLUE_REEF_CENTER : RED_REEF_CENTER;
+    public PathCalculator(Setpoint currentPose, Setpoint finalPose) {
+        this(currentPose, finalPose, 5.0, 4.0, 3.14, 6.28, 3.0);
     }
 
+    public PathCalculator(Setpoint currentPose, Setpoint finalPose,
+                          double maxVelocity, double maxAccel,
+                          double maxOmega, double maxAlpha, double maxCentripetal) {
+        this.startPose = currentPose;
+        this.endPose = finalPose;
+        this.maxVelocity = maxVelocity;
+        this.maxAccel = maxAccel;
+        this.maxOmega = maxOmega;
+        this.maxAlpha = maxAlpha;
+        this.maxCentripetal = maxCentripetal;
 
-    /** Gets a control point based upon current pose, magnitude, and direction
-     * @param currentPose A point of the curve
-     * @param magnitude The distance to the control point
-     * @param direction The direction of the control point, in radians
-     */
+        this.field = ObstacleField.getInstance();
+        this.blockedStraightLine = field.isSegmentBlocked(
+                currentPose.getTranslation(), finalPose.getTranslation());
+    }
+
+    public boolean hasObstacle() {
+        return blockedStraightLine;
+    }
+
+    /** Offsets a point along a direction vector (in radians). */
     public Pose2d getPoseDirectionFrom(Pose2d pose, double magnitude, double direction) {
         double x = pose.getX() + magnitude * Math.cos(direction);
         double y = pose.getY() + magnitude * Math.sin(direction);
         return new Pose2d(x, y, Rotation2d.fromRadians(direction));
     }
 
-
-    /** Gets the "region" of a specific Pose2D according to its theta value.
-     * @return The region of a specific Pose2D.
-    */
-    public boolean getObstacleExists(Pose2d firstPose, Pose2d secondPose){
-        Pose2d reefCenter;
-        if(DriverStation.getAlliance().orElse(Alliance.Red) == Alliance.Blue){
-            reefCenter = BLUE_REEF_CENTER;
-        }
-        else {
-            reefCenter = RED_REEF_CENTER;
-        }
-        Translation2d firstDisplacement = firstPose.getTranslation().minus(reefCenter.getTranslation());
-        Translation2d secondDisplacement = secondPose.getTranslation().minus(reefCenter.getTranslation());
-        double diff = Math.abs(Math.atan2(secondDisplacement.getY(), secondDisplacement.getX()) -
-                        Math.atan2(firstDisplacement.getY(), firstDisplacement.getX()));
-        return diff > Math.toRadians(120.0);
-    }
-
-
-    /** Gets the two middle control points for our bezier spline. The first control point is our initial control point. The second is our final.
-     * @param waypoint The waypoint to get the control points from
-    */
+    /** Two control handles around a waypoint: one looking back, one looking forward. */
     public Pose2d[] getControlPoints(Pose2d waypoint) {
-        Pose2d firstControlHeading = getPoseDirectionFrom(waypoint, waypointInitialControlLength, 
+        Pose2d firstControlHeading = getPoseDirectionFrom(waypoint, waypointInitialControlLength,
                 waypoint.getRotation().getRadians() + Math.PI);
-        Pose2d secondControlHeading = getPoseDirectionFrom(waypoint, waypointFinalControlLength, 
+        Pose2d secondControlHeading = getPoseDirectionFrom(waypoint, waypointFinalControlLength,
                 waypoint.getRotation().getRadians());
         return new Pose2d[] {firstControlHeading, secondControlHeading};
     }
 
-    
-    public boolean hasObstacle() {
-        return hasObstacle;
-    }
-    
-
-    // From here on out, denote our start point as A, our end point as B. Define omega as the circle circumscribing the reef.
-
-
-    /** Gets the two intersections points of AB with the circle circumscribed around the reef
-     * @return An array of two Translation2d objects representing the intersection of AB with omega.
-    */
-    public Translation2d[] getCircleIntersections(){
-
-        // models the line AB as a vector from A to B. Form is r(t) = (px, py) + t(dx, dy), where t is a time parameter.
-        double px = startPose.getSetpointPose().getX();
-        double py = startPose.getSetpointPose().getY();
-        Translation2d pathDisplacement = endPose.getTranslation().minus(startPose.getTranslation());
-        double dx = pathDisplacement.getX();
-        double dy = pathDisplacement.getY();
-
-        // models our circle.
-        double cx = reefCenter.getX();
-        double cy = reefCenter.getY();
-        double rSquared = Math.pow(RADIUS, 2);
-
-        // the intersection points can be found by substituting the parametrization into the circle equation and solving for t, then refactoring into r.
-        double A = Math.pow(dx, 2) + Math.pow(dy, 2);
-        double B = 2 * (dx * (px - cx) + dy * (py - cy));
-        double C = Math.pow(px - cx, 2) + Math.pow(py - cy, 2) - rSquared;
-
-        // Checks for discriminant > 0
-        double delta = Math.pow(B, 2) - 4 * A * C;
-        if (delta < 0) {
-            return new Translation2d[] {}; // No intersection points
-        }
-
-        // bash :D
-        double firstTValue = (-B + Math.sqrt(Math.pow(B, 2) - 4 * A * C)) / (2 * A);
-        double secondTValue = (-B - Math.sqrt(Math.pow(B, 2) - 4 * A * C)) / (2 * A);
-
-        Translation2d firstIntersection = new Translation2d(
-            px + firstTValue * dx, 
-            py + firstTValue * dy
-        );
-        Translation2d secondIntersection = new Translation2d(
-            px + secondTValue * dx, 
-            py + secondTValue * dy
-        ); 
-
-        return new Translation2d[] {firstIntersection, secondIntersection};
-    }
-
-
-    /** Gets the midpoint of two points (rotation doesn't even matter) */
-    public Pose2d getMidpoint(Translation2d a, Translation2d b) {
-        double x = (a.getX() + b.getX()) / 2.0;
-        double y = (a.getY() + b.getY()) / 2.0;
-        return new Pose2d(x, y, Rotation2d.fromDegrees(0));
-    }
-
-
-    /** Gets the normal and normalized vector to AB.*/
-    public Translation2d getNormalVector(Translation2d a, Translation2d b) {
-        double dx = b.getX() - a.getX();
-        double dy = b.getY() - a.getY();
-        Translation2d normal = new Translation2d(-dy, dx); 
-        return normal.div(normal.getNorm() + 1E-6); // Normal vector is perpendicular to AB
-    }
-
-
-    /** Calculates a control angle for our middle waypoint*/
-    public double calculateControlAngle(){
-        Translation2d displacement = endPose.getTranslation().minus(startPose.getTranslation());
-        return Math.atan2(displacement.getY(), displacement.getX());
-    }
-
-    /** A simple straight line distance based solution for getting path heading lengths*/
-    public double calculateControlLengths(Pose2d firstPose, Pose2d secondPose){
+    /** Control-handle length heuristic: 1/3 of the Euclidean distance between the two poses,
+     *  clamped to a reasonable range so short hops don't get zero-length handles. */
+    public double calculateControlLengths(Pose2d firstPose, Pose2d secondPose) {
         Translation2d displacement = secondPose.getTranslation().minus(firstPose.getTranslation());
-        double distance = displacement.getNorm();
-        return MathUtil.clamp(distance / 3.0, 0.5, 3.0);
+        return MathUtil.clamp(displacement.getNorm() / 3.0, 0.5, 3.0);
     }
 
+    /** Single-segment path when the straight line is clear. */
+    public Path calculateDirectPath() {
+        Pose2d startPoseReal = startPose.getSetpointPose();
+        Pose2d endPoseReal = endPose.getSetpointPose();
+        double len = calculateControlLengths(startPoseReal, endPoseReal);
 
-    /** This is for the special case in which we need to generate a path around an obstacle.
-     * @return a PathGroup object that contains two paths: one to a control point generated by going 1.5x robot length around the obstacle, and one to the target pose.
-    */
-    public PathGroup calculatePathGroup(){
-        if (!hasObstacle) return null;
+        // Heading of the control handles should aim along start->end, not the robot's
+        // current rotation — the robot is holonomic so rotation is independent.
+        Translation2d diff = endPoseReal.getTranslation().minus(startPoseReal.getTranslation());
+        double heading = Math.atan2(diff.getY(), diff.getX());
 
-        Pose2d circleMidpoint = getMidpoint(getCircleIntersections()[0], getCircleIntersections()[1]);
+        Pose2d startControl = getPoseDirectionFrom(startPoseReal, len, heading);
+        Pose2d endControl = getPoseDirectionFrom(endPoseReal, len, heading + Math.PI);
 
-        // Calculates the middle control point. Because the normal vector may have been inverted, we do this the long way.
-        Translation2d disp = circleMidpoint.getTranslation().minus(reefCenter.getTranslation());
-        double angle = Math.atan2(disp.getY(), disp.getX());
-        double clearance = 1.5 * Math.hypot(Constants.robotLength, Constants.robotWidth);
-        double distanceToCircle = Math.max(this.RADIUS - circleMidpoint.getTranslation().minus(reefCenter.getTranslation()).getNorm(), 0);
-        double magnitude = distanceToCircle + clearance;
+        return new Path(startPose, endPose, startControl, endControl,
+                maxVelocity, maxAccel, maxOmega, maxAlpha, maxCentripetal);
+    }
 
-        Pose2d waypointWithoutRotation = getPoseDirectionFrom(circleMidpoint, magnitude, angle);
-        Pose2d waypointPose = new Pose2d(waypointWithoutRotation.getTranslation(), new Rotation2d(calculateControlAngle()));
+    /** When the straight line is blocked, plan around obstacles via A* and stitch the result
+     *  into a {@link PathGroup} with a single intermediate waypoint.
+     *
+     *  <p>If A* produces several intermediate waypoints, we collapse to the one closest to
+     *  the arc-length midpoint of the A* polyline — a pragmatic compromise that keeps the
+     *  existing 2-segment {@link PathGroup} interface. Tight multi-obstacle courses that
+     *  need more than one intermediate will want a multi-segment chain; defer that until a
+     *  real case shows up.
+     *
+     *  @return a {@link PathGroup}, or {@code null} if A* cannot find a route.
+     */
+    public PathGroup calculatePathGroup() {
+        if (!blockedStraightLine) return null;
 
+        List<Translation2d> waypoints = new AStarPlanner(field).plan(
+                startPose.getTranslation(), endPose.getTranslation());
+        if (waypoints.size() < 2) return null;
+
+        Translation2d intermediate = pickIntermediate(waypoints);
+        Pose2d startPoseReal = startPose.getSetpointPose();
+        Pose2d endPoseReal = endPose.getSetpointPose();
+
+        // Waypoint heading: tangent of the A*-midpoint segment, i.e. roughly from start to
+        // end around the obstacle. This keeps the Bezier handles pointing the natural way.
+        Translation2d incoming = intermediate.minus(startPoseReal.getTranslation());
+        Translation2d outgoing = endPoseReal.getTranslation().minus(intermediate);
+        double heading = Math.atan2(
+                (incoming.getY() + outgoing.getY()) * 0.5,
+                (incoming.getX() + outgoing.getX()) * 0.5);
+
+        Pose2d waypointPose = new Pose2d(intermediate, Rotation2d.fromRadians(heading));
         Setpoint waypoint = new Setpoint(
-            waypointPose.getX(),
-            waypointPose.getY(),
-            waypointPose.getRotation().getRadians(),
-            0, // vx
-            0, // vy
-            0  // omega
-        );
+                waypointPose.getX(), waypointPose.getY(), heading, 0, 0, 0);
 
-        // Calculates the control lengths for our paths.
-        this.startFinalControlLength = calculateControlLengths(startPose.getSetpointPose(), waypointPose);
-        this.waypointInitialControlLength = calculateControlLengths(startPose.getSetpointPose(), waypointPose);
+        this.startFinalControlLength = calculateControlLengths(startPoseReal, waypointPose);
+        this.waypointInitialControlLength = this.startFinalControlLength;
+        this.waypointFinalControlLength = calculateControlLengths(waypointPose, endPoseReal);
+        this.endInitialControlLength = this.waypointFinalControlLength;
 
-        this.waypointFinalControlLength = calculateControlLengths(waypointPose, endPose.getSetpointPose());
-        this.endInitialControlLength = calculateControlLengths(waypointPose, endPose.getSetpointPose());
+        // Direct heading on start/end: aim at the waypoint rather than the robot's rotation.
+        double startToWayHeading = Math.atan2(incoming.getY(), incoming.getX());
+        double wayToEndHeading = Math.atan2(outgoing.getY(), outgoing.getX());
 
-        // Calculate control points for the start and end poses
-        Pose2d startControlPoint = getPoseDirectionFrom(
-            startPose.getSetpointPose(),
-            startFinalControlLength,
-            startPose.getSetpointPose().getRotation().getRadians()
-        );
+        Pose2d startControlPoint = getPoseDirectionFrom(startPoseReal, startFinalControlLength, startToWayHeading);
+        Pose2d endControlPoint = getPoseDirectionFrom(endPoseReal, endInitialControlLength, wayToEndHeading + Math.PI);
+        Pose2d[] waypointHandles = getControlPoints(waypointPose);
 
-        Pose2d endControlPoint = getPoseDirectionFrom(
-            endPose.getSetpointPose(),
-            endInitialControlLength,
-            endPose.getSetpointPose().getRotation().getRadians() + Math.PI
-        );
-
-        // Finally calculates our paths.
         Path firstPath = new Path(
-            this.startPose,
-            waypoint,
-            startControlPoint,
-            getControlPoints(waypointPose)[0],
-            5.0, // maxVelocity - tune
-            4.0, // maxAt - tune
-            3.14, // maxOmega
-            6.28, // maxAlpha
-            3.0); // maxCentripetal - tune
+                this.startPose, waypoint,
+                startControlPoint, waypointHandles[0],
+                maxVelocity, maxAccel, maxOmega, maxAlpha, maxCentripetal);
 
         Path secondPath = new Path(
-            waypoint,
-            this.endPose,
-            getControlPoints(waypointPose)[1],
-            endControlPoint,
-            5.0, // maxVelocity - tune
-            4.0, // maxAt - tune
-            3.14, // maxOmega
-            6.28, // maxAlpha
-            3.0); // maxCentripetal - tune
+                waypoint, this.endPose,
+                waypointHandles[1], endControlPoint,
+                maxVelocity, maxAccel, maxOmega, maxAlpha, maxCentripetal);
 
-        return new PathGroup(firstPath, secondPath, 5.0, 4.0, 3.14, 6.28);
+        // If either segment is still clipping an obstacle, we've failed our approximation.
+        // Surface it to the caller so they can fall back rather than silently run into a wall.
+        if (field.isCurveBlocked(firstPath::calculatePosition, firstPath.getArcLength(), 0.10)
+                || field.isCurveBlocked(secondPath::calculatePosition, secondPath.getArcLength(), 0.10)) {
+            return null;
+        }
+
+        return new PathGroup(firstPath, secondPath,
+                maxVelocity, maxAccel, maxOmega, maxAlpha, maxCentripetal);
+    }
+
+    private static Translation2d pickIntermediate(List<Translation2d> waypoints) {
+        if (waypoints.size() == 2) {
+            // No intermediate — fall back to midpoint of the segment. Shouldn't happen
+            // (straight line was blocked) but defensive.
+            return waypoints.get(0).plus(waypoints.get(1)).div(2.0);
+        }
+        if (waypoints.size() == 3) return waypoints.get(1);
+
+        // Cumulative arc length; pick the inner waypoint closest to the midpoint.
+        double[] cum = new double[waypoints.size()];
+        for (int i = 1; i < waypoints.size(); i++) {
+            cum[i] = cum[i - 1] + waypoints.get(i).getDistance(waypoints.get(i - 1));
+        }
+        double target = cum[cum.length - 1] * 0.5;
+        int bestIdx = 1;
+        double bestErr = Double.POSITIVE_INFINITY;
+        for (int i = 1; i < waypoints.size() - 1; i++) {
+            double err = Math.abs(cum[i] - target);
+            if (err < bestErr) {
+                bestErr = err;
+                bestIdx = i;
+            }
+        }
+        return waypoints.get(bestIdx);
     }
 }
