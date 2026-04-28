@@ -215,8 +215,9 @@ public class LED extends SubsystemBase {
     private void renderState() {
         switch (currentState) {
             case PREGAME_NOT_STOWED -> {
-                animateSwipe(SwipeDirection.LEFT,255, 0, 0);
-                Logger.recordOutput("LED/Color", "Red (255,0,0)");
+                renderPoliceLights();
+                // animateSwipe(SwipeDirection.LEFT,255, 0, 0);
+                Logger.recordOutput("LED/Color", "hi michael");
             }
             case PREGAME_READY -> {
                 animateSwipe(SwipeDirection.LEFT,0, 0, 255);
@@ -264,6 +265,18 @@ public class LED extends SubsystemBase {
             }
         } else {
             setSolid(r, g, b);
+        }
+    }
+
+    private void renderPoliceLights() {
+        int half = io.getLength() / 2;
+        boolean redLeft = ((int) (Timer.getFPGATimestamp() / BLINK_PERIOD_SEC)) % 2 == 0;
+        for (int i = 0; i < io.getLength(); i++) {
+            if (i < half) {
+                io.setRGB(i, redLeft ? 255 : 0, 0, redLeft ? 0: 255);
+            } else {
+                io.setRGB(i, redLeft ? 0 : 255, 0, redLeft ? 255 : 0);
+            }
         }
     }
 
