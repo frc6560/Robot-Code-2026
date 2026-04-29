@@ -3,31 +3,47 @@ package frc.robot.utility.Pathing.obstacle;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.Filesystem;
 
+import frc.robot.Constants;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.List;
 
 /**
- * Occupancy grid over the field. Cells flagged as blocked are obstacles that all paths —
- * including on-the-fly generations — must route around.
+ * Occupancy grid over the field. Cells flagged as blocked are keep-out zones that all
+ * paths — including on-the-fly generations — must route around.
  *
- * <p>Stored as a bit-packed array with a tiny text header so it round-trips through the
- * GUI without a JSON dependency on the robot side. Format:
+ * <p>Persisted as JSON to {@code deploy/pathing/obstacle-field.json}. There is exactly one
+ * canonical obstacle-field map; only the "Keep-Out Zones" tab in the editor writes it.
+ * Row data is run-length-encoded as a list of {@code [runLength, value]} pairs so the
+ * file stays small (a handful of big rectangular keep-out zones compress well).
+ *
+ * <p>Format:
  * <pre>
- *   OBSTACLES v1
- *   fieldLength={double} fieldWidth={double} resolution={double}
- *   cols={int} rows={int}
- *   {cols*rows 0/1 chars, row-major from y=0 upward}
+ * {
+ *   "version": 1,
+ *   "fieldLength": 16.54,
+ *   "fieldWidth": 8.07,
+ *   "resolution": 0.25,
+ *   "cols": 67,
+ *   "rows": 33,
+ *   "rows_rle": [
+ *     [[67, 0]],
+ *     [[40, 0], [12, 1], [15, 0]],
+ *     ...
+ *   ]
+ * }
  * </pre>
  *
  * <p>Singleton on the robot: {@link #getInstance()} loads from
- * {@code deploy/pathing/obstacles.dat} once. Missing file → an empty field (no obstacles).
- */
+ * {@code deploy/pathing/obstacle-field.json} once. Missing file → empty field. */
 public class ObstacleField {
-    private static final String DEFAULT_RESOURCE = "pathing/obstacles.dat";
+    private static final String DEFAULT_RESOURCE = "pathing/obstacle-field.json";
 
     private final double fieldLength;
     private final double fieldWidth;
@@ -59,11 +75,11 @@ public class ObstacleField {
                             local = load(file);
                         } catch (IOException e) {
                             System.err.println("[ObstacleField] failed to load " + file + ": " + e);
-                            local = new ObstacleField(17.55, 8.05, 0.10);
+                            local = empty();
                         }
                     } else {
-                        // FRC default field dimensions; overridden by GUI export when present.
-                        local = new ObstacleField(17.55, 8.05, 0.10);
+                        // No obstacle map shipped — start empty. Overridden by GUI export when present.
+                        local = empty();
                     }
                     INSTANCE = local;
                 }
@@ -172,63 +188,143 @@ public class ObstacleField {
         return false;
     }
 
+    /** Canonical on-disk location inside the deploy directory. */
+    public static File defaultFile() {
+        return new File(Filesystem.getDeployDirectory(), DEFAULT_RESOURCE);
+    }
+
+    /** Empty field sized to match {@code Constants.FieldConstants} at 0.25 m resolution. */
+    public static ObstacleField empty() {
+        return new ObstacleField(
+                Constants.FieldConstants.FIELD_LENGTH,
+                Constants.FieldConstants.FIELD_WIDTH,
+                0.25);
+    }
+
     public void writeTo(File file) throws IOException {
+        File parent = file.getParentFile();
+        if (parent != null && !parent.exists()) parent.mkdirs();
         try (FileWriter w = new FileWriter(file)) {
-            w.write("OBSTACLES v1\n");
-            w.write(String.format("fieldLength=%.6f fieldWidth=%.6f resolution=%.6f%n",
-                    fieldLength, fieldWidth, resolution));
-            w.write("cols=" + cols + " rows=" + rows + "\n");
-            StringBuilder sb = new StringBuilder(cols * rows);
+            w.write("{\n");
+            w.write("  \"version\": 1,\n");
+            w.write(String.format("  \"fieldLength\": %.6f,%n", fieldLength));
+            w.write(String.format("  \"fieldWidth\": %.6f,%n", fieldWidth));
+            w.write(String.format("  \"resolution\": %.6f,%n", resolution));
+            w.write("  \"cols\": " + cols + ",\n");
+            w.write("  \"rows\": " + rows + ",\n");
+            w.write("  \"rows_rle\": [\n");
             for (int r = 0; r < rows; r++) {
+                w.write("    [");
+                int run = 0;
+                int prev = isBlocked(0, r) ? 1 : 0;
+                boolean firstPair = true;
                 for (int c = 0; c < cols; c++) {
-                    sb.append(isBlocked(c, r) ? '1' : '0');
+                    int v = isBlocked(c, r) ? 1 : 0;
+                    if (v == prev) { run++; continue; }
+                    if (!firstPair) w.write(",");
+                    w.write("[" + run + "," + prev + "]");
+                    firstPair = false;
+                    prev = v;
+                    run = 1;
                 }
-                sb.append('\n');
+                if (!firstPair) w.write(",");
+                w.write("[" + run + "," + prev + "]");
+                w.write("]" + (r == rows - 1 ? "\n" : ",\n"));
             }
-            w.write(sb.toString());
+            w.write("  ]\n");
+            w.write("}\n");
         }
     }
 
     public static ObstacleField load(File file) throws IOException {
-        try (BufferedReader r = new BufferedReader(new FileReader(file))) {
-            String header = r.readLine();
-            if (header == null || !header.startsWith("OBSTACLES v1")) {
-                throw new IOException("bad header: " + header);
-            }
-            String dims = r.readLine();
-            double fl = parseDouble(dims, "fieldLength");
-            double fw = parseDouble(dims, "fieldWidth");
-            double res = parseDouble(dims, "resolution");
-            String sizeLine = r.readLine();
-            int cols = parseInt(sizeLine, "cols");
-            int rows = parseInt(sizeLine, "rows");
+        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = br.readLine()) != null) sb.append(line).append('\n');
+            String src = sb.toString();
+
+            double fl = extractNumber(src, "fieldLength");
+            double fw = extractNumber(src, "fieldWidth");
+            double res = extractNumber(src, "resolution");
+            int cols = (int) extractNumber(src, "cols");
+            int rows = (int) extractNumber(src, "rows");
+
             ObstacleField field = new ObstacleField(fl, fw, res);
-            if (field.cols != cols || field.rows != rows) {
-                // Still load — but trust the header dims; reconstruct with declared grid size.
-            }
-            for (int row = 0; row < rows; row++) {
-                String line = r.readLine();
-                if (line == null) break;
-                for (int col = 0; col < cols && col < line.length(); col++) {
-                    if (line.charAt(col) == '1') field.setBlocked(col, row, true);
+
+            int rleStart = src.indexOf("rows_rle");
+            if (rleStart < 0) throw new IOException("missing rows_rle");
+            int arrStart = src.indexOf('[', rleStart);
+            int arrEnd = findMatchingBracket(src, arrStart);
+            String body = src.substring(arrStart + 1, arrEnd);
+
+            List<String> rowPayloads = splitTopLevelArrays(body);
+            int rowIdx = 0;
+            for (String rowPayload : rowPayloads) {
+                if (rowIdx >= field.rows) break;
+                int c = 0;
+                for (String pair : splitTopLevelArrays(rowPayload)) {
+                    String inner = pair.trim();
+                    if (inner.isEmpty()) continue;
+                    String[] parts = inner.split(",");
+                    int runLen = Integer.parseInt(parts[0].trim());
+                    int value = Integer.parseInt(parts[1].trim());
+                    if (value == 1) {
+                        for (int k = 0; k < runLen && c + k < field.cols; k++) {
+                            field.setBlocked(c + k, rowIdx, true);
+                        }
+                    }
+                    c += runLen;
                 }
+                rowIdx++;
+            }
+            // Silence "unused" warnings when header cols/rows mismatch the ctor-computed grid.
+            if (cols != field.cols || rows != field.rows) {
+                // Trust ctor-derived grid; header values are informational.
             }
             return field;
         }
     }
 
-    private static double parseDouble(String line, String key) {
-        for (String tok : line.split("\\s+")) {
-            if (tok.startsWith(key + "=")) return Double.parseDouble(tok.substring(key.length() + 1));
-        }
-        throw new IllegalArgumentException("missing " + key + " in " + line);
+    private static double extractNumber(String src, String key) {
+        int i = src.indexOf('"' + key + '"');
+        if (i < 0) throw new IllegalArgumentException("missing " + key);
+        int colon = src.indexOf(':', i);
+        int end = colon + 1;
+        while (end < src.length() && (",}]\n\r\t ".indexOf(src.charAt(end)) < 0)) end++;
+        return Double.parseDouble(src.substring(colon + 1, end).trim());
     }
 
-    private static int parseInt(String line, String key) {
-        for (String tok : line.split("\\s+")) {
-            if (tok.startsWith(key + "=")) return Integer.parseInt(tok.substring(key.length() + 1));
+    private static int findMatchingBracket(String src, int openIdx) {
+        int depth = 0;
+        for (int i = openIdx; i < src.length(); i++) {
+            char ch = src.charAt(i);
+            if (ch == '[') depth++;
+            else if (ch == ']') {
+                depth--;
+                if (depth == 0) return i;
+            }
         }
-        throw new IllegalArgumentException("missing " + key + " in " + line);
+        throw new IllegalArgumentException("unmatched [");
+    }
+
+    private static List<String> splitTopLevelArrays(String body) {
+        List<String> out = new ArrayList<>();
+        int depth = 0;
+        int start = -1;
+        for (int i = 0; i < body.length(); i++) {
+            char ch = body.charAt(i);
+            if (ch == '[') {
+                if (depth == 0) start = i + 1;
+                depth++;
+            } else if (ch == ']') {
+                depth--;
+                if (depth == 0 && start >= 0) {
+                    out.add(body.substring(start, i));
+                    start = -1;
+                }
+            }
+        }
+        return out;
     }
 
     private static int clamp(int v, int lo, int hi) {
