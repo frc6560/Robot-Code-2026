@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Occupancy grid over the field. Cells flagged as blocked are keep-out zones that all
@@ -207,9 +208,9 @@ public class ObstacleField {
         try (FileWriter w = new FileWriter(file)) {
             w.write("{\n");
             w.write("  \"version\": 1,\n");
-            w.write(String.format("  \"fieldLength\": %.6f,%n", fieldLength));
-            w.write(String.format("  \"fieldWidth\": %.6f,%n", fieldWidth));
-            w.write(String.format("  \"resolution\": %.6f,%n", resolution));
+            w.write(String.format(Locale.ROOT, "  \"fieldLength\": %.6f,%n", fieldLength));
+            w.write(String.format(Locale.ROOT, "  \"fieldWidth\": %.6f,%n", fieldWidth));
+            w.write(String.format(Locale.ROOT, "  \"resolution\": %.6f,%n", resolution));
             w.write("  \"cols\": " + cols + ",\n");
             w.write("  \"rows\": " + rows + ",\n");
             w.write("  \"rows_rle\": [\n");
@@ -289,9 +290,22 @@ public class ObstacleField {
         int i = src.indexOf('"' + key + '"');
         if (i < 0) throw new IllegalArgumentException("missing " + key);
         int colon = src.indexOf(':', i);
-        int end = colon + 1;
-        while (end < src.length() && (",}]\n\r\t ".indexOf(src.charAt(end)) < 0)) end++;
-        return Double.parseDouble(src.substring(colon + 1, end).trim());
+        int start = colon + 1;
+        // Skip leading whitespace between colon and the number.
+        while (start < src.length() && Character.isWhitespace(src.charAt(start))) start++;
+        int end = start;
+        // A JSON number is digits/sign/decimal/exponent — stop on anything else.
+        while (end < src.length()) {
+            char ch = src.charAt(end);
+            if (Character.isDigit(ch) || ch == '-' || ch == '+' || ch == '.' || ch == 'e' || ch == 'E') {
+                end++;
+            } else break;
+        }
+        String token = src.substring(start, end);
+        if (token.isEmpty()) {
+            throw new IllegalArgumentException("no numeric value for " + key);
+        }
+        return Double.parseDouble(token);
     }
 
     private static int findMatchingBracket(String src, int openIdx) {
