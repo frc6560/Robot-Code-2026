@@ -6,6 +6,8 @@ import edu.wpi.first.math.geometry.Translation2d;
 import frc.robot.Constants;
 import frc.robot.utility.Setpoint;
 import frc.robot.utility.Pathing.Path;
+import frc.robot.utility.Pathing.PathCalculator;
+import frc.robot.utility.Pathing.PathChain;
 import frc.robot.utility.Pathing.obstacle.ObstacleField;
 import frc.robot.utility.Pathing.serialization.PathIO;
 import frc.robot.utility.Pathing.serialization.RobotProfile;
@@ -84,7 +86,10 @@ public class PathGuiMain extends JFrame {
     private void attemptAutoLoadObstacles() {
         File f = new File(defaultPathingDir(), "obstacle-field.json");
         if (f.exists()) {
-            try { obstacles = ObstacleField.load(f); }
+            try {
+                obstacles = ObstacleField.load(f);
+                ObstacleField.setInstance(obstacles);
+            }
             catch (Exception ex) { System.err.println("[PathGui] load obstacle-field.json failed: " + ex); }
         }
     }
@@ -180,11 +185,21 @@ public class PathGuiMain extends JFrame {
         private boolean draggingEndHeading = false;
         private static final double HEADING_ARM = 0.7;
         private JSpinner startHSpinner, endHSpinner;
+        private boolean useAStar = false;
         private final FieldCanvas canvas = new FieldCanvas();
 
-        // Playback state: a simulated robot pose is advanced by ticking the real Path
-        // object's calculate() using a stub current-rotation feed.
+        // Sidebar fields
+        private final JSpinner startXField = new JSpinner(new SpinnerNumberModel(2.0, 0.0, FIELD_LENGTH, 0.05));
+        private final JSpinner startYField = new JSpinner(new SpinnerNumberModel(4.0, 0.0, FIELD_WIDTH, 0.05));
+        private final JSpinner startThetaField = new JSpinner(new SpinnerNumberModel(0.0, -180.0, 180.0, 1.0));
+        private final JSpinner endXField = new JSpinner(new SpinnerNumberModel(10.0, 0.0, FIELD_LENGTH, 0.05));
+        private final JSpinner endYField = new JSpinner(new SpinnerNumberModel(4.0, 0.0, FIELD_WIDTH, 0.05));
+        private final JSpinner endThetaField = new JSpinner(new SpinnerNumberModel(0.0, -180.0, 180.0, 1.0));
+        private boolean updatingFromCanvas = false;
+
+        // Playback state
         private Path animPath = null;
+        private PathChain animChain = null;
         private double animSimX, animSimY, animSimTheta;
         private double animSpeed;
         private boolean animPlaying = false;
@@ -193,6 +208,8 @@ public class PathGuiMain extends JFrame {
 
         PathTab() {
             setLayout(new BorderLayout());
+
+            // -- Toolbar (top) --
             JToolBar bar = new JToolBar();
             bar.setFloatable(false);
             bar.add(new AbstractAction("Save Path…") {
@@ -201,15 +218,6 @@ public class PathGuiMain extends JFrame {
             bar.add(new AbstractAction("Load Path…") {
                 public void actionPerformed(ActionEvent e) { loadPath(); }
             });
-            bar.addSeparator();
-            bar.add(new JLabel(" start θ° "));
-            startHSpinner = new JSpinner(new SpinnerNumberModel(0.0, -180.0, 180.0, 5.0));
-            startHSpinner.addChangeListener(e -> { startHeadingDeg = (Double) startHSpinner.getValue(); repaint(); });
-            bar.add(startHSpinner);
-            bar.add(new JLabel("  end θ° "));
-            endHSpinner = new JSpinner(new SpinnerNumberModel(0.0, -180.0, 180.0, 5.0));
-            endHSpinner.addChangeListener(e -> { endHeadingDeg = (Double) endHSpinner.getValue(); repaint(); });
-            bar.add(endHSpinner);
             bar.addSeparator();
             bar.add(new AbstractAction("▶ Play") {
                 public void actionPerformed(ActionEvent e) { playAnim(); }
@@ -221,9 +229,127 @@ public class PathGuiMain extends JFrame {
                 public void actionPerformed(ActionEvent e) { resetAnim(); repaint(); }
             });
             add(bar, BorderLayout.NORTH);
+
+            // -- Sidebar (left) --
+            startHSpinner = startThetaField;
+            endHSpinner = endThetaField;
+
+            JPanel sidebar = new JPanel();
+            sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
+            sidebar.setBackground(new Color(35, 35, 40));
+            sidebar.setPreferredSize(new Dimension(200, 0));
+            sidebar.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+
+            sidebar.add(buildWaypointPanel("Start Pose", new Color(60, 220, 110),
+                    startXField, startYField, startThetaField));
+            sidebar.add(Box.createVerticalStrut(12));
+            sidebar.add(buildWaypointPanel("End Pose", new Color(230, 80, 80),
+                    endXField, endYField, endThetaField));
+            sidebar.add(Box.createVerticalStrut(16));
+
+            // Mode toggle
+            JPanel modePanel = new JPanel();
+            modePanel.setLayout(new BoxLayout(modePanel, BoxLayout.Y_AXIS));
+            modePanel.setBackground(new Color(45, 45, 52));
+            modePanel.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createMatteBorder(0, 3, 0, 0, new Color(180, 150, 255)),
+                    BorderFactory.createEmptyBorder(6, 8, 6, 8)));
+            modePanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 80));
+            modePanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+            JLabel modeTitle = new JLabel("Path Mode");
+            modeTitle.setForeground(new Color(180, 150, 255));
+            modeTitle.setFont(modeTitle.getFont().deriveFont(Font.BOLD, 12f));
+            modeTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
+            modePanel.add(modeTitle);
+            modePanel.add(Box.createVerticalStrut(4));
+
+            JToggleButton astarToggle = new JToggleButton("Bezier (path planning)");
+            astarToggle.setAlignmentX(Component.LEFT_ALIGNMENT);
+            astarToggle.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
+            astarToggle.addActionListener(e -> {
+                useAStar = astarToggle.isSelected();
+                astarToggle.setText(useAStar ? "A* (on-the-fly)" : "Bezier (path planning)");
+                resetAnim();
+                canvas.repaint();
+            });
+            modePanel.add(astarToggle);
+            sidebar.add(modePanel);
+
+            sidebar.add(Box.createVerticalGlue());
+
+            // Wire sidebar fields → canvas state
+            startXField.addChangeListener(e -> { if (!updatingFromCanvas) { startPt = new Translation2d((Double) startXField.getValue(), startPt.getY()); canvas.repaint(); }});
+            startYField.addChangeListener(e -> { if (!updatingFromCanvas) { startPt = new Translation2d(startPt.getX(), (Double) startYField.getValue()); canvas.repaint(); }});
+            startThetaField.addChangeListener(e -> { if (!updatingFromCanvas) { startHeadingDeg = (Double) startThetaField.getValue(); canvas.repaint(); }});
+            endXField.addChangeListener(e -> { if (!updatingFromCanvas) { endPt = new Translation2d((Double) endXField.getValue(), endPt.getY()); canvas.repaint(); }});
+            endYField.addChangeListener(e -> { if (!updatingFromCanvas) { endPt = new Translation2d(endPt.getX(), (Double) endYField.getValue()); canvas.repaint(); }});
+            endThetaField.addChangeListener(e -> { if (!updatingFromCanvas) { endHeadingDeg = (Double) endThetaField.getValue(); canvas.repaint(); }});
+
+            add(sidebar, BorderLayout.WEST);
             add(canvas, BorderLayout.CENTER);
 
             animTimer = new Timer(ANIM_TIMER_MS, e -> tickAnim());
+        }
+
+        private JPanel buildWaypointPanel(String title, Color accent,
+                                           JSpinner xField, JSpinner yField, JSpinner thetaField) {
+            JPanel panel = new JPanel();
+            panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+            panel.setBackground(new Color(45, 45, 52));
+            panel.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createMatteBorder(0, 3, 0, 0, accent),
+                    BorderFactory.createEmptyBorder(6, 8, 6, 8)));
+            panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 120));
+            panel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+            JLabel titleLabel = new JLabel(title);
+            titleLabel.setForeground(accent);
+            titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 12f));
+            titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+            panel.add(titleLabel);
+            panel.add(Box.createVerticalStrut(4));
+
+            panel.add(buildFieldRow("X", xField, "m"));
+            panel.add(Box.createVerticalStrut(2));
+            panel.add(buildFieldRow("Y", yField, "m"));
+            panel.add(Box.createVerticalStrut(2));
+            panel.add(buildFieldRow("θ", thetaField, "°"));
+
+            return panel;
+        }
+
+        private JPanel buildFieldRow(String label, JSpinner field, String unit) {
+            JPanel row = new JPanel(new BorderLayout(4, 0));
+            row.setOpaque(false);
+            row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
+            row.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+            JLabel lbl = new JLabel(label);
+            lbl.setForeground(new Color(180, 180, 190));
+            lbl.setPreferredSize(new Dimension(16, 20));
+            row.add(lbl, BorderLayout.WEST);
+
+            field.setPreferredSize(new Dimension(80, 20));
+            row.add(field, BorderLayout.CENTER);
+
+            JLabel unitLbl = new JLabel(unit);
+            unitLbl.setForeground(new Color(120, 120, 130));
+            unitLbl.setPreferredSize(new Dimension(20, 20));
+            row.add(unitLbl, BorderLayout.EAST);
+
+            return row;
+        }
+
+        private void syncSidebarFromCanvas() {
+            updatingFromCanvas = true;
+            startXField.setValue(Math.round(startPt.getX() * 100.0) / 100.0);
+            startYField.setValue(Math.round(startPt.getY() * 100.0) / 100.0);
+            startThetaField.setValue(Math.round(startHeadingDeg * 10.0) / 10.0);
+            endXField.setValue(Math.round(endPt.getX() * 100.0) / 100.0);
+            endYField.setValue(Math.round(endPt.getY() * 100.0) / 100.0);
+            endThetaField.setValue(Math.round(endHeadingDeg * 10.0) / 10.0);
+            updatingFromCanvas = false;
         }
 
         private void savePath() {
@@ -247,6 +373,7 @@ public class PathGuiMain extends JFrame {
                 endCtrl = p.getEndControlHeading().getTranslation();
                 startHeadingDeg = Math.toDegrees(p.getStartPose().getRotation().getRadians());
                 endHeadingDeg = Math.toDegrees(p.getEndPose().getRotation().getRadians());
+                syncSidebarFromCanvas();
                 resetAnim();
                 repaint();
             } catch (Exception ex) { error("load path", ex); }
@@ -264,11 +391,28 @@ public class PathGuiMain extends JFrame {
                     prof.maxVelocity, prof.maxAccel, prof.maxOmega, prof.maxAlpha, prof.maxCentripetal);
         }
 
+        private PathChain buildChain() {
+            double sTheta = Math.toRadians(startHeadingDeg);
+            double eTheta = Math.toRadians(endHeadingDeg);
+            Setpoint start = new Setpoint(startPt.getX(), startPt.getY(), sTheta, 0, 0, 0);
+            Setpoint end = new Setpoint(endPt.getX(), endPt.getY(), eTheta, 0, 0, 0);
+            ObstacleField.setInstance(obstacles);
+            PathCalculator calc = new PathCalculator(start, end);
+            PathChain chain = calc.calculatePathChain();
+            return chain;
+        }
+
         private void playAnim() {
-            if (animPath == null || animDistanceRemaining() < 1e-3) {
-                // (Re)start from beginning with a freshly built Path so profile changes are picked up.
-                try { animPath = buildPath(); }
-                catch (Exception ex) { return; }
+            boolean needsInit = useAStar ? (animChain == null) : (animPath == null);
+            if (needsInit || animDistanceRemaining() < 1e-3) {
+                try {
+                    if (useAStar) {
+                        animChain = buildChain();
+                        if (animChain == null) return;
+                    } else {
+                        animPath = buildPath();
+                    }
+                } catch (Exception ex) { return; }
                 animSimX = startPt.getX();
                 animSimY = startPt.getY();
                 animSimTheta = Math.toRadians(startHeadingDeg);
@@ -282,6 +426,7 @@ public class PathGuiMain extends JFrame {
             animPlaying = false;
             animTimer.stop();
             animPath = null;
+            animChain = null;
             animElapsed = 0.0;
             animSimX = startPt.getX();
             animSimY = startPt.getY();
@@ -290,19 +435,22 @@ public class PathGuiMain extends JFrame {
         }
 
         private double animDistanceRemaining() {
-            if (animPath == null) return 0.0;
-            // Rough proxy — when linear velocity goes near zero *and* we're near the end,
-            // treat animation as complete.
+            if (!useAStar && animPath == null) return 0.0;
+            if (useAStar && animChain == null) return 0.0;
             double toEnd = Math.hypot(endPt.getX() - animSimX, endPt.getY() - animSimY);
             return toEnd;
         }
 
         private void tickAnim() {
             if (!animPlaying) return;
-            if (animPath == null) { playAnim(); if (animPath == null) return; }
-            // Step the Path's internal profile forward. Use the current simulated heading
-            // as the "robot rotation" so the rotation profile's angle-unwrap works sanely.
-            Setpoint next = animPath.calculate(animSimTheta, DT_ANIM);
+            if (useAStar) {
+                if (animChain == null) { playAnim(); if (animChain == null) return; }
+            } else {
+                if (animPath == null) { playAnim(); if (animPath == null) return; }
+            }
+            Setpoint next = useAStar
+                    ? animChain.calculate(animSimTheta, DT_ANIM)
+                    : animPath.calculate(animSimTheta, DT_ANIM);
             // Treat returned setpoint as the commanded pose — simulate perfect tracking.
             animSimX = next.x;
             animSimY = next.y;
@@ -345,13 +493,13 @@ public class PathGuiMain extends JFrame {
                             Translation2d w = screenToWorld(e.getX(), e.getY());
                             startHeadingDeg = Math.toDegrees(Math.atan2(
                                     w.getY() - startPt.getY(), w.getX() - startPt.getX()));
-                            startHSpinner.setValue(startHeadingDeg);
+                            syncSidebarFromCanvas();
                             repaint();
                         } else if (draggingEndHeading) {
                             Translation2d w = screenToWorld(e.getX(), e.getY());
                             endHeadingDeg = Math.toDegrees(Math.atan2(
                                     w.getY() - endPt.getY(), w.getX() - endPt.getX()));
-                            endHSpinner.setValue(endHeadingDeg);
+                            syncSidebarFromCanvas();
                             repaint();
                         } else if (dragging != null) {
                             Translation2d w = screenToWorld(e.getX(), e.getY());
@@ -360,6 +508,7 @@ public class PathGuiMain extends JFrame {
                             else if (dragging == startCtrl) startCtrl = w;
                             else if (dragging == endCtrl)   endCtrl = w;
                             dragging = w;
+                            syncSidebarFromCanvas();
                             repaint();
                         }
                     }
@@ -403,18 +552,43 @@ public class PathGuiMain extends JFrame {
                 catch (Exception ex) { return; }
                 double arc = path.getArcLength();
 
-                // Bezier (curvature-colored)
-                int N = 200;
-                Point prev = null;
-                for (int i = 0; i <= N; i++) {
-                    double t = (double) i / N;
-                    Translation2d pos = path.calculatePosition(t);
-                    double k = Math.abs(path.getCurvature(t));
-                    float hue = (float) Math.min(0.65, k / 4.0);
-                    g.setColor(Color.getHSBColor(0.33f - hue * 0.33f, 0.9f, 1.0f));
-                    Point cur = worldToScreen(pos);
-                    if (prev != null) g.drawLine(prev.x, prev.y, cur.x, cur.y);
-                    prev = cur;
+                if (useAStar) {
+                    // Draw A* chain path
+                    PathChain previewChain;
+                    try { previewChain = buildChain(); }
+                    catch (Exception ex) { previewChain = null; }
+                    if (previewChain != null) {
+                        int N = 200;
+                        Point prev = null;
+                        for (int s = 0; s < previewChain.size(); s++) {
+                            Path seg = previewChain.getSegment(s);
+                            int samplesPerSeg = Math.max(N / previewChain.size(), 40);
+                            for (int i = 0; i <= samplesPerSeg; i++) {
+                                double t = (double) i / samplesPerSeg;
+                                Translation2d pos = seg.calculatePosition(t);
+                                double k = Math.abs(seg.getCurvature(t));
+                                float hue = (float) Math.min(0.65, k / 4.0);
+                                g.setColor(Color.getHSBColor(0.55f - hue * 0.55f, 0.9f, 1.0f));
+                                Point cur = worldToScreen(pos);
+                                if (prev != null) g.drawLine(prev.x, prev.y, cur.x, cur.y);
+                                prev = cur;
+                            }
+                        }
+                    }
+                } else {
+                    // Bezier (curvature-colored)
+                    int N = 200;
+                    Point prev = null;
+                    for (int i = 0; i <= N; i++) {
+                        double t = (double) i / N;
+                        Translation2d pos = path.calculatePosition(t);
+                        double k = Math.abs(path.getCurvature(t));
+                        float hue = (float) Math.min(0.65, k / 4.0);
+                        g.setColor(Color.getHSBColor(0.33f - hue * 0.33f, 0.9f, 1.0f));
+                        Point cur = worldToScreen(pos);
+                        if (prev != null) g.drawLine(prev.x, prev.y, cur.x, cur.y);
+                        prev = cur;
+                    }
                 }
 
                 // Footprint preview at start + end, translucent so the handles stay visible.
@@ -424,7 +598,7 @@ public class PathGuiMain extends JFrame {
                         prof, new Color(230, 80, 80, 70), new Color(230, 80, 80, 180));
 
                 // Animated robot, if playing or paused mid-run
-                if (animPath != null) {
+                if (animPath != null || animChain != null) {
                     drawFootprint(g, animSimX, animSimY, animSimTheta, prof,
                             new Color(255, 220, 100, 140), new Color(255, 220, 100, 230));
                 }
@@ -552,6 +726,7 @@ public class PathGuiMain extends JFrame {
             bar.add(new AbstractAction("Clear") {
                 public void actionPerformed(ActionEvent e) {
                     obstacles = new ObstacleField(FIELD_LENGTH, FIELD_WIDTH, OBSTACLE_RES);
+                    ObstacleField.setInstance(obstacles);
                     repaint();
                 }
             });
@@ -570,8 +745,11 @@ public class PathGuiMain extends JFrame {
         private void reloadCanonical() {
             File f = new File(defaultPathingDir(), "obstacle-field.json");
             if (!f.exists()) { error("reload", new RuntimeException("no obstacle-field.json")); return; }
-            try { obstacles = ObstacleField.load(f); repaint(); }
-            catch (Exception ex) { error("reload", ex); }
+            try {
+                obstacles = ObstacleField.load(f);
+                ObstacleField.setInstance(obstacles);
+                repaint();
+            } catch (Exception ex) { error("reload", ex); }
         }
 
         private final class FieldCanvas extends JPanel {

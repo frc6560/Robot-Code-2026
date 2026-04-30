@@ -7,8 +7,6 @@ import frc.robot.utility.Pathing.profile.VelocityProfile;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.trajectory.TrapezoidProfile;
-import edu.wpi.first.math.trajectory.TrapezoidProfile.State;
 
 
 /** A cubic Bezier curve path object.
@@ -20,16 +18,15 @@ public class Path {
     private final Pose2d startControlHeading;
     private final Pose2d endControlHeading;
 
-    private final TrapezoidProfile.State startRotation;
-    private TrapezoidProfile.State currentRotation;
-    private final TrapezoidProfile.State endRotation;
-
-    private final TrapezoidProfile rotationProfile;
+    private final double startTheta;
+    private final double endTheta;
 
     // Curve-sampling + velocity planning
     private final AdaptiveSampler sampler;
     private final VelocityProfile velocityProfile;
     private double currentArc;
+    private double elapsedTime;
+    private final double totalTime;
 
     private double x3 = 0.0;
     private double x2 = 0.0;
@@ -87,11 +84,11 @@ public class Path {
                 endPose.getSpeed());
 
         this.currentArc = 0.0;
+        this.elapsedTime = 0.0;
+        this.totalTime = this.velocityProfile.getTotalTime();
 
-        this.startRotation = new TrapezoidProfile.State(startPose.theta, startPose.omega);
-        this.currentRotation = new TrapezoidProfile.State(startPose.theta, startPose.omega);
-        this.endRotation = new TrapezoidProfile.State(endPose.theta, endPose.omega);
-        this.rotationProfile = new TrapezoidProfile(new TrapezoidProfile.Constraints(maxOmega, maxAlpha));
+        this.startTheta = startPose.theta;
+        this.endTheta = endPose.theta;
     }
 
     /** Getter methods*/
@@ -246,30 +243,19 @@ public class Path {
         Translation2d translationalTarget = calculatePosition(timeParam);
         double commandedVelocity = velocityProfile.velocityAt(currentArc);
 
-        // Rotation — interpolate the goal heading proportional to arc progress so the
-        // robot rotates gradually across the whole path instead of snapping immediately.
+        // Rotation — linear interpolation by arc progress so rotation only
+        // advances when the robot is actually translating.
         double arcFraction = getArcLength() > 1e-6 ? currentArc / getArcLength() : 1.0;
-        double totalRotation = MathUtil.angleModulus(endRotation.position - startRotation.position);
-        double intermediateGoal = startRotation.position + arcFraction * totalRotation;
-
-        // Unwrap current and intermediate goal relative to the reported rotation.
-        double rotationalPose = rotation;
-        double errorToGoal = MathUtil.angleModulus(intermediateGoal - rotationalPose);
-        double errorToCurrent = MathUtil.angleModulus(currentRotation.position - rotationalPose);
-
-        State interpGoal = new State(rotationalPose + errorToGoal, 0.0);
-        currentRotation.position = rotationalPose + errorToCurrent;
-
-        State rotationalSetpoint = rotationProfile.calculate(dt, currentRotation, interpGoal);
-        currentRotation.position = rotationalSetpoint.position;
-        currentRotation.velocity = rotationalSetpoint.velocity;
+        double totalRotationRad = MathUtil.angleModulus(endTheta - startTheta);
+        double commandedTheta = startTheta + arcFraction * totalRotationRad;
+        double commandedOmega = totalTime > 1e-6 ? totalRotationRad / totalTime : 0.0;
 
         Translation2d normalizedVel = getNormalizedVelocityVector(timeParam);
         return new Setpoint(translationalTarget.getX(),
                             translationalTarget.getY(),
-                            rotationalSetpoint.position,
+                            commandedTheta,
                             normalizedVel.getX() * commandedVelocity,
                             normalizedVel.getY() * commandedVelocity,
-                            rotationalSetpoint.velocity);
+                            commandedOmega);
     }
 }

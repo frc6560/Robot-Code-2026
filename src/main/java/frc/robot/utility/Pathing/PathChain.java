@@ -96,8 +96,12 @@ public class PathChain {
     public Path getSegment(int i) { return segments[i]; }
 
     public Setpoint calculate(double currentRotation, double dt) {
-        double vPlanned = jointProfile.velocityAt(currentArc);
-        currentArc = Math.min(currentArc + vPlanned * dt, totalLength);
+        // Trapezoidal integration to bootstrap from zero velocity.
+        double v0 = jointProfile.velocityAt(currentArc);
+        double probe = Math.min(currentArc + Math.max(v0, 0.01) * dt, totalLength);
+        double v1 = jointProfile.velocityAt(probe);
+        double ds = 0.5 * (v0 + v1) * dt;
+        currentArc = Math.min(currentArc + ds, totalLength);
         double commandedVelocity = jointProfile.velocityAt(currentArc);
 
         // Locate the active segment.
@@ -111,21 +115,19 @@ public class PathChain {
         Translation2d target = segments[seg].calculatePosition(timeParam);
         Translation2d tangent = segments[seg].getNormalizedVelocityVector(timeParam);
 
-        // Rotation
-        double errorToGoal = MathUtil.angleModulus(endRotation.position - currentRotation);
-        double errorToSetpoint = MathUtil.angleModulus(startRotation.position - currentRotation);
-        endRotation.position = currentRotation + errorToGoal;
-        currentRotationState.position = currentRotation + errorToSetpoint;
-
-        State rotSetpoint = rotationProfile.calculate(dt, currentRotationState, endRotation);
-        currentRotationState.position = rotSetpoint.position;
-        currentRotationState.velocity = rotSetpoint.velocity;
+        // Rotation — linear interpolation by arc fraction.
+        double arcFraction = totalLength > 1e-6 ? currentArc / totalLength : 1.0;
+        double startTheta = startRotation.position;
+        double totalRotationRad = MathUtil.angleModulus(endRotation.position - startTheta);
+        double commandedTheta = startTheta + arcFraction * totalRotationRad;
+        double commandedOmega = jointProfile.getTotalTime() > 1e-6
+                ? totalRotationRad / jointProfile.getTotalTime() : 0.0;
 
         return new Setpoint(
                 target.getX(), target.getY(),
-                rotSetpoint.position,
+                commandedTheta,
                 tangent.getX() * commandedVelocity,
                 tangent.getY() * commandedVelocity,
-                rotSetpoint.velocity);
+                commandedOmega);
     }
 }

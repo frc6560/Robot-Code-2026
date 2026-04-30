@@ -69,6 +69,16 @@ public class VelocityProfile {
         return s[s.length - 1];
     }
 
+    public double getTotalTime() {
+        double t = 0.0;
+        for (int i = 1; i < s.length; i++) {
+            double ds = s[i] - s[i - 1];
+            double vAvg = 0.5 * (v[i - 1] + v[i]);
+            if (vAvg > 1e-6) t += ds / vAvg;
+        }
+        return t;
+    }
+
     /** Interpolated planned velocity at arc length {@code arc}. */
     public double velocityAt(double arc) {
         if (arc <= s[0]) return v[0];
