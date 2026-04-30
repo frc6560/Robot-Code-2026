@@ -144,7 +144,11 @@ public final class Constants {
       }
       return limelightPose;
     }
-    public static final double kStdvXYBase = 0.05; 
+    public static final double kStdvXYBase = 0.05;
+    /** Lower bound on the per-measurement XY std dev (meters) before it's scaled by
+     *  {@link #kStdvXYBase}. Prevents close-range high-tag-count solutions from claiming
+     *  unphysically tight covariances. */
+    public static final double kStdvXYFloor = 0.30;
     public static final double kStdvThetaBase = 9999.0; // disables rotation updates. trust the gyro!
     public static final double JUMP_TOLERANCE = 2.0;
   }

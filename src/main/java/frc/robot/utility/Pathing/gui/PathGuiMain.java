@@ -8,6 +8,7 @@ import frc.robot.utility.Setpoint;
 import frc.robot.utility.Pathing.Path;
 import frc.robot.utility.Pathing.obstacle.ObstacleField;
 import frc.robot.utility.Pathing.serialization.PathIO;
+import frc.robot.utility.Pathing.serialization.RobotProfile;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -47,25 +48,37 @@ public class PathGuiMain extends JFrame {
 
     private final PathTab pathTab = new PathTab();
     private final KeepOutTab keepOutTab = new KeepOutTab();
+    private final RobotProfileTab profileTab = new RobotProfileTab();
 
     public PathGuiMain() {
         super("FRC Path Editor");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         attemptAutoLoadObstacles();
+        attemptAutoLoadProfile();
 
         JTabbedPane tabs = new JTabbedPane();
         tabs.addTab("Path Editor", pathTab);
         tabs.addTab("Keep-Out Zones", keepOutTab);
+        tabs.addTab("Robot Profile", profileTab);
         setContentPane(tabs);
 
-        // Refresh whichever tab just became visible (obstacle map may have changed).
+        // Refresh on tab change — obstacle map or profile may have changed.
         tabs.addChangeListener(e -> {
             pathTab.repaint();
             keepOutTab.repaint();
+            profileTab.repaint();
         });
 
         pack();
         setLocationRelativeTo(null);
+    }
+
+    private void attemptAutoLoadProfile() {
+        File f = new File(defaultPathingDir(), "robot-profile.json");
+        if (f.exists()) {
+            try { RobotProfile.setInstance(RobotProfile.read(f)); }
+            catch (Exception ex) { System.err.println("[PathGui] load robot-profile.json failed: " + ex); }
+        }
     }
 
     private void attemptAutoLoadObstacles() {
@@ -117,16 +130,27 @@ public class PathGuiMain extends JFrame {
         g.drawRect(tl.x, tl.y, w, h);
     }
 
-    /** Draw obstacles. Call with small alpha for read-only preview on the path tab. */
+    /** Draw obstacles. Call with small alpha for read-only preview on the path tab.
+     *  Hard cells render red; soft (auto-derived Manhattan halo) render amber. */
     static void drawObstacles(Graphics2D g, ObstacleField field, int alpha) {
-        g.setColor(new Color(200, 60, 60, alpha));
         double res = field.getResolution();
+        int w = (int) Math.ceil(res * PX_PER_M);
+        int h = (int) Math.ceil(res * PX_PER_M);
+        // Soft first so hard overpaints if someone ever edits both.
+        int softAlpha = Math.max(30, alpha / 2);
+        g.setColor(new Color(230, 170, 60, softAlpha));
         for (int r = 0; r < field.getRows(); r++) {
             for (int c = 0; c < field.getCols(); c++) {
-                if (!field.isBlocked(c, r)) continue;
+                if (!field.isSoft(c, r)) continue;
                 Point p = worldToScreen(new Translation2d(c * res, (r + 1) * res));
-                int w = (int) Math.ceil(res * PX_PER_M);
-                int h = (int) Math.ceil(res * PX_PER_M);
+                g.fillRect(p.x, p.y, w, h);
+            }
+        }
+        g.setColor(new Color(200, 60, 60, alpha));
+        for (int r = 0; r < field.getRows(); r++) {
+            for (int c = 0; c < field.getCols(); c++) {
+                if (!field.isHard(c, r)) continue;
+                Point p = worldToScreen(new Translation2d(c * res, (r + 1) * res));
                 g.fillRect(p.x, p.y, w, h);
             }
         }
@@ -141,20 +165,27 @@ public class PathGuiMain extends JFrame {
     private final class PathTab extends JPanel {
         private static final int HANDLE_PX = 10;
         private static final int PLOT_HEIGHT = 160;
+        private static final double DT_ANIM = 0.02;   // 50 Hz playback tick
+        private static final int ANIM_TIMER_MS = 33;  // ~30 fps repaint
 
         private Translation2d startPt   = new Translation2d(2.0, 4.0);
         private Translation2d endPt     = new Translation2d(10.0, 4.0);
         private Translation2d startCtrl = new Translation2d(4.0, 4.0);
         private Translation2d endCtrl   = new Translation2d(8.0, 4.0);
-
-        private final double maxVel = 5.0;
-        private final double maxAt = 4.0;
-        private final double maxOmega = Math.PI;
-        private final double maxAlpha = 2 * Math.PI;
-        private final double maxCentripetal = 3.0;
+        private double startHeadingDeg = 0.0;
+        private double endHeadingDeg = 0.0;
 
         private Translation2d dragging = null;
         private final FieldCanvas canvas = new FieldCanvas();
+
+        // Playback state: a simulated robot pose is advanced by ticking the real Path
+        // object's calculate() using a stub current-rotation feed.
+        private Path animPath = null;
+        private double animSimX, animSimY, animSimTheta;
+        private double animSpeed;
+        private boolean animPlaying = false;
+        private double animElapsed = 0.0;
+        private final Timer animTimer;
 
         PathTab() {
             setLayout(new BorderLayout());
@@ -166,16 +197,38 @@ public class PathGuiMain extends JFrame {
             bar.add(new AbstractAction("Load Path…") {
                 public void actionPerformed(ActionEvent e) { loadPath(); }
             });
+            bar.addSeparator();
+            bar.add(new JLabel(" start θ° "));
+            JSpinner startH = new JSpinner(new SpinnerNumberModel(0.0, -180.0, 180.0, 5.0));
+            startH.addChangeListener(e -> { startHeadingDeg = (Double) startH.getValue(); repaint(); });
+            bar.add(startH);
+            bar.add(new JLabel("  end θ° "));
+            JSpinner endH = new JSpinner(new SpinnerNumberModel(0.0, -180.0, 180.0, 5.0));
+            endH.addChangeListener(e -> { endHeadingDeg = (Double) endH.getValue(); repaint(); });
+            bar.add(endH);
+            bar.addSeparator();
+            bar.add(new AbstractAction("▶ Play") {
+                public void actionPerformed(ActionEvent e) { playAnim(); }
+            });
+            bar.add(new AbstractAction("⏸ Pause") {
+                public void actionPerformed(ActionEvent e) { animPlaying = false; }
+            });
+            bar.add(new AbstractAction("⏮ Reset") {
+                public void actionPerformed(ActionEvent e) { resetAnim(); repaint(); }
+            });
             add(bar, BorderLayout.NORTH);
             add(canvas, BorderLayout.CENTER);
+
+            animTimer = new Timer(ANIM_TIMER_MS, e -> tickAnim());
         }
 
         private void savePath() {
             JFileChooser chooser = new JFileChooser(defaultPathingDir());
             if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) return;
             try {
+                RobotProfile prof = RobotProfile.getInstance();
                 PathIO.write(buildPath(), chooser.getSelectedFile(),
-                        maxVel, maxAt, maxOmega, maxAlpha, maxCentripetal);
+                        prof.maxVelocity, prof.maxAccel, prof.maxOmega, prof.maxAlpha, prof.maxCentripetal);
             } catch (Exception ex) { error("save path", ex); }
         }
 
@@ -188,17 +241,76 @@ public class PathGuiMain extends JFrame {
                 endPt = p.getEndPose().getTranslation();
                 startCtrl = p.getStartControlHeading().getTranslation();
                 endCtrl = p.getEndControlHeading().getTranslation();
+                startHeadingDeg = Math.toDegrees(p.getStartPose().getRotation().getRadians());
+                endHeadingDeg = Math.toDegrees(p.getEndPose().getRotation().getRadians());
+                resetAnim();
                 repaint();
             } catch (Exception ex) { error("load path", ex); }
         }
 
         private Path buildPath() {
-            Setpoint start = new Setpoint(startPt.getX(), startPt.getY(), 0, 0, 0, 0);
-            Setpoint end = new Setpoint(endPt.getX(), endPt.getY(), 0, 0, 0, 0);
-            Pose2d startCtrlPose = new Pose2d(startCtrl, new Rotation2d(0));
-            Pose2d endCtrlPose = new Pose2d(endCtrl, new Rotation2d(0));
+            RobotProfile prof = RobotProfile.getInstance();
+            double sTheta = Math.toRadians(startHeadingDeg);
+            double eTheta = Math.toRadians(endHeadingDeg);
+            Setpoint start = new Setpoint(startPt.getX(), startPt.getY(), sTheta, 0, 0, 0);
+            Setpoint end = new Setpoint(endPt.getX(), endPt.getY(), eTheta, 0, 0, 0);
+            Pose2d startCtrlPose = new Pose2d(startCtrl, new Rotation2d(sTheta));
+            Pose2d endCtrlPose = new Pose2d(endCtrl, new Rotation2d(eTheta));
             return new Path(start, end, startCtrlPose, endCtrlPose,
-                    maxVel, maxAt, maxOmega, maxAlpha, maxCentripetal);
+                    prof.maxVelocity, prof.maxAccel, prof.maxOmega, prof.maxAlpha, prof.maxCentripetal);
+        }
+
+        private void playAnim() {
+            if (animPath == null || animDistanceRemaining() < 1e-3) {
+                // (Re)start from beginning with a freshly built Path so profile changes are picked up.
+                try { animPath = buildPath(); }
+                catch (Exception ex) { return; }
+                animSimX = startPt.getX();
+                animSimY = startPt.getY();
+                animSimTheta = Math.toRadians(startHeadingDeg);
+                animElapsed = 0.0;
+            }
+            animPlaying = true;
+            animTimer.start();
+        }
+
+        private void resetAnim() {
+            animPlaying = false;
+            animTimer.stop();
+            animPath = null;
+            animElapsed = 0.0;
+            animSimX = startPt.getX();
+            animSimY = startPt.getY();
+            animSimTheta = Math.toRadians(startHeadingDeg);
+            animSpeed = 0.0;
+        }
+
+        private double animDistanceRemaining() {
+            if (animPath == null) return 0.0;
+            // Rough proxy — when linear velocity goes near zero *and* we're near the end,
+            // treat animation as complete.
+            double toEnd = Math.hypot(endPt.getX() - animSimX, endPt.getY() - animSimY);
+            return toEnd;
+        }
+
+        private void tickAnim() {
+            if (!animPlaying) return;
+            if (animPath == null) { playAnim(); if (animPath == null) return; }
+            // Step the Path's internal profile forward. Use the current simulated heading
+            // as the "robot rotation" so the rotation profile's angle-unwrap works sanely.
+            Setpoint next = animPath.calculate(animSimTheta, DT_ANIM);
+            // Treat returned setpoint as the commanded pose — simulate perfect tracking.
+            animSimX = next.x;
+            animSimY = next.y;
+            animSimTheta = next.theta;
+            animSpeed = Math.hypot(next.vx, next.vy);
+            animElapsed += DT_ANIM;
+            // Stop when commanded velocity is ~0 and we're at the end.
+            if (animSpeed < 0.02 && animDistanceRemaining() < 0.05 && animElapsed > 0.2) {
+                animPlaying = false;
+                animTimer.stop();
+            }
+            canvas.repaint();
         }
 
         private final class FieldCanvas extends JPanel {
@@ -246,6 +358,8 @@ public class PathGuiMain extends JFrame {
                 drawFieldBackground(g, fieldImage);
                 drawObstacles(g, obstacles, 90); // translucent preview only
 
+                RobotProfile prof = RobotProfile.getInstance();
+
                 Path path;
                 try { path = buildPath(); }
                 catch (Exception ex) { return; }
@@ -265,6 +379,18 @@ public class PathGuiMain extends JFrame {
                     prev = cur;
                 }
 
+                // Footprint preview at start + end, translucent so the handles stay visible.
+                drawFootprint(g, startPt.getX(), startPt.getY(), Math.toRadians(startHeadingDeg),
+                        prof, new Color(60, 220, 110, 70), new Color(60, 220, 110, 180));
+                drawFootprint(g, endPt.getX(), endPt.getY(), Math.toRadians(endHeadingDeg),
+                        prof, new Color(230, 80, 80, 70), new Color(230, 80, 80, 180));
+
+                // Animated robot, if playing or paused mid-run
+                if (animPath != null) {
+                    drawFootprint(g, animSimX, animSimY, animSimTheta, prof,
+                            new Color(255, 220, 100, 140), new Color(255, 220, 100, 230));
+                }
+
                 // Handles
                 drawHandle(g, startPt,   new Color(60, 220, 110));
                 drawHandle(g, endPt,     new Color(230, 80, 80));
@@ -279,7 +405,8 @@ public class PathGuiMain extends JFrame {
                 g.setColor(new Color(35, 35, 40));
                 g.fillRect(MARGIN, plotY0, getWidth() - 2 * MARGIN, PLOT_HEIGHT - 30);
                 g.setColor(new Color(200, 200, 210));
-                g.drawString(String.format("v(s)  arc=%.2f m   max=%.1f m/s", arc, maxVel),
+                g.drawString(String.format("v(s)  arc=%.2f m   max=%.1f m/s   t=%.2f s",
+                        arc, prof.maxVelocity, animElapsed),
                         MARGIN + 6, plotY0 + 14);
                 int plotW = getWidth() - 2 * MARGIN;
                 int plotH = PLOT_HEIGHT - 40;
@@ -289,11 +416,42 @@ public class PathGuiMain extends JFrame {
                     double s = arc * i / samples;
                     double v = path.getVelocityProfile().velocityAt(s);
                     int px = MARGIN + (int)(plotW * (double) i / samples);
-                    int py = plotY0 + plotH - (int)(plotH * v / maxVel);
+                    int py = plotY0 + plotH - (int)(plotH * v / Math.max(prof.maxVelocity, 1e-3));
                     g.setColor(new Color(120, 220, 160));
                     if (prevV != null) g.drawLine(prevV.x, prevV.y, px, py);
                     prevV = new Point(px, py);
                 }
+            }
+
+            /** Draw a filled rotated rectangle for the robot footprint plus a short
+             *  heading arrow out the front. Colors: fill and outline. */
+            private void drawFootprint(Graphics2D g, double x, double y, double thetaRad,
+                                       RobotProfile prof, Color fill, Color outline) {
+                double halfL = prof.footprintLength / 2.0;
+                double halfW = prof.footprintWidth / 2.0;
+                // Corners in robot frame (X forward, Y left).
+                double[][] local = {
+                        { halfL,  halfW}, { halfL, -halfW},
+                        {-halfL, -halfW}, {-halfL,  halfW}
+                };
+                int[] px = new int[4], py = new int[4];
+                double cos = Math.cos(thetaRad), sin = Math.sin(thetaRad);
+                for (int i = 0; i < 4; i++) {
+                    double wx = x + local[i][0] * cos - local[i][1] * sin;
+                    double wy = y + local[i][0] * sin + local[i][1] * cos;
+                    Point p = worldToScreen(new Translation2d(wx, wy));
+                    px[i] = p.x; py[i] = p.y;
+                }
+                g.setColor(fill);
+                g.fillPolygon(px, py, 4);
+                g.setColor(outline);
+                g.drawPolygon(px, py, 4);
+                // Heading arrow.
+                Point center = worldToScreen(new Translation2d(x, y));
+                Point nose = worldToScreen(new Translation2d(
+                        x + halfL * cos * 1.2, y + halfL * sin * 1.2));
+                g.drawLine(center.x, center.y, nose.x, nose.y);
+                g.fillOval(nose.x - 3, nose.y - 3, 6, 6);
             }
 
             private void drawHandle(Graphics2D g, Translation2d w, Color c) {
@@ -410,14 +568,16 @@ public class PathGuiMain extends JFrame {
 
                 // Status
                 g.setColor(new Color(220, 220, 230));
-                int blockedCount = 0;
+                int hardCount = 0, softCount = 0;
                 for (int r = 0; r < obstacles.getRows(); r++) {
                     for (int c = 0; c < obstacles.getCols(); c++) {
-                        if (obstacles.isBlocked(c, r)) blockedCount++;
+                        if (obstacles.isHard(c, r)) hardCount++;
+                        else if (obstacles.isSoft(c, r)) softCount++;
                     }
                 }
-                g.drawString(String.format("grid: %dx%d  res=%.2f m  blocked cells=%d",
-                        obstacles.getCols(), obstacles.getRows(), obstacles.getResolution(), blockedCount),
+                g.drawString(String.format("grid: %dx%d  res=%.2f m  hard=%d  soft(auto)=%d",
+                        obstacles.getCols(), obstacles.getRows(), obstacles.getResolution(),
+                        hardCount, softCount),
                         MARGIN, getHeight() - 8);
             }
         }
@@ -426,5 +586,138 @@ public class PathGuiMain extends JFrame {
     private void error(String what, Exception ex) {
         JOptionPane.showMessageDialog(this, "Failed to " + what + ": " + ex.getMessage(),
                 "Error", JOptionPane.ERROR_MESSAGE);
+    }
+
+    // -- Robot Profile Tab --------------------------------------------------------
+
+    /** Editor for the kinematic limits + footprint. Explicitly NOT for PID or feedforward
+     *  — those belong with the drivetrain subsystem. */
+    private final class RobotProfileTab extends JPanel {
+        private final JTextField fMaxVel = new JTextField(8);
+        private final JTextField fMaxAccel = new JTextField(8);
+        private final JTextField fMaxOmega = new JTextField(8);
+        private final JTextField fMaxAlpha = new JTextField(8);
+        private final JTextField fMaxCent = new JTextField(8);
+        private final JTextField fFootLen = new JTextField(8);
+        private final JTextField fFootWid = new JTextField(8);
+        private final JLabel status = new JLabel(" ");
+
+        RobotProfileTab() {
+            setLayout(new BorderLayout());
+            JPanel form = new JPanel(new GridBagLayout());
+            GridBagConstraints gc = new GridBagConstraints();
+            gc.insets = new Insets(4, 6, 4, 6);
+            gc.anchor = GridBagConstraints.WEST;
+
+            int row = 0;
+            row = addRow(form, gc, row, "Max velocity (m/s)", fMaxVel,
+                    "Top tangential speed the robot can actually hold. From SysID quasistatic.");
+            row = addRow(form, gc, row, "Max accel (m/s^2)", fMaxAccel,
+                    "Max tangential acceleration. From SysID dynamic.");
+            row = addRow(form, gc, row, "Max omega (rad/s)", fMaxOmega,
+                    "Max rotational velocity of the chassis.");
+            row = addRow(form, gc, row, "Max alpha (rad/s^2)", fMaxAlpha,
+                    "Max rotational acceleration of the chassis.");
+            row = addRow(form, gc, row, "Max centripetal (m/s^2)", fMaxCent,
+                    "Sideways accel cap before the robot slides. Typically 2–4. Drives curvature-based slowdown.");
+            row = addRow(form, gc, row, "Footprint length (m)", fFootLen,
+                    "Bumper-to-bumper along robot X. Used for GUI preview only.");
+            row = addRow(form, gc, row, "Footprint width (m)", fFootWid,
+                    "Bumper-to-bumper along robot Y. Used for GUI preview only.");
+
+            JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT));
+            toolbar.add(new JButton(new AbstractAction("Save") {
+                public void actionPerformed(ActionEvent e) { saveProfile(); }
+            }));
+            toolbar.add(new JButton(new AbstractAction("Reload from disk") {
+                public void actionPerformed(ActionEvent e) { reloadProfile(); }
+            }));
+            toolbar.add(new JButton(new AbstractAction("Reset to defaults") {
+                public void actionPerformed(ActionEvent e) { populate(RobotProfile.DEFAULT); apply(); }
+            }));
+            toolbar.add(Box.createHorizontalStrut(20));
+            toolbar.add(status);
+
+            add(form, BorderLayout.NORTH);
+            add(toolbar, BorderLayout.SOUTH);
+
+            populate(RobotProfile.getInstance());
+        }
+
+        private int addRow(JPanel form, GridBagConstraints gc, int row, String label,
+                           JTextField field, String helpText) {
+            gc.gridx = 0; gc.gridy = row; gc.weightx = 0;
+            form.add(new JLabel(label), gc);
+            gc.gridx = 1; gc.weightx = 0;
+            form.add(field, gc);
+            gc.gridx = 2; gc.weightx = 1; gc.fill = GridBagConstraints.HORIZONTAL;
+            JLabel help = new JLabel(helpText);
+            help.setForeground(new Color(140, 140, 150));
+            form.add(help, gc);
+            gc.fill = GridBagConstraints.NONE;
+            // Apply on change so the path tab's v(s) preview updates live.
+            field.addActionListener(e -> apply());
+            field.addFocusListener(new FocusAdapter() {
+                @Override public void focusLost(FocusEvent e) { apply(); }
+            });
+            return row + 1;
+        }
+
+        private void populate(RobotProfile p) {
+            fMaxVel.setText(Double.toString(p.maxVelocity));
+            fMaxAccel.setText(Double.toString(p.maxAccel));
+            fMaxOmega.setText(Double.toString(p.maxOmega));
+            fMaxAlpha.setText(Double.toString(p.maxAlpha));
+            fMaxCent.setText(Double.toString(p.maxCentripetal));
+            fFootLen.setText(Double.toString(p.footprintLength));
+            fFootWid.setText(Double.toString(p.footprintWidth));
+        }
+
+        private RobotProfile harvest() {
+            try {
+                return new RobotProfile(
+                        Double.parseDouble(fMaxVel.getText().trim()),
+                        Double.parseDouble(fMaxAccel.getText().trim()),
+                        Double.parseDouble(fMaxOmega.getText().trim()),
+                        Double.parseDouble(fMaxAlpha.getText().trim()),
+                        Double.parseDouble(fMaxCent.getText().trim()),
+                        Double.parseDouble(fFootLen.getText().trim()),
+                        Double.parseDouble(fFootWid.getText().trim()));
+            } catch (NumberFormatException ex) {
+                status.setText("Invalid number in form — not applied");
+                return null;
+            }
+        }
+
+        private void apply() {
+            RobotProfile p = harvest();
+            if (p == null) return;
+            RobotProfile.setInstance(p);
+            status.setText("Applied (not saved)");
+            pathTab.repaint();
+        }
+
+        private void saveProfile() {
+            RobotProfile p = harvest();
+            if (p == null) return;
+            RobotProfile.setInstance(p);
+            try {
+                p.write(new File(defaultPathingDir(), "robot-profile.json"));
+                status.setText("Saved to " + defaultPathingDir() + "/robot-profile.json");
+                pathTab.repaint();
+            } catch (Exception ex) { error("save robot-profile.json", ex); }
+        }
+
+        private void reloadProfile() {
+            File f = new File(defaultPathingDir(), "robot-profile.json");
+            if (!f.exists()) { status.setText("No robot-profile.json on disk"); return; }
+            try {
+                RobotProfile p = RobotProfile.read(f);
+                RobotProfile.setInstance(p);
+                populate(p);
+                status.setText("Reloaded");
+                pathTab.repaint();
+            } catch (Exception ex) { error("reload robot-profile.json", ex); }
+        }
     }
 }

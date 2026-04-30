@@ -8,6 +8,7 @@ import edu.wpi.first.math.geometry.Translation2d;
 import frc.robot.utility.Setpoint;
 import frc.robot.utility.Pathing.obstacle.AStarPlanner;
 import frc.robot.utility.Pathing.obstacle.ObstacleField;
+import frc.robot.utility.Pathing.serialization.RobotProfile;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,7 +29,13 @@ public class PathCalculator {
     private final boolean blockedStraightLine;
 
     public PathCalculator(Setpoint currentPose, Setpoint finalPose) {
-        this(currentPose, finalPose, 5.0, 4.0, 3.14, 6.28, 3.0);
+        this(currentPose, finalPose, RobotProfile.getInstance());
+    }
+
+    public PathCalculator(Setpoint currentPose, Setpoint finalPose, RobotProfile profile) {
+        this(currentPose, finalPose,
+                profile.maxVelocity, profile.maxAccel,
+                profile.maxOmega, profile.maxAlpha, profile.maxCentripetal);
     }
 
     public PathCalculator(Setpoint currentPose, Setpoint finalPose,
@@ -136,6 +143,22 @@ public class PathCalculator {
         }
 
         return new PathChain(segments,
+                maxVelocity, maxAccel, maxOmega, maxAlpha, maxCentripetal);
+    }
+
+    /** Safety-clipped version of {@link #calculatePathChain()}. Samples the chain and
+     *  projects any sample that would land inside a keep-out cell to the nearest free
+     *  cell — useful when the Bezier between LOS waypoints still bulges into a narrow
+     *  obstacle (e.g. tight canyons where the curve overshoots the entry). Returns
+     *  {@code null} if no chain can be planned at all. */
+    public ClippedTrajectory calculateClippedChain() {
+        return calculateClippedChain(0.05);
+    }
+
+    public ClippedTrajectory calculateClippedChain(double sampleStepMeters) {
+        PathChain chain = calculatePathChain();
+        if (chain == null) return null;
+        return new ClippedTrajectory(chain, field, sampleStepMeters,
                 maxVelocity, maxAccel, maxOmega, maxAlpha, maxCentripetal);
     }
 

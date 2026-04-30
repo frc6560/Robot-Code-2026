@@ -1,7 +1,6 @@
 package frc.robot.utility.Pathing.obstacle;
 
 import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.wpilibj.Filesystem;
 
 import frc.robot.Constants;
 
@@ -46,12 +45,21 @@ import java.util.Locale;
 public class ObstacleField {
     private static final String DEFAULT_RESOURCE = "pathing/obstacle-field.json";
 
+    /** Manhattan distance (in cells) that a soft-boundary cell may extend from a hard
+     *  cell. Cells at distance 1 or 2 from any hard cell become soft. */
+    public static final int SOFT_MARGIN_CELLS = 2;
+
     private final double fieldLength;
     private final double fieldWidth;
     private final double resolution;
     private final int cols;
     private final int rows;
     private final BitSet blocked;
+
+    // Soft cells are derived from the hard bitset; lazily computed, invalidated on every
+    // setBlocked. Never persisted.
+    private BitSet softCache;
+    private boolean softDirty = true;
 
     private static volatile ObstacleField INSTANCE;
 
@@ -70,8 +78,20 @@ public class ObstacleField {
             synchronized (ObstacleField.class) {
                 local = INSTANCE;
                 if (local == null) {
-                    File file = new File(Filesystem.getDeployDirectory(), DEFAULT_RESOURCE);
-                    if (file.exists()) {
+                    // Probe filesystem paths directly — no reference to
+                    // edu.wpi.first.wpilibj.Filesystem, which eagerly loads wpiHaljni
+                    // via its static-init chain and crashes the laptop GUI.
+                    File file = null;
+                    String[] candidates = {
+                            "src/main/deploy/" + DEFAULT_RESOURCE,
+                            "/home/lvuser/deploy/" + DEFAULT_RESOURCE,
+                            "/home/lvuser/robot-deploy/" + DEFAULT_RESOURCE
+                    };
+                    for (String path : candidates) {
+                        File candidate = new File(path);
+                        if (candidate.exists()) { file = candidate; break; }
+                    }
+                    if (file != null && file.exists()) {
                         try {
                             local = load(file);
                         } catch (IOException e) {
@@ -121,18 +141,82 @@ public class ObstacleField {
         return col >= 0 && col < cols && row >= 0 && row < rows;
     }
 
-    public boolean isBlocked(int col, int row) {
-        if (!inBounds(col, row)) return true;     // off-field counts as blocked
+    /** Hard keep-out: user-declared obstacles. Off-field counts as hard. */
+    public boolean isHard(int col, int row) {
+        if (!inBounds(col, row)) return true;
         return blocked.get(row * cols + col);
     }
 
-    public boolean isBlocked(double x, double y) {
-        return isBlocked(toCol(x), toRow(y));
+    public boolean isHard(double x, double y) {
+        return isHard(toCol(x), toRow(y));
     }
 
+    /** Soft boundary: Manhattan distance ≤ {@link #SOFT_MARGIN_CELLS} from any hard cell,
+     *  excluding hard cells themselves. Derived; user cannot edit directly. Off-field
+     *  is considered hard, not soft. */
+    public boolean isSoft(int col, int row) {
+        if (!inBounds(col, row)) return false;
+        if (isHard(col, row)) return false;
+        ensureSoftComputed();
+        return softCache.get(row * cols + col);
+    }
+
+    public boolean isSoft(double x, double y) {
+        return isSoft(toCol(x), toRow(y));
+    }
+
+    /** Treat as blocked during planning (A*). A* routes around hard <i>and</i> soft cells
+     *  when a route exists; see {@code AStarPlanner} for the hard-only fallback. */
+    public boolean isPlannable(int col, int row) {
+        return !isHard(col, row) && !isSoft(col, row);
+    }
+
+    /** Backwards-compatible alias — hard-only. Callers performing collision detection
+     *  (segment/curve checks, clipping) should keep hard semantics. */
+    public boolean isBlocked(int col, int row) { return isHard(col, row); }
+    public boolean isBlocked(double x, double y) { return isHard(x, y); }
+
+    /** User-controlled: only hard cells. Soft cells are always derived. */
     public void setBlocked(int col, int row, boolean value) {
         if (!inBounds(col, row)) return;
         blocked.set(row * cols + col, value);
+        softDirty = true;
+    }
+
+    private void ensureSoftComputed() {
+        if (!softDirty && softCache != null) return;
+        BitSet out = new BitSet(cols * rows);
+        // Multi-source BFS bounded at SOFT_MARGIN_CELLS (Manhattan).
+        int[] dist = new int[cols * rows];
+        java.util.Arrays.fill(dist, Integer.MAX_VALUE);
+        java.util.ArrayDeque<int[]> queue = new java.util.ArrayDeque<>();
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < cols; c++) {
+                if (blocked.get(r * cols + c)) {
+                    dist[r * cols + c] = 0;
+                    queue.add(new int[]{c, r});
+                }
+            }
+        }
+        final int[] DX = {1, -1, 0, 0};
+        final int[] DY = {0, 0, 1, -1};
+        while (!queue.isEmpty()) {
+            int[] node = queue.poll();
+            int c = node[0], r = node[1];
+            int d = dist[r * cols + c];
+            if (d >= SOFT_MARGIN_CELLS) continue;
+            for (int i = 0; i < 4; i++) {
+                int nc = c + DX[i], nr = r + DY[i];
+                if (!inBounds(nc, nr)) continue;
+                if (dist[nr * cols + nc] > d + 1) {
+                    dist[nr * cols + nc] = d + 1;
+                    if (!blocked.get(nr * cols + nc)) out.set(nr * cols + nc);
+                    queue.add(new int[]{nc, nr});
+                }
+            }
+        }
+        this.softCache = out;
+        this.softDirty = false;
     }
 
     /** Inflates obstacles by {@code radius} meters (Chebyshev). Call once at load time if
@@ -189,9 +273,37 @@ public class ObstacleField {
         return false;
     }
 
-    /** Canonical on-disk location inside the deploy directory. */
-    public static File defaultFile() {
-        return new File(Filesystem.getDeployDirectory(), DEFAULT_RESOURCE);
+    /** Returns the center of the free cell closest to {@code (x, y)} (Chebyshev distance),
+     *  or the input point if it's already in a free cell or off-grid. BFS outward with a
+     *  bounded radius so a fully-blocked field can't hang the caller. */
+    public Translation2d nearestFreeCell(double x, double y) {
+        int c = toCol(x), r = toRow(y);
+        if (!isBlocked(c, r)) return cellCenter(c, r);
+        int maxRadius = Math.max(cols, rows);
+        for (int radius = 1; radius <= maxRadius; radius++) {
+            int bestC = -1, bestR = -1;
+            double bestDist = Double.POSITIVE_INFINITY;
+            for (int dr = -radius; dr <= radius; dr++) {
+                for (int dc = -radius; dc <= radius; dc++) {
+                    if (Math.abs(dr) != radius && Math.abs(dc) != radius) continue;
+                    int nc = c + dc, nr = r + dr;
+                    if (!inBounds(nc, nr) || isBlocked(nc, nr)) continue;
+                    Translation2d ctr = cellCenter(nc, nr);
+                    double d2 = (ctr.getX() - x) * (ctr.getX() - x)
+                              + (ctr.getY() - y) * (ctr.getY() - y);
+                    if (d2 < bestDist) { bestDist = d2; bestC = nc; bestR = nr; }
+                }
+            }
+            if (bestC >= 0) return cellCenter(bestC, bestR);
+        }
+        // Entire grid is blocked — just return the original point so the caller fails gracefully.
+        return new Translation2d(x, y);
+    }
+
+    /** Canonical relative path under the deploy directory. Callers compose this with
+     *  whatever base path they have — the class itself no longer references wpilibj. */
+    public static String defaultResourcePath() {
+        return DEFAULT_RESOURCE;
     }
 
     /** Empty field sized to match {@code Constants.FieldConstants} at 0.25 m resolution. */

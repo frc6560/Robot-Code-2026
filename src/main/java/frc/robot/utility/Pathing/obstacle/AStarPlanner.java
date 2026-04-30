@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.PriorityQueue;
+import java.util.function.BiPredicate;
 
 /**
  * Grid A* over an {@link ObstacleField}. Returns a thinned list of world-space waypoints
@@ -13,6 +14,11 @@ import java.util.PriorityQueue;
  *
  * <p>8-connected, octile distance heuristic (admissible and consistent on 8-grids).
  * Corner-cutting through a diagonal between two blocked cells is disallowed.
+ *
+ * <p>Two-tier routing: the planner first tries to route around hard <i>and</i> soft cells.
+ * If that fails (e.g. a narrow corridor where the soft-margin fully occludes the free
+ * space), it retries with only hard cells blocked — the robot is allowed to pass through
+ * the soft margin as a last resort rather than refusing the task.
  */
 public class AStarPlanner {
     private static final int[] DX = { 1, -1,  0,  0,  1,  1, -1, -1};
@@ -27,26 +33,35 @@ public class AStarPlanner {
     }
 
     /** Plan from {@code start} to {@code goal}. Returns an empty list if unreachable; returns
-     * just [start, goal] if the straight line is already clear. */
+     * just [start, goal] if the straight line is already clear. Soft cells are treated as
+     * blocked when possible; if that makes the goal unreachable, a fallback search ignores
+     * soft cells and only avoids hard ones. */
     public List<Translation2d> plan(Translation2d start, Translation2d goal) {
         if (!field.isSegmentBlocked(start, goal)) {
             return Arrays.asList(start, goal);
         }
+        // First attempt: hard + soft are both treated as blocked.
+        List<Translation2d> primary = planWith(start, goal, (c, r) -> !field.isPlannable(c, r));
+        if (!primary.isEmpty()) return primary;
+        // Fallback: hard-only. Soft margin is permissible as a last resort.
+        return planWith(start, goal, (c, r) -> field.isHard(c, r));
+    }
 
+    private List<Translation2d> planWith(Translation2d start, Translation2d goal,
+                                         BiPredicate<Integer, Integer> blockedPred) {
         int sc = field.toCol(start.getX());
         int sr = field.toRow(start.getY());
         int gc = field.toCol(goal.getX());
         int gr = field.toRow(goal.getY());
 
-        // If the goal cell itself is blocked, nudge to the nearest free cell — otherwise
-        // there's nothing A* can do.
-        if (field.isBlocked(gc, gr)) {
-            int[] nudged = nearestFree(gc, gr);
+        // If the goal/start cells are blocked by the current predicate, nudge.
+        if (blockedPred.test(gc, gr)) {
+            int[] nudged = nearestFree(gc, gr, blockedPred);
             if (nudged == null) return List.of();
             gc = nudged[0]; gr = nudged[1];
         }
-        if (field.isBlocked(sc, sr)) {
-            int[] nudged = nearestFree(sc, sr);
+        if (blockedPred.test(sc, sr)) {
+            int[] nudged = nearestFree(sc, sr, blockedPred);
             if (nudged == null) return List.of();
             sc = nudged[0]; sr = nudged[1];
         }
@@ -78,9 +93,9 @@ public class AStarPlanner {
             for (int i = 0; i < 8; i++) {
                 int nx = cx + DX[i];
                 int ny = cy + DY[i];
-                if (!field.inBounds(nx, ny) || field.isBlocked(nx, ny)) continue;
+                if (!field.inBounds(nx, ny) || blockedPred.test(nx, ny)) continue;
                 // Prevent corner-cutting between two blocked orthogonal neighbors.
-                if (i >= 4 && (field.isBlocked(cx + DX[i], cy) || field.isBlocked(cx, cy + DY[i]))) continue;
+                if (i >= 4 && (blockedPred.test(cx + DX[i], cy) || blockedPred.test(cx, cy + DY[i]))) continue;
 
                 int nIdx = ny * cols + nx;
                 double tentative = gCur + STEP[i] * field.getResolution();
@@ -106,6 +121,8 @@ public class AStarPlanner {
         ArrayList<Translation2d> world = new ArrayList<>();
         world.add(start);
         // Thin via line-of-sight: keep the last reachable waypoint in world space.
+        // Thinning uses hard-only semantics so the Bezier clearance check that follows
+        // (which also uses hard-only) stays consistent.
         int anchor = 0;
         for (int i = 2; i < cellPath.size(); i++) {
             Translation2d a = cellOf(cellPath.get(anchor));
@@ -125,14 +142,14 @@ public class AStarPlanner {
         return field.cellCenter(c, r);
     }
 
-    private int[] nearestFree(int c, int r) {
+    private int[] nearestFree(int c, int r, BiPredicate<Integer, Integer> blockedPred) {
         int maxR = Math.max(field.getCols(), field.getRows());
         for (int radius = 1; radius < maxR; radius++) {
             for (int dr = -radius; dr <= radius; dr++) {
                 for (int dc = -radius; dc <= radius; dc++) {
                     if (Math.abs(dr) != radius && Math.abs(dc) != radius) continue;
                     int nc = c + dc, nr = r + dr;
-                    if (field.inBounds(nc, nr) && !field.isBlocked(nc, nr)) {
+                    if (field.inBounds(nc, nr) && !blockedPred.test(nc, nr)) {
                         return new int[]{nc, nr};
                     }
                 }

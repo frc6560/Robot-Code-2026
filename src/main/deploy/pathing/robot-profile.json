@@ -1,0 +1,9 @@
+{
+  "maxVelocity": 5.000000,
+  "maxAccel": 4.000000,
+  "maxOmega": 6.280000,
+  "maxAlpha": 12.560000,
+  "maxCentripetal": 3.000000,
+  "footprintLength": 0.812000,
+  "footprintWidth": 0.812000
+}

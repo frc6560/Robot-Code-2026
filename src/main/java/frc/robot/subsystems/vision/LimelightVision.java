@@ -70,8 +70,9 @@ public class LimelightVision{
             measurementAccepted = false;
         }
 
-        // Rejects measurements when spinning too fast (motion blur)
-        if(Math.abs(drivebase.getRobotVelocity().omegaRadiansPerSecond) > Units.degreesToRadians(720)){
+        // Rejects measurements when spinning too fast (motion blur). 720 deg/s was
+        // optimistic — realistic blur sets in well before that.
+        if(Math.abs(drivebase.getRobotVelocity().omegaRadiansPerSecond) > Units.degreesToRadians(360)){
             measurementAccepted = false;
         }
 
@@ -88,9 +89,13 @@ public class LimelightVision{
         }
 
         // Calculates standard deviation dynamically. never use rotation.
-        kStdvXY = Math.pow(poseEstimate.avgTagDist, 2) 
-                            / poseEstimate.tagCount;
-        kStdvTheta = LimelightConstants.kStdvThetaBase; 
+        // Floor prevents the formula from producing unphysically tight covariances at
+        // close range / high tag counts (a few mm std dev is tighter than the camera
+        // solution is actually capable of).
+        kStdvXY = Math.max(
+            LimelightConstants.kStdvXYFloor,
+            Math.pow(poseEstimate.avgTagDist, 2) / poseEstimate.tagCount);
+        kStdvTheta = LimelightConstants.kStdvThetaBase;
 
         drivebase.getSwerveDrive().setVisionMeasurementStdDevs(
             VecBuilder.fill(kStdvXY * LimelightConstants.kStdvXYBase,
@@ -116,7 +121,14 @@ public class LimelightVision{
 
     public void updateRotation(){
         Rotation2d robotRotation = drivebase.getPose().getRotation();
-        LimelightHelpers.SetRobotOrientation(this.name, robotRotation.getDegrees(), 0, 0, 0, 0, 0);
+        // Pipe real yaw rate so MegaTag2 can compensate for rotation-during-exposure.
+        // Passing 0 with a spinning robot causes MT2 to solve against a stale heading.
+        double yawRateDegPerSec = Units.radiansToDegrees(
+            drivebase.getRobotVelocity().omegaRadiansPerSecond);
+        LimelightHelpers.SetRobotOrientation(
+            this.name,
+            robotRotation.getDegrees(), yawRateDegPerSec,
+            0, 0, 0, 0);
     }
 
     public void disableVision(boolean isDisabled){
