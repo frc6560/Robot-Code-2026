@@ -235,23 +235,32 @@ public class Path {
      */
     public Setpoint calculate(double rotation, double dt){
         // Translation: advance along arc length using the pre-planned v(s).
-        double vPlanned = velocityProfile.velocityAt(currentArc);
-        currentArc = Math.min(currentArc + vPlanned * dt, getArcLength());
+        // Use trapezoidal integration: estimate acceleration from the profile, then
+        // ds = v*dt + 0.5*a*dt^2.  This bootstraps correctly from v(0)=0.
+        double v0 = velocityProfile.velocityAt(currentArc);
+        double probe = Math.min(currentArc + Math.max(v0, 0.01) * dt, getArcLength());
+        double v1 = velocityProfile.velocityAt(probe);
+        double ds = 0.5 * (v0 + v1) * dt;
+        currentArc = Math.min(currentArc + ds, getArcLength());
         double timeParam = sampler.getTimeForArcLength(currentArc);
         Translation2d translationalTarget = calculatePosition(timeParam);
         double commandedVelocity = velocityProfile.velocityAt(currentArc);
 
-        // Rotation
+        // Rotation — interpolate the goal heading proportional to arc progress so the
+        // robot rotates gradually across the whole path instead of snapping immediately.
+        double arcFraction = getArcLength() > 1e-6 ? currentArc / getArcLength() : 1.0;
+        double totalRotation = MathUtil.angleModulus(endRotation.position - startRotation.position);
+        double intermediateGoal = startRotation.position + arcFraction * totalRotation;
+
+        // Unwrap current and intermediate goal relative to the reported rotation.
         double rotationalPose = rotation;
-        double errorToGoal = MathUtil.angleModulus(endRotation.position - rotationalPose);
-        double errorToSetpoint = MathUtil.angleModulus(startRotation.position - rotationalPose);
+        double errorToGoal = MathUtil.angleModulus(intermediateGoal - rotationalPose);
+        double errorToCurrent = MathUtil.angleModulus(currentRotation.position - rotationalPose);
 
-        // gets rid of mod 2pi issues
-        endRotation.position = rotationalPose + errorToGoal;
-        currentRotation.position = rotationalPose + errorToSetpoint;
+        State interpGoal = new State(rotationalPose + errorToGoal, 0.0);
+        currentRotation.position = rotationalPose + errorToCurrent;
 
-        // finally computes next rotation state
-        State rotationalSetpoint = rotationProfile.calculate(dt, currentRotation, endRotation);
+        State rotationalSetpoint = rotationProfile.calculate(dt, currentRotation, interpGoal);
         currentRotation.position = rotationalSetpoint.position;
         currentRotation.velocity = rotationalSetpoint.velocity;
 

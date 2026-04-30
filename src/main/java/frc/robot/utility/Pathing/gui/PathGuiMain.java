@@ -176,6 +176,10 @@ public class PathGuiMain extends JFrame {
         private double endHeadingDeg = 0.0;
 
         private Translation2d dragging = null;
+        private boolean draggingStartHeading = false;
+        private boolean draggingEndHeading = false;
+        private static final double HEADING_ARM = 0.7;
+        private JSpinner startHSpinner, endHSpinner;
         private final FieldCanvas canvas = new FieldCanvas();
 
         // Playback state: a simulated robot pose is advanced by ticking the real Path
@@ -199,13 +203,13 @@ public class PathGuiMain extends JFrame {
             });
             bar.addSeparator();
             bar.add(new JLabel(" start θ° "));
-            JSpinner startH = new JSpinner(new SpinnerNumberModel(0.0, -180.0, 180.0, 5.0));
-            startH.addChangeListener(e -> { startHeadingDeg = (Double) startH.getValue(); repaint(); });
-            bar.add(startH);
+            startHSpinner = new JSpinner(new SpinnerNumberModel(0.0, -180.0, 180.0, 5.0));
+            startHSpinner.addChangeListener(e -> { startHeadingDeg = (Double) startHSpinner.getValue(); repaint(); });
+            bar.add(startHSpinner);
             bar.add(new JLabel("  end θ° "));
-            JSpinner endH = new JSpinner(new SpinnerNumberModel(0.0, -180.0, 180.0, 5.0));
-            endH.addChangeListener(e -> { endHeadingDeg = (Double) endH.getValue(); repaint(); });
-            bar.add(endH);
+            endHSpinner = new JSpinner(new SpinnerNumberModel(0.0, -180.0, 180.0, 5.0));
+            endHSpinner.addChangeListener(e -> { endHeadingDeg = (Double) endHSpinner.getValue(); repaint(); });
+            bar.add(endHSpinner);
             bar.addSeparator();
             bar.add(new AbstractAction("▶ Play") {
                 public void actionPerformed(ActionEvent e) { playAnim(); }
@@ -322,18 +326,42 @@ public class PathGuiMain extends JFrame {
 
                 MouseAdapter h = new MouseAdapter() {
                     @Override public void mousePressed(MouseEvent e) {
-                        dragging = nearestHandle(e.getX(), e.getY());
+                        int sx = e.getX(), sy = e.getY();
+                        if (nearHeadingHandle(sx, sy, startPt, startHeadingDeg)) {
+                            draggingStartHeading = true;
+                        } else if (nearHeadingHandle(sx, sy, endPt, endHeadingDeg)) {
+                            draggingEndHeading = true;
+                        } else {
+                            dragging = nearestHandle(sx, sy);
+                        }
                     }
-                    @Override public void mouseReleased(MouseEvent e) { dragging = null; }
+                    @Override public void mouseReleased(MouseEvent e) {
+                        dragging = null;
+                        draggingStartHeading = false;
+                        draggingEndHeading = false;
+                    }
                     @Override public void mouseDragged(MouseEvent e) {
-                        if (dragging == null) return;
-                        Translation2d w = screenToWorld(e.getX(), e.getY());
-                        if (dragging == startPt)        startPt = w;
-                        else if (dragging == endPt)     endPt = w;
-                        else if (dragging == startCtrl) startCtrl = w;
-                        else if (dragging == endCtrl)   endCtrl = w;
-                        dragging = w;
-                        repaint();
+                        if (draggingStartHeading) {
+                            Translation2d w = screenToWorld(e.getX(), e.getY());
+                            startHeadingDeg = Math.toDegrees(Math.atan2(
+                                    w.getY() - startPt.getY(), w.getX() - startPt.getX()));
+                            startHSpinner.setValue(startHeadingDeg);
+                            repaint();
+                        } else if (draggingEndHeading) {
+                            Translation2d w = screenToWorld(e.getX(), e.getY());
+                            endHeadingDeg = Math.toDegrees(Math.atan2(
+                                    w.getY() - endPt.getY(), w.getX() - endPt.getX()));
+                            endHSpinner.setValue(endHeadingDeg);
+                            repaint();
+                        } else if (dragging != null) {
+                            Translation2d w = screenToWorld(e.getX(), e.getY());
+                            if (dragging == startPt)        startPt = w;
+                            else if (dragging == endPt)     endPt = w;
+                            else if (dragging == startCtrl) startCtrl = w;
+                            else if (dragging == endCtrl)   endCtrl = w;
+                            dragging = w;
+                            repaint();
+                        }
                     }
                 };
                 addMouseListener(h); addMouseMotionListener(h);
@@ -348,6 +376,16 @@ public class PathGuiMain extends JFrame {
                     if (d < bestD) { bestD = d; best = pt; }
                 }
                 return best;
+            }
+
+            private boolean nearHeadingHandle(int sx, int sy, Translation2d anchor, double headingDeg) {
+                double rad = Math.toRadians(headingDeg);
+                Translation2d tip = new Translation2d(
+                        anchor.getX() + HEADING_ARM * Math.cos(rad),
+                        anchor.getY() + HEADING_ARM * Math.sin(rad));
+                Point p = worldToScreen(tip);
+                double d = (p.x - sx) * (p.x - sx) + (p.y - sy) * (p.y - sy);
+                return d < 15 * 15;
             }
 
             @Override protected void paintComponent(Graphics g0) {
@@ -399,6 +437,10 @@ public class PathGuiMain extends JFrame {
                 g.setColor(new Color(180, 180, 180, 120));
                 drawLine(g, startPt, startCtrl);
                 drawLine(g, endPt, endCtrl);
+
+                // Heading drag handles — diamond at the tip of a heading arm
+                drawHeadingHandle(g, startPt, startHeadingDeg, new Color(60, 220, 110));
+                drawHeadingHandle(g, endPt, endHeadingDeg, new Color(230, 80, 80));
 
                 // v(s) plot
                 int plotY0 = getHeight() - PLOT_HEIGHT + 10;
@@ -458,6 +500,27 @@ public class PathGuiMain extends JFrame {
                 Point p = worldToScreen(w);
                 g.setColor(c);
                 g.fillOval(p.x - HANDLE_PX / 2, p.y - HANDLE_PX / 2, HANDLE_PX, HANDLE_PX);
+            }
+
+            private void drawHeadingHandle(Graphics2D g, Translation2d anchor, double headingDeg, Color c) {
+                double rad = Math.toRadians(headingDeg);
+                Translation2d tip = new Translation2d(
+                        anchor.getX() + HEADING_ARM * Math.cos(rad),
+                        anchor.getY() + HEADING_ARM * Math.sin(rad));
+                Point anchorPx = worldToScreen(anchor);
+                Point tipPx = worldToScreen(tip);
+                g.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), 150));
+                g.setStroke(new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND,
+                        0, new float[]{6, 4}, 0));
+                g.drawLine(anchorPx.x, anchorPx.y, tipPx.x, tipPx.y);
+                g.setStroke(new BasicStroke(1f));
+                int d = 8;
+                int[] dx = {tipPx.x, tipPx.x + d, tipPx.x, tipPx.x - d};
+                int[] dy = {tipPx.y - d, tipPx.y, tipPx.y + d, tipPx.y};
+                g.setColor(c);
+                g.fillPolygon(dx, dy, 4);
+                g.setColor(Color.WHITE);
+                g.drawPolygon(dx, dy, 4);
             }
 
             private void drawLine(Graphics2D g, Translation2d a, Translation2d b) {
