@@ -9,7 +9,7 @@ import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.LimelightConstants;
-import frc.robot.subsystems.swervedrive.SwerveSubsystem;
+import frc.robot.subsystems.drive.SwerveSubsystem;
 import frc.robot.utility.LimelightHelpers;
 import frc.robot.utility.LimelightHelpers.PoseEstimate;
 
@@ -62,7 +62,7 @@ public class LimelightVision{
         SmartDashboard.putNumber(this.name + "/STDVX", kStdvXY * LimelightConstants.kStdvXYBase);
 
         if(!Double.isNaN(poseEstimate.pose.getX()) && poseEstimate.tagCount > 0){
-            drivebase.getSwerveDrive().field.getObject(this.name + "/LimelightPose").setPose(robotPose2d);
+            // Field visualization logged via AdvantageKit Logger
         }
 
         // Rejects null measurements
@@ -97,14 +97,13 @@ public class LimelightVision{
             Math.pow(poseEstimate.avgTagDist, 2) / poseEstimate.tagCount);
         kStdvTheta = LimelightConstants.kStdvThetaBase;
 
-        drivebase.getSwerveDrive().setVisionMeasurementStdDevs(
+        drivebase.setVisionMeasurementStdDevs(
             VecBuilder.fill(kStdvXY * LimelightConstants.kStdvXYBase,
                              kStdvXY * LimelightConstants.kStdvXYBase,
                             kStdvTheta)
         );
 
-        // Adds our vision measurement
-        drivebase.getSwerveDrive().addVisionMeasurement(
+        drivebase.addVisionMeasurement(
             robotPose2d,
             Timer.getFPGATimestamp() - latency
         );

@@ -1,23 +1,19 @@
 package frc.robot;
 
-import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
-import swervelib.SwerveInputStream;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import frc.robot.Constants.LimelightConstants;
-import frc.robot.Constants.OperatorConstants;
 import frc.robot.autonomous.AutoModeChooser;
+import frc.robot.commands.DriveCommands;
 import frc.robot.commands.scoring.ShotCommand;
 import frc.robot.autonomous.AutoCommands;
 import frc.robot.commands.periodic.SuperstructureCommand;
@@ -42,7 +38,14 @@ import frc.robot.subsystems.intake.IntakeIOTalonFX;
 import frc.robot.subsystems.led.LED;
 import frc.robot.subsystems.led.LEDIO;
 import frc.robot.subsystems.led.LEDIOAddressable;
-import frc.robot.subsystems.swervedrive.SwerveSubsystem;
+import frc.robot.subsystems.drive.SwerveSubsystem;
+import frc.robot.subsystems.drive.GyroIO;
+import frc.robot.subsystems.drive.GyroIOPigeon2;
+import frc.robot.subsystems.drive.GyroIOSim;
+import frc.robot.subsystems.drive.ModuleIO;
+import frc.robot.subsystems.drive.ModuleIOSim;
+import frc.robot.subsystems.drive.ModuleIOTalonFX;
+import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.vision.LimelightVision;
 import frc.robot.subsystems.vision.VisionSubsystem;
 
@@ -53,8 +56,7 @@ public class RobotContainer {
     private final ManualControls m_Controls = new ManualControls(1);
 
      // The robot's subsystems and commands are defined here...
-    private final SwerveSubsystem drivebase  = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(),
-    "swerve/falcon"));
+    private final SwerveSubsystem drivebase;
     private final VisionSubsystem vision;
 
     private final Hood hood;
@@ -71,17 +73,42 @@ public class RobotContainer {
     private final AutoCommands factory;
     private final AutoModeChooser autoChooser;
 
-    SwerveInputStream driveAngularVelocity = SwerveInputStream.of(drivebase.getSwerveDrive(),
-      () -> driverXbox.getLeftY() * -1,
-      () -> driverXbox.getLeftX() * -1)
-      .withControllerRotationAxis(() -> -driverXbox.getRightX())
-      .deadband(OperatorConstants.DEADBAND)
-      .scaleTranslation(0.8)
-      .allianceRelativeControl(true);
-
 
     public RobotContainer() {
-      // Initialize subsystems with appropriate IO implementations
+      // Initialize drive subsystem based on mode
+      switch (Constants.currentMode) {
+        case REAL:
+          drivebase = new SwerveSubsystem(
+              new GyroIOPigeon2(),
+              new ModuleIOTalonFX(TunerConstants.FrontLeft),
+              new ModuleIOTalonFX(TunerConstants.FrontRight),
+              new ModuleIOTalonFX(TunerConstants.BackLeft),
+              new ModuleIOTalonFX(TunerConstants.BackRight));
+          break;
+        case SIM:
+          var simModules = new ModuleIOSim[] {
+              new ModuleIOSim(TunerConstants.FrontLeft),
+              new ModuleIOSim(TunerConstants.FrontRight),
+              new ModuleIOSim(TunerConstants.BackLeft),
+              new ModuleIOSim(TunerConstants.BackRight)
+          };
+          final SwerveSubsystem[] simDriveHolder = new SwerveSubsystem[1];
+          simDriveHolder[0] = new SwerveSubsystem(
+              new GyroIOSim(() -> simDriveHolder[0] != null ? simDriveHolder[0].getModuleStates() : null),
+              simModules[0], simModules[1], simModules[2], simModules[3]);
+          drivebase = simDriveHolder[0];
+          break;
+        default:
+          drivebase = new SwerveSubsystem(
+              new GyroIO() {},
+              new ModuleIO() {},
+              new ModuleIO() {},
+              new ModuleIO() {},
+              new ModuleIO() {});
+          break;
+      }
+
+      // Initialize other subsystems
       if (Robot.isReal()) {
         hood = new Hood(new HoodIOTalonFX());
         shooter = new Shooter(new ShooterIOTalonFX());
@@ -160,14 +187,15 @@ public class RobotContainer {
     }
 
     private void configureBindings() {
-        Command driveFieldOrientedAnglularVelocity = drivebase.driveFieldOriented(
-            () -> clampSpeedsForShooting(driveAngularVelocity.get()));
-        drivebase.setDefaultCommand(driveFieldOrientedAnglularVelocity);
+        drivebase.setDefaultCommand(
+            DriveCommands.driveFieldOriented(
+                drivebase,
+                () -> -driverXbox.getLeftY(),
+                () -> -driverXbox.getLeftX(),
+                () -> -driverXbox.getRightX()));
 
-        driverXbox.x()
-          .onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
-        driverXbox.start().
-          onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
+        driverXbox.x().onTrue(Commands.runOnce(drivebase::lock, drivebase));
+        driverXbox.start().onTrue(Commands.runOnce(drivebase::zeroGyro, drivebase));
 
         // --- SHOTS ---
         

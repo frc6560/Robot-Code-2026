@@ -94,6 +94,7 @@ public class PathChain {
     public int size() { return segments.length; }
     public double getTotalLength() { return totalLength; }
     public Path getSegment(int i) { return segments[i]; }
+    public VelocityProfile getJointProfile() { return jointProfile; }
 
     public Setpoint calculate(double currentRotation, double dt) {
         // Trapezoidal integration to bootstrap from zero velocity.

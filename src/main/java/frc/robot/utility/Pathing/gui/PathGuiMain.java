@@ -183,9 +183,14 @@ public class PathGuiMain extends JFrame {
         private Translation2d dragging = null;
         private boolean draggingStartHeading = false;
         private boolean draggingEndHeading = false;
+        private int draggingWaypointIdx = -1;
         private static final double HEADING_ARM = 0.7;
         private JSpinner startHSpinner, endHSpinner;
-        private boolean useAStar = false;
+        private static final int MODE_BEZIER = 0, MODE_ASTAR = 1, MODE_GENERATE = 2;
+        private int pathMode = MODE_BEZIER;
+        private final java.util.ArrayList<Translation2d> waypoints = new java.util.ArrayList<>();
+        private JPanel waypointListPanel;
+        private PathChain generatedChain = null;
         private final FieldCanvas canvas = new FieldCanvas();
 
         // Sidebar fields
@@ -198,7 +203,6 @@ public class PathGuiMain extends JFrame {
         private boolean updatingFromCanvas = false;
 
         // Playback state
-        private Path animPath = null;
         private PathChain animChain = null;
         private double animSimX, animSimY, animSimTheta;
         private double animSpeed;
@@ -237,7 +241,7 @@ public class PathGuiMain extends JFrame {
             JPanel sidebar = new JPanel();
             sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
             sidebar.setBackground(new Color(35, 35, 40));
-            sidebar.setPreferredSize(new Dimension(200, 0));
+            sidebar.setPreferredSize(new Dimension(200, 800));
             sidebar.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 
             sidebar.add(buildWaypointPanel("Start Pose", new Color(60, 220, 110),
@@ -264,17 +268,89 @@ public class PathGuiMain extends JFrame {
             modePanel.add(modeTitle);
             modePanel.add(Box.createVerticalStrut(4));
 
-            JToggleButton astarToggle = new JToggleButton("Bezier (path planning)");
-            astarToggle.setAlignmentX(Component.LEFT_ALIGNMENT);
-            astarToggle.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
-            astarToggle.addActionListener(e -> {
-                useAStar = astarToggle.isSelected();
-                astarToggle.setText(useAStar ? "A* (on-the-fly)" : "Bezier (path planning)");
+            String[] modes = {"Bezier (path planning)", "A* (on-the-fly)", "Path Generation"};
+            JComboBox<String> modeCombo = new JComboBox<>(modes);
+            modeCombo.setAlignmentX(Component.LEFT_ALIGNMENT);
+            modeCombo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
+            JButton generateBtn = new JButton("Generate A* Path");
+            generateBtn.setAlignmentX(Component.LEFT_ALIGNMENT);
+            generateBtn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
+            generateBtn.setVisible(false);
+            generateBtn.addActionListener(e -> {
+                try {
+                    generatedChain = buildGeneratedChain();
+                    resetAnim();
+                    canvas.repaint();
+                } catch (Exception ex) {
+                    error("generate path", ex);
+                }
+            });
+
+            modeCombo.addActionListener(e -> {
+                pathMode = modeCombo.getSelectedIndex();
+                generatedChain = null;
+                generateBtn.setVisible(pathMode == MODE_GENERATE);
                 resetAnim();
                 canvas.repaint();
             });
-            modePanel.add(astarToggle);
+            modePanel.add(modeCombo);
+            modePanel.add(Box.createVerticalStrut(4));
+            modePanel.add(generateBtn);
             sidebar.add(modePanel);
+            sidebar.add(Box.createVerticalStrut(12));
+
+            // Waypoints section
+            JPanel wpPanel = new JPanel();
+            wpPanel.setLayout(new BoxLayout(wpPanel, BoxLayout.Y_AXIS));
+            wpPanel.setBackground(new Color(45, 45, 52));
+            wpPanel.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createMatteBorder(0, 3, 0, 0, new Color(255, 180, 60)),
+                    BorderFactory.createEmptyBorder(6, 8, 6, 8)));
+            wpPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
+            wpPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+            JLabel wpTitle = new JLabel("Waypoints");
+            wpTitle.setForeground(new Color(255, 180, 60));
+            wpTitle.setFont(wpTitle.getFont().deriveFont(Font.BOLD, 12f));
+            wpTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
+            wpPanel.add(wpTitle);
+            wpPanel.add(Box.createVerticalStrut(4));
+
+            waypointListPanel = new JPanel();
+            waypointListPanel.setLayout(new BoxLayout(waypointListPanel, BoxLayout.Y_AXIS));
+            waypointListPanel.setOpaque(false);
+            waypointListPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+            wpPanel.add(waypointListPanel);
+            wpPanel.add(Box.createVerticalStrut(4));
+
+            JPanel wpButtons = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+            wpButtons.setOpaque(false);
+            wpButtons.setAlignmentX(Component.LEFT_ALIGNMENT);
+            wpButtons.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
+            JButton addWpBtn = new JButton("+ Add");
+            addWpBtn.addActionListener(e -> {
+                Translation2d mid = startPt.plus(endPt).div(2.0);
+                if (!waypoints.isEmpty()) {
+                    Translation2d last = waypoints.get(waypoints.size() - 1);
+                    mid = last.plus(endPt).div(2.0);
+                }
+                waypoints.add(mid);
+                rebuildWaypointList();
+                resetAnim();
+                canvas.repaint();
+            });
+            JButton clearWpBtn = new JButton("Clear");
+            clearWpBtn.addActionListener(e -> {
+                waypoints.clear();
+                rebuildWaypointList();
+                resetAnim();
+                canvas.repaint();
+            });
+            wpButtons.add(addWpBtn);
+            wpButtons.add(clearWpBtn);
+            wpPanel.add(wpButtons);
+
+            sidebar.add(wpPanel);
 
             sidebar.add(Box.createVerticalGlue());
 
@@ -286,7 +362,13 @@ public class PathGuiMain extends JFrame {
             endYField.addChangeListener(e -> { if (!updatingFromCanvas) { endPt = new Translation2d(endPt.getX(), (Double) endYField.getValue()); canvas.repaint(); }});
             endThetaField.addChangeListener(e -> { if (!updatingFromCanvas) { endHeadingDeg = (Double) endThetaField.getValue(); canvas.repaint(); }});
 
-            add(sidebar, BorderLayout.WEST);
+            JScrollPane sidebarScroll = new JScrollPane(sidebar);
+            sidebarScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+            sidebarScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+            sidebarScroll.getVerticalScrollBar().setUnitIncrement(16);
+            sidebarScroll.setBorder(null);
+            sidebarScroll.setPreferredSize(new Dimension(210, 0));
+            add(sidebarScroll, BorderLayout.WEST);
             add(canvas, BorderLayout.CENTER);
 
             animTimer = new Timer(ANIM_TIMER_MS, e -> tickAnim());
@@ -352,6 +434,39 @@ public class PathGuiMain extends JFrame {
             updatingFromCanvas = false;
         }
 
+        private void rebuildWaypointList() {
+            waypointListPanel.removeAll();
+            for (int i = 0; i < waypoints.size(); i++) {
+                final int idx = i;
+                Translation2d wp = waypoints.get(i);
+                JPanel row = new JPanel(new BorderLayout(2, 0));
+                row.setOpaque(false);
+                row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
+                row.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+                JLabel label = new JLabel(String.format("  %d  (%.1f, %.1f)", i + 1, wp.getX(), wp.getY()));
+                label.setForeground(new Color(255, 180, 60));
+                label.setFont(label.getFont().deriveFont(11f));
+                row.add(label, BorderLayout.CENTER);
+
+                JButton del = new JButton("×");
+                del.setMargin(new Insets(0, 4, 0, 4));
+                del.addActionListener(e -> {
+                    waypoints.remove(idx);
+                    rebuildWaypointList();
+                    resetAnim();
+                    canvas.repaint();
+                });
+                row.add(del, BorderLayout.EAST);
+
+                waypointListPanel.add(row);
+            }
+            waypointListPanel.revalidate();
+            waypointListPanel.repaint();
+            waypointListPanel.getParent().revalidate();
+            waypointListPanel.getParent().repaint();
+        }
+
         private void savePath() {
             JFileChooser chooser = new JFileChooser(defaultPathingDir());
             if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) return;
@@ -391,6 +506,146 @@ public class PathGuiMain extends JFrame {
                     prof.maxVelocity, prof.maxAccel, prof.maxOmega, prof.maxAlpha, prof.maxCentripetal);
         }
 
+        private PathChain buildBezierChain() {
+            if (waypoints.isEmpty()) {
+                return new PathChain(java.util.List.of(buildPath()),
+                        RobotProfile.getInstance().maxVelocity, RobotProfile.getInstance().maxAccel,
+                        RobotProfile.getInstance().maxOmega, RobotProfile.getInstance().maxAlpha,
+                        RobotProfile.getInstance().maxCentripetal);
+            }
+            RobotProfile prof = RobotProfile.getInstance();
+            double sTheta = Math.toRadians(startHeadingDeg);
+            double eTheta = Math.toRadians(endHeadingDeg);
+
+            // Build ordered list: start, wp0, wp1, ..., end
+            java.util.List<Translation2d> pts = new java.util.ArrayList<>();
+            pts.add(startPt);
+            pts.addAll(waypoints);
+            pts.add(endPt);
+
+            java.util.List<Path> segments = new java.util.ArrayList<>();
+            for (int i = 0; i < pts.size() - 1; i++) {
+                Translation2d a = pts.get(i);
+                Translation2d b = pts.get(i + 1);
+
+                double headingAtA = (i == 0) ? sTheta
+                        : Math.atan2(b.getY() - a.getY(), b.getX() - a.getX());
+                double headingAtB = (i == pts.size() - 2) ? eTheta
+                        : Math.atan2(b.getY() - a.getY(), b.getX() - a.getX());
+                if (i > 0) {
+                    Translation2d prev = pts.get(i - 1);
+                    double hIn = Math.atan2(a.getY() - prev.getY(), a.getX() - prev.getX());
+                    double hOut = Math.atan2(b.getY() - a.getY(), b.getX() - a.getX());
+                    headingAtA = Math.atan2(Math.sin(hIn) + Math.sin(hOut), Math.cos(hIn) + Math.cos(hOut));
+                }
+                if (i < pts.size() - 2) {
+                    Translation2d next = pts.get(i + 2);
+                    double hIn = Math.atan2(b.getY() - a.getY(), b.getX() - a.getX());
+                    double hOut = Math.atan2(next.getY() - b.getY(), next.getX() - b.getX());
+                    headingAtB = Math.atan2(Math.sin(hIn) + Math.sin(hOut), Math.cos(hIn) + Math.cos(hOut));
+                }
+
+                double dist = a.getDistance(b);
+                double len = Math.max(0.5, Math.min(3.0, dist / 3.0));
+
+                Pose2d aCtrl = new Pose2d(
+                        a.getX() + len * Math.cos(headingAtA),
+                        a.getY() + len * Math.sin(headingAtA),
+                        new Rotation2d(headingAtA));
+                Pose2d bCtrl = new Pose2d(
+                        b.getX() - len * Math.cos(headingAtB),
+                        b.getY() - len * Math.sin(headingAtB),
+                        new Rotation2d(headingAtB));
+
+                double segTheta = sTheta + (eTheta - sTheta) * i / (pts.size() - 1);
+                double segThetaEnd = sTheta + (eTheta - sTheta) * (i + 1) / (pts.size() - 1);
+                Setpoint aSet = new Setpoint(a.getX(), a.getY(), segTheta, 0, 0, 0);
+                Setpoint bSet = new Setpoint(b.getX(), b.getY(), segThetaEnd, 0, 0, 0);
+
+                segments.add(new Path(aSet, bSet, aCtrl, bCtrl,
+                        prof.maxVelocity, prof.maxAccel, prof.maxOmega, prof.maxAlpha, prof.maxCentripetal));
+            }
+            return new PathChain(segments,
+                    prof.maxVelocity, prof.maxAccel, prof.maxOmega, prof.maxAlpha, prof.maxCentripetal);
+        }
+
+        private PathChain buildGeneratedChain() {
+            RobotProfile prof = RobotProfile.getInstance();
+            double sTheta = Math.toRadians(startHeadingDeg);
+            double eTheta = Math.toRadians(endHeadingDeg);
+            ObstacleField.setInstance(obstacles);
+
+            // Ordered list of must-hit points: start, waypoints, end
+            java.util.List<Translation2d> userPts = new java.util.ArrayList<>();
+            userPts.add(startPt);
+            userPts.addAll(waypoints);
+            userPts.add(endPt);
+
+            // Run A* between each consecutive user pair, merge all route points
+            // into one flat list (de-duplicating shared endpoints).
+            java.util.List<Translation2d> allPts = new java.util.ArrayList<>();
+            allPts.add(userPts.get(0));
+            for (int i = 0; i < userPts.size() - 1; i++) {
+                Translation2d a = userPts.get(i);
+                Translation2d b = userPts.get(i + 1);
+                ObstacleField field = ObstacleField.getInstance();
+                if (field.isSegmentBlocked(a, b)) {
+                    java.util.List<Translation2d> route = new frc.robot.utility.Pathing.obstacle.AStarPlanner(field).plan(a, b);
+                    if (route.size() < 2) return null;
+                    for (int j = 1; j < route.size(); j++) {
+                        allPts.add(route.get(j));
+                    }
+                } else {
+                    allPts.add(b);
+                }
+            }
+
+            // Build smooth Bezier segments with bisector-averaged headings at junctions
+            java.util.List<Path> segments = new java.util.ArrayList<>();
+            for (int i = 0; i < allPts.size() - 1; i++) {
+                Translation2d a = allPts.get(i);
+                Translation2d b = allPts.get(i + 1);
+
+                double headingAtA = Math.atan2(b.getY() - a.getY(), b.getX() - a.getX());
+                double headingAtB = Math.atan2(b.getY() - a.getY(), b.getX() - a.getX());
+                if (i > 0) {
+                    Translation2d prev = allPts.get(i - 1);
+                    double hIn = Math.atan2(a.getY() - prev.getY(), a.getX() - prev.getX());
+                    double hOut = Math.atan2(b.getY() - a.getY(), b.getX() - a.getX());
+                    headingAtA = Math.atan2(Math.sin(hIn) + Math.sin(hOut), Math.cos(hIn) + Math.cos(hOut));
+                }
+                if (i < allPts.size() - 2) {
+                    Translation2d next = allPts.get(i + 2);
+                    double hIn = Math.atan2(b.getY() - a.getY(), b.getX() - a.getX());
+                    double hOut = Math.atan2(next.getY() - b.getY(), next.getX() - b.getX());
+                    headingAtB = Math.atan2(Math.sin(hIn) + Math.sin(hOut), Math.cos(hIn) + Math.cos(hOut));
+                }
+
+                double dist = a.getDistance(b);
+                double len = Math.max(0.5, Math.min(3.0, dist / 3.0));
+
+                Pose2d aCtrl = new Pose2d(
+                        a.getX() + len * Math.cos(headingAtA),
+                        a.getY() + len * Math.sin(headingAtA),
+                        new Rotation2d(headingAtA));
+                Pose2d bCtrl = new Pose2d(
+                        b.getX() - len * Math.cos(headingAtB),
+                        b.getY() - len * Math.sin(headingAtB),
+                        new Rotation2d(headingAtB));
+
+                double segTheta = sTheta + (eTheta - sTheta) * i / (allPts.size() - 1);
+                double segThetaEnd = sTheta + (eTheta - sTheta) * (i + 1) / (allPts.size() - 1);
+                Setpoint aSet = new Setpoint(a.getX(), a.getY(), segTheta, 0, 0, 0);
+                Setpoint bSet = new Setpoint(b.getX(), b.getY(), segThetaEnd, 0, 0, 0);
+
+                segments.add(new Path(aSet, bSet, aCtrl, bCtrl,
+                        prof.maxVelocity, prof.maxAccel, prof.maxOmega, prof.maxAlpha, prof.maxCentripetal));
+            }
+            if (segments.isEmpty()) return null;
+            return new PathChain(segments,
+                    prof.maxVelocity, prof.maxAccel, prof.maxOmega, prof.maxAlpha, prof.maxCentripetal);
+        }
+
         private PathChain buildChain() {
             double sTheta = Math.toRadians(startHeadingDeg);
             double eTheta = Math.toRadians(endHeadingDeg);
@@ -403,16 +658,17 @@ public class PathGuiMain extends JFrame {
         }
 
         private void playAnim() {
-            boolean needsInit = useAStar ? (animChain == null) : (animPath == null);
-            if (needsInit || animDistanceRemaining() < 1e-3) {
+            if (animChain == null || animDistanceRemaining() < 1e-3) {
                 try {
-                    if (useAStar) {
+                    if (pathMode == MODE_GENERATE && generatedChain != null) {
+                        animChain = generatedChain;
+                    } else if (pathMode == MODE_ASTAR) {
                         animChain = buildChain();
-                        if (animChain == null) return;
                     } else {
-                        animPath = buildPath();
+                        animChain = buildBezierChain();
                     }
                 } catch (Exception ex) { return; }
+                if (animChain == null) return;
                 animSimX = startPt.getX();
                 animSimY = startPt.getY();
                 animSimTheta = Math.toRadians(startHeadingDeg);
@@ -425,7 +681,6 @@ public class PathGuiMain extends JFrame {
         private void resetAnim() {
             animPlaying = false;
             animTimer.stop();
-            animPath = null;
             animChain = null;
             animElapsed = 0.0;
             animSimX = startPt.getX();
@@ -435,22 +690,15 @@ public class PathGuiMain extends JFrame {
         }
 
         private double animDistanceRemaining() {
-            if (!useAStar && animPath == null) return 0.0;
-            if (useAStar && animChain == null) return 0.0;
+            if (animChain == null) return 0.0;
             double toEnd = Math.hypot(endPt.getX() - animSimX, endPt.getY() - animSimY);
             return toEnd;
         }
 
         private void tickAnim() {
             if (!animPlaying) return;
-            if (useAStar) {
-                if (animChain == null) { playAnim(); if (animChain == null) return; }
-            } else {
-                if (animPath == null) { playAnim(); if (animPath == null) return; }
-            }
-            Setpoint next = useAStar
-                    ? animChain.calculate(animSimTheta, DT_ANIM)
-                    : animPath.calculate(animSimTheta, DT_ANIM);
+            if (animChain == null) { playAnim(); if (animChain == null) return; }
+            Setpoint next = animChain.calculate(animSimTheta, DT_ANIM);
             // Treat returned setpoint as the commanded pose — simulate perfect tracking.
             animSimX = next.x;
             animSimY = next.y;
@@ -480,13 +728,20 @@ public class PathGuiMain extends JFrame {
                         } else if (nearHeadingHandle(sx, sy, endPt, endHeadingDeg)) {
                             draggingEndHeading = true;
                         } else {
-                            dragging = nearestHandle(sx, sy);
+                            draggingWaypointIdx = nearestWaypoint(sx, sy);
+                            if (draggingWaypointIdx < 0) {
+                                dragging = nearestHandle(sx, sy);
+                            }
                         }
                     }
                     @Override public void mouseReleased(MouseEvent e) {
                         dragging = null;
                         draggingStartHeading = false;
                         draggingEndHeading = false;
+                        if (draggingWaypointIdx >= 0) {
+                            rebuildWaypointList();
+                            draggingWaypointIdx = -1;
+                        }
                     }
                     @Override public void mouseDragged(MouseEvent e) {
                         if (draggingStartHeading) {
@@ -500,6 +755,10 @@ public class PathGuiMain extends JFrame {
                             endHeadingDeg = Math.toDegrees(Math.atan2(
                                     w.getY() - endPt.getY(), w.getX() - endPt.getX()));
                             syncSidebarFromCanvas();
+                            repaint();
+                        } else if (draggingWaypointIdx >= 0) {
+                            Translation2d w = screenToWorld(e.getX(), e.getY());
+                            waypoints.set(draggingWaypointIdx, w);
                             repaint();
                         } else if (dragging != null) {
                             Translation2d w = screenToWorld(e.getX(), e.getY());
@@ -523,6 +782,16 @@ public class PathGuiMain extends JFrame {
                     Point p = worldToScreen(pt);
                     double d = (p.x - sx) * (p.x - sx) + (p.y - sy) * (p.y - sy);
                     if (d < bestD) { bestD = d; best = pt; }
+                }
+                return best;
+            }
+
+            private int nearestWaypoint(int sx, int sy) {
+                int best = -1; double bestD = 15 * 15;
+                for (int i = 0; i < waypoints.size(); i++) {
+                    Point p = worldToScreen(waypoints.get(i));
+                    double d = (p.x - sx) * (p.x - sx) + (p.y - sy) * (p.y - sy);
+                    if (d < bestD) { bestD = d; best = i; }
                 }
                 return best;
             }
@@ -552,42 +821,58 @@ public class PathGuiMain extends JFrame {
                 catch (Exception ex) { return; }
                 double arc = path.getArcLength();
 
-                if (useAStar) {
-                    // Draw A* chain path
-                    PathChain previewChain;
-                    try { previewChain = buildChain(); }
-                    catch (Exception ex) { previewChain = null; }
-                    if (previewChain != null) {
-                        int N = 200;
-                        Point prev = null;
-                        for (int s = 0; s < previewChain.size(); s++) {
-                            Path seg = previewChain.getSegment(s);
-                            int samplesPerSeg = Math.max(N / previewChain.size(), 40);
-                            for (int i = 0; i <= samplesPerSeg; i++) {
-                                double t = (double) i / samplesPerSeg;
-                                Translation2d pos = seg.calculatePosition(t);
-                                double k = Math.abs(seg.getCurvature(t));
-                                float hue = (float) Math.min(0.65, k / 4.0);
-                                g.setColor(Color.getHSBColor(0.55f - hue * 0.55f, 0.9f, 1.0f));
-                                Point cur = worldToScreen(pos);
-                                if (prev != null) g.drawLine(prev.x, prev.y, cur.x, cur.y);
-                                prev = cur;
-                            }
-                        }
+                // Grey connecting lines: start → wp1 → wp2 → ... → end
+                {
+                    if (pathMode == MODE_GENERATE) {
+                        g.setColor(new Color(200, 200, 200, 220));
+                        g.setStroke(new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND,
+                                0, new float[]{8, 6}, 0));
+                    } else {
+                        g.setColor(new Color(140, 140, 140, 120));
+                        g.setStroke(new BasicStroke(1.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND,
+                                0, new float[]{8, 6}, 0));
                     }
-                } else {
-                    // Bezier (curvature-colored)
+                    java.util.List<Translation2d> linePoints = new java.util.ArrayList<>();
+                    linePoints.add(startPt);
+                    linePoints.addAll(waypoints);
+                    linePoints.add(endPt);
+
+                    for (int i = 0; i < linePoints.size() - 1; i++) {
+                        Point a = worldToScreen(linePoints.get(i));
+                        Point b = worldToScreen(linePoints.get(i + 1));
+                        g.drawLine(a.x, a.y, b.x, b.y);
+                    }
+                    g.setStroke(new BasicStroke(1f));
+                }
+
+                // Draw the colored path for the current mode
+                PathChain drawChain = null;
+                float hueBase = 0.33f, hueRange = 0.33f;
+                if (pathMode == MODE_ASTAR) {
+                    try { drawChain = buildChain(); } catch (Exception ex) { /* skip */ }
+                    hueBase = 0.55f; hueRange = 0.55f;
+                } else if (pathMode == MODE_GENERATE && generatedChain != null) {
+                    drawChain = generatedChain;
+                    hueBase = 0.75f; hueRange = 0.25f;
+                } else if (pathMode == MODE_BEZIER) {
+                    try { drawChain = buildBezierChain(); } catch (Exception ex) { /* skip */ }
+                }
+                if (drawChain != null) {
                     int N = 200;
                     Point prev = null;
-                    for (int i = 0; i <= N; i++) {
-                        double t = (double) i / N;
-                        Translation2d pos = path.calculatePosition(t);
-                        double k = Math.abs(path.getCurvature(t));
-                        float hue = (float) Math.min(0.65, k / 4.0);
-                        g.setColor(Color.getHSBColor(0.33f - hue * 0.33f, 0.9f, 1.0f));
-                        Point cur = worldToScreen(pos);
-                        if (prev != null) g.drawLine(prev.x, prev.y, cur.x, cur.y);
-                        prev = cur;
+                    for (int s = 0; s < drawChain.size(); s++) {
+                        Path seg = drawChain.getSegment(s);
+                        int samplesPerSeg = Math.max(N / drawChain.size(), 40);
+                        for (int i = 0; i <= samplesPerSeg; i++) {
+                            double t = (double) i / samplesPerSeg;
+                            Translation2d pos = seg.calculatePosition(t);
+                            double k = Math.abs(seg.getCurvature(t));
+                            float hue = (float) Math.min(0.65, k / 4.0);
+                            g.setColor(Color.getHSBColor(hueBase - hue * hueRange, 0.9f, 1.0f));
+                            Point cur = worldToScreen(pos);
+                            if (prev != null) g.drawLine(prev.x, prev.y, cur.x, cur.y);
+                            prev = cur;
+                        }
                     }
                 }
 
@@ -598,7 +883,7 @@ public class PathGuiMain extends JFrame {
                         prof, new Color(230, 80, 80, 70), new Color(230, 80, 80, 180));
 
                 // Animated robot, if playing or paused mid-run
-                if (animPath != null || animChain != null) {
+                if (animChain != null) {
                     drawFootprint(g, animSimX, animSimY, animSimTheta, prof,
                             new Color(255, 220, 100, 140), new Color(255, 220, 100, 230));
                 }
@@ -606,31 +891,46 @@ public class PathGuiMain extends JFrame {
                 // Handles
                 drawHandle(g, startPt,   new Color(60, 220, 110));
                 drawHandle(g, endPt,     new Color(230, 80, 80));
-                drawHandle(g, startCtrl, new Color(90, 180, 255));
-                drawHandle(g, endCtrl,   new Color(255, 150, 220));
-                g.setColor(new Color(180, 180, 180, 120));
-                drawLine(g, startPt, startCtrl);
-                drawLine(g, endPt, endCtrl);
+                if (pathMode == MODE_BEZIER) {
+                    drawHandle(g, startCtrl, new Color(90, 180, 255));
+                    drawHandle(g, endCtrl,   new Color(255, 150, 220));
+                    g.setColor(new Color(180, 180, 180, 120));
+                    drawLine(g, startPt, startCtrl);
+                    drawLine(g, endPt, endCtrl);
+                }
+
+                // Waypoint handles
+                Color wpColor = new Color(255, 180, 60);
+                for (int i = 0; i < waypoints.size(); i++) {
+                    Translation2d wp = waypoints.get(i);
+                    drawHandle(g, wp, wpColor);
+                    g.setColor(new Color(255, 180, 60, 160));
+                    Point p = worldToScreen(wp);
+                    g.drawString(String.valueOf(i + 1), p.x + 8, p.y - 4);
+                }
 
                 // Heading drag handles — diamond at the tip of a heading arm
                 drawHeadingHandle(g, startPt, startHeadingDeg, new Color(60, 220, 110));
                 drawHeadingHandle(g, endPt, endHeadingDeg, new Color(230, 80, 80));
 
-                // v(s) plot
+                // v(s) plot — use the chain's joint profile when available
+                // so multi-segment paths show one smooth curve instead of per-segment dips.
+                double plotArc = (drawChain != null) ? drawChain.getTotalLength() : arc;
+                var plotProfile = (drawChain != null) ? drawChain.getJointProfile() : path.getVelocityProfile();
                 int plotY0 = getHeight() - PLOT_HEIGHT + 10;
                 g.setColor(new Color(35, 35, 40));
                 g.fillRect(MARGIN, plotY0, getWidth() - 2 * MARGIN, PLOT_HEIGHT - 30);
                 g.setColor(new Color(200, 200, 210));
                 g.drawString(String.format("v(s)  arc=%.2f m   max=%.1f m/s   t=%.2f s",
-                        arc, prof.maxVelocity, animElapsed),
+                        plotArc, prof.maxVelocity, animElapsed),
                         MARGIN + 6, plotY0 + 14);
                 int plotW = getWidth() - 2 * MARGIN;
                 int plotH = PLOT_HEIGHT - 40;
                 Point prevV = null;
                 int samples = 200;
                 for (int i = 0; i <= samples; i++) {
-                    double s = arc * i / samples;
-                    double v = path.getVelocityProfile().velocityAt(s);
+                    double s = plotArc * i / samples;
+                    double v = plotProfile.velocityAt(s);
                     int px = MARGIN + (int)(plotW * (double) i / samples);
                     int py = plotY0 + plotH - (int)(plotH * v / Math.max(prof.maxVelocity, 1e-3));
                     g.setColor(new Color(120, 220, 160));
