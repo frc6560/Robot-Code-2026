@@ -73,7 +73,6 @@ dependencies {
 
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.1'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-    testImplementation 'com.google.code.gson:gson:2.10.1'
 
     def akitJson = new groovy.json.JsonSlurper().parseText(new File(projectDir.getAbsolutePath() + "/vendordeps/AdvantageKit.json").text)
     annotationProcessor "org.littletonrobotics.akit:akit-autolog:$akitJson.version"
@@ -82,23 +81,6 @@ dependencies {
 test {
     useJUnitPlatform()
     systemProperty 'junit.jupiter.extensions.autodetection.enabled', 'true'
-}
-
-task simDiagnostics(type: Test) {
-    description = "Run simulation diagnostics and output structured JSON"
-    group = "diagnostics"
-    useJUnitPlatform {
-        includeTags("sim-diagnostics")
-    }
-    systemProperty 'diag.scenario', System.getProperty('diag.scenario', 'all')
-    systemProperty 'diag.duration', System.getProperty('diag.duration', '15')
-    systemProperty 'diag.analyze', System.getProperty('diag.analyze', 'true')
-    systemProperty 'simtest.outputDir', "${buildDir}/sim-diagnostics"
-    doFirst { mkdir "${buildDir}/sim-diagnostics" }
-    testLogging {
-        events "passed", "failed"
-        showStandardStreams = true
-    }
 }
 
 task(replayWatch, type: JavaExec) {
@@ -126,7 +108,6 @@ jar {
 deployArtifact.jarTask = jar
 wpi.java.configureExecutableTasks(jar)
 wpi.java.configureTestTasks(test)
-wpi.java.configureTestTasks(simDiagnostics)
 
 // Configure string concat to always inline compile
 tasks.withType(JavaCompile) {
