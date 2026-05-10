@@ -62,7 +62,11 @@ public class Module {
     state.cosineScale(inputs.turnPosition);
 
     io.setDriveVelocity(state.speedMetersPerSecond / constants.WheelRadius);
-    io.setTurnPosition(state.angle);
+
+    // Don't steer when speed is near zero — avoids phantom rotation in odometry
+    if (Math.abs(state.speedMetersPerSecond) > 0.01) {
+      io.setTurnPosition(state.angle);
+    }
   }
 
   public void runCharacterization(double output) {

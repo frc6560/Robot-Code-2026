@@ -70,7 +70,6 @@ public class ModuleIOSim implements ModuleIO {
 
   @Override
   public void setDriveVelocity(double velocityRadPerSec) {
-    // Simple P controller for sim
     double error = velocityRadPerSec - driveSim.getAngularVelocityRadPerSec();
     driveAppliedVolts = MathUtil.clamp(error * 2.0, -12.0, 12.0);
   }

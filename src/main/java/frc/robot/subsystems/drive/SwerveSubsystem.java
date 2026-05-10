@@ -74,6 +74,10 @@ public class SwerveSubsystem extends SubsystemBase {
   private SwerveDrivePoseEstimator poseEstimator =
       new SwerveDrivePoseEstimator(kinematics, rawGyroRotation, lastModulePositions, Pose2d.kZero);
 
+  // Commanded omega for sim gyro integration (avoids noisy twist-based heading)
+  private double commandedOmegaRadPerSec = 0.0;
+  private boolean velocityCommandedThisCycle = false;
+
   public SwerveSubsystem(
       GyroIO gyroIO,
       ModuleIO flModuleIO,
@@ -150,11 +154,22 @@ public class SwerveSubsystem extends SubsystemBase {
     }
 
     gyroDisconnectedAlert.set(!gyroInputs.connected && Constants.currentMode != Constants.Mode.SIM);
+
+    // If no command drove the modules last cycle, stop them to prevent coasting
+    if (!velocityCommandedThisCycle) {
+      for (var module : modules) {
+        module.stop();
+      }
+      commandedOmegaRadPerSec = 0.0;
+    }
+    velocityCommandedThisCycle = false;
   }
 
   // --- Core drive methods ---
 
   public void runVelocity(ChassisSpeeds speeds) {
+    velocityCommandedThisCycle = true;
+    commandedOmegaRadPerSec = speeds.omegaRadiansPerSecond;
     ChassisSpeeds discreteSpeeds = ChassisSpeeds.discretize(speeds, 0.02);
     SwerveModuleState[] setpointStates = kinematics.toSwerveModuleStates(discreteSpeeds);
     SwerveDriveKinematics.desaturateWheelSpeeds(setpointStates, TunerConstants.kSpeedAt12Volts);
@@ -317,6 +332,10 @@ public class SwerveSubsystem extends SubsystemBase {
   }
 
   // --- Speed limits ---
+
+  public double getCommandedOmegaRadPerSec() {
+    return commandedOmegaRadPerSec;
+  }
 
   public double getMaxLinearSpeedMetersPerSec() {
     return TunerConstants.kSpeedAt12Volts.in(MetersPerSecond);

@@ -94,7 +94,7 @@ public class RobotContainer {
           };
           final SwerveSubsystem[] simDriveHolder = new SwerveSubsystem[1];
           simDriveHolder[0] = new SwerveSubsystem(
-              new GyroIOSim(() -> simDriveHolder[0] != null ? simDriveHolder[0].getModuleStates() : null),
+              new GyroIOSim((java.util.function.DoubleSupplier) () -> simDriveHolder[0] != null ? simDriveHolder[0].getCommandedOmegaRadPerSec() : 0.0),
               simModules[0], simModules[1], simModules[2], simModules[3]);
           drivebase = simDriveHolder[0];
           break;

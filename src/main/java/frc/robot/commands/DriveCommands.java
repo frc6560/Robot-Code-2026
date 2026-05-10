@@ -54,6 +54,11 @@ public class DriveCommands {
       DoubleSupplier omegaSupplier) {
     return Commands.run(
         () -> {
+          if (DriverStation.isAutonomous()) {
+            drive.stop();
+            return;
+          }
+
           Translation2d linearVelocity =
               getLinearVelocityFromJoysticks(xSupplier.getAsDouble(), ySupplier.getAsDouble());
 

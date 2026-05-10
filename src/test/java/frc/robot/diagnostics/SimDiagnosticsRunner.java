@@ -3,9 +3,11 @@ package frc.robot.diagnostics;
 import edu.wpi.first.hal.AllianceStationID;
 import edu.wpi.first.hal.HAL;
 import edu.wpi.first.wpilibj.simulation.DriverStationSim;
+import edu.wpi.first.wpilibj.simulation.JoystickSim;
 import edu.wpi.first.wpilibj.simulation.SimHooks;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import edu.wpi.first.wpilibj2.command.Commands;
 import frc.robot.RobotContainer;
 import frc.robot.diagnostics.analysis.AnomalyDetector;
 import frc.robot.diagnostics.capture.StateCapture;
@@ -83,6 +85,23 @@ public class SimDiagnosticsRunner {
         DriverStationSim.setEnabled(true);
         DriverStationSim.setAutonomous(scenario.isAutonomous());
         DriverStationSim.setTest(false);
+
+        // Zero all joystick axes so the default drive command doesn't send inputs during auto
+        for (int port = 0; port < 2; port++) {
+            JoystickSim joySim = new JoystickSim(port);
+            for (int axis = 0; axis < 6; axis++) {
+                joySim.setRawAxis(axis, 0.0);
+            }
+            joySim.notifyNewData();
+        }
+
+        // Override the default drive command with a stop command during auto scenarios
+        // This mirrors real hardware behavior where joystick reads 0 during auto
+        if (scenario.isAutonomous()) {
+            var drive = container.getDrivebase();
+            drive.setDefaultCommand(Commands.run(drive::stop, drive));
+        }
+
         DriverStationSim.notifyNewData();
 
         // Let the robot initialize for a few ticks
