@@ -39,7 +39,12 @@ public class TunerConstants {
   private static final SteerMotorArrangement kSteerMotorType =
       SteerMotorArrangement.TalonFX_Integrated;
 
-  private static final SteerFeedbackType kSteerFeedbackType = SteerFeedbackType.FusedCANcoder;
+  // RemoteCANcoder (not FusedCANcoder): the steer PID reads the CANcoder directly without
+  // fusing the motor rotor sensor. FusedCANcoder requires the rotor and CANcoder to agree on
+  // mechanism direction, which depends on per-module gear reversal and was never verified for
+  // this robot (Tuner X swerve wizard wasn't run on the AKit branch). Matches how YAGSL on
+  // glendale-working-branch reads the CANcoder.
+  private static final SteerFeedbackType kSteerFeedbackType = SteerFeedbackType.RemoteCANcoder;
 
   private static final Current kSlipCurrent = Amps.of(40.0);
 
@@ -114,7 +119,7 @@ public class TunerConstants {
   private static final int kFrontLeftSteerMotorId = 6;
   private static final int kFrontLeftEncoderId = 5;
   private static final Angle kFrontLeftEncoderOffset = Degrees.of(-0.967);
-  private static final boolean kFrontLeftSteerMotorInverted = false;
+  private static final boolean kFrontLeftSteerMotorInverted = true;
   private static final boolean kFrontLeftEncoderInverted = false;
 
   private static final Distance kFrontLeftXPos = Inches.of(10.875);
@@ -125,7 +130,7 @@ public class TunerConstants {
   private static final int kFrontRightSteerMotorId = 3;
   private static final int kFrontRightEncoderId = 2;
   private static final Angle kFrontRightEncoderOffset = Degrees.of(-112.500);
-  private static final boolean kFrontRightSteerMotorInverted = false;
+  private static final boolean kFrontRightSteerMotorInverted = true;
   private static final boolean kFrontRightEncoderInverted = false;
 
   private static final Distance kFrontRightXPos = Inches.of(10.875);
@@ -136,7 +141,7 @@ public class TunerConstants {
   private static final int kBackLeftSteerMotorId = 9;
   private static final int kBackLeftEncoderId = 8;
   private static final Angle kBackLeftEncoderOffset = Degrees.of(-250.313);
-  private static final boolean kBackLeftSteerMotorInverted = false;
+  private static final boolean kBackLeftSteerMotorInverted = true;
   private static final boolean kBackLeftEncoderInverted = false;
 
   private static final Distance kBackLeftXPos = Inches.of(-10.875);
@@ -147,7 +152,7 @@ public class TunerConstants {
   private static final int kBackRightSteerMotorId = 12;
   private static final int kBackRightEncoderId = 11;
   private static final Angle kBackRightEncoderOffset = Degrees.of(-203.730);
-  private static final boolean kBackRightSteerMotorInverted = false;
+  private static final boolean kBackRightSteerMotorInverted = true;
   private static final boolean kBackRightEncoderInverted = false;
 
   private static final Distance kBackRightXPos = Inches.of(-10.875);
