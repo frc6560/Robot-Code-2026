@@ -248,6 +248,8 @@ public final class Constants {
     public static final double kMaxV = 450;
     public static final double kMaxA = 900;
 
+    
+
     public static final boolean MOTOR_INVERTED = false; 
 
     /** Turret Geometry */
