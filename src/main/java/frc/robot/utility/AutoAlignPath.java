@@ -30,7 +30,8 @@ public class AutoAlignPath {
     public Translation2d getNormalizedDisplacement() {
         Translation2d displacement = getDisplacement();
         double length = displacement.getNorm();
-        return length == 0 ? new Translation2d(0, 0) : displacement.div(length + 0.001);
+        // True unit vector (no epsilon attenuation near the goal); guard the zero-length case.
+        return length < 1e-9 ? new Translation2d(0, 0) : displacement.div(length);
     }
 
     public double getRotationError() {
