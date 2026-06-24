@@ -33,6 +33,16 @@ import edu.wpi.first.math.trajectory.TrapezoidProfile.Constraints;
 import edu.wpi.first.math.trajectory.TrapezoidProfile.State;
 import edu.wpi.first.wpilibj.DriverStation;
 
+// Autopilot (team 3414) -- three-phase takeoff/glide/constant-jerk-landing profile.
+import com.therekrab.autopilot.APConstraints;
+import com.therekrab.autopilot.APProfile;
+import com.therekrab.autopilot.APTarget;
+import com.therekrab.autopilot.Autopilot;
+import com.therekrab.autopilot.Autopilot.APResult;
+import static edu.wpi.first.units.Units.Degrees;
+import static edu.wpi.first.units.Units.Meters;
+import static edu.wpi.first.units.Units.MetersPerSecond;
+
 /**
  * Drivetrain-only auto-align command factory for the reef.
  *
@@ -118,9 +128,14 @@ public class AutoAlignCommandFactory {
     private static final double kMaxAmbiguity = 0.3; // reject high-ambiguity pose solutions
 
     // Robot-center standoff out from the tag face at the scoring pose. TUNE to scoring geometry.
-    private static final double kStandoffMeters = 0.50;
+    // (package-private so the simulation in this package can reuse the exact geometry.)
+    static final double kStandoffMeters = 0.50;
     // Lateral branch offset from the tag center (half the reef branch spacing).
-    private static final double kBranchLateralMeters = 0.164;
+    static final double kBranchLateralMeters = 0.164;
+    // Straight perpendicular final-approach distance (the "prescore" offset out from scoring).
+    // Used for drawing the planned approach; the live command realizes it via the Autopilot
+    // beeline radius. Kept consistent here so the sim and the command agree.
+    static final double kPrescoreMeters = 0.70;
 
     // ---- PID gains for the path-follower's pose correction (feed-forward + correction) ----
     private static final double kP_x = 3.0,   kI_x = 0.03, kD_x = 0.1;
@@ -131,6 +146,67 @@ public class AutoAlignCommandFactory {
     private final PIDController yPoseController = new PIDController(kP_y, kI_y, kD_y);
     private final PIDController thetaPoseController = new PIDController(kP_theta, kI_theta, kD_theta);
 
+    // ---- Autopilot (tag-based-pose variant) ----
+    // Autopilot constraints: max velocity / acceleration / jerk for its takeoff-glide-landing profile.
+    private static final double kApMaxVelocity = 2.0;       // m/s
+    private static final double kApMaxAcceleration = 1.8;   // m/s^2
+    private static final double kApMaxJerk = 8.0;           // m/s^3 (constant-jerk landing)
+    private static final double kApErrorThetaDegrees = 1.0; // heading tolerance for atTarget
+    private static final double kApBeelineRadiusMeters = 0.30; // within this, drive straight in
+    // Heading controller: Autopilot returns a heading SETPOINT, so we close the loop on it ourselves.
+    private final PIDController autopilotThetaController = buildAutopilotThetaController();
+    private final Autopilot autopilot = buildAutopilot();
+
+    /** Builds the Autopilot with this project's tuned profile. Shared by the command and the sim. */
+    static Autopilot buildAutopilot() {
+        return new Autopilot(
+            new APProfile(new APConstraints(kApMaxVelocity, kApMaxAcceleration, kApMaxJerk))
+                .withErrorXY(Meters.of(kPosToleranceMeters))
+                .withErrorTheta(Degrees.of(kApErrorThetaDegrees))
+                .withBeelineRadius(Meters.of(kApBeelineRadiusMeters)));
+    }
+
+    /** Builds the heading controller used to close the loop on Autopilot's heading setpoint. */
+    static PIDController buildAutopilotThetaController() {
+        PIDController c = new PIDController(kP_theta, kI_theta, kD_theta);
+        c.enableContinuousInput(-Math.PI, Math.PI);
+        return c;
+    }
+
+    /** One Autopilot evaluation: the tag-anchored fake pose, its target, and Autopilot's result. */
+    static record ApStep(APResult result, Pose2d current, APTarget target) {}
+
+    /**
+     * Pure tag-based-pose Autopilot evaluation, shared by the live command and the simulation.
+     * Builds the fake pose in the tag-anchored frame T (tag at the origin -> the anchor cancels),
+     * with translation from {@code tagInRobot} (tx-ty in the real robot) and heading from
+     * {@code gyro}, then asks Autopilot for the field-relative result toward the perpendicular goal.
+     */
+    static ApStep computeApStep(Autopilot ap, Translation2d tagInRobot, Rotation2d gyro,
+                                ChassisSpeeds robotRelSpeeds, double scoringHeading, double lateralSign) {
+        // Frame T: tag pinned at the origin. robotInT = -R(gyro) * tagInRobot.
+        Translation2d robotPos = tagInRobot.rotateBy(gyro).unaryMinus();
+        Pose2d current = new Pose2d(robotPos, gyro);
+        // Goal in T: robot faces the tag at heading psi; goal = origin - standoff*dir(psi) + lateral.
+        Rotation2d psi = new Rotation2d(scoringHeading);
+        Translation2d standoff = new Translation2d(kStandoffMeters, psi);
+        Translation2d lateral = new Translation2d(lateralSign * kBranchLateralMeters,
+                                                  psi.rotateBy(Rotation2d.fromDegrees(90)));
+        Pose2d goalPose = new Pose2d(standoff.unaryMinus().plus(lateral), psi);
+        APTarget target = new APTarget(goalPose).withEntryAngle(psi).withVelocity(0.0);
+        return new ApStep(ap.calculate(current, robotRelSpeeds, target), current, target);
+    }
+    // Per-tick Autopilot bookkeeping for the (debounced) end condition.
+    private boolean autopilotReached = false;
+    private Debouncer autopilotStopDebouncer = new Debouncer(kStopDebounceSeconds);
+    // Hold-last-good on a brief vision dropout so a momentary occlusion coasts through instead of
+    // braking to a stop mid-path (requirement 3). Only fall back to a stop if the dropout persists.
+    private static final double kApHoldSeconds = 0.3;
+    private static final double kLoopDtSeconds = 0.02;
+    private Pose2d apLastCurrent = null;
+    private APTarget apLastTarget = null;
+    private double apDropoutSeconds = 0.0;
+
     // ---- Subsystems ----
     private final SwerveSubsystem drivetrain;
 
@@ -138,6 +214,7 @@ public class AutoAlignCommandFactory {
     public AutoAlignCommandFactory(SwerveSubsystem drivetrain) {
         this.drivetrain = drivetrain;
         thetaPoseController.enableContinuousInput(-Math.PI, Math.PI);
+        // autopilotThetaController already has continuous input enabled by its builder.
     }
 
 
@@ -174,6 +251,179 @@ public class AutoAlignCommandFactory {
         return Commands.defer(
             () -> runProfileToGoal(getTarget(index, side), null), // null side -> no re-anchoring
             Set.of(drivetrain));
+    }
+
+
+    // ---- AUTOPILOT (TAG-BASED POSE) ALIGN ----
+    //
+    // Feeds Autopilot a "fake pose" built in a tag-anchored frame T that shares the gyro/odometry
+    // ORIENTATION. The tag is pinned at the origin of T (an arbitrary anchor that cancels in
+    // Autopilot's current->target relative math), so no global field POSITION is ever used:
+    //   - translation: tx-ty vision (tag position relative to the robot), rotated into T by gyro yaw.
+    //   - heading: gyro (odometry yaw, which is gyro-driven); translation of getPose() is NOT used.
+    //   - perpendicular reference: the known reef-face angle (field geometry, not a surveyed position).
+    // Because T shares odometry orientation, Autopilot's field-relative output velocity goes straight
+    // into driveFieldOriented. Autopilot returns a heading SETPOINT, so a separate controller closes
+    // the loop on it.
+
+
+    /**
+     * Autopilot-driven auto-align using a tag-based fake pose (translation from tx-ty, heading from
+     * gyro, perpendicular reference from the known reef-face angle). Bails out cleanly if no reef tag
+     * is visible. See the section comment above for the frame construction.
+     *
+     * @param side  which branch (LEFT/RIGHT) to score on
+     * @param index which reef face (selects the perpendicular field-angle reference)
+     */
+    public Command getAlignAutopilot(ReefSide side, ReefIndex index) {
+        return Commands.defer(
+            () -> {
+                if (bestReefCamera().isEmpty()) {
+                    DriverStation.reportWarning("AutoAlign(AP): no reef tag visible; not aligning.", false);
+                    return Commands.none();
+                }
+                // Perpendicular scoring heading (faces the tag) from field geometry, in T's frame
+                // (T shares field/gyro orientation). Only the rotation of getTarget is used.
+                final double scoringHeading = getTarget(index, side).getRotation().getRadians();
+                final double lateralSign = (side == ReefSide.LEFT) ? -1.0 : 1.0;
+
+                return new FunctionalCommand(
+                    () -> {
+                        autopilotThetaController.reset();
+                        autopilotReached = false;
+                        autopilotStopDebouncer = new Debouncer(kStopDebounceSeconds);
+                        apLastCurrent = null;
+                        apLastTarget = null;
+                        apDropoutSeconds = 0.0;
+                    },
+                    () -> autopilotStep(scoringHeading, lateralSign),
+                    (interrupted) -> drivetrain.drive(new ChassisSpeeds()),
+                    () -> autopilotStopDebouncer.calculate(autopilotReached))
+                    .withTimeout(kAlignTimeoutSeconds)
+                    .finallyDo(() -> drivetrain.drive(new ChassisSpeeds()));
+            },
+            Set.of(drivetrain));
+    }
+
+    /** One Autopilot control tick: build the tag-anchored fake pose + target, calculate, drive. */
+    private void autopilotStep(double scoringHeading, double lateralSign) {
+        autopilotReached = false;
+
+        // Gyro heading (odometry yaw is gyro-driven and matches driveFieldOriented's frame). This is
+        // available even on a vision dropout, so the heading loop stays live throughout.
+        Rotation2d gyro = drivetrain.getPose().getRotation();
+
+        // Try to build a FRESH tag-anchored fake pose + target from this frame's vision.
+        Pose2d current = null;
+        APTarget target = null;
+        APResult result = null;
+        Optional<String> camOpt = bestReefCamera();
+        if (camOpt.isPresent()) {
+            Optional<Translation2d> tagOpt = tagInRobotFromTxTy(camOpt.get());
+            if (tagOpt.isPresent()) {
+                // Shared tag-based-pose Autopilot evaluation (identical to the simulation's).
+                ApStep stp = computeApStep(autopilot, tagOpt.get(), gyro,
+                    drivetrain.getRobotVelocity(), scoringHeading, lateralSign);
+                result = stp.result();
+                current = stp.current();
+                target = stp.target();
+            }
+        }
+
+        boolean fresh = apResultFinite(result);
+        if (fresh) {
+            apLastCurrent = current;
+            apLastTarget = target;
+            apDropoutSeconds = 0.0;
+        } else {
+            // Vision/numeric dropout: keep profiling from the last good state for a short window so a
+            // momentary occlusion coasts through instead of braking to a stop (requirement 3). If we
+            // have no prior fix, or the dropout has lasted too long, fall back to a safe stop.
+            if (apLastCurrent == null || apDropoutSeconds >= kApHoldSeconds) {
+                drivetrain.drive(new ChassisSpeeds());
+                return;
+            }
+            apDropoutSeconds += kLoopDtSeconds;
+            result = autopilot.calculate(apLastCurrent, drivetrain.getRobotVelocity(), apLastTarget);
+            current = apLastCurrent;
+            target = apLastTarget;
+            if (!apResultFinite(result)) { drivetrain.drive(new ChassisSpeeds()); return; }
+        }
+
+        double vx = result.vx().in(MetersPerSecond);
+        double vy = result.vy().in(MetersPerSecond);
+        double omega = autopilotThetaController.calculate(
+            gyro.getRadians(), result.targetAngle().getRadians());
+        if (!Double.isFinite(omega)) { drivetrain.drive(new ChassisSpeeds()); return; }
+        // T shares odometry orientation, so Autopilot's field-relative output drives directly.
+        drivetrain.driveFieldOriented(new ChassisSpeeds(vx, vy, omega));
+
+        // End condition only on a FRESH fix (never terminate on a held/stale frame): Autopilot says
+        // at target AND the chassis is physically stopped.
+        if (fresh) {
+            ChassisSpeeds measured = drivetrain.getRobotVelocity();
+            boolean stopped =
+                Math.hypot(measured.vxMetersPerSecond, measured.vyMetersPerSecond) < kTransVelStopThreshold
+                && Math.abs(measured.omegaRadiansPerSecond) < kRotVelStopThreshold;
+            autopilotReached = autopilot.atTarget(current, target) && stopped;
+        }
+    }
+
+    /** True if the Autopilot result exists and its field-relative velocity components are finite. */
+    private static boolean apResultFinite(APResult r) {
+        return r != null
+            && Double.isFinite(r.vx().in(MetersPerSecond))
+            && Double.isFinite(r.vy().in(MetersPerSecond));
+    }
+
+    /**
+     * Tag position relative to the robot, from tx-ty only (no PnP, no global pose). Range comes from
+     * the vertical angle ty and the known camera/tag heights; bearing from the horizontal angle tx.
+     *
+     * <p>HARDWARE-VERIFICATION POINT: the camera extrinsics ({@link #cameraExtrinsics}) and the tx
+     * sign must match the physical mount.
+     */
+    private Optional<Translation2d> tagInRobotFromTxTy(String cam) {
+        if (!LimelightHelpers.getTV(cam)) return Optional.empty();
+        double tx = Math.toRadians(LimelightHelpers.getTX(cam));
+        double ty = Math.toRadians(LimelightHelpers.getTY(cam));
+        CameraExtrinsics ex = cameraExtrinsics(cam);
+
+        double denom = Math.tan(ex.pitchRadians + ty);
+        if (Math.abs(denom) < 1e-6) return Optional.empty(); // line of sight near-parallel to floor
+        double range = (ex.tagHeightMeters - ex.heightMeters) / denom; // horizontal ground distance
+        if (!Double.isFinite(range) || range <= 0) return Optional.empty();
+
+        // Polar in the camera frame: +x forward, +y left, so a right-of-crosshair target (tx>0) is -y.
+        Translation2d tagInCam = new Translation2d(range, new Rotation2d(-tx));
+        Translation2d tagInRobot = ex.offset.plus(tagInCam.rotateBy(ex.yaw));
+        if (!Double.isFinite(tagInRobot.getX()) || !Double.isFinite(tagInRobot.getY())) {
+            return Optional.empty();
+        }
+        return Optional.of(tagInRobot);
+    }
+
+    /** Camera mounting parameters used by the tx-ty range/bearing solve. TUNE per camera. */
+    private record CameraExtrinsics(
+        double heightMeters,     // lens height off the floor
+        double pitchRadians,     // upward tilt of the camera
+        double tagHeightMeters,  // height of the reef tag center
+        Translation2d offset,    // camera position in the robot frame
+        Rotation2d yaw) {}       // camera facing in the robot frame
+
+    private CameraExtrinsics cameraExtrinsics(String cam) {
+        // Placeholders -- replace with measured values per Limelight. Both cameras default to a
+        // forward-facing, robot-centered mount so the code is well-defined before calibration.
+        final double tagHeight = 0.305; // reef AprilTag center height (m) -- VERIFY
+        switch (cam) {
+            case "limelight-left":
+                return new CameraExtrinsics(0.20, Math.toRadians(20), tagHeight,
+                    new Translation2d(0.0, 0.0), Rotation2d.fromDegrees(0));
+            case "limelight-right":
+            default:
+                return new CameraExtrinsics(0.20, Math.toRadians(20), tagHeight,
+                    new Translation2d(0.0, 0.0), Rotation2d.fromDegrees(0));
+        }
     }
 
 
