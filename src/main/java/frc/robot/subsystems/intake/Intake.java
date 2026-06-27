@@ -23,6 +23,7 @@ public class Intake extends SubsystemBase {
     private int cycleTicks = 0;
 
     public Intake(IntakeIO io) {
+        Logger.recordOutput(getName(), "Intake class initialized");
         this.io = io;
     }
 
@@ -56,6 +57,7 @@ public class Intake extends SubsystemBase {
 
     @Override
     public void periodic() {
+        Logger.recordOutput("LOG", "ITS RUNNING");
         io.updateInputs(inputs);
         Logger.processInputs("Intake", inputs);
 
