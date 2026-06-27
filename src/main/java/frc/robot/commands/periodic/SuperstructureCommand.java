@@ -18,6 +18,7 @@ import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.turret.Turret;
 import frc.robot.utility.Shooter.PassCalculator;
 import frc.robot.utility.Shooter.ShotCalculator;
+import frc.robot.subsystems.intake.*;
 
 public class SuperstructureCommand extends Command {
 
@@ -42,6 +43,7 @@ public class SuperstructureCommand extends Command {
     private final VelocitySupplier velocitySupplier;
     private final ShotCalculator shotCalculator;
     private final PassCalculator passCalculator;
+    private final Intake intake;
 
     private SuperstructureState state = SuperstructureState.IDLE;
 
@@ -57,12 +59,14 @@ public class SuperstructureCommand extends Command {
 
     public SuperstructureCommand(
             Hood hood,
+            Intake intake,
             Shooter shooter,
             Turret turret,
             PoseSupplier poseSupplier,
             VelocitySupplier velocitySupplier,
             ShotCalculator shotCalculator,
             PassCalculator passCalculator) {
+        this.intake = intake;
         this.hood = hood;
         this.shooter = shooter;
         this.turret = turret;
@@ -76,7 +80,7 @@ public class SuperstructureCommand extends Command {
     @Override
     public void initialize() {
         shooter.setIdle();
-
+        intake.activate();
         // Log that the command has started
         executeCounter = 0; // Reset counter on initialize
         SmartDashboard.putBoolean("SuperstructureCommand/Running", true);

@@ -25,6 +25,7 @@ public class Intake extends SubsystemBase {
     public Intake(IntakeIO io) {
         Logger.recordOutput(getName(), "Intake class initialized");
         this.io = io;
+        state=State.ACTIVE;
     }
 
     public void activate() {
