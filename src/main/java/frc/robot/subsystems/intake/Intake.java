@@ -12,10 +12,15 @@ public class Intake extends SubsystemBase {
     public enum State {
         IDLE,
         ACTIVE,
-        OUTTAKE
+        OUTTAKE,
+        CYCLING
     }
 
+    private static final int CYCLE_TICKS_PER_DIRECTION = 500;
+    private static final int CYCLE_TOTAL_TICKS = CYCLE_TICKS_PER_DIRECTION * 2;
+
     private State state = State.IDLE;
+    private int cycleTicks = 0;
 
     public Intake(IntakeIO io) {
         this.io = io;
@@ -23,14 +28,22 @@ public class Intake extends SubsystemBase {
 
     public void activate() {
         state = State.ACTIVE;
+        cycleTicks = 0;
     }
 
     public void deactivate() {
         state = State.IDLE;
+        cycleTicks = 0;
     }
 
     public void activateOuttake() {
         state = State.OUTTAKE;
+        cycleTicks = 0;
+    }
+
+    public void activateCycle() {
+        state = State.CYCLING;
+        cycleTicks = 0;
     }
 
     public State getState() {
@@ -53,6 +66,14 @@ public class Intake extends SubsystemBase {
             case OUTTAKE:
                 io.setRollerRPM(-IntakeConstants.ROLLER_RPM);
                 break;
+            case CYCLING:
+                if (cycleTicks < CYCLE_TICKS_PER_DIRECTION) {
+                    io.setRollerRPM(IntakeConstants.ROLLER_RPM);
+                } else {
+                    io.setRollerRPM(-IntakeConstants.ROLLER_RPM);
+                }
+                cycleTicks = (cycleTicks + 1) % CYCLE_TOTAL_TICKS;
+                break;
             case IDLE:
             default:
                 io.stop();
@@ -60,5 +81,7 @@ public class Intake extends SubsystemBase {
         }
 
         Logger.recordOutput("Intake/State", state.toString());
+        Logger.recordOutput("Intake/CycleTicks", cycleTicks);
+        Logger.recordOutput("Intake/CyclingIn", state == State.CYCLING && cycleTicks < CYCLE_TICKS_PER_DIRECTION);
     }
 }
