@@ -119,8 +119,9 @@ public class AutoAlignCommandFactory {
     private static final double kReanchorLockMeters = 0.05;   // freeze the goal once this close (stable stop)
 
     // ---- Vision / scoring geometry ----
-    // Add every Limelight that can see the reef here for 360-degree coverage.
-    private static final String[] kCameras = { "limelight-left", "limelight-right" };
+    // Limelight(s) responsible for the tag (tx-ty/PnP) measurement. Currently just the back-right
+    // camera. Add more names here for 360-degree coverage once they're calibrated.
+    private static final String[] kCameras = { "limelight-br" };
     // Reef AprilTag IDs (Reefscape field). Edit for the active field/game.
     private static final Set<Integer> kReefTagIds =
         Set.of(6, 7, 8, 9, 10, 11, 17, 18, 19, 20, 21, 22);

@@ -171,7 +171,7 @@ public class RobotContainer {
         driverXbox.start().
           onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
         driverXbox.y()
-          .onTrue(autoAlign.getAlignHeadOnToTag(21, edu.wpi.first.math.util.Units.feetToMeters(2.0)));
+          .whileTrue(autoAlign.getAlignHeadOnToTag(21, edu.wpi.first.math.util.Units.feetToMeters(2.0)));
 
         // --- SHOTS ---
         
