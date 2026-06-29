@@ -161,7 +161,7 @@ public class AutoAlignCommandFactory {
     private final Autopilot autopilot = buildAutopilot();
 
     // Field layout (2026 rebuilt-welded) -- used ONLY to look up a tag's facing direction and height
-    // for single-tag head-on aligns. The alignment itself stays tag-relative (tx-ty + gyro); the
+    // for single-tag head-on aligns. The alignment itself stays tag-relative (Limelight PnP + gyro); the
     // tag's absolute field POSITION is never used to drive.
     private final AprilTagFieldLayout fieldLayout =
         AprilTagFieldLayout.loadField(AprilTagFields.k2026RebuiltWelded);
@@ -188,7 +188,7 @@ public class AutoAlignCommandFactory {
     /**
      * Pure tag-based-pose Autopilot evaluation, shared by the live command and the simulation.
      * Builds the fake pose in the tag-anchored frame T (tag at the origin -> the anchor cancels),
-     * with translation from {@code tagInRobot} (tx-ty in the real robot) and heading from
+     * with translation from {@code tagInRobot} (Limelight PnP in the real robot) and heading from
      * {@code gyro}, then asks Autopilot for the field-relative result toward the perpendicular goal.
      */
     static ApStep computeApStep(Autopilot ap, Translation2d tagInRobot, Rotation2d gyro,
@@ -280,7 +280,7 @@ public class AutoAlignCommandFactory {
     // Feeds Autopilot a "fake pose" built in a tag-anchored frame T that shares the gyro/odometry
     // ORIENTATION. The tag is pinned at the origin of T (an arbitrary anchor that cancels in
     // Autopilot's current->target relative math), so no global field POSITION is ever used:
-    //   - translation: tx-ty vision (tag position relative to the robot), rotated into T by gyro yaw.
+    //   - translation: Limelight PnP (getBotPose3d_TargetSpace -> tag relative to robot), rotated into T by gyro yaw.
     //   - heading: gyro (odometry yaw, which is gyro-driven); translation of getPose() is NOT used.
     //   - perpendicular reference: the known reef-face angle (field geometry, not a surveyed position).
     // Because T shares odometry orientation, Autopilot's field-relative output velocity goes straight
@@ -289,7 +289,7 @@ public class AutoAlignCommandFactory {
 
 
     /**
-     * Autopilot-driven auto-align using a tag-based fake pose (translation from tx-ty, heading from
+     * Autopilot-driven auto-align using a tag-based fake pose (translation from Limelight PnP, heading from
      * gyro, perpendicular reference from the known reef-face angle). Bails out cleanly if no reef tag
      * is visible. See the section comment above for the frame construction.
      *
@@ -329,7 +329,7 @@ public class AutoAlignCommandFactory {
     /**
      * Autopilot align HEAD-ON (no lateral offset) to a SPECIFIC AprilTag, {@code standoffMeters} out
      * from its face. The tag's facing direction and height are read from the 2026 field layout; the
-     * drive itself stays tag-relative (tx-ty + gyro), so no global field POSITION is used to steer.
+     * drive itself stays tag-relative (Limelight PnP + gyro), so no global field POSITION is used to steer.
      * Does NOT touch the shared reef constants. REQUIRES a field-zeroed gyro.
      *
      * <p>Example: {@code getAlignHeadOnToTag(24, Units.feetToMeters(3.0))} -> 3 ft head-on to tag 24.
@@ -346,7 +346,6 @@ public class AutoAlignCommandFactory {
         // Robot head-on heading = face INTO the tag = the tag's outward normal + 180 deg (field frame).
         final double scoringHeading = tagPose.get().getRotation().toRotation2d()
             .rotateBy(Rotation2d.fromDegrees(180)).getRadians();
-        final double tagHeight = tagPose.get().getZ(); // tag center height, for the tx-ty range math
 
         return Commands.defer(
             () -> {
@@ -363,7 +362,7 @@ public class AutoAlignCommandFactory {
                         apLastTarget = null;
                         apDropoutSeconds = 0.0;
                     },
-                    () -> autopilotStepToTag(tagId, scoringHeading, standoffMeters, 0.0, tagHeight),
+                    () -> autopilotStepToTag(tagId, scoringHeading, standoffMeters, 0.0),
                     (interrupted) -> drivetrain.drive(new ChassisSpeeds()),
                     () -> autopilotStopDebouncer.calculate(autopilotReached))
                     .withTimeout(kAlignTimeoutSeconds)
@@ -379,7 +378,7 @@ public class AutoAlignCommandFactory {
         ApStep fresh = null;
         Optional<String> camOpt = bestReefCamera();
         if (camOpt.isPresent()) {
-            Optional<Translation2d> tagOpt = tagInRobotFromTxTy(camOpt.get());
+            Optional<Translation2d> tagOpt = tagInRobotFromLimelight(camOpt.get());
             if (tagOpt.isPresent()) {
                 fresh = computeApStep(autopilot, tagOpt.get(), gyro,
                     drivetrain.getRobotVelocity(), scoringHeading, lateralSign);
@@ -388,15 +387,15 @@ public class AutoAlignCommandFactory {
         driveAutopilot(gyro, fresh);
     }
 
-    /** One Autopilot control tick for a SPECIFIC tag: explicit heading/standoff/lateral/tag height. */
+    /** One Autopilot control tick for a SPECIFIC tag: explicit heading/standoff/lateral. */
     private void autopilotStepToTag(int tagId, double scoringHeading, double standoffMeters,
-                                    double lateralMeters, double tagHeightMeters) {
+                                    double lateralMeters) {
         autopilotReached = false;
         Rotation2d gyro = drivetrain.getPose().getRotation();
         ApStep fresh = null;
         Optional<String> camOpt = cameraSeeingTag(tagId);
         if (camOpt.isPresent()) {
-            Optional<Translation2d> tagOpt = tagInRobotFromTxTy(camOpt.get(), tagHeightMeters);
+            Optional<Translation2d> tagOpt = tagInRobotFromLimelight(camOpt.get());
             if (tagOpt.isPresent()) {
                 fresh = computeApStep(autopilot, tagOpt.get(), gyro,
                     drivetrain.getRobotVelocity(), scoringHeading, standoffMeters, lateralMeters);
@@ -459,58 +458,21 @@ public class AutoAlignCommandFactory {
     }
 
     /**
-     * Tag position relative to the robot, from tx-ty only (no PnP, no global pose). Range comes from
-     * the vertical angle ty and the known camera/tag heights; bearing from the horizontal angle tx.
-     *
-     * <p>HARDWARE-VERIFICATION POINT: the camera extrinsics ({@link #cameraExtrinsics}) and the tx
-     * sign must match the physical mount.
+     * Tag position relative to the robot, from the Limelight's PRE-MADE PnP solve (the same source
+     * the original/trapezoidal auto-align uses) -- no custom trig, no camera-extrinsics calibration.
+     * Uses {@code getBotPose3d_TargetSpace} -> {@link #robotPoseInTagFrame} (robot in the tag frame),
+     * then inverts it with WPILib's built-in {@link Pose2d#relativeTo} to get the tag in the robot
+     * frame. Camera mounting is configured once in the Limelight web UI, not here.
      */
-    private Optional<Translation2d> tagInRobotFromTxTy(String cam) {
-        return tagInRobotFromTxTy(cam, cameraExtrinsics(cam).tagHeightMeters);
-    }
-
-    /** As above, but with an explicit target tag-center height (tag height is per-tag, not per-camera). */
-    private Optional<Translation2d> tagInRobotFromTxTy(String cam, double tagHeightMeters) {
-        if (!LimelightHelpers.getTV(cam)) return Optional.empty();
-        double tx = Math.toRadians(LimelightHelpers.getTX(cam));
-        double ty = Math.toRadians(LimelightHelpers.getTY(cam));
-        CameraExtrinsics ex = cameraExtrinsics(cam);
-
-        double denom = Math.tan(ex.pitchRadians + ty);
-        if (Math.abs(denom) < 1e-6) return Optional.empty(); // line of sight near-parallel to floor
-        double range = (tagHeightMeters - ex.heightMeters) / denom; // horizontal ground distance
-        if (!Double.isFinite(range) || range <= 0) return Optional.empty();
-
-        // Polar in the camera frame: +x forward, +y left, so a right-of-crosshair target (tx>0) is -y.
-        Translation2d tagInCam = new Translation2d(range, new Rotation2d(-tx));
-        Translation2d tagInRobot = ex.offset.plus(tagInCam.rotateBy(ex.yaw));
-        if (!Double.isFinite(tagInRobot.getX()) || !Double.isFinite(tagInRobot.getY())) {
-            return Optional.empty();
-        }
-        return Optional.of(tagInRobot);
-    }
-
-    /** Camera mounting parameters used by the tx-ty range/bearing solve. TUNE per camera. */
-    private record CameraExtrinsics(
-        double heightMeters,     // lens height off the floor
-        double pitchRadians,     // upward tilt of the camera
-        double tagHeightMeters,  // height of the reef tag center
-        Translation2d offset,    // camera position in the robot frame
-        Rotation2d yaw) {}       // camera facing in the robot frame
-
-    private CameraExtrinsics cameraExtrinsics(String cam) {
-        // Placeholders -- replace with measured values per Limelight. Both cameras default to a
-        // forward-facing, robot-centered mount so the code is well-defined before calibration.
-        final double tagHeight = 0.305; // reef AprilTag center height (m) -- VERIFY
-        switch (cam) {
-            case "limelight-left":
-                return new CameraExtrinsics(0.20, Math.toRadians(20), tagHeight,
-                    new Translation2d(0.0, 0.0), Rotation2d.fromDegrees(0));
-            case "limelight-right":
-            default:
-                return new CameraExtrinsics(0.20, Math.toRadians(20), tagHeight,
-                    new Translation2d(0.0, 0.0), Rotation2d.fromDegrees(0));
-        }
+    private Optional<Translation2d> tagInRobotFromLimelight(String cam) {
+        Pose3d robotInTag3d = LimelightHelpers.getBotPose3d_TargetSpace(cam);
+        if (robotInTag3d.getTranslation().getNorm() < 1e-3) return Optional.empty(); // no valid target
+        Pose2d robotInTag = robotPoseInTagFrame(robotInTag3d);
+        if (!isFinite(robotInTag)) return Optional.empty();
+        // Tag (origin of the tag frame) expressed in the robot frame = inverse of robot-in-tag.
+        Pose2d tagInRobot = new Pose2d().relativeTo(robotInTag);
+        if (!isFinite(tagInRobot)) return Optional.empty();
+        return Optional.of(tagInRobot.getTranslation());
     }
 
 
