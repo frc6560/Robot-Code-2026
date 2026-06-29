@@ -90,6 +90,8 @@ public class Robot extends LoggedRobot
     // and running subsystem periodic() methods.  This must be called from the robot's periodic
     // block in order for anything in the Command-based framework to work.
     CommandScheduler.getInstance().run();
+    if (m_robotContainer != null) {
+        m_robotContainer.updateDiagnostics();
   }
 
   /**
@@ -187,6 +189,9 @@ public class Robot extends LoggedRobot
   public void simulationInit()
   {
   }
+
+
+  
 
   /**
    * This function is called periodically whilst in simulation.

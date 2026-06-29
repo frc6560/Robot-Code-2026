@@ -45,16 +45,14 @@ import frc.robot.subsystems.led.LEDIOAddressable;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import frc.robot.subsystems.vision.LimelightVision;
 import frc.robot.subsystems.vision.VisionSubsystem;
+import frc.robot.utility.DiagnosticManager;
 
 
 public class RobotContainer {
-    // Controllers
     private final CommandXboxController driverXbox = new CommandXboxController(0);
     private final ManualControls m_Controls = new ManualControls(1);
 
-     // The robot's subsystems and commands are defined here...
-    private final SwerveSubsystem drivebase  = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(),
-    "swerve/falcon"));
+    private final SwerveSubsystem drivebase  = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(), "swerve/falcon"));
     private final VisionSubsystem vision;
 
     private final Hood hood;
@@ -63,6 +61,9 @@ public class RobotContainer {
     private final Feeder feeder;
     private final Intake intake;
     private final LED led;
+
+    // Framework Core Instance
+    private final DiagnosticManager diagnostics;
 
     private final ShotCalculator shotCalculator = new ShotCalculator();
     private final PassCalculator passCalculator = new PassCalculator();
@@ -81,7 +82,6 @@ public class RobotContainer {
 
 
     public RobotContainer() {
-      // Initialize subsystems with appropriate IO implementations
       if (Robot.isReal()) {
         hood = new Hood(new HoodIOTalonFX());
         shooter = new Shooter(new ShooterIOTalonFX());
@@ -98,11 +98,14 @@ public class RobotContainer {
           led = new LED(new LEDIO() {}, hood, shooter, turret, shotCalculator);
       }
 
+      // Initialize diagnostics manager
+      diagnostics = new DiagnosticManager(shooter);
+
       factory = new AutoCommands(drivebase, feeder, intake, shooter);
       autoChooser = new AutoModeChooser(factory);
       SmartDashboard.putData("Auto Chooser", autoChooser.getAutoChooser());
 
-      List<LimelightVision> limelights = new ArrayList<LimelightVision>();
+      List<LimelightVision> limelights = new ArrayList<>();
       for(String name : LimelightConstants.LIMELIGHT_NAMES) {
         Pose3d cameraPose = LimelightConstants.getLimelightPose(name);
         limelights.add(new LimelightVision(drivebase, name, cameraPose));
@@ -111,13 +114,7 @@ public class RobotContainer {
       vision = new VisionSubsystem(limelights);
 
       SuperstructureCommand superstructureCommand = new SuperstructureCommand(
-        hood,
-        shooter,
-        turret,
-        drivebase::getPose,
-        drivebase::getFieldVelocity,
-        shotCalculator,
-        passCalculator
+        hood, shooter, turret, drivebase::getPose, drivebase::getFieldVelocity, shotCalculator, passCalculator
       );
 
       hood.setDefaultCommand(superstructureCommand);
@@ -140,12 +137,8 @@ public class RobotContainer {
     }
 
     private ChassisSpeeds clampSpeedsForShooting(ChassisSpeeds speeds) {
-        if (!isShotCommandActive()) {
-            return speeds;
-        }
-
+        if (!isShotCommandActive()) return speeds;
         double maxVelocity = isInPassingZone() ? MAX_PASSING_VELOCITY_MPS : MAX_SHOOTING_VELOCITY_MPS;
-
         double vx = speeds.vxMetersPerSecond;
         double vy = speeds.vyMetersPerSecond;
         double translationSpeed = Math.hypot(vx, vy);
@@ -155,7 +148,6 @@ public class RobotContainer {
             vx *= scale;
             vy *= scale;
         }
-
         return new ChassisSpeeds(vx, vy, speeds.omegaRadiansPerSecond);
     }
 
@@ -164,35 +156,30 @@ public class RobotContainer {
             () -> clampSpeedsForShooting(driveAngularVelocity.get()));
         drivebase.setDefaultCommand(driveFieldOrientedAnglularVelocity);
 
-        driverXbox.x()
-          .onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
-        driverXbox.start().
-          onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
+        driverXbox.x().onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
+        driverXbox.start().onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
 
         // --- SHOTS ---
-        
         Trigger shootTrigger = new Trigger(m_Controls::getShootTrigger);
         Trigger shootReleaseTrigger = new Trigger(m_Controls::getShootReleaseTrigger);
         Trigger ungatedShootTrigger = new Trigger(m_Controls::getUngatedShootTrigger);
 
         shootTrigger.onTrue(Commands.runOnce(() -> {
+          diagnostics.startCommandTrace("ShootCommand");
           shotCommand = new ShotCommand(feeder, turret, hood, shooter, shotCalculator, drivebase::getPose, led);
           shotCommand.schedule();
         }));
+        
         shootReleaseTrigger.onTrue(Commands.runOnce(() -> {
-          if (shotCommand != null) {
-            shotCommand.cancel();
-          }
+          if (shotCommand != null) shotCommand.cancel();
         }));
+        
         ungatedShootTrigger.onTrue(Commands.sequence(Commands.runOnce(() -> {
-          if (shotCommand != null) {
-            shotCommand.cancel();
-          }
+          if (shotCommand != null) shotCommand.cancel();
         }), Commands.runOnce(() -> feeder.setShooting(true))));
         ungatedShootTrigger.onFalse(Commands.runOnce(() -> feeder.setShooting(false)));
 
         // --- INTAKE ---
-
         Trigger intakeTrigger = new Trigger(m_Controls::getRollerTrigger);
         Trigger intakeReleaseTrigger = new Trigger(m_Controls::getRollerReleaseTrigger);
 
@@ -220,16 +207,13 @@ public class RobotContainer {
         resetPoseTrigger.onTrue(Commands.runOnce(() -> vision.hardReset("limelight-br"), vision));
     }
 
-
-    public Command getAutonomousCommand() {
-      return autoChooser.getAutoChooser().selectedCommand();
+    public void updateDiagnostics() {
+        if (diagnostics != null) {
+            diagnostics.updateDiagnosticsPeriodic();
+        }
     }
 
-    public SwerveSubsystem getDrivebase() {
-      return drivebase;
-    }
-
-    public AutoModeChooser getAutoChooser() {
-      return autoChooser;
-    }
+    public Command getAutonomousCommand() { return autoChooser.getAutoChooser().selectedCommand(); }
+    public SwerveSubsystem getDrivebase() { return drivebase; }
+    public AutoModeChooser getAutoChooser() { return autoChooser; }
 }
