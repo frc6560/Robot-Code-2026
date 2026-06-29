@@ -33,6 +33,9 @@ import edu.wpi.first.math.trajectory.TrapezoidProfile.Constraints;
 import edu.wpi.first.math.trajectory.TrapezoidProfile.State;
 import edu.wpi.first.wpilibj.DriverStation;
 
+import edu.wpi.first.apriltag.AprilTagFieldLayout;
+import edu.wpi.first.apriltag.AprilTagFields;
+
 // Autopilot (team 3414) -- three-phase takeoff/glide/constant-jerk-landing profile.
 import com.therekrab.autopilot.APConstraints;
 import com.therekrab.autopilot.APProfile;
@@ -157,6 +160,12 @@ public class AutoAlignCommandFactory {
     private final PIDController autopilotThetaController = buildAutopilotThetaController();
     private final Autopilot autopilot = buildAutopilot();
 
+    // Field layout (2026 rebuilt-welded) -- used ONLY to look up a tag's facing direction and height
+    // for single-tag head-on aligns. The alignment itself stays tag-relative (tx-ty + gyro); the
+    // tag's absolute field POSITION is never used to drive.
+    private final AprilTagFieldLayout fieldLayout =
+        AprilTagFieldLayout.loadField(AprilTagFields.k2026RebuiltWelded);
+
     /** Builds the Autopilot with this project's tuned profile. Shared by the command and the sim. */
     static Autopilot buildAutopilot() {
         return new Autopilot(
@@ -184,14 +193,26 @@ public class AutoAlignCommandFactory {
      */
     static ApStep computeApStep(Autopilot ap, Translation2d tagInRobot, Rotation2d gyro,
                                 ChassisSpeeds robotRelSpeeds, double scoringHeading, double lateralSign) {
+        // Reef variant: standoff/lateral come from the shared reef constants.
+        return computeApStep(ap, tagInRobot, gyro, robotRelSpeeds, scoringHeading,
+            kStandoffMeters, lateralSign * kBranchLateralMeters);
+    }
+
+    /**
+     * As above, but with an EXPLICIT standoff (meters out from the tag face) and signed lateral
+     * (meters along the face). Used for single-tag aligns (e.g. head-on to one tag) that must not
+     * disturb the shared reef geometry constants.
+     */
+    static ApStep computeApStep(Autopilot ap, Translation2d tagInRobot, Rotation2d gyro,
+                                ChassisSpeeds robotRelSpeeds, double scoringHeading,
+                                double standoffMeters, double lateralMeters) {
         // Frame T: tag pinned at the origin. robotInT = -R(gyro) * tagInRobot.
         Translation2d robotPos = tagInRobot.rotateBy(gyro).unaryMinus();
         Pose2d current = new Pose2d(robotPos, gyro);
         // Goal in T: robot faces the tag at heading psi; goal = origin - standoff*dir(psi) + lateral.
         Rotation2d psi = new Rotation2d(scoringHeading);
-        Translation2d standoff = new Translation2d(kStandoffMeters, psi);
-        Translation2d lateral = new Translation2d(lateralSign * kBranchLateralMeters,
-                                                  psi.rotateBy(Rotation2d.fromDegrees(90)));
+        Translation2d standoff = new Translation2d(standoffMeters, psi);
+        Translation2d lateral = new Translation2d(lateralMeters, psi.rotateBy(Rotation2d.fromDegrees(90)));
         Pose2d goalPose = new Pose2d(standoff.unaryMinus().plus(lateral), psi);
         APTarget target = new APTarget(goalPose).withEntryAngle(psi).withVelocity(0.0);
         return new ApStep(ap.calculate(current, robotRelSpeeds, target), current, target);
@@ -305,40 +326,103 @@ public class AutoAlignCommandFactory {
             Set.of(drivetrain));
     }
 
-    /** One Autopilot control tick: build the tag-anchored fake pose + target, calculate, drive. */
+    /**
+     * Autopilot align HEAD-ON (no lateral offset) to a SPECIFIC AprilTag, {@code standoffMeters} out
+     * from its face. The tag's facing direction and height are read from the 2026 field layout; the
+     * drive itself stays tag-relative (tx-ty + gyro), so no global field POSITION is used to steer.
+     * Does NOT touch the shared reef constants. REQUIRES a field-zeroed gyro.
+     *
+     * <p>Example: {@code getAlignHeadOnToTag(24, Units.feetToMeters(3.0))} -> 3 ft head-on to tag 24.
+     *
+     * @param tagId          the AprilTag to align to (must exist in the field layout)
+     * @param standoffMeters robot-center distance out from the tag face
+     */
+    public Command getAlignHeadOnToTag(int tagId, double standoffMeters) {
+        Optional<Pose3d> tagPose = fieldLayout.getTagPose(tagId);
+        if (tagPose.isEmpty()) {
+            DriverStation.reportWarning("AutoAlign(AP): tag " + tagId + " not in field layout.", false);
+            return Commands.none();
+        }
+        // Robot head-on heading = face INTO the tag = the tag's outward normal + 180 deg (field frame).
+        final double scoringHeading = tagPose.get().getRotation().toRotation2d()
+            .rotateBy(Rotation2d.fromDegrees(180)).getRadians();
+        final double tagHeight = tagPose.get().getZ(); // tag center height, for the tx-ty range math
+
+        return Commands.defer(
+            () -> {
+                if (cameraSeeingTag(tagId).isEmpty()) {
+                    DriverStation.reportWarning("AutoAlign(AP): tag " + tagId + " not visible; not aligning.", false);
+                    return Commands.none();
+                }
+                return new FunctionalCommand(
+                    () -> {
+                        autopilotThetaController.reset();
+                        autopilotReached = false;
+                        autopilotStopDebouncer = new Debouncer(kStopDebounceSeconds);
+                        apLastCurrent = null;
+                        apLastTarget = null;
+                        apDropoutSeconds = 0.0;
+                    },
+                    () -> autopilotStepToTag(tagId, scoringHeading, standoffMeters, 0.0, tagHeight),
+                    (interrupted) -> drivetrain.drive(new ChassisSpeeds()),
+                    () -> autopilotStopDebouncer.calculate(autopilotReached))
+                    .withTimeout(kAlignTimeoutSeconds)
+                    .finallyDo(() -> drivetrain.drive(new ChassisSpeeds()));
+            },
+            Set.of(drivetrain));
+    }
+
+    /** One Autopilot control tick for the REEF: best reef camera, shared standoff/lateral. */
     private void autopilotStep(double scoringHeading, double lateralSign) {
         autopilotReached = false;
-
-        // Gyro heading (odometry yaw is gyro-driven and matches driveFieldOriented's frame). This is
-        // available even on a vision dropout, so the heading loop stays live throughout.
         Rotation2d gyro = drivetrain.getPose().getRotation();
-
-        // Try to build a FRESH tag-anchored fake pose + target from this frame's vision.
-        Pose2d current = null;
-        APTarget target = null;
-        APResult result = null;
+        ApStep fresh = null;
         Optional<String> camOpt = bestReefCamera();
         if (camOpt.isPresent()) {
             Optional<Translation2d> tagOpt = tagInRobotFromTxTy(camOpt.get());
             if (tagOpt.isPresent()) {
-                // Shared tag-based-pose Autopilot evaluation (identical to the simulation's).
-                ApStep stp = computeApStep(autopilot, tagOpt.get(), gyro,
+                fresh = computeApStep(autopilot, tagOpt.get(), gyro,
                     drivetrain.getRobotVelocity(), scoringHeading, lateralSign);
-                result = stp.result();
-                current = stp.current();
-                target = stp.target();
             }
         }
+        driveAutopilot(gyro, fresh);
+    }
 
-        boolean fresh = apResultFinite(result);
+    /** One Autopilot control tick for a SPECIFIC tag: explicit heading/standoff/lateral/tag height. */
+    private void autopilotStepToTag(int tagId, double scoringHeading, double standoffMeters,
+                                    double lateralMeters, double tagHeightMeters) {
+        autopilotReached = false;
+        Rotation2d gyro = drivetrain.getPose().getRotation();
+        ApStep fresh = null;
+        Optional<String> camOpt = cameraSeeingTag(tagId);
+        if (camOpt.isPresent()) {
+            Optional<Translation2d> tagOpt = tagInRobotFromTxTy(camOpt.get(), tagHeightMeters);
+            if (tagOpt.isPresent()) {
+                fresh = computeApStep(autopilot, tagOpt.get(), gyro,
+                    drivetrain.getRobotVelocity(), scoringHeading, standoffMeters, lateralMeters);
+            }
+        }
+        driveAutopilot(gyro, fresh);
+    }
+
+    /**
+     * Shared Autopilot tail: hold-last-good on a brief vision dropout so a momentary occlusion coasts
+     * through instead of braking (requirement 3), drive the field-relative result with a
+     * heading-controller omega, and set the (debounced) end flag only on a FRESH fix.
+     */
+    private void driveAutopilot(Rotation2d gyro, ApStep freshStep) {
+        APResult result;
+        Pose2d current;
+        APTarget target;
+        boolean fresh = freshStep != null && apResultFinite(freshStep.result());
         if (fresh) {
+            result = freshStep.result();
+            current = freshStep.current();
+            target = freshStep.target();
             apLastCurrent = current;
             apLastTarget = target;
             apDropoutSeconds = 0.0;
         } else {
-            // Vision/numeric dropout: keep profiling from the last good state for a short window so a
-            // momentary occlusion coasts through instead of braking to a stop (requirement 3). If we
-            // have no prior fix, or the dropout has lasted too long, fall back to a safe stop.
             if (apLastCurrent == null || apDropoutSeconds >= kApHoldSeconds) {
                 drivetrain.drive(new ChassisSpeeds());
                 return;
@@ -358,8 +442,6 @@ public class AutoAlignCommandFactory {
         // T shares odometry orientation, so Autopilot's field-relative output drives directly.
         drivetrain.driveFieldOriented(new ChassisSpeeds(vx, vy, omega));
 
-        // End condition only on a FRESH fix (never terminate on a held/stale frame): Autopilot says
-        // at target AND the chassis is physically stopped.
         if (fresh) {
             ChassisSpeeds measured = drivetrain.getRobotVelocity();
             boolean stopped =
@@ -384,6 +466,11 @@ public class AutoAlignCommandFactory {
      * sign must match the physical mount.
      */
     private Optional<Translation2d> tagInRobotFromTxTy(String cam) {
+        return tagInRobotFromTxTy(cam, cameraExtrinsics(cam).tagHeightMeters);
+    }
+
+    /** As above, but with an explicit target tag-center height (tag height is per-tag, not per-camera). */
+    private Optional<Translation2d> tagInRobotFromTxTy(String cam, double tagHeightMeters) {
         if (!LimelightHelpers.getTV(cam)) return Optional.empty();
         double tx = Math.toRadians(LimelightHelpers.getTX(cam));
         double ty = Math.toRadians(LimelightHelpers.getTY(cam));
@@ -391,7 +478,7 @@ public class AutoAlignCommandFactory {
 
         double denom = Math.tan(ex.pitchRadians + ty);
         if (Math.abs(denom) < 1e-6) return Optional.empty(); // line of sight near-parallel to floor
-        double range = (ex.tagHeightMeters - ex.heightMeters) / denom; // horizontal ground distance
+        double range = (tagHeightMeters - ex.heightMeters) / denom; // horizontal ground distance
         if (!Double.isFinite(range) || range <= 0) return Optional.empty();
 
         // Polar in the camera frame: +x forward, +y left, so a right-of-crosshair target (tx>0) is -y.
@@ -596,6 +683,23 @@ public class AutoAlignCommandFactory {
             int primaryId = (int) Math.round(LimelightHelpers.getFiducialID(cam));
             if (kFilterReefTags && !kReefTagIds.contains(primaryId)) continue;
             if (primaryTagAmbiguity(cam, primaryId) > kMaxAmbiguity) continue;
+            double ta = LimelightHelpers.getTA(cam);
+            if (ta > bestTa) {
+                bestTa = ta;
+                best = cam;
+            }
+        }
+        return Optional.ofNullable(best);
+    }
+
+    /** The Limelight whose PRIMARY in-view tag is exactly {@code tagId} (acceptable ambiguity), or empty. */
+    public Optional<String> cameraSeeingTag(int tagId) {
+        String best = null;
+        double bestTa = kMinTagArea; // must beat the minimum-area threshold to qualify
+        for (String cam : kCameras) {
+            if (!LimelightHelpers.getTV(cam)) continue;
+            if ((int) Math.round(LimelightHelpers.getFiducialID(cam)) != tagId) continue;
+            if (primaryTagAmbiguity(cam, tagId) > kMaxAmbiguity) continue;
             double ta = LimelightHelpers.getTA(cam);
             if (ta > bestTa) {
                 bestTa = ta;

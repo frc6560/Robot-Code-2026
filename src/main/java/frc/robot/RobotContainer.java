@@ -18,6 +18,7 @@ import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import frc.robot.Constants.LimelightConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.autonomous.AutoModeChooser;
+import frc.robot.commands.automations.AutoAlignCommandFactory;
 import frc.robot.commands.scoring.ShotCommand;
 import frc.robot.autonomous.AutoCommands;
 import frc.robot.commands.periodic.SuperstructureCommand;
@@ -55,6 +56,7 @@ public class RobotContainer {
      // The robot's subsystems and commands are defined here...
     private final SwerveSubsystem drivebase  = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(),
     "swerve/falcon"));
+    private final AutoAlignCommandFactory autoAlign = new AutoAlignCommandFactory(drivebase);
     private final VisionSubsystem vision;
 
     private final Hood hood;
@@ -168,6 +170,8 @@ public class RobotContainer {
           .onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
         driverXbox.start().
           onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
+        driverXbox.y()
+          .onTrue(autoAlign.getAlignHeadOnToTag(21, edu.wpi.first.math.util.Units.feetToMeters(2.0)));
 
         // --- SHOTS ---
         
