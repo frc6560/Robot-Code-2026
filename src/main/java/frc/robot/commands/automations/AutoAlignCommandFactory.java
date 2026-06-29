@@ -120,9 +120,12 @@ public class AutoAlignCommandFactory {
     private static final double kReanchorLockMeters = 0.05;   // freeze the goal once this close (stable stop)
 
     // ---- Vision / scoring geometry ----
-    // Limelight(s) responsible for the tag (tx-ty/PnP) measurement. Currently just the back-right
+    // Limelight(s) responsible for the tag (PnP) measurement. Currently just the back-right
     // camera. Add more names here for 360-degree coverage once they're calibrated.
     private static final String[] kCameras = { "limelight-br" };
+    // The single camera used by getAlignHeadOnToTag. Its pose is read DIRECTLY with no tv/tid/
+    // ambiguity/area gating -- the only check is "is there actually pose data" (avoids a phantom goal).
+    private static final String kHeadOnCamera = "limelight-br";
     // Reef AprilTag IDs (Reefscape field). Edit for the active field/game.
     private static final Set<Integer> kReefTagIds =
         Set.of(6, 7, 8, 9, 10, 11, 17, 18, 19, 20, 21, 22);
@@ -393,28 +396,29 @@ public class AutoAlignCommandFactory {
         driveAutopilot(gyro, fresh);
     }
 
-    /** One Autopilot control tick for a SPECIFIC tag: explicit heading/standoff/lateral. */
+    /**
+     * One Autopilot control tick for a SPECIFIC tag. NO AprilTag-reading guardrails: the configured
+     * head-on camera's pose is read directly (no tv/tid/ambiguity/area gating). The ONLY check is
+     * "is there actually pose data" (a zero pose means the tag isn't being seen / botpose_targetspace
+     * isn't published -- driving on that would chase a phantom goal).
+     */
     private void autopilotStepToTag(int tagId, double scoringHeading, double standoffMeters,
                                     double lateralMeters) {
         autopilotReached = false;
         Rotation2d gyro = drivetrain.getPose().getRotation();
-        logTagVision(tagId); // per-camera diagnostics every tick
+        logTagVision(tagId); // raw per-camera diagnostics every tick (info only; not used to gate)
 
         ApStep fresh = null;
-        Optional<String> camOpt = cameraSeeingTag(tagId);
-        SmartDashboard.putString("AutoAlign/SelectedCam", camOpt.orElse("none"));
-        boolean haveMeasurement = false;
-        if (camOpt.isPresent()) {
-            Optional<Translation2d> tagOpt = tagInRobotFromLimelight(camOpt.get());
-            haveMeasurement = tagOpt.isPresent();
-            if (tagOpt.isPresent()) {
-                SmartDashboard.putNumber("AutoAlign/TagInRobotX", tagOpt.get().getX());
-                SmartDashboard.putNumber("AutoAlign/TagInRobotY", tagOpt.get().getY());
-                fresh = computeApStep(autopilot, tagOpt.get(), gyro,
-                    drivetrain.getRobotVelocity(), scoringHeading, standoffMeters, lateralMeters);
-            }
-        }
+        Optional<Translation2d> tagOpt = tagInRobotFromLimelight(kHeadOnCamera); // direct read, ungated
+        boolean haveMeasurement = tagOpt.isPresent();
+        SmartDashboard.putString("AutoAlign/SelectedCam", haveMeasurement ? kHeadOnCamera : "none(no-pose-data)");
         SmartDashboard.putBoolean("AutoAlign/HaveMeasurement", haveMeasurement);
+        if (haveMeasurement) {
+            SmartDashboard.putNumber("AutoAlign/TagInRobotX", tagOpt.get().getX());
+            SmartDashboard.putNumber("AutoAlign/TagInRobotY", tagOpt.get().getY());
+            fresh = computeApStep(autopilot, tagOpt.get(), gyro,
+                drivetrain.getRobotVelocity(), scoringHeading, standoffMeters, lateralMeters);
+        }
         driveAutopilot(gyro, fresh);
     }
 
@@ -427,11 +431,14 @@ public class AutoAlignCommandFactory {
             double amb = primaryTagAmbiguity(cam, tid);
             boolean ambOk = amb < 0 || amb <= kMaxAmbiguity; // -1 = unknown (not a failure)
             boolean qualifies = tv && tid == tagId && ambOk && ta > kMinTagArea;
+            // botposeNorm > 0 means the LL is actually publishing botpose_targetspace (the data we use).
+            double botposeNorm = LimelightHelpers.getBotPose3d_TargetSpace(cam).getTranslation().getNorm();
             String p = "AutoAlign/cam/" + cam + "/";
             SmartDashboard.putBoolean(p + "tv", tv);
             SmartDashboard.putNumber(p + "tid", tid);
             SmartDashboard.putNumber(p + "ta", ta);
             SmartDashboard.putNumber(p + "ambiguity", amb);
+            SmartDashboard.putNumber(p + "botposeNorm", botposeNorm);
             SmartDashboard.putBoolean(p + "qualifies", qualifies);
         }
     }
