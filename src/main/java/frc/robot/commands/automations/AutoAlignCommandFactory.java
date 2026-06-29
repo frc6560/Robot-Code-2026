@@ -32,6 +32,7 @@ import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.math.trajectory.TrapezoidProfile.Constraints;
 import edu.wpi.first.math.trajectory.TrapezoidProfile.State;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.apriltag.AprilTagFields;
@@ -348,28 +349,32 @@ public class AutoAlignCommandFactory {
         final double scoringHeading = tagPose.get().getRotation().toRotation2d()
             .rotateBy(Rotation2d.fromDegrees(180)).getRadians();
 
-        return Commands.defer(
+        // No schedule-time bail: the command runs the whole time the button is held and aligns as soon
+        // as the tag is seen. autopilotStepToTag handles "no tag" each tick (commands a stop). drivetrain
+        // is the requirement so it interrupts the default drive command while active.
+        return new FunctionalCommand(
             () -> {
-                if (cameraSeeingTag(tagId).isEmpty()) {
-                    DriverStation.reportWarning("AutoAlign(AP): tag " + tagId + " not visible; not aligning.", false);
-                    return Commands.none();
-                }
-                return new FunctionalCommand(
-                    () -> {
-                        autopilotThetaController.reset();
-                        autopilotReached = false;
-                        autopilotStopDebouncer = new Debouncer(kStopDebounceSeconds);
-                        apLastCurrent = null;
-                        apLastTarget = null;
-                        apDropoutSeconds = 0.0;
-                    },
-                    () -> autopilotStepToTag(tagId, scoringHeading, standoffMeters, 0.0),
-                    (interrupted) -> drivetrain.drive(new ChassisSpeeds()),
-                    () -> autopilotStopDebouncer.calculate(autopilotReached))
-                    .withTimeout(kAlignTimeoutSeconds)
-                    .finallyDo(() -> drivetrain.drive(new ChassisSpeeds()));
+                autopilotThetaController.reset();
+                autopilotReached = false;
+                autopilotStopDebouncer = new Debouncer(kStopDebounceSeconds);
+                apLastCurrent = null;
+                apLastTarget = null;
+                apDropoutSeconds = 0.0;
+                SmartDashboard.putBoolean("AutoAlign/Active", true);
+                SmartDashboard.putNumber("AutoAlign/TagId", tagId);
+                SmartDashboard.putNumber("AutoAlign/StandoffM", standoffMeters);
+                SmartDashboard.putNumber("AutoAlign/ScoringHeadingDeg", Math.toDegrees(scoringHeading));
             },
-            Set.of(drivetrain));
+            () -> autopilotStepToTag(tagId, scoringHeading, standoffMeters, 0.0),
+            (interrupted) -> {
+                drivetrain.drive(new ChassisSpeeds());
+                SmartDashboard.putBoolean("AutoAlign/Active", false);
+                SmartDashboard.putBoolean("AutoAlign/EndedInterrupted", interrupted);
+                SmartDashboard.putString("AutoAlign/State", "ended");
+            },
+            () -> autopilotStopDebouncer.calculate(autopilotReached),
+            drivetrain)
+            .withTimeout(kAlignTimeoutSeconds);
     }
 
     /** One Autopilot control tick for the REEF: best reef camera, shared standoff/lateral. */
@@ -393,16 +398,41 @@ public class AutoAlignCommandFactory {
                                     double lateralMeters) {
         autopilotReached = false;
         Rotation2d gyro = drivetrain.getPose().getRotation();
+        logTagVision(tagId); // per-camera diagnostics every tick
+
         ApStep fresh = null;
         Optional<String> camOpt = cameraSeeingTag(tagId);
+        SmartDashboard.putString("AutoAlign/SelectedCam", camOpt.orElse("none"));
+        boolean haveMeasurement = false;
         if (camOpt.isPresent()) {
             Optional<Translation2d> tagOpt = tagInRobotFromLimelight(camOpt.get());
+            haveMeasurement = tagOpt.isPresent();
             if (tagOpt.isPresent()) {
+                SmartDashboard.putNumber("AutoAlign/TagInRobotX", tagOpt.get().getX());
+                SmartDashboard.putNumber("AutoAlign/TagInRobotY", tagOpt.get().getY());
                 fresh = computeApStep(autopilot, tagOpt.get(), gyro,
                     drivetrain.getRobotVelocity(), scoringHeading, standoffMeters, lateralMeters);
             }
         }
+        SmartDashboard.putBoolean("AutoAlign/HaveMeasurement", haveMeasurement);
         driveAutopilot(gyro, fresh);
+    }
+
+    /** Logs why each camera does / does not qualify to see the requested tag, every tick. */
+    private void logTagVision(int tagId) {
+        for (String cam : kCameras) {
+            boolean tv = LimelightHelpers.getTV(cam);
+            int tid = (int) Math.round(LimelightHelpers.getFiducialID(cam));
+            double ta = LimelightHelpers.getTA(cam);
+            double amb = primaryTagAmbiguity(cam, tid);
+            boolean qualifies = tv && tid == tagId && amb <= kMaxAmbiguity && ta > kMinTagArea;
+            String p = "AutoAlign/cam/" + cam + "/";
+            SmartDashboard.putBoolean(p + "tv", tv);
+            SmartDashboard.putNumber(p + "tid", tid);
+            SmartDashboard.putNumber(p + "ta", ta);
+            SmartDashboard.putNumber(p + "ambiguity", amb);
+            SmartDashboard.putBoolean(p + "qualifies", qualifies);
+        }
     }
 
     /**
@@ -415,6 +445,8 @@ public class AutoAlignCommandFactory {
         Pose2d current;
         APTarget target;
         boolean fresh = freshStep != null && apResultFinite(freshStep.result());
+        SmartDashboard.putBoolean("AutoAlign/Fresh", fresh);
+        SmartDashboard.putNumber("AutoAlign/DropoutSec", apDropoutSeconds);
         if (fresh) {
             result = freshStep.result();
             current = freshStep.current();
@@ -425,22 +457,39 @@ public class AutoAlignCommandFactory {
         } else {
             if (apLastCurrent == null || apDropoutSeconds >= kApHoldSeconds) {
                 drivetrain.drive(new ChassisSpeeds());
+                SmartDashboard.putString("AutoAlign/State",
+                    apLastCurrent == null ? "stopped:no-vision-yet" : "stopped:dropout-timeout");
+                SmartDashboard.putNumber("AutoAlign/vx", 0);
+                SmartDashboard.putNumber("AutoAlign/vy", 0);
+                SmartDashboard.putNumber("AutoAlign/omega", 0);
                 return;
             }
             apDropoutSeconds += kLoopDtSeconds;
             result = autopilot.calculate(apLastCurrent, drivetrain.getRobotVelocity(), apLastTarget);
             current = apLastCurrent;
             target = apLastTarget;
-            if (!apResultFinite(result)) { drivetrain.drive(new ChassisSpeeds()); return; }
+            if (!apResultFinite(result)) {
+                drivetrain.drive(new ChassisSpeeds());
+                SmartDashboard.putString("AutoAlign/State", "stopped:nonfinite-result");
+                return;
+            }
         }
 
         double vx = result.vx().in(MetersPerSecond);
         double vy = result.vy().in(MetersPerSecond);
         double omega = autopilotThetaController.calculate(
             gyro.getRadians(), result.targetAngle().getRadians());
-        if (!Double.isFinite(omega)) { drivetrain.drive(new ChassisSpeeds()); return; }
+        if (!Double.isFinite(omega)) {
+            drivetrain.drive(new ChassisSpeeds());
+            SmartDashboard.putString("AutoAlign/State", "stopped:nonfinite-omega");
+            return;
+        }
         // T shares odometry orientation, so Autopilot's field-relative output drives directly.
         drivetrain.driveFieldOriented(new ChassisSpeeds(vx, vy, omega));
+        SmartDashboard.putString("AutoAlign/State", fresh ? "driving:fresh" : "driving:hold");
+        SmartDashboard.putNumber("AutoAlign/vx", vx);
+        SmartDashboard.putNumber("AutoAlign/vy", vy);
+        SmartDashboard.putNumber("AutoAlign/omega", omega);
 
         if (fresh) {
             ChassisSpeeds measured = drivetrain.getRobotVelocity();
@@ -448,6 +497,7 @@ public class AutoAlignCommandFactory {
                 Math.hypot(measured.vxMetersPerSecond, measured.vyMetersPerSecond) < kTransVelStopThreshold
                 && Math.abs(measured.omegaRadiansPerSecond) < kRotVelStopThreshold;
             autopilotReached = autopilot.atTarget(current, target) && stopped;
+            SmartDashboard.putBoolean("AutoAlign/AtTarget", autopilotReached);
         }
     }
 
