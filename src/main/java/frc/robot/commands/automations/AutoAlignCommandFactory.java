@@ -425,7 +425,8 @@ public class AutoAlignCommandFactory {
             int tid = (int) Math.round(LimelightHelpers.getFiducialID(cam));
             double ta = LimelightHelpers.getTA(cam);
             double amb = primaryTagAmbiguity(cam, tid);
-            boolean qualifies = tv && tid == tagId && amb <= kMaxAmbiguity && ta > kMinTagArea;
+            boolean ambOk = amb < 0 || amb <= kMaxAmbiguity; // -1 = unknown (not a failure)
+            boolean qualifies = tv && tid == tagId && ambOk && ta > kMinTagArea;
             String p = "AutoAlign/cam/" + cam + "/";
             SmartDashboard.putBoolean(p + "tv", tv);
             SmartDashboard.putNumber(p + "tid", tid);
@@ -695,7 +696,8 @@ public class AutoAlignCommandFactory {
             if (!LimelightHelpers.getTV(cam)) continue;
             int primaryId = (int) Math.round(LimelightHelpers.getFiducialID(cam));
             if (kFilterReefTags && !kReefTagIds.contains(primaryId)) continue;
-            if (primaryTagAmbiguity(cam, primaryId) > kMaxAmbiguity) continue;
+            double amb = primaryTagAmbiguity(cam, primaryId);
+            if (amb >= 0 && amb > kMaxAmbiguity) continue; // only reject on a KNOWN-bad ambiguity
             double ta = LimelightHelpers.getTA(cam);
             if (ta > bestTa) {
                 bestTa = ta;
@@ -712,7 +714,8 @@ public class AutoAlignCommandFactory {
         for (String cam : kCameras) {
             if (!LimelightHelpers.getTV(cam)) continue;
             if ((int) Math.round(LimelightHelpers.getFiducialID(cam)) != tagId) continue;
-            if (primaryTagAmbiguity(cam, tagId) > kMaxAmbiguity) continue;
+            double amb = primaryTagAmbiguity(cam, tagId);
+            if (amb >= 0 && amb > kMaxAmbiguity) continue; // only reject on a KNOWN-bad ambiguity
             double ta = LimelightHelpers.getTA(cam);
             if (ta > bestTa) {
                 bestTa = ta;
@@ -722,14 +725,18 @@ public class AutoAlignCommandFactory {
         return Optional.ofNullable(best);
     }
 
-    /** Ambiguity of the camera's primary fiducial, or 1.0 (worst) if it cannot be found. */
+    /**
+     * Ambiguity of the camera's primary fiducial, or -1 (UNKNOWN) if rawfiducials is unavailable.
+     * -1 means "no reading" -- callers must NOT treat that as a failure, otherwise a Limelight that
+     * doesn't publish rawfiducials (but does see the tag) would be rejected every frame.
+     */
     private double primaryTagAmbiguity(String cam, int primaryId) {
         RawFiducial[] fiducials = LimelightHelpers.getRawFiducials(cam);
-        if (fiducials == null) return 1.0;
+        if (fiducials == null) return -1.0;
         for (RawFiducial f : fiducials) {
             if (f.id == primaryId) return f.ambiguity;
         }
-        return 1.0;
+        return -1.0;
     }
 
 
