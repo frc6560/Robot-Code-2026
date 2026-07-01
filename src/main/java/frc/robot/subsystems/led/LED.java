@@ -45,6 +45,7 @@ public class LED extends SubsystemBase {
         PREGAME_SHIFT_BACK,
         SHOOT_READY,
         SHOOT_NOT_READY,
+        HOOD_DEMO,
         OFF
     }
 
@@ -71,6 +72,10 @@ public class LED extends SubsystemBase {
     private boolean shootIntent = false;
     private boolean readyToShoot = false;
 
+    // Demo state
+    private boolean hoodDemoEnabled = false;
+    private double hoodDemoBrightness = 0.0;
+
     // State machine
     private LEDState currentState = LEDState.OFF;
 
@@ -90,6 +95,15 @@ public class LED extends SubsystemBase {
     public void setShiftForward(boolean active) { this.shiftForward = active; }
     public void setShiftBack(boolean active) { this.shiftBack = active; }
     public void setShootIntent(boolean intent) { this.shootIntent = intent; }
+
+    public void setHoodDemoEnabled(boolean enabled) {
+        hoodDemoEnabled = enabled;
+    }
+
+    public void setHoodDemoBrightness(double brightness) {
+        hoodDemoBrightness = Math.max(0.0, Math.min(1.0, brightness));
+        Logger.recordOutput("LED/HoodDemoBrightness", hoodDemoBrightness);
+    }
 
     public LEDState getCurrentState() { return currentState; }
 
@@ -183,6 +197,10 @@ public class LED extends SubsystemBase {
     }
 
     private LEDState resolveState() {
+        if (hoodDemoEnabled) {
+            return LEDState.HOOD_DEMO;
+        }
+
         RobotPhase phase = resolvePhase();
         return switch (phase) {
             case PREGAME -> resolvePreGameState();
@@ -247,6 +265,10 @@ public class LED extends SubsystemBase {
                 renderShootState(NOT_READY_R, NOT_READY_G, NOT_READY_B);
                 Logger.recordOutput("LED/Color", "White/Not Ready (255,255,255)");
             }
+            case HOOD_DEMO -> {
+                renderHoodDemo();
+                Logger.recordOutput("LED/Color", "Hood Demo Brightness");
+            }
             case OFF -> {
                 setSolid(0, 0, 0);
                 Logger.recordOutput("LED/Color", "Off (0,0,0)");
@@ -282,6 +304,11 @@ public class LED extends SubsystemBase {
 
     private void setSolid(int r, int g, int b) {
         io.setAllRGB(r, g, b);
+    }
+
+    private void renderHoodDemo() {
+        int value = (int) Math.round(255.0 * hoodDemoBrightness);
+        setSolid(value, value, value);
     }
 
     private void animateSwipe(SwipeDirection dir, int r, int g, int b) {

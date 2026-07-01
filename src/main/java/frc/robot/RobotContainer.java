@@ -15,11 +15,13 @@ import java.util.Set;
 import swervelib.SwerveInputStream;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import frc.robot.Constants.LimelightConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.autonomous.AutoModeChooser;
 import frc.robot.commands.scoring.ShotCommand;
 import frc.robot.autonomous.AutoCommands;
+import frc.robot.commands.demo.HoodLedDemoCommand;
 import frc.robot.commands.periodic.SuperstructureCommand;
 import frc.robot.utility.Shooter.PassCalculator;
 import frc.robot.utility.Shooter.ShotCalculator;
@@ -112,6 +114,7 @@ public class RobotContainer {
 
       SuperstructureCommand superstructureCommand = new SuperstructureCommand(
         hood,
+        intake,
         shooter,
         turret,
         drivebase::getPose,
@@ -124,6 +127,7 @@ public class RobotContainer {
       led.setDefaultCommand(Commands.run(() -> {}, led));               
 
       configureBindings();
+      CommandScheduler.getInstance().schedule(new HoodLedDemoCommand(hood, led));
     }
 
 
