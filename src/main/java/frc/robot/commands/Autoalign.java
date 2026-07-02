@@ -27,8 +27,9 @@ public class Autoalign extends SequentialCommandGroup {
     
     // Autopilot configuration
     private static final APConstraints kConstraints = new APConstraints()
-        .withAcceleration(5.0)
-        .withJerk(2.0);
+        .withVelocity(0.3)      // TESTING: very low top speed (m/s)
+        .withAcceleration(0.3)  // TESTING: very low acceleration (m/s^2)
+        .withJerk(1.0);
 
     private static final APProfile kProfile = new APProfile(kConstraints)
         .withErrorXY(Centimeters.of(2))
@@ -41,9 +42,15 @@ public class Autoalign extends SequentialCommandGroup {
     //   x = meters out from the tag face, y = meters to the left, heading = pi means facing the tag.
     private static final String kCamera = "limelight-br";
     private static final double kStandoffMeters = 0.5; // TUNE: tag-face -> robot-center distance
-    private static final Pose2d kTargetPose = new Pose2d(kStandoffMeters, 0.0, new Rotation2d(Math.PI));
-    // Direction of travel at arrival = into the tag (-x) = pi  (straight head-on approach).
-    private static final Rotation2d kEntryAngle = new Rotation2d(Math.PI);
+    // Heading 0 = intake/front pointed at the tag in THIS setup (target pi made it spin 180, so
+    // "facing the tag" reads as ~0 here). If it still ends up facing wrong, read
+    // "Climb/Prescore/Current_HeadingDeg" while the robot is positioned as you want it to finish,
+    // and set this heading to that value.
+    private static final Pose2d kTargetPose = new Pose2d(kStandoffMeters, 0.0, new Rotation2d(0));
+    // Entry angle = the direction the robot is MOVING as it arrives; target heading = which way it
+    // FACES. On swerve they're independent, but for a straight front-first intake they're the same
+    // physical direction -- so tie the entry angle to the target heading.
+    private static final Rotation2d kEntryAngle = kTargetPose.getRotation();
 
     // PID Controllers (kept for backward compatibility and heading control)
     private PIDController rotationController;
