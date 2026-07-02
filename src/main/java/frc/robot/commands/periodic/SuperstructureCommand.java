@@ -2,6 +2,7 @@ package frc.robot.commands.periodic;
 
 import java.util.Optional;
 
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
@@ -13,7 +14,9 @@ import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants.FieldConstants;
+import frc.robot.Constants.HoodConstants;
 import frc.robot.subsystems.hood.Hood;
+import frc.robot.subsystems.led.LED;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.turret.Turret;
 import frc.robot.utility.Shooter.PassCalculator;
@@ -25,7 +28,13 @@ public class SuperstructureCommand extends Command {
     enum SuperstructureState {
         IDLE,
         PASS,
-        SHOOT
+        SHOOT,
+        HOOD_LED_DEMO
+    }
+
+    public enum RequestedState {
+        NORMAL,
+        HOOD_LED_DEMO
     }
 
     public interface PoseSupplier {
@@ -37,6 +46,7 @@ public class SuperstructureCommand extends Command {
     }
 
     private final Hood hood;
+    private final LED led;
     private final Shooter shooter;
     private final Turret turret;
     private final PoseSupplier poseSupplier;
@@ -46,6 +56,10 @@ public class SuperstructureCommand extends Command {
     private final Intake intake;
 
     private SuperstructureState state = SuperstructureState.IDLE;
+    private RequestedState requestedState = RequestedState.NORMAL;
+    private boolean demoMovingToMax = true;
+
+    private static final double DEMO_ENDPOINT_TOLERANCE_DEG = 0.5;
 
     // Trench detection fields
     private final double HOOD_DEACTUATION_TIME = 1.0; // in seconds
@@ -60,6 +74,7 @@ public class SuperstructureCommand extends Command {
     public SuperstructureCommand(
             Hood hood,
             Intake intake,
+            LED led,
             Shooter shooter,
             Turret turret,
             PoseSupplier poseSupplier,
@@ -68,6 +83,7 @@ public class SuperstructureCommand extends Command {
             PassCalculator passCalculator) {
         this.intake = intake;
         this.hood = hood;
+        this.led = led;
         this.shooter = shooter;
         this.turret = turret;
         this.poseSupplier = poseSupplier;
@@ -77,10 +93,15 @@ public class SuperstructureCommand extends Command {
         addRequirements(hood, shooter, turret);
     }
 
+    public void setRequestedState(RequestedState requestedState) {
+        this.requestedState = requestedState;
+    }
+
     @Override
     public void initialize() {
         shooter.setIdle();
         intake.activate();
+        demoMovingToMax = true;
         // Log that the command has started
         executeCounter = 0; // Reset counter on initialize
         SmartDashboard.putBoolean("SuperstructureCommand/Running", true);
@@ -94,6 +115,13 @@ public class SuperstructureCommand extends Command {
 
     @Override
     public void execute() {
+        if (requestedState == RequestedState.HOOD_LED_DEMO) {
+            state = SuperstructureState.HOOD_LED_DEMO;
+            runHoodLedDemo();
+            return;
+        }
+
+        led.setHoodDemoEnabled(false);
         handleState();
         performTrenchDetection();
         updateBehavior();
@@ -130,7 +158,38 @@ public class SuperstructureCommand extends Command {
             case SHOOT:
                 trackHubTarget();
                 break;
+            case HOOD_LED_DEMO:
+                runHoodLedDemo();
+                break;
         }
+    }
+
+    private void runHoodLedDemo() {
+        led.setHoodDemoEnabled(true);
+        shooter.setIdle();
+
+        double target = demoMovingToMax
+            ? HoodConstants.HOOD_MAX_ANGLE
+            : HoodConstants.HOOD_MIN_ANGLE;
+        hood.setGoal(target);
+
+        double hoodAngle = hood.getHoodShotAngle();
+        if (demoMovingToMax && hoodAngle >= HoodConstants.HOOD_MAX_ANGLE - DEMO_ENDPOINT_TOLERANCE_DEG) {
+            demoMovingToMax = false;
+        } else if (!demoMovingToMax && hoodAngle <= HoodConstants.HOOD_MIN_ANGLE + DEMO_ENDPOINT_TOLERANCE_DEG) {
+            demoMovingToMax = true;
+        }
+
+        double range = HoodConstants.HOOD_MAX_ANGLE - HoodConstants.HOOD_MIN_ANGLE;
+        double brightness = range <= 0.0
+            ? 0.0
+            : MathUtil.clamp((hoodAngle - HoodConstants.HOOD_MIN_ANGLE) / range, 0.0, 1.0);
+
+        led.setHoodDemoBrightness(brightness);
+        SmartDashboard.putBoolean("SuperstructureCommand/HoodLedDemo", true);
+        SmartDashboard.putBoolean("SuperstructureCommand/DemoMovingToMax", demoMovingToMax);
+        SmartDashboard.putNumber("SuperstructureCommand/DemoHoodAngle", hoodAngle);
+        SmartDashboard.putNumber("SuperstructureCommand/DemoHoodTarget", target);
     }
 
     private void idleState() {

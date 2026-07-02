@@ -28,6 +28,10 @@ public class Hood extends SubsystemBase {
         return inputs.hoodAngleDegrees;
     }
 
+    public double getHoodShotAngle() {
+        return getHoodAngle() + ANGLE_OFFSET;
+    }
+
     /**
      * Set target goal to a specific angle in degrees
      * @param goalDeg Desired hood angle in SHOT degrees (will be clamped to min/max)
@@ -59,7 +63,7 @@ public class Hood extends SubsystemBase {
         io.setTargetAngle(targetAngle);
 
         Logger.recordOutput("Hood/TargetAngleDeg", targetAngle + ANGLE_OFFSET);
-        Logger.recordOutput("Hood/CurrentAngleDeg", getHoodAngle() + ANGLE_OFFSET);
+        Logger.recordOutput("Hood/CurrentAngleDeg", getHoodShotAngle());
         Logger.recordOutput("Hood/AtTarget", atTarget());
         Logger.recordOutput("Hood/ErrorDeg", getHoodAngle() - targetAngle);
     }
