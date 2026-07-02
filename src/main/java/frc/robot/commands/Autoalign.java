@@ -83,6 +83,20 @@ public class Autoalign extends SequentialCommandGroup {
     /** Drives to the tag-relative target using Autopilot (everything in the TAG frame). */
     public Command getDriveToTarget() {
         return Commands.run(() -> {
+            // NO-TAG GUARD: if the Limelight isn't publishing a valid target-space pose, botpose is
+            // all-zeros, so currentPose would be a FIXED garbage pose -> the robot spins forever with
+            // no translation. Hold still until we actually see the tag.
+            Pose3d raw = LimelightHelpers.getBotPose3d_TargetSpace(kCamera);
+            double botposeNorm = raw.getTranslation().getNorm();
+            SmartDashboard.putBoolean("Climb/Prescore/HasTarget", LimelightHelpers.getTV(kCamera));
+            SmartDashboard.putNumber("Climb/Prescore/BotposeNorm", botposeNorm);
+            SmartDashboard.putNumber("Climb/Prescore/Tid", LimelightHelpers.getFiducialID(kCamera));
+            if (botposeNorm < 1e-3) {
+                drivetrain.drive(new ChassisSpeeds()); // no valid tag -> stop, don't spin on garbage
+                SmartDashboard.putBoolean("Climb/Prescore/At_Target", false);
+                return;
+            }
+
             Pose2d currentPose = getTagRelativeRobotPose(kCamera);          // robot in tag frame
             ChassisSpeeds robotRelativeSpeeds = drivetrain.getRobotVelocity();
 
