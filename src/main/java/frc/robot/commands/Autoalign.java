@@ -9,6 +9,7 @@ import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -97,9 +98,17 @@ public class Autoalign extends SequentialCommandGroup {
                 output.targetAngle().getRadians()
             );
 
-            // Convert tag-frame velocities to robot-relative using the robot's heading IN THE TAG
-            // FRAME (= currentPose.getRotation()), then drive robot-relative.
-            drivetrain.drive(ChassisSpeeds.fromFieldRelativeSpeeds(xVel, yVel, rotVel, currentPose.getRotation()));
+            // GYRO HEADING, ALWAYS. Autopilot's vx/vy are in the TAG frame. Rotate them into the FIELD
+            // frame by the tag's orientation offset (gyro - tagHeading) -- this offset stays constant
+            // even while the robot spins, so translation never gets scrambled -- then let
+            // driveFieldOriented convert field->wheels using the stable gyro heading.
+            Rotation2d gyro = drivetrain.getPose().getRotation();
+            Rotation2d tagToField = gyro.minus(currentPose.getRotation());
+            Translation2d velField = new Translation2d(xVel, yVel).rotateBy(tagToField);
+            drivetrain.driveFieldOriented(new ChassisSpeeds(velField.getX(), velField.getY(), rotVel));
+            SmartDashboard.putNumber("Climb/Prescore/GyroDeg", gyro.getDegrees());
+            SmartDashboard.putNumber("Climb/Prescore/Output_Field_X_Vel", velField.getX());
+            SmartDashboard.putNumber("Climb/Prescore/Output_Field_Y_Vel", velField.getY());
 
             // ---- Essential debug logging ----
             // Vision health (the usual failure: no botpose_targetspace from the Limelight).
