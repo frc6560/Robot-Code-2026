@@ -19,6 +19,7 @@ import frc.robot.Constants.LimelightConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.autonomous.AutoModeChooser;
 import frc.robot.commands.automations.AutoAlignCommandFactory;
+import frc.robot.commands.Autoalign;
 import frc.robot.commands.scoring.ShotCommand;
 import frc.robot.autonomous.AutoCommands;
 import frc.robot.commands.periodic.SuperstructureCommand;
@@ -172,6 +173,8 @@ public class RobotContainer {
           onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
         driverXbox.y()
           .whileTrue(autoAlign.getAlignHeadOnToTag(21, edu.wpi.first.math.util.Units.feetToMeters(2.0)));
+        driverXbox.b()
+          .onTrue(new Autoalign(drivebase)); // tag-relative Autopilot climb/prescore align
 
         // --- SHOTS ---
         
