@@ -8,6 +8,7 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.Constants.HoodConstants;
 import frc.robot.subsystems.hood.Hood;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.turret.Turret;
@@ -307,8 +308,15 @@ public class LED extends SubsystemBase {
     }
 
     private void renderHoodDemo() {
+        double range = HoodConstants.HOOD_MAX_ANGLE - HoodConstants.HOOD_MIN_ANGLE;
+        hoodDemoBrightness = range <= 0.0
+            ? 0.0
+            : Math.max(0.0, Math.min(1.0,
+                (hood.getHoodShotAngle() - HoodConstants.HOOD_MIN_ANGLE) / range));
+
         int value = (int) Math.round(255.0 * hoodDemoBrightness);
         setSolid(value, value, value);
+        Logger.recordOutput("LED/HoodDemoBrightness", hoodDemoBrightness);
     }
 
     private void animateSwipe(SwipeDirection dir, int r, int g, int b) {
