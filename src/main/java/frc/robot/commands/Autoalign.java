@@ -11,6 +11,8 @@ import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.apriltag.AprilTagFieldLayout;
+import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -48,10 +50,19 @@ public class Autoalign extends SequentialCommandGroup {
     // "Climb/Prescore/Current_HeadingDeg" while the robot is positioned as you want it to finish,
     // and set this heading to that value.
     private static final Pose2d kTargetPose = new Pose2d(kStandoffMeters, 0.0, new Rotation2d(0));
-    // Entry angle = the direction the robot is MOVING as it arrives; target heading = which way it
-    // FACES. On swerve they're independent, but for a straight front-first intake they're the same
-    // physical direction -- so tie the entry angle to the target heading.
-    private static final Rotation2d kEntryAngle = kTargetPose.getRotation();
+    // Entry angle = the DIRECTION OF MOTION at arrival (not which way the robot faces). The goal sits
+    // in front of the tag (at +x standoff) and we approach from further out, so we arrive moving
+    // TOWARD the tag = -x = pi. (Using the target heading here made it approach moving outward = away.)
+    private static final Rotation2d kEntryAngle = new Rotation2d(Math.PI);
+
+    // Tag's KNOWN field facing, used to rotate Autopilot's tag-frame output into the field frame.
+    // Constant (the tag doesn't move) -> no jittery vision yaw in the conversion, and provably-correct
+    // direction. REQUIRES a field-zeroed gyro (press Start) so field angles match driveFieldOriented.
+    private static final int kTagId = 21;
+    private static final AprilTagFieldLayout kLayout =
+        AprilTagFieldLayout.loadField(AprilTagFields.k2026RebuiltWelded);
+    private static final Rotation2d kTagFacing =
+        kLayout.getTagPose(kTagId).map(p -> p.getRotation().toRotation2d()).orElse(new Rotation2d());
 
     // PID Controllers (kept for backward compatibility and heading control)
     private PIDController rotationController;
@@ -112,15 +123,15 @@ public class Autoalign extends SequentialCommandGroup {
                 output.targetAngle().getRadians()
             );
 
-            // GYRO HEADING, ALWAYS. Autopilot's vx/vy are in the TAG frame. Rotate them into the FIELD
-            // frame by the tag's orientation offset (gyro - tagHeading) -- this offset stays constant
-            // even while the robot spins, so translation never gets scrambled -- then let
-            // driveFieldOriented convert field->wheels using the stable gyro heading.
+            // Rotate Autopilot's TAG-frame vx/vy into the FIELD frame using the tag's KNOWN field
+            // facing (constant from the layout), NOT the noisy vision yaw -- this removes the jitter
+            // and the wrong-direction problem. driveFieldOriented then applies it via the gyro.
             Rotation2d gyro = drivetrain.getPose().getRotation();
-            Rotation2d tagToField = gyro.minus(currentPose.getRotation());
-            Translation2d velField = new Translation2d(xVel, yVel).rotateBy(tagToField);
-            drivetrain.driveFieldOriented(new ChassisSpeeds(velField.getX(), velField.getY(), rotVel));
+            Translation2d velField = new Translation2d(xVel, yVel).rotateBy(kTagFacing);
+            // ROTATION DISABLED FOR TESTING -- translation only (omega forced to 0; was rotVel).
+            drivetrain.driveFieldOriented(new ChassisSpeeds(velField.getX(), velField.getY(), 0.0));
             SmartDashboard.putNumber("Climb/Prescore/GyroDeg", gyro.getDegrees());
+            SmartDashboard.putNumber("Climb/Prescore/TagFacingDeg", kTagFacing.getDegrees());
             SmartDashboard.putNumber("Climb/Prescore/Output_Field_X_Vel", velField.getX());
             SmartDashboard.putNumber("Climb/Prescore/Output_Field_Y_Vel", velField.getY());
 
