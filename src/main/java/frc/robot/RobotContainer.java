@@ -213,14 +213,7 @@ public class RobotContainer {
         }));
 
         // --- OUTTAKE/DEJAM ---
-        driverXbox.b().onTrue(Commands.runOnce(() -> {
-            intake.activateOuttake();
-            feeder.setOuttaking(true);
-        }));
-        driverXbox.b().onFalse(Commands.runOnce(() -> {
-            intake.deactivate();
-            feeder.setOuttaking(false);
-        }));
+        // (unbound: B is reserved for Autoalign; rebind outtake/dejam to a free button when needed)
 
         // --- RESETS ---
         Trigger resetPoseTrigger = new Trigger(m_Controls::getVisionResetTrigger);

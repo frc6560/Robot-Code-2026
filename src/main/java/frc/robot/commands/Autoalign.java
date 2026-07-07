@@ -11,8 +11,6 @@ import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
-import edu.wpi.first.apriltag.AprilTagFieldLayout;
-import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -54,15 +52,6 @@ public class Autoalign extends SequentialCommandGroup {
     // in front of the tag (at +x standoff) and we approach from further out, so we arrive moving
     // TOWARD the tag = -x = pi. (Using the target heading here made it approach moving outward = away.)
     private static final Rotation2d kEntryAngle = new Rotation2d(Math.PI);
-
-    // Tag's KNOWN field facing, used to rotate Autopilot's tag-frame output into the field frame.
-    // Constant (the tag doesn't move) -> no jittery vision yaw in the conversion, and provably-correct
-    // direction. REQUIRES a field-zeroed gyro (press Start) so field angles match driveFieldOriented.
-    private static final int kTagId = 21;
-    private static final AprilTagFieldLayout kLayout =
-        AprilTagFieldLayout.loadField(AprilTagFields.k2026RebuiltWelded);
-    private static final Rotation2d kTagFacing =
-        kLayout.getTagPose(kTagId).map(p -> p.getRotation().toRotation2d()).orElse(new Rotation2d());
 
     // PID Controllers (kept for backward compatibility and heading control)
     private PIDController rotationController;
@@ -123,15 +112,19 @@ public class Autoalign extends SequentialCommandGroup {
                 output.targetAngle().getRadians()
             );
 
-            // Rotate Autopilot's TAG-frame vx/vy into the FIELD frame using the tag's KNOWN field
-            // facing (constant from the layout), NOT the noisy vision yaw -- this removes the jitter
-            // and the wrong-direction problem. driveFieldOriented then applies it via the gyro.
+            // Rotate Autopilot's TAG-frame vx/vy into the gyro's "field" frame using the per-tick
+            // offset (gyro - visionHeading). NO field layout / global pose: the gyro term cancels
+            // exactly inside driveFieldOriented, so this works with ANY gyro zero -- net effect is
+            // "tag-frame velocity rotated into the robot frame by the vision heading", with the gyro
+            // only stabilizing the command between vision updates (offset is constant while tracking,
+            // even mid-rotation).
             Rotation2d gyro = drivetrain.getPose().getRotation();
-            Translation2d velField = new Translation2d(xVel, yVel).rotateBy(kTagFacing);
+            Rotation2d tagToField = gyro.minus(currentPose.getRotation());
+            Translation2d velField = new Translation2d(xVel, yVel).rotateBy(tagToField);
             // ROTATION DISABLED FOR TESTING -- translation only (omega forced to 0; was rotVel).
             drivetrain.driveFieldOriented(new ChassisSpeeds(velField.getX(), velField.getY(), 0.0));
             SmartDashboard.putNumber("Climb/Prescore/GyroDeg", gyro.getDegrees());
-            SmartDashboard.putNumber("Climb/Prescore/TagFacingDeg", kTagFacing.getDegrees());
+            SmartDashboard.putNumber("Climb/Prescore/TagToFieldDeg", tagToField.getDegrees());
             SmartDashboard.putNumber("Climb/Prescore/Output_Field_X_Vel", velField.getX());
             SmartDashboard.putNumber("Climb/Prescore/Output_Field_Y_Vel", velField.getY());
 
