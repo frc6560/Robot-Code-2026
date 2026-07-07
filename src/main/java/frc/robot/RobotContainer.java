@@ -211,12 +211,11 @@ public class RobotContainer {
 
         // --- OUTTAKE/DEJAM ---
         driverXbox.b().onTrue(Commands.runOnce(() -> {
-            intake.activateOuttake();
-            feeder.setOuttaking(true);
+            hood.setHoodDemoEnabled(false);
+            hood.setGoal(30);
         }));
         driverXbox.b().onFalse(Commands.runOnce(() -> {
-            intake.deactivate();
-            feeder.setOuttaking(false);
+            hood.setHoodDemoEnabled(true);
         }));
 
         // --- RESETS ---
