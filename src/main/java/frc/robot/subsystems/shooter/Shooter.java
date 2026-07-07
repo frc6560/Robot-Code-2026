@@ -52,21 +52,21 @@ public class Shooter extends SubsystemBase {
 
     @Override
     public void periodic() {
-        io.updateInputs(inputs);
-        Logger.processInputs("Shooter", inputs);
+        // io.updateInputs(inputs);
+        // Logger.processInputs("Shooter", inputs);
 
-        if (goalRPM > 0) {
-            double goalRPS = goalRPM / 60.0; // mechanism RPS
-            io.setVelocityRPS(goalRPS);
-        }
-        else{
-            io.stop();
-        }
+        // if (goalRPM > 0) {
+        //     double goalRPS = goalRPM / 60.0; // mechanism RPS
+        //     io.setVelocityRPS(goalRPS);
+        // }
+        // else{
+        //     io.stop();
+        // }
 
-        Logger.recordOutput("Shooter/GoalRPM", goalRPM);
-        Logger.recordOutput("Shooter/CurrentRPM", getCurrentRPM());
-        Logger.recordOutput("Shooter/AtTarget", atTarget());
-        Logger.recordOutput("Shooter/ErrorRPM", getCurrentRPM() - goalRPM);
-        Logger.recordOutput("Shooter/ControlMode", inputs.controlMode);
+        // Logger.recordOutput("Shooter/GoalRPM", goalRPM);
+        // Logger.recordOutput("Shooter/CurrentRPM", getCurrentRPM());
+        // Logger.recordOutput("Shooter/AtTarget", atTarget());
+        // Logger.recordOutput("Shooter/ErrorRPM", getCurrentRPM() - goalRPM);
+        // Logger.recordOutput("Shooter/ControlMode", inputs.controlMode);
     }
 }

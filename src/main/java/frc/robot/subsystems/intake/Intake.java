@@ -58,33 +58,33 @@ public class Intake extends SubsystemBase {
 
     @Override
     public void periodic() {
-        Logger.recordOutput("LOG", "ITS RUNNING");
-        io.updateInputs(inputs);
-        Logger.processInputs("Intake", inputs);
+    //     Logger.recordOutput("LOG", "ITS RUNNING");
+    //     io.updateInputs(inputs);
+    //     Logger.processInputs("Intake", inputs);
 
-        switch (state) {
-            case ACTIVE:
-                io.setRollerRPM(IntakeConstants.ROLLER_RPM);
-                break;
-            case OUTTAKE:
-                io.setRollerRPM(-IntakeConstants.ROLLER_RPM);
-                break;
-            case CYCLING:
-                if (cycleTicks < CYCLE_TICKS_PER_DIRECTION) {
-                    io.setRollerRPM(IntakeConstants.ROLLER_RPM);
-                } else {
-                    io.setRollerRPM(-IntakeConstants.ROLLER_RPM);
-                }
-                cycleTicks = (cycleTicks + 1) % CYCLE_TOTAL_TICKS;
-                break;
-            case IDLE:
-            default:
-                io.stop();
-                break;
-        }
+    //     switch (state) {
+    //         case ACTIVE:
+    //             io.setRollerRPM(IntakeConstants.ROLLER_RPM);
+    //             break;
+    //         case OUTTAKE:
+    //             io.setRollerRPM(-IntakeConstants.ROLLER_RPM);
+    //             break;
+    //         case CYCLING:
+    //             if (cycleTicks < CYCLE_TICKS_PER_DIRECTION) {
+    //                 io.setRollerRPM(IntakeConstants.ROLLER_RPM);
+    //             } else {
+    //                 io.setRollerRPM(-IntakeConstants.ROLLER_RPM);
+    //             }
+    //             cycleTicks = (cycleTicks + 1) % CYCLE_TOTAL_TICKS;
+    //             break;
+    //         case IDLE:
+    //         default:
+    //             io.stop();
+    //             break;
+    //     }
 
-        Logger.recordOutput("Intake/State", state.toString());
-        Logger.recordOutput("Intake/CycleTicks", cycleTicks);
-        Logger.recordOutput("Intake/CyclingIn", state == State.CYCLING && cycleTicks < CYCLE_TICKS_PER_DIRECTION);
+    //     Logger.recordOutput("Intake/State", state.toString());
+    //     Logger.recordOutput("Intake/CycleTicks", cycleTicks);
+    //     Logger.recordOutput("Intake/CyclingIn", state == State.CYCLING && cycleTicks < CYCLE_TICKS_PER_DIRECTION);
     }
 }

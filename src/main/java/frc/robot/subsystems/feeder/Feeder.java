@@ -70,49 +70,49 @@ public class Feeder extends SubsystemBase {
 
     @Override
     public void periodic() {
-        io.updateInputs(inputs);
-        Logger.processInputs("Feeder", inputs);
+        // io.updateInputs(inputs);
+        // Logger.processInputs("Feeder", inputs);
 
-        // Floor and wall run when intaking or shooting, reverse when outtaking
-        if (outtaking) {
-            io.setFloorRPM(-FeederConstants.FLOOR_RPM);
-        } else if (intaking || shooting) {
-            io.setFloorRPM(FeederConstants.FLOOR_RPM);
-        } else {
-            io.setFloorRPM(FeederConstants.IDLE_RPM);
-        }
+        // // Floor and wall run when intaking or shooting, reverse when outtaking
+        // if (outtaking) {
+        //     io.setFloorRPM(-FeederConstants.FLOOR_RPM);
+        // } else if (intaking || shooting) {
+        //     io.setFloorRPM(FeederConstants.FLOOR_RPM);
+        // } else {
+        //     io.setFloorRPM(FeederConstants.IDLE_RPM);
+        // }
 
-        // State machine for pan and pusher (spinning up before feeding)
-        if (shooting) {
-            switch (state) {
-                case IDLE:
-                    state = FeederState.SPINNING_UP;
-                    // Fall through to start spinning immediately
-                case SPINNING_UP:
-                    io.setPanRPM(FeederConstants.PAN_RUNNING_RPM);
-                    io.setPusherRPM(FeederConstants.IDLE_RPM);
-                    if (panAtSpeed()) {
-                        state = FeederState.FEEDING;
-                    }
-                    break;
-                case FEEDING:
-                    io.setPanRPM(FeederConstants.PAN_RUNNING_RPM);
-                    io.setPusherRPM(FeederConstants.PUSHER_RUNNING_RPM);
-                    break;
-            }
-        } else {
-            state = FeederState.IDLE;
-            io.setPanRPM(FeederConstants.IDLE_RPM);
-            io.setPusherRPM(FeederConstants.IDLE_RPM);
-        }
+        // // State machine for pan and pusher (spinning up before feeding)
+        // if (shooting) {
+        //     switch (state) {
+        //         case IDLE:
+        //             state = FeederState.SPINNING_UP;
+        //             // Fall through to start spinning immediately
+        //         case SPINNING_UP:
+        //             io.setPanRPM(FeederConstants.PAN_RUNNING_RPM);
+        //             io.setPusherRPM(FeederConstants.IDLE_RPM);
+        //             if (panAtSpeed()) {
+        //                 state = FeederState.FEEDING;
+        //             }
+        //             break;
+        //         case FEEDING:
+        //             io.setPanRPM(FeederConstants.PAN_RUNNING_RPM);
+        //             io.setPusherRPM(FeederConstants.PUSHER_RUNNING_RPM);
+        //             break;
+        //     }
+        // } else {
+        //     state = FeederState.IDLE;
+        //     io.setPanRPM(FeederConstants.IDLE_RPM);
+        //     io.setPusherRPM(FeederConstants.IDLE_RPM);
+        // }
 
-        Logger.recordOutput("Feeder/Intaking", intaking);
-        Logger.recordOutput("Feeder/Shooting", shooting);
-        Logger.recordOutput("Feeder/Outtaking", outtaking);
-        Logger.recordOutput("Feeder/State", state.toString());
-        Logger.recordOutput("Feeder/PanActualRPM", getPanActualRPM());
-        Logger.recordOutput("Feeder/PusherActualRPM", getPusherActualRPM());
-        Logger.recordOutput("Feeder/PanAtSpeed", panAtSpeed());
-        Logger.recordOutput("Feeder/PusherCurrent", getPusherCurrent());
+        // Logger.recordOutput("Feeder/Intaking", intaking);
+        // Logger.recordOutput("Feeder/Shooting", shooting);
+        // Logger.recordOutput("Feeder/Outtaking", outtaking);
+        // Logger.recordOutput("Feeder/State", state.toString());
+        // Logger.recordOutput("Feeder/PanActualRPM", getPanActualRPM());
+        // Logger.recordOutput("Feeder/PusherActualRPM", getPusherActualRPM());
+        // Logger.recordOutput("Feeder/PanAtSpeed", panAtSpeed());
+        // Logger.recordOutput("Feeder/PusherCurrent", getPusherCurrent());
     }
 }
