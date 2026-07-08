@@ -27,20 +27,9 @@ deploy {
                 // getTargetTypeClass is a shortcut to get the class type using a string
 
                 frcJava(getArtifactTypeClass('FRCJavaArtifact')) {
-                    // Garbage collection optimizations from the AdvantageKit template.
-                    // Without these, logs showed GC pauses up to 357ms freezing the main
-                    // loop (choppy teleop control).
-                    jvmArgs.add("-XX:+UnlockExperimentalVMOptions")
-                    jvmArgs.add("-XX:GCTimeRatio=5")
-                    jvmArgs.add("-XX:+UseSerialGC")
-                    jvmArgs.add("-XX:MaxGCPauseMillis=50")
-
-                    // The options below may improve performance, but should only be enabled on the RIO 2
-                    //
-                    // final MAX_JAVA_HEAP_SIZE_MB = 100;
-                    // jvmArgs.add("-Xmx" + MAX_JAVA_HEAP_SIZE_MB + "M")
-                    // jvmArgs.add("-Xms" + MAX_JAVA_HEAP_SIZE_MB + "M")
-                    // jvmArgs.add("-XX:+AlwaysPreTouch")
+                    // NOTE: the AdvantageKit template's serial-GC jvmArgs were tried here
+                    // (2026-07-07) and made teleop control noticeably WORSE on this robot —
+                    // do not re-add them without on-robot verification.
                 }
 
                 // Static files artifact
