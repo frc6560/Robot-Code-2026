@@ -174,7 +174,7 @@ public class RobotContainer {
         driverXbox.y()
           .whileTrue(autoAlign.getAlignHeadOnToTag(21, edu.wpi.first.math.util.Units.feetToMeters(2.0)));
         driverXbox.b()
-          .onTrue(new Autoalign(drivebase)); // tag-relative Autopilot climb/prescore align
+          .whileTrue(new Autoalign(drivebase)); // tag-relative Autopilot align (hold B; release = stop)
 
         // --- SHOTS ---
         

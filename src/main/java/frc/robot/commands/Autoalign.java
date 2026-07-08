@@ -13,6 +13,7 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import com.therekrab.autopilot.APConstraints;
@@ -43,15 +44,21 @@ public class Autoalign extends SequentialCommandGroup {
     //   x = meters out from the tag face, y = meters to the left, heading = pi means facing the tag.
     private static final String kCamera = "limelight-br";
     private static final double kStandoffMeters = 0.5; // TUNE: tag-face -> robot-center distance
-    // Heading 0 = intake/front pointed at the tag in THIS setup (target pi made it spin 180, so
-    // "facing the tag" reads as ~0 here). If it still ends up facing wrong, read
-    // "Climb/Prescore/Current_HeadingDeg" while the robot is positioned as you want it to finish,
+    // Heading target in the CORRECTED tag frame (heading 0 = pointing out of the tag face, away from
+    // it). The old frame was rotated 180 deg, so its empirically-found "0" is pi here. VERIFY on
+    // robot: position the robot exactly as it should finish, read "Climb/Prescore/Current_HeadingDeg",
     // and set this heading to that value.
-    private static final Pose2d kTargetPose = new Pose2d(kStandoffMeters, 0.0, new Rotation2d(0));
+    private static final Pose2d kTargetPose = new Pose2d(kStandoffMeters, 0.0, new Rotation2d(Math.PI));
     // Entry angle = the DIRECTION OF MOTION at arrival (not which way the robot faces). The goal sits
     // in front of the tag (at +x standoff) and we approach from further out, so we arrive moving
-    // TOWARD the tag = -x = pi. (Using the target heading here made it approach moving outward = away.)
+    // TOWARD the tag = -x = pi.
     private static final Rotation2d kEntryAngle = new Rotation2d(Math.PI);
+
+    // Tag-frame map for Glass/AdvantageScope: shows the tag, the target, and the robot. Everything
+    // is in the TAG frame (tag at the origin), shifted by kVizOffset so it draws mid-canvas instead
+    // of at the field corner (Field2d clips negative coordinates).
+    private final Field2d m_field = new Field2d();
+    private static final Translation2d kVizOffset = new Translation2d(8.0, 4.0);
 
     // PID Controllers (kept for backward compatibility and heading control)
     private PIDController rotationController;
@@ -70,6 +77,11 @@ public class Autoalign extends SequentialCommandGroup {
 
         // Log initialization
         SmartDashboard.putString("Climb/Status", "Initialized");
+        // Publish the tag-frame map once; per-tick code updates the poses on it.
+        SmartDashboard.putData("Climb/Prescore/Field", m_field);
+        m_field.getObject("tag").setPose(new Pose2d(kVizOffset, new Rotation2d()));
+        m_field.getObject("target").setPose(
+            new Pose2d(kTargetPose.getTranslation().plus(kVizOffset), kTargetPose.getRotation()));
 
         super.addCommands(
             getDriveToTarget()
@@ -91,6 +103,9 @@ public class Autoalign extends SequentialCommandGroup {
             SmartDashboard.putBoolean("Climb/Prescore/HasTarget", LimelightHelpers.getTV(kCamera));
             SmartDashboard.putNumber("Climb/Prescore/BotposeNorm", botposeNorm);
             SmartDashboard.putNumber("Climb/Prescore/Tid", LimelightHelpers.getFiducialID(kCamera));
+            // Raw crosshair offsets (degrees) -- plot these to sanity-check the camera itself.
+            SmartDashboard.putNumber("Climb/Prescore/tx", LimelightHelpers.getTX(kCamera));
+            SmartDashboard.putNumber("Climb/Prescore/ty", LimelightHelpers.getTY(kCamera));
             if (botposeNorm < 1e-3) {
                 drivetrain.drive(new ChassisSpeeds()); // no valid tag -> stop, don't spin on garbage
                 SmartDashboard.putBoolean("Climb/Prescore/At_Target", false);
@@ -98,6 +113,13 @@ public class Autoalign extends SequentialCommandGroup {
             }
 
             Pose2d currentPose = getTagRelativeRobotPose(kCamera);          // robot in tag frame
+
+            // Update the tag-frame map: robot + target (tag stays pinned at kVizOffset).
+            m_field.setRobotPose(
+                new Pose2d(currentPose.getTranslation().plus(kVizOffset), currentPose.getRotation()));
+            m_field.getObject("target").setPose(
+                new Pose2d(kTargetPose.getTranslation().plus(kVizOffset), kTargetPose.getRotation()));
+
             ChassisSpeeds robotRelativeSpeeds = drivetrain.getRobotVelocity();
 
             APTarget target = new APTarget(kTargetPose).withEntryAngle(kEntryAngle);
@@ -121,8 +143,7 @@ public class Autoalign extends SequentialCommandGroup {
             Rotation2d gyro = drivetrain.getPose().getRotation();
             Rotation2d tagToField = gyro.minus(currentPose.getRotation());
             Translation2d velField = new Translation2d(xVel, yVel).rotateBy(tagToField);
-            // ROTATION DISABLED FOR TESTING -- translation only (omega forced to 0; was rotVel).
-            drivetrain.driveFieldOriented(new ChassisSpeeds(velField.getX(), velField.getY(), 0.0));
+            drivetrain.driveFieldOriented(new ChassisSpeeds(velField.getX(), velField.getY(), rotVel));
             SmartDashboard.putNumber("Climb/Prescore/GyroDeg", gyro.getDegrees());
             SmartDashboard.putNumber("Climb/Prescore/TagToFieldDeg", tagToField.getDegrees());
             SmartDashboard.putNumber("Climb/Prescore/Output_Field_X_Vel", velField.getX());
@@ -164,7 +185,12 @@ public class Autoalign extends SequentialCommandGroup {
     private Pose2d getTagRelativeRobotPose(String limelightName) {
         Pose3d r = LimelightHelpers.getBotPose3d_TargetSpace(limelightName);
         Translation3d fwd = new Translation3d(1, 0, 0).rotateBy(r.getRotation());
-        return new Pose2d(r.getZ(), -r.getX(), new Rotation2d(Math.atan2(-fwd.getX(), fwd.getZ())));
+        // MEASURED ON ROBOT (dashboard 2026-07-06): a robot IN FRONT of the tag reads NEGATIVE Z
+        // (Current_X was -2.44 at ~2.4m out), i.e. this Limelight's target-space Z+ points INTO the
+        // tag, X+ = viewer's right. Planar frame: x = out of tag face = -Z, y = X (right-handed),
+        // heading from the projected forward vector. The old (r.getZ(), -r.getX()) remap was this
+        // frame rotated 180 deg -> the (0.5, 0) target sat half a meter BEHIND the wall.
+        return new Pose2d(-r.getZ(), r.getX(), new Rotation2d(Math.atan2(fwd.getX(), -fwd.getZ())));
     }
     }
 
