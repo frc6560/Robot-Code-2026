@@ -39,11 +39,9 @@ public class TunerConstants {
   private static final SteerMotorArrangement kSteerMotorType =
       SteerMotorArrangement.TalonFX_Integrated;
 
-  // RemoteCANcoder (not FusedCANcoder): the steer PID reads the CANcoder directly without
-  // fusing the motor rotor sensor. FusedCANcoder requires the rotor and CANcoder to agree on
-  // mechanism direction, which depends on per-module gear reversal and was never verified for
-  // this robot (Tuner X swerve wizard wasn't run on the AKit branch). Matches how YAGSL on
-  // glendale-working-branch reads the CANcoder.
+  // NOTE: no longer used by ModuleIOTalonFX. The steer PID now runs on the motor's internal
+  // rotor sensor (seeded from the CANcoder at startup) because RemoteCANcoder feedback
+  // (~100Hz CAN frames) caused steer chatter with these gains. See ModuleIOTalonFX.
   private static final SteerFeedbackType kSteerFeedbackType = SteerFeedbackType.RemoteCANcoder;
 
   private static final Current kSlipCurrent = Amps.of(40.0);

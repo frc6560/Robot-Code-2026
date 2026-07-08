@@ -95,20 +95,24 @@ public class ModuleIOTalonFX implements ModuleIO {
     tryUntilOk(5, () -> driveTalon.getConfigurator().apply(driveConfig, 0.25));
     tryUntilOk(5, () -> driveTalon.setPosition(0.0, 0.25));
 
-    // Configure turn motor
+    // Configure CANCoder (before the turn motor, whose position is seeded from it)
+    CANcoderConfiguration cancoderConfig = constants.EncoderInitialConfigs;
+    cancoderConfig.MagnetSensor.MagnetOffset = constants.EncoderOffset;
+    cancoderConfig.MagnetSensor.SensorDirection =
+        constants.EncoderInverted
+            ? SensorDirectionValue.Clockwise_Positive
+            : SensorDirectionValue.CounterClockwise_Positive;
+    cancoder.getConfigurator().apply(cancoderConfig);
+
+    // Configure turn motor. The steer PID runs on the motor's internal rotor sensor (1kHz,
+    // no CAN latency) instead of RemoteCANcoder feedback (~100Hz CAN frames), which caused
+    // visible steer chatter with these gains. The rotor is seeded from the CANcoder's
+    // absolute position at startup, matching the YAGSL behavior on glendale-working-branch.
     var turnConfig = new TalonFXConfiguration();
     turnConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
     turnConfig.Slot0 = constants.SteerMotorGains;
-    turnConfig.Feedback.FeedbackRemoteSensorID = constants.EncoderId;
-    turnConfig.Feedback.FeedbackSensorSource =
-        switch (constants.FeedbackSource) {
-          case RemoteCANcoder -> FeedbackSensorSourceValue.RemoteCANcoder;
-          case FusedCANcoder -> FeedbackSensorSourceValue.FusedCANcoder;
-          case SyncCANcoder -> FeedbackSensorSourceValue.SyncCANcoder;
-          default -> throw new RuntimeException(
-              "Unsupported turn feedback source. See AdvantageKit docs for alternatives.");
-        };
-    turnConfig.Feedback.RotorToSensorRatio = constants.SteerMotorGearRatio;
+    turnConfig.Feedback.FeedbackSensorSource = FeedbackSensorSourceValue.RotorSensor;
+    turnConfig.Feedback.SensorToMechanismRatio = constants.SteerMotorGearRatio;
     turnConfig.MotionMagic.MotionMagicCruiseVelocity = 100.0 / constants.SteerMotorGearRatio;
     turnConfig.MotionMagic.MotionMagicAcceleration =
         turnConfig.MotionMagic.MotionMagicCruiseVelocity / 0.100;
@@ -121,14 +125,11 @@ public class ModuleIOTalonFX implements ModuleIO {
             : InvertedValue.CounterClockwise_Positive;
     tryUntilOk(5, () -> turnTalon.getConfigurator().apply(turnConfig, 0.25));
 
-    // Configure CANCoder
-    CANcoderConfiguration cancoderConfig = constants.EncoderInitialConfigs;
-    cancoderConfig.MagnetSensor.MagnetOffset = constants.EncoderOffset;
-    cancoderConfig.MagnetSensor.SensorDirection =
-        constants.EncoderInverted
-            ? SensorDirectionValue.Clockwise_Positive
-            : SensorDirectionValue.CounterClockwise_Positive;
-    cancoder.getConfigurator().apply(cancoderConfig);
+    // Seed the turn motor position from the CANcoder absolute position
+    var absolutePosition = cancoder.getAbsolutePosition();
+    tryUntilOk(
+        5,
+        () -> turnTalon.setPosition(absolutePosition.waitForUpdate(0.25).getValueAsDouble(), 0.25));
 
     // Create timestamp queue
     timestampQueue = PhoenixOdometryThread.getInstance().makeTimestampQueue();
