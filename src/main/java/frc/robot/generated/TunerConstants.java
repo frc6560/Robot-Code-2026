@@ -136,7 +136,8 @@ public class TunerConstants {
   private static final int kFrontRightDriveMotorId = 1;
   private static final int kFrontRightSteerMotorId = 3;
   private static final int kFrontRightEncoderId = 2;
-  private static final Angle kFrontRightEncoderOffset = Degrees.of(0.0);
+  // Measured 2026-07-07: CANcoder read 1.970 rad (112.87°) with wheel straight and offset zeroed
+  private static final Angle kFrontRightEncoderOffset = Degrees.of(-112.872);
   private static final boolean kFrontRightSteerMotorInverted = true;
   private static final boolean kFrontRightEncoderInverted = false;
 
@@ -147,18 +148,20 @@ public class TunerConstants {
   private static final int kBackLeftDriveMotorId = 7;
   private static final int kBackLeftSteerMotorId = 9;
   private static final int kBackLeftEncoderId = 8;
-  private static final Angle kBackLeftEncoderOffset = Degrees.of(0.0);
+  // Measured 2026-07-07: CANcoder read -1.913 rad (-109.61°) with wheel straight and offset zeroed
+  private static final Angle kBackLeftEncoderOffset = Degrees.of(109.606);
   private static final boolean kBackLeftSteerMotorInverted = true;
   private static final boolean kBackLeftEncoderInverted = false;
 
-  private static final Distance kBackLeftXPos = Inches.of(0.0);
+  private static final Distance kBackLeftXPos = Inches.of(-10.875);
   private static final Distance kBackLeftYPos = Inches.of(10.875);
 
   // Back Right
   private static final int kBackRightDriveMotorId = 10;
   private static final int kBackRightSteerMotorId = 12;
   private static final int kBackRightEncoderId = 11;
-  private static final Angle kBackRightEncoderOffset = Degrees.of(0.0);
+  // Measured 2026-07-07: CANcoder read -2.724 rad (-156.07°) with wheel straight and offset zeroed
+  private static final Angle kBackRightEncoderOffset = Degrees.of(156.073);
   private static final boolean kBackRightSteerMotorInverted = true;
   private static final boolean kBackRightEncoderInverted = false;
 
