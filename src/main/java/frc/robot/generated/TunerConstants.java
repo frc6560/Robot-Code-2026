@@ -44,9 +44,20 @@ public class TunerConstants {
   // (~100Hz CAN frames) caused steer chatter with these gains. See ModuleIOTalonFX.
   private static final SteerFeedbackType kSteerFeedbackType = SteerFeedbackType.RemoteCANcoder;
 
-  private static final Current kSlipCurrent = Amps.of(40.0);
+  private static final Current kSlipCurrent = Amps.of(120.0);
 
-  private static final TalonFXConfiguration driveInitialConfigs = new TalonFXConfiguration();
+  // Match the drive feel of the YAGSL setup on glendale-working-branch:
+  // - 40A SUPPLY limit (YAGSL's "currentLimit.drive: 40" is a supply limit, not stator —
+  //   the previous 40A stator limit here clamped torque much harder than glendale did)
+  // - 0.25s voltage ramps (YAGSL "rampRate.drive: 0.25"), which smooth out joystick steps
+  private static final TalonFXConfiguration driveInitialConfigs =
+      new TalonFXConfiguration()
+          .withCurrentLimits(
+              new CurrentLimitsConfigs()
+                  .withSupplyCurrentLimit(Amps.of(40))
+                  .withSupplyCurrentLimitEnable(true))
+          .withOpenLoopRamps(new OpenLoopRampsConfigs().withVoltageOpenLoopRampPeriod(0.25))
+          .withClosedLoopRamps(new ClosedLoopRampsConfigs().withVoltageClosedLoopRampPeriod(0.25));
   private static final TalonFXConfiguration steerInitialConfigs =
       new TalonFXConfiguration()
           .withCurrentLimits(

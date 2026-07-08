@@ -36,11 +36,14 @@ public class DriveCommands {
 
   private DriveCommands() {}
 
-  private static Translation2d getLinearVelocityFromJoysticks(double x, double y) {
-    double linearMagnitude = MathUtil.applyDeadband(Math.hypot(x, y), DEADBAND);
-    Rotation2d linearDirection = new Rotation2d(Math.atan2(y, x));
+  // Linear (unsquared) response scaled to 80% of max, matching the YAGSL SwerveInputStream
+  // setup on glendale-working-branch (deadband 0.1, scaleTranslation 0.8)
+  private static final double TRANSLATION_SCALE = 0.8;
 
-    linearMagnitude = linearMagnitude * linearMagnitude;
+  private static Translation2d getLinearVelocityFromJoysticks(double x, double y) {
+    double linearMagnitude =
+        MathUtil.applyDeadband(Math.hypot(x, y), DEADBAND) * TRANSLATION_SCALE;
+    Rotation2d linearDirection = new Rotation2d(Math.atan2(y, x));
 
     return new Pose2d(Translation2d.kZero, linearDirection)
         .transformBy(new Transform2d(linearMagnitude, 0.0, Rotation2d.kZero))
@@ -57,8 +60,8 @@ public class DriveCommands {
           Translation2d linearVelocity =
               getLinearVelocityFromJoysticks(xSupplier.getAsDouble(), ySupplier.getAsDouble());
 
+          // Linear rotation response, matching glendale (no input squaring)
           double omega = MathUtil.applyDeadband(omegaSupplier.getAsDouble(), DEADBAND);
-          omega = Math.copySign(omega * omega, omega);
 
           ChassisSpeeds speeds =
               new ChassisSpeeds(
