@@ -122,10 +122,11 @@ public class TunerConstants {
   private static final int kFrontLeftSteerMotorId = 6;
   private static final int kFrontLeftEncoderId = 5;
   private static final Angle kFrontLeftEncoderOffset = Degrees.of(-0.967);
-  // Steer motors were NOT inverted in the working YAGSL config ("inverted.angle": false).
-  // Inverting them while the CANcoder stays CCW-positive makes the steer closed loop fight
-  // itself (positive feedback → hunting/grinding).
-  private static final boolean kFrontLeftSteerMotorInverted = false;
+  // Steer motors MUST be inverted: log akit_26-07-08_01-18-37.wpilog shows that with
+  // uninverted steer motors, applied volts and CANcoder velocity anti-correlate on all four
+  // modules (positive feedback → uncontrolled spinning). YAGSL's "inverted.angle: false"
+  // does not translate to Phoenix inversion semantics.
+  private static final boolean kFrontLeftSteerMotorInverted = true;
   private static final boolean kFrontLeftEncoderInverted = false;
 
   private static final Distance kFrontLeftXPos = Inches.of(10.875);
@@ -135,8 +136,8 @@ public class TunerConstants {
   private static final int kFrontRightDriveMotorId = 1;
   private static final int kFrontRightSteerMotorId = 3;
   private static final int kFrontRightEncoderId = 2;
-  private static final Angle kFrontRightEncoderOffset = Degrees.of(-112.500);
-  private static final boolean kFrontRightSteerMotorInverted = false;
+  private static final Angle kFrontRightEncoderOffset = Degrees.of(0.0);
+  private static final boolean kFrontRightSteerMotorInverted = true;
   private static final boolean kFrontRightEncoderInverted = false;
 
   private static final Distance kFrontRightXPos = Inches.of(10.875);
@@ -146,19 +147,19 @@ public class TunerConstants {
   private static final int kBackLeftDriveMotorId = 7;
   private static final int kBackLeftSteerMotorId = 9;
   private static final int kBackLeftEncoderId = 8;
-  private static final Angle kBackLeftEncoderOffset = Degrees.of(-250.313);
-  private static final boolean kBackLeftSteerMotorInverted = false;
+  private static final Angle kBackLeftEncoderOffset = Degrees.of(0.0);
+  private static final boolean kBackLeftSteerMotorInverted = true;
   private static final boolean kBackLeftEncoderInverted = false;
 
-  private static final Distance kBackLeftXPos = Inches.of(-10.875);
+  private static final Distance kBackLeftXPos = Inches.of(0.0);
   private static final Distance kBackLeftYPos = Inches.of(10.875);
 
   // Back Right
   private static final int kBackRightDriveMotorId = 10;
   private static final int kBackRightSteerMotorId = 12;
   private static final int kBackRightEncoderId = 11;
-  private static final Angle kBackRightEncoderOffset = Degrees.of(-203.730);
-  private static final boolean kBackRightSteerMotorInverted = false;
+  private static final Angle kBackRightEncoderOffset = Degrees.of(0.0);
+  private static final boolean kBackRightSteerMotorInverted = true;
   private static final boolean kBackRightEncoderInverted = false;
 
   private static final Distance kBackRightXPos = Inches.of(-10.875);
