@@ -7,6 +7,7 @@ import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import frc.robot.Constants.LimelightConstants;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import frc.robot.utility.LimelightHelpers;
+import frc.robot.utility.LimelightHelpers.PoseEstimate;
 import swervelib.SwerveDrive;
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.apriltag.AprilTagFields;
@@ -17,8 +18,6 @@ import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Transform2d;
-import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
@@ -53,6 +52,8 @@ public class Autoalign extends SequentialCommandGroup {
     private static final String kCamera = "limelight-back";
     private static final AprilTagFieldLayout kFieldLayout =
         AprilTagFieldLayout.loadField(AprilTagFields.k2026RebuiltWelded);
+    private static final int[] kAllTagIds =
+        kFieldLayout.getTags().stream().mapToInt(t -> t.ID).toArray();
     private static final double kMaxSpinRadPerSec = Math.toRadians(360);
 
     private final int tagId;
@@ -101,9 +102,9 @@ public class Autoalign extends SequentialCommandGroup {
             sd.kinematics, sd.getYaw(), sd.getModulePositions(), drivetrain.getPose());
         seeded = false;
         rotationController.reset(drivetrain.getPose().getRotation().getRadians());
-        LimelightHelpers.setPriorityTagID(kCamera, tagId);
-        // Re-push the mount pose so botpose_targetspace is guaranteed mount-compensated even if
-        // the boot-time config never reached this camera.
+        // Restrict MegaTag2 on this camera to the anchor tag; restored in finallyDo.
+        LimelightHelpers.SetFiducialIDFiltersOverride(kCamera, new int[] {tagId});
+        // Re-push the mount pose in case the boot-time config never reached this camera.
         Pose3d camPose = LimelightConstants.getLimelightPose(kCamera);
         LimelightHelpers.setCameraPose_RobotSpace(kCamera,
             camPose.getX(), camPose.getY(), camPose.getZ(),
@@ -113,35 +114,35 @@ public class Autoalign extends SequentialCommandGroup {
     }
 
     /**
-     * Copy of LimelightVision.updateLimelightEstimate() with the MegaTag all-tags input replaced
-     * by a solve from the single anchor tag.
+     * Copy of LimelightVision.updateLimelightEstimate(), but the MegaTag2 estimate is only
+     * accepted when it was solved from the single anchor tag. MT2 pins orientation to the gyro
+     * (via the existing SetRobotOrientation feed) and solves translation from the tag, so there is
+     * no single-tag pose ambiguity.
      */
     private void updateEstimator() {
         SwerveDrive sd = drivetrain.getSwerveDrive();
         estimator.update(sd.getYaw(), sd.getModulePositions());
 
-        Pose3d raw = LimelightHelpers.getBotPose3d_TargetSpace(kCamera);
-        double tagDist = raw.getTranslation().getNorm();
-        boolean valid = LimelightHelpers.getTV(kCamera)
-            && (int) LimelightHelpers.getFiducialID(kCamera) == tagId
-            && tagDist > 1e-3;
+        PoseEstimate est = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(kCamera);
+        boolean valid = est != null
+            && est.pose != null
+            && !est.pose.equals(Pose2d.kZero)
+            && est.tagCount == 1
+            && est.rawFiducials.length == 1
+            && est.rawFiducials[0].id == tagId;
         SmartDashboard.putBoolean("Autoalign/TagVisible", valid);
         if (!valid) {
             return;
         }
 
-        Pose2d robotInTag = toPlanarTagFrame(raw);
-        Pose2d visionPose = tagFieldPose.transformBy(
-            new Transform2d(robotInTag.getTranslation(), robotInTag.getRotation()));
-        double latency = (LimelightHelpers.getLatency_Capture(kCamera)
-            + LimelightHelpers.getLatency_Pipeline(kCamera)) / 1000.0;
+        Pose2d visionPose = est.pose;
+        double latency = est.latency / 1000.0;
         m_field.getObject("visionPose").setPose(visionPose);
-        SmartDashboard.putNumber("Autoalign/RobotInTag_X", robotInTag.getX());
-        SmartDashboard.putNumber("Autoalign/RobotInTag_Y", robotInTag.getY());
-        SmartDashboard.putNumber("Autoalign/RobotInTag_HeadingDeg", robotInTag.getRotation().getDegrees());
+        SmartDashboard.putNumber("Autoalign/AvgTagDist", est.avgTagDist);
+        SmartDashboard.putNumber("Autoalign/Vision_X", visionPose.getX());
+        SmartDashboard.putNumber("Autoalign/Vision_Y", visionPose.getY());
         SmartDashboard.putNumber("Autoalign/Vision_HeadingDeg", visionPose.getRotation().getDegrees());
 
-        // First solve seeds position and heading; after that the gyro owns heading (theta stddev).
         if (!seeded) {
             estimator.resetPosition(sd.getYaw(), sd.getModulePositions(), visionPose);
             seeded = true;
@@ -164,7 +165,8 @@ public class Autoalign extends SequentialCommandGroup {
             return;
         }
 
-        double kStdvXY = Math.max(LimelightConstants.kStdvXYFloor, tagDist * tagDist);
+        double kStdvXY = Math.max(LimelightConstants.kStdvXYFloor,
+            est.avgTagDist * est.avgTagDist / est.tagCount);
         estimator.addVisionMeasurement(
             visionPose,
             Timer.getFPGATimestamp() - latency,
@@ -172,12 +174,6 @@ public class Autoalign extends SequentialCommandGroup {
                 kStdvXY * LimelightConstants.kStdvXYBase,
                 kStdvXY * LimelightConstants.kStdvXYBase,
                 LimelightConstants.kStdvThetaBase));
-    }
-
-    /** Axis remap measured on robot 2026-07-06. */
-    private static Pose2d toPlanarTagFrame(Pose3d r) {
-        Translation3d fwd = new Translation3d(1, 0, 0).rotateBy(r.getRotation());
-        return new Pose2d(-r.getZ(), r.getX(), new Rotation2d(Math.atan2(fwd.getX(), -fwd.getZ())));
     }
 
     /** Back-in arrival: approach direction is opposite the robot's facing (intake away from target). */
@@ -226,6 +222,9 @@ public class Autoalign extends SequentialCommandGroup {
             SmartDashboard.putBoolean("Autoalign/At_Target", kAutopilot.atTarget(currentPose, target));
         }, drivetrain).until(() ->
             seeded && kAutopilot.atTarget(estimator.getEstimatedPosition(), getTarget())
-        ).finallyDo(() -> drivetrain.drive(new ChassisSpeeds()));
+        ).finallyDo(() -> {
+            drivetrain.drive(new ChassisSpeeds());
+            LimelightHelpers.SetFiducialIDFiltersOverride(kCamera, kAllTagIds);
+        });
     }
 }
