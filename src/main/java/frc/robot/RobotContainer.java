@@ -222,7 +222,7 @@ public class RobotContainer {
 
 
     public Command getAutonomousCommand() {
-      return autoChooser.getAutoChooser().selectedCommand();
+      return autoChooser.getAutoChooser().getSelected();
     }
 
     public SwerveSubsystem getDrivebase() {

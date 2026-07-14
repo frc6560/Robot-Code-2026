@@ -5,7 +5,6 @@
 package frc.robot.subsystems.swervedrive;
 
 import static edu.wpi.first.units.Units.Meter;
-import choreo.trajectory.SwerveSample;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
@@ -62,12 +61,6 @@ public class SwerveSubsystem extends SubsystemBase {
                                                                             DrivebaseConstants.kA);
 
 
-  PIDController m_pidControllerX = new PIDController(DrivebaseConstants.kP_translation, 
-                                                          DrivebaseConstants.kI_translation, 
-                                                          DrivebaseConstants.kD_translation);
-  PIDController m_pidControllerY = new PIDController(DrivebaseConstants.kP_translation,
-                                                          DrivebaseConstants.kI_translation, 
-                                                          DrivebaseConstants.kD_translation);
   PIDController m_pidControllerTheta = new PIDController(DrivebaseConstants.kP_rotation,
                                                           DrivebaseConstants.kI_rotation,
                                                           DrivebaseConstants.kD_rotation); // tune values
@@ -149,33 +142,6 @@ public class SwerveSubsystem extends SubsystemBase {
     SmartDashboard.getEntry("DistToBlueHub").setDouble(
       robotRelativeTurret.getTranslation().getDistance(FieldConstants.BLUE_HUB_CENTER));
   }
-
-  /**
-   * Path following command using SwerveSample from Choreo
-   * @param setpoint SwerveSample setpoint to follow, representing the robot state.
-   */
-  public void followSegment(SwerveSample setpoint) {
-    m_pidControllerTheta.enableContinuousInput(-Math.PI, Math.PI);
-
-    // Log some basic data to see if path following is accurate.
-    swerveDrive.field.getObject("TargetPose").setPose(setpoint.getPose());
-    SmartDashboard.getEntry("X Error").setDouble(m_pidControllerX.getError());
-    SmartDashboard.getEntry("Y Error").setDouble(m_pidControllerY.getError());
-    SmartDashboard.getEntry("Theta Error").setDouble(m_pidControllerTheta.getError());
-    SmartDashboard.getEntry("VX Error").setDouble(Math.abs(setpoint.vx - swerveDrive.getRobotVelocity().vxMetersPerSecond));
-    SmartDashboard.getEntry("VY Error").setDouble(Math.abs(setpoint.vy - swerveDrive.getRobotVelocity().vyMetersPerSecond));
-
-    Pose2d pose = getPose();
-
-    ChassisSpeeds targetSpeeds = new ChassisSpeeds(
-      setpoint.vx + m_pidControllerX.calculate(pose.getX(), setpoint.x),
-      setpoint.vy + m_pidControllerY.calculate(pose.getY(), setpoint.y),
-      setpoint.omega + m_pidControllerTheta.calculate(pose.getRotation().getRadians(), setpoint.heading)
-    );
-
-    swerveDrive.driveFieldOriented(targetSpeeds);
-  }
-
 
   /** Rotates to a specified angle while inheriting the chassis's original translational velocity */
   public void rotateToAngle(double targetInRadians){
