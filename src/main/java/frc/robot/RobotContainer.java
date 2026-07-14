@@ -13,7 +13,9 @@ import java.util.List;
 import java.util.Set;
 
 import swervelib.SwerveInputStream;
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import frc.robot.Constants.LimelightConstants;
 import frc.robot.Constants.OperatorConstants;
@@ -174,7 +176,8 @@ public class RobotContainer {
         driverXbox.y()
           .whileTrue(autoAlign.getAlignHeadOnToTag(21, edu.wpi.first.math.util.Units.feetToMeters(2.0)));
         driverXbox.b()
-          .whileTrue(new Autoalign(drivebase)); // tag-relative Autopilot align (hold B; release = stop)
+          .whileTrue(new Autoalign(drivebase, 26,
+              new Pose2d(3.5219, 4.0346, Rotation2d.fromDegrees(180)))); // 0.5m off tag 26 (blue hex west face), backs in with limelight-back (hold B; release = stop)
 
         // --- SHOTS ---
         
