@@ -11,8 +11,9 @@ import swervelib.SwerveDrive;
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.VecBuilder;
-import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
+import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -58,7 +59,9 @@ public class Autoalign extends SequentialCommandGroup {
     private final Pose2d tagFieldPose;
     private final Pose2d targetPose;
 
-    private final PIDController rotationController;
+    // Profiled per Autopilot docs; max velocity kept far below the 360 deg/s vision reject so the
+    // camera keeps tracking through rotations.
+    private final ProfiledPIDController rotationController;
     private final Field2d m_field = new Field2d();
     private final SwerveSubsystem drivetrain;
 
@@ -76,7 +79,8 @@ public class Autoalign extends SequentialCommandGroup {
             .toPose2d();
         this.targetPose = targetPose;
 
-        this.rotationController = new PIDController(5.5, 0.15, 0.05);
+        this.rotationController = new ProfiledPIDController(5.5, 0.0, 0.05,
+            new TrapezoidProfile.Constraints(1.5, 3.0));
         this.rotationController.enableContinuousInput(-Math.PI, Math.PI);
 
         SmartDashboard.putNumber("Autoalign/TagId", tagId);
@@ -96,8 +100,16 @@ public class Autoalign extends SequentialCommandGroup {
         estimator = new SwerveDrivePoseEstimator(
             sd.kinematics, sd.getYaw(), sd.getModulePositions(), drivetrain.getPose());
         seeded = false;
-        rotationController.reset();
+        rotationController.reset(drivetrain.getPose().getRotation().getRadians());
         LimelightHelpers.setPriorityTagID(kCamera, tagId);
+        // Re-push the mount pose so botpose_targetspace is guaranteed mount-compensated even if
+        // the boot-time config never reached this camera.
+        Pose3d camPose = LimelightConstants.getLimelightPose(kCamera);
+        LimelightHelpers.setCameraPose_RobotSpace(kCamera,
+            camPose.getX(), camPose.getY(), camPose.getZ(),
+            Math.toDegrees(camPose.getRotation().getX()),
+            Math.toDegrees(camPose.getRotation().getY()),
+            Math.toDegrees(camPose.getRotation().getZ()));
     }
 
     /**
@@ -124,11 +136,18 @@ public class Autoalign extends SequentialCommandGroup {
         double latency = (LimelightHelpers.getLatency_Capture(kCamera)
             + LimelightHelpers.getLatency_Pipeline(kCamera)) / 1000.0;
         m_field.getObject("visionPose").setPose(visionPose);
+        SmartDashboard.putNumber("Autoalign/RobotInTag_X", robotInTag.getX());
+        SmartDashboard.putNumber("Autoalign/RobotInTag_Y", robotInTag.getY());
+        SmartDashboard.putNumber("Autoalign/RobotInTag_HeadingDeg", robotInTag.getRotation().getDegrees());
+        SmartDashboard.putNumber("Autoalign/Vision_HeadingDeg", visionPose.getRotation().getDegrees());
 
         // First solve seeds position and heading; after that the gyro owns heading (theta stddev).
         if (!seeded) {
             estimator.resetPosition(sd.getYaw(), sd.getModulePositions(), visionPose);
             seeded = true;
+            rotationController.reset(visionPose.getRotation().getRadians());
+            SmartDashboard.putNumber("Autoalign/SeedVsFusedHeadingDeg",
+                visionPose.getRotation().minus(drivetrain.getPose().getRotation()).getDegrees());
             return;
         }
 
