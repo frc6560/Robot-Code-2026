@@ -54,6 +54,11 @@ public class AutoCommands {
         return Commands.none();
     }
 
+    /** Runs the path exported from the BLine editor and resets odometry to its first waypoint. */
+    public Command getBLineEditorPath() {
+        return firstPathBuilder.build(new Path("phase-1-canvas-draft"));
+    }
+
     public Command shoot() {
         return Commands.run(() -> {
             calculator.calculate(drivetrain.getPose(), drivetrain.getFieldVelocity());

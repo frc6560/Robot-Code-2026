@@ -9,6 +9,7 @@ public class AutoModeChooser {
 
     public AutoModeChooser(AutoCommands factory) {
         autoChooser.setDefaultOption("Idle", factory.getNoAuto());
+        autoChooser.addOption("BLine Editor Path", factory.getBLineEditorPath());
         autoChooser.addOption("HP Turkish Delight", factory.getRightAuto());
         autoChooser.addOption("Depot Turkish Delight", factory.getLeftAuto());
         autoChooser.addOption("Two Swipe Turkish Delight", factory.getRightTwoSwipe());
