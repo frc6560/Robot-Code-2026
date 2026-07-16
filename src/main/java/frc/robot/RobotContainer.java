@@ -43,6 +43,7 @@ import frc.robot.subsystems.led.LED;
 import frc.robot.subsystems.led.LEDIO;
 import frc.robot.subsystems.led.LEDIOAddressable;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
+import frc.robot.subsystems.vision.GamePieceVisionSystem;
 import frc.robot.subsystems.vision.LimelightVision;
 import frc.robot.subsystems.vision.VisionSubsystem;
 
@@ -56,6 +57,7 @@ public class RobotContainer {
     private final SwerveSubsystem drivebase  = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(),
     "swerve/falcon"));
     private final VisionSubsystem vision;
+    private final GamePieceVisionSystem gamePieceVision;
 
     private final Hood hood;
     private final Shooter shooter;
@@ -109,6 +111,7 @@ public class RobotContainer {
       }
 
       vision = new VisionSubsystem(limelights);
+      gamePieceVision = new GamePieceVisionSystem(LimelightConstants.GAMEPIECE_LIMELIGHT_NAME);
 
       SuperstructureCommand superstructureCommand = new SuperstructureCommand(
         hood,
@@ -231,5 +234,9 @@ public class RobotContainer {
 
     public AutoModeChooser getAutoChooser() {
       return autoChooser;
+    }
+
+    public GamePieceVisionSystem getGamePieceVision() {
+      return gamePieceVision;
     }
 }

@@ -103,6 +103,8 @@ public final class Constants {
       "limelight-br", "limelight-cl","limelight-cr","limelight-back"
     }; // one limelight for now
 
+    public static final String GAMEPIECE_LIMELIGHT_NAME = "limelight-cl";
+
     
     public static Pose3d getLimelightPose(String name){
       Pose3d limelightPose;
@@ -151,6 +153,20 @@ public final class Constants {
     public static final double kStdvXYFloor = 0.30;
     public static final double kStdvThetaBase = 9999.0; // disables rotation updates. trust the gyro!
     public static final double JUMP_TOLERANCE = 2.0;
+  }
+
+  public static final class VisionConstants {
+    // Single-camera perspective distance model: d = (realHeight * focalLengthPx) / pixelHeight
+    public static final double CAMERA_FOCAL_LENGTH_PX = 700.0;
+    public static final double GAME_PIECE_REAL_HEIGHT_M = 0.165;
+
+    public static final double TARGET_WEIGHT_CENTER = 1.0;
+    public static final double TARGET_WEIGHT_DISTANCE = 0.35;
+
+    public static final double LOCK_MAX_ANGULAR_DELTA_DEG = 6.0;
+    public static final double LOCK_HOLD_SECONDS = 0.30;
+
+    public static final double MIN_USABLE_DISTANCE_M = 0.05;
   }
 
   public static final class HoodConstants{
