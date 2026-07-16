@@ -18,6 +18,7 @@ public class GamePieceVisionSystem extends SubsystemBase {
 
   private VisionTarget selectedTarget = null;
   private double selectedTimestampSec = 0.0;
+  private double filteredDistanceMeters = Double.NaN;
 
   public GamePieceVisionSystem(String limelightName) {
     this.limelightName = limelightName;
@@ -29,6 +30,13 @@ public class GamePieceVisionSystem extends SubsystemBase {
 
     VisionTarget best = selectBestTarget(detections);
     selectedTarget = applyTemporalLock(selectedTarget, best);
+
+    if (selectedTarget == null) {
+      filteredDistanceMeters = Double.NaN;
+    } else {
+      filteredDistanceMeters = nextFilteredDistance(selectedTarget.rawDistanceMeters);
+      selectedTarget = selectedTarget.withFilteredDistance(filteredDistanceMeters);
+    }
 
     publishTelemetry(detections.length, selectedTarget);
   }
@@ -48,7 +56,7 @@ public class GamePieceVisionSystem extends SubsystemBase {
       }
 
       double score = (VisionConstants.TARGET_WEIGHT_CENTER * Math.abs(candidate.txDeg))
-          + (VisionConstants.TARGET_WEIGHT_DISTANCE * candidate.distanceMeters);
+          + (VisionConstants.TARGET_WEIGHT_DISTANCE * candidate.rawDistanceMeters);
       if (score < bestScore) {
         bestScore = score;
         best = candidate;
@@ -89,8 +97,17 @@ public class GamePieceVisionSystem extends SubsystemBase {
   private VisionTarget fromRawDetection(RawDetection raw) {
     double bboxHeightPx = getBoundingHeightPixels(raw);
     double distanceMeters = estimateDistanceMeters(bboxHeightPx);
+    double distanceStdDevMeters = estimateDistanceStdDevMeters(distanceMeters, bboxHeightPx);
 
-    return new VisionTarget(raw.classId, raw.txnc, raw.tync, raw.ta, bboxHeightPx, distanceMeters);
+    return new VisionTarget(
+        raw.classId,
+        raw.txnc,
+        raw.tync,
+        raw.ta,
+        bboxHeightPx,
+        distanceMeters,
+        Double.NaN,
+        distanceStdDevMeters);
   }
 
   private static double getBoundingHeightPixels(RawDetection raw) {
@@ -100,10 +117,32 @@ public class GamePieceVisionSystem extends SubsystemBase {
   }
 
   private static double estimateDistanceMeters(double bboxHeightPx) {
-    if (bboxHeightPx < 1.0) {
+    if (bboxHeightPx < VisionConstants.MIN_BBOX_HEIGHT_PX) {
       return Double.POSITIVE_INFINITY;
     }
-    return (VisionConstants.GAME_PIECE_REAL_HEIGHT_M * VisionConstants.CAMERA_FOCAL_LENGTH_PX) / bboxHeightPx;
+
+    double geometricDistance =
+        (VisionConstants.GAME_PIECE_REAL_HEIGHT_M * VisionConstants.CAMERA_FOCAL_LENGTH_PX) / bboxHeightPx;
+    double calibratedDistance = geometricDistance * VisionConstants.DISTANCE_CALIBRATION_SCALE
+        + VisionConstants.DISTANCE_CALIBRATION_OFFSET_M;
+    return Math.max(calibratedDistance, 0.0);
+  }
+
+  private static double estimateDistanceStdDevMeters(double distanceMeters, double bboxHeightPx) {
+    if (!Double.isFinite(distanceMeters) || bboxHeightPx < VisionConstants.MIN_BBOX_HEIGHT_PX) {
+      return Double.POSITIVE_INFINITY;
+    }
+
+    // First-order propagation for d = k/h gives sigma_d ~= d * (sigma_h / h).
+    return Math.abs(distanceMeters) * (VisionConstants.DISTANCE_PIXEL_NOISE_PX / bboxHeightPx);
+  }
+
+  private double nextFilteredDistance(double rawDistanceMeters) {
+    if (!Double.isFinite(filteredDistanceMeters)) {
+      return rawDistanceMeters;
+    }
+    double a = VisionConstants.DISTANCE_FILTER_ALPHA;
+    return (a * rawDistanceMeters) + ((1.0 - a) * filteredDistanceMeters);
   }
 
   private void publishTelemetry(int targetCount, VisionTarget target) {
@@ -118,7 +157,9 @@ public class GamePieceVisionSystem extends SubsystemBase {
       SmartDashboard.putNumber("Vision/GamePiece/Selected/TyDeg", 0.0);
       SmartDashboard.putNumber("Vision/GamePiece/Selected/Area", 0.0);
       SmartDashboard.putNumber("Vision/GamePiece/Selected/BboxHeightPx", 0.0);
-      SmartDashboard.putNumber("Vision/GamePiece/Selected/DistanceM", 0.0);
+      SmartDashboard.putNumber("Vision/GamePiece/Selected/DistanceRawM", 0.0);
+      SmartDashboard.putNumber("Vision/GamePiece/Selected/DistanceFilteredM", 0.0);
+      SmartDashboard.putNumber("Vision/GamePiece/Selected/DistanceStdDevM", 0.0);
       return;
     }
 
@@ -127,7 +168,9 @@ public class GamePieceVisionSystem extends SubsystemBase {
     SmartDashboard.putNumber("Vision/GamePiece/Selected/TyDeg", target.tyDeg);
     SmartDashboard.putNumber("Vision/GamePiece/Selected/Area", target.area);
     SmartDashboard.putNumber("Vision/GamePiece/Selected/BboxHeightPx", target.bboxHeightPx);
-    SmartDashboard.putNumber("Vision/GamePiece/Selected/DistanceM", target.distanceMeters);
+    SmartDashboard.putNumber("Vision/GamePiece/Selected/DistanceRawM", target.rawDistanceMeters);
+    SmartDashboard.putNumber("Vision/GamePiece/Selected/DistanceFilteredM", target.filteredDistanceMeters);
+    SmartDashboard.putNumber("Vision/GamePiece/Selected/DistanceStdDevM", target.distanceStdDevMeters);
   }
 
   public static class VisionTarget {
@@ -136,21 +179,46 @@ public class GamePieceVisionSystem extends SubsystemBase {
     public final double tyDeg;
     public final double area;
     public final double bboxHeightPx;
-    public final double distanceMeters;
+    public final double rawDistanceMeters;
+    public final double filteredDistanceMeters;
+    public final double distanceStdDevMeters;
 
-    public VisionTarget(int classId, double txDeg, double tyDeg, double area, double bboxHeightPx, double distanceMeters) {
+    public VisionTarget(
+        int classId,
+        double txDeg,
+        double tyDeg,
+        double area,
+        double bboxHeightPx,
+        double rawDistanceMeters,
+        double filteredDistanceMeters,
+        double distanceStdDevMeters) {
       this.classId = classId;
       this.txDeg = txDeg;
       this.tyDeg = tyDeg;
       this.area = area;
       this.bboxHeightPx = bboxHeightPx;
-      this.distanceMeters = distanceMeters;
+      this.rawDistanceMeters = rawDistanceMeters;
+      this.filteredDistanceMeters = filteredDistanceMeters;
+      this.distanceStdDevMeters = distanceStdDevMeters;
+    }
+
+    public VisionTarget withFilteredDistance(double nextFilteredDistanceMeters) {
+      return new VisionTarget(
+          classId,
+          txDeg,
+          tyDeg,
+          area,
+          bboxHeightPx,
+          rawDistanceMeters,
+          nextFilteredDistanceMeters,
+          distanceStdDevMeters);
     }
 
     public boolean isUsable() {
-      return Double.isFinite(distanceMeters)
-          && distanceMeters > VisionConstants.MIN_USABLE_DISTANCE_M
-          && bboxHeightPx > 0.0;
+      return Double.isFinite(rawDistanceMeters)
+          && rawDistanceMeters > VisionConstants.MIN_USABLE_DISTANCE_M
+          && rawDistanceMeters < VisionConstants.MAX_USABLE_DISTANCE_M
+          && bboxHeightPx >= VisionConstants.MIN_BBOX_HEIGHT_PX;
     }
   }
 }

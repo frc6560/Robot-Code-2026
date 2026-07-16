@@ -159,6 +159,13 @@ public final class Constants {
     // Single-camera perspective distance model: d = (realHeight * focalLengthPx) / pixelHeight
     public static final double CAMERA_FOCAL_LENGTH_PX = 700.0;
     public static final double GAME_PIECE_REAL_HEIGHT_M = 0.165;
+    public static final double DISTANCE_CALIBRATION_SCALE = 1.0;
+    public static final double DISTANCE_CALIBRATION_OFFSET_M = 0.0;
+
+    public static final double MIN_BBOX_HEIGHT_PX = 6.0;
+    public static final double MAX_USABLE_DISTANCE_M = 6.0;
+    public static final double DISTANCE_FILTER_ALPHA = 0.35;
+    public static final double DISTANCE_PIXEL_NOISE_PX = 2.0;
 
     public static final double TARGET_WEIGHT_CENTER = 1.0;
     public static final double TARGET_WEIGHT_DISTANCE = 0.35;
