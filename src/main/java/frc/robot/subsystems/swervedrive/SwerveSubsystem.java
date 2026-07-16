@@ -61,9 +61,9 @@ public class SwerveSubsystem extends SubsystemBase {
                                                                             DrivebaseConstants.kA);
 
 
-  PIDController m_pidControllerTheta = new PIDController(DrivebaseConstants.kP_rotation,
-                                                          DrivebaseConstants.kI_rotation,
-                                                          DrivebaseConstants.kD_rotation); // tune values
+  PIDController m_pidControllerTheta = new PIDController(DrivebaseConstants.ALIGN_ROTATION_KP,
+                                                          DrivebaseConstants.ALIGN_ROTATION_KI,
+                                                          DrivebaseConstants.ALIGN_ROTATION_KD);
 
   /**
    * Initialize {@link SwerveDrive} with the directory provided.

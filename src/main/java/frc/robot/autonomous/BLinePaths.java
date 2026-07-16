@@ -1,6 +1,7 @@
 package frc.robot.autonomous;
 
 import edu.wpi.first.math.geometry.Rotation2d;
+import frc.robot.Constants.BLineConstants;
 import frc.robot.lib.BLine.Path;
 import frc.robot.lib.BLine.Path.EventTrigger;
 import frc.robot.lib.BLine.Path.PathConstraints;
@@ -19,10 +20,11 @@ public final class BLinePaths {
         return new PathConstraints()
             .setMaxVelocityMetersPerSec(maxVelocity)
             .setMaxAccelerationMetersPerSec2(maxAcceleration)
-            .setMaxVelocityDegPerSec(540.0)
-            .setMaxAccelerationDegPerSec2(1_080.0)
-            .setEndTranslationToleranceMeters(0.10)
-            .setEndRotationToleranceDeg(3.0);
+            .setMaxVelocityDegPerSec(BLineConstants.GLOBAL_MAX_ANGULAR_VELOCITY_DEG_PER_SEC)
+            .setMaxAccelerationDegPerSec2(
+                BLineConstants.GLOBAL_MAX_ANGULAR_ACCELERATION_DEG_PER_SEC2)
+            .setEndTranslationToleranceMeters(BLineConstants.END_TRANSLATION_TOLERANCE_METERS)
+            .setEndRotationToleranceDeg(BLineConstants.END_ROTATION_TOLERANCE_DEGREES);
     }
 
     public static Path hpTrenchToCenter() {

@@ -6,6 +6,7 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import frc.robot.lib.BLine.BLineCommands;
 import frc.robot.lib.BLine.FollowPath;
 import frc.robot.lib.BLine.Path;
+import frc.robot.Constants.BLineConstants;
 import frc.robot.subsystems.feeder.Feeder;
 import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.shooter.Shooter;
@@ -29,7 +30,13 @@ public class AutoCommands {
         this.shooter = shooter;
 
         Path.setDefaultGlobalConstraints(new Path.DefaultGlobalConstraints(
-            4.5, 3.0, 540.0, 1_080.0, 0.10, 3.0, 0.25));
+            BLineConstants.GLOBAL_MAX_VELOCITY_MPS,
+            BLineConstants.GLOBAL_MAX_ACCELERATION_MPS2,
+            BLineConstants.GLOBAL_MAX_ANGULAR_VELOCITY_DEG_PER_SEC,
+            BLineConstants.GLOBAL_MAX_ANGULAR_ACCELERATION_DEG_PER_SEC2,
+            BLineConstants.END_TRANSLATION_TOLERANCE_METERS,
+            BLineConstants.END_ROTATION_TOLERANCE_DEGREES,
+            BLineConstants.INTERMEDIATE_HANDOFF_RADIUS_METERS));
 
         pathBuilder = createPathBuilder();
         firstPathBuilder = createPathBuilder().withPoseReset(drivetrain::resetOdometry);
@@ -44,10 +51,21 @@ public class AutoCommands {
             drivetrain::getPose,
             drivetrain::getRobotVelocity,
             drivetrain::setChassisSpeeds,
-            new PIDController(5.0, 0.0, 0.0),
-            new PIDController(3.0, 0.0, 0.0),
-            new PIDController(2.0, 0.0, 0.0))
-            .withDefaultShouldFlip();
+            new PIDController(
+                BLineConstants.TRANSLATION_KP,
+                BLineConstants.TRANSLATION_KI,
+                BLineConstants.TRANSLATION_KD),
+            new PIDController(
+                BLineConstants.ROTATION_KP,
+                BLineConstants.ROTATION_KI,
+                BLineConstants.ROTATION_KD),
+            new PIDController(
+                BLineConstants.CROSS_TRACK_KP,
+                BLineConstants.CROSS_TRACK_KI,
+                BLineConstants.CROSS_TRACK_KD))
+            .withDefaultShouldFlip()
+            .withTRatioBasedTranslationHandoffs(
+                BLineConstants.USE_T_RATIO_BASED_TRANSLATION_HANDOFFS);
     }
 
     public Command getNoAuto() {
