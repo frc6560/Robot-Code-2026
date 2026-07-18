@@ -156,6 +156,10 @@ public final class Constants {
   }
 
   public static final class VisionConstants {
+    // If false, distance is not estimated/used by the game-piece vision pipeline.
+    public static final boolean ENABLE_DISTANCE_ESTIMATION = false;
+    public static final boolean USE_DISTANCE_IN_TARGET_SCORE = false;
+
     // Single-camera perspective distance model: d = (realHeight * focalLengthPx) / pixelHeight
     public static final double CAMERA_FOCAL_LENGTH_PX = 700.0;
     public static final double GAME_PIECE_REAL_HEIGHT_M = 0.165;
@@ -169,6 +173,36 @@ public final class Constants {
 
     public static final double TARGET_WEIGHT_CENTER = 1.0;
     public static final double TARGET_WEIGHT_DISTANCE = 0.35;
+
+    // Intake reference and left-right camera offset compensation for heading-only mode.
+    public static final double INTAKE_CENTER_LEFT_OFFSET_M = 0.0;
+    public static final double HEADING_REFERENCE_DISTANCE_M = 1.2;
+    public static final double MANUAL_TX_OFFSET_DEG = 0.0;
+    public static final double HEADING_ERROR_DEADBAND_DEG = 0.8;
+    public static final double MAX_HEADING_ERROR_DEG = 60.0;
+
+    // Shared-control heading assist (rotation only, additive to driver omega).
+    public static final boolean ENABLE_HEADING_ASSIST = true;
+    public static final boolean REQUIRE_ASSIST_HOLD = true;
+    public static final double HEADING_ASSIST_KP = 2.4;
+    public static final double HEADING_ASSIST_SIGN = 1.0;
+    public static final double HEADING_ASSIST_MAX_OMEGA_RAD_PER_SEC = Units.degreesToRadians(120.0);
+    public static final double HEADING_ASSIST_MAX_FINAL_OMEGA_RAD_PER_SEC = Units.degreesToRadians(240.0);
+
+    // Dynamic alpha scaling based on heading error magnitude.
+    public static final double ASSIST_ALPHA_MAX = 0.85;
+    public static final double ASSIST_ALPHA_START_ERROR_DEG = 1.5;
+    public static final double ASSIST_ALPHA_FULL_ERROR_DEG = 12.0;
+
+    // Driver override: if driver is rotating strongly, assist fades out.
+    public static final double DRIVER_OVERRIDE_START_OMEGA_RAD_PER_SEC = Units.degreesToRadians(35.0);
+    public static final double DRIVER_OVERRIDE_FULL_OMEGA_RAD_PER_SEC = Units.degreesToRadians(95.0);
+    public static final double DRIVER_OVERRIDE_DISABLE_SCALE = 0.05;
+
+    // Assist state management.
+    public static final double ASSIST_TARGET_MAX_AGE_SEC = 0.18;
+    public static final double ASSIST_DISABLE_COOLDOWN_SEC = 0.20;
+    public static final double ASSIST_MIN_ACTIVE_ALPHA = 0.03;
 
     public static final double LOCK_MAX_ANGULAR_DELTA_DEG = 6.0;
     public static final double LOCK_HOLD_SECONDS = 0.30;

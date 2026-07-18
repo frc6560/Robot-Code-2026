@@ -13,8 +13,10 @@ import java.util.List;
 import java.util.Set;
 
 import swervelib.SwerveInputStream;
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.wpilibj.Timer;
 import frc.robot.Constants.LimelightConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.autonomous.AutoModeChooser;
@@ -72,6 +74,8 @@ public class RobotContainer {
 
     private final AutoCommands factory;
     private final AutoModeChooser autoChooser;
+
+    private double assistSuppressedUntilSec = 0.0;
 
     SwerveInputStream driveAngularVelocity = SwerveInputStream.of(drivebase.getSwerveDrive(),
       () -> driverXbox.getLeftY() * -1,
@@ -143,23 +147,131 @@ public class RobotContainer {
     }
 
     private ChassisSpeeds clampSpeedsForShooting(ChassisSpeeds speeds) {
-        if (!isShotCommandActive()) {
-            return speeds;
-        }
+      ChassisSpeeds processed = speeds;
 
+      if (isShotCommandActive()) {
         double maxVelocity = isInPassingZone() ? MAX_PASSING_VELOCITY_MPS : MAX_SHOOTING_VELOCITY_MPS;
 
-        double vx = speeds.vxMetersPerSecond;
-        double vy = speeds.vyMetersPerSecond;
+        double vx = processed.vxMetersPerSecond;
+        double vy = processed.vyMetersPerSecond;
         double translationSpeed = Math.hypot(vx, vy);
 
         if (translationSpeed > maxVelocity) {
-            double scale = maxVelocity / translationSpeed;
-            vx *= scale;
-            vy *= scale;
+          double scale = maxVelocity / translationSpeed;
+          vx *= scale;
+          vy *= scale;
         }
 
-        return new ChassisSpeeds(vx, vy, speeds.omegaRadiansPerSecond);
+        processed = new ChassisSpeeds(vx, vy, processed.omegaRadiansPerSecond);
+      }
+
+      return applyHeadingAssist(processed);
+    }
+
+    private ChassisSpeeds applyHeadingAssist(ChassisSpeeds speeds) {
+      double now = Timer.getFPGATimestamp();
+
+      if (!Constants.VisionConstants.ENABLE_HEADING_ASSIST) {
+        publishAssistTelemetry(0.0, 0.0, 0.0, false, "disabled", 0.0, false);
+        return speeds;
+      }
+
+      boolean assistHeld = !Constants.VisionConstants.REQUIRE_ASSIST_HOLD || driverXbox.leftBumper().getAsBoolean();
+      boolean freshTarget = gamePieceVision.hasFreshTarget(Constants.VisionConstants.ASSIST_TARGET_MAX_AGE_SEC);
+
+      if (!assistHeld) {
+        publishAssistTelemetry(0.0, 0.0, 0.0, false, "hold", 0.0, freshTarget);
+        return speeds;
+      }
+
+      if (!freshTarget) {
+        assistSuppressedUntilSec = now + Constants.VisionConstants.ASSIST_DISABLE_COOLDOWN_SEC;
+        publishAssistTelemetry(0.0, 0.0, 0.0, false, "target", Math.max(0.0, assistSuppressedUntilSec - now), false);
+        return speeds;
+      }
+
+      if (now < assistSuppressedUntilSec) {
+        publishAssistTelemetry(0.0, 0.0, 0.0, false, "cooldown", Math.max(0.0, assistSuppressedUntilSec - now), true);
+        return speeds;
+      }
+
+      double headingErrorDeg = gamePieceVision.getHeadingErrorDeg();
+      double headingErrorRad = gamePieceVision.getHeadingErrorRad();
+
+      double assistAlpha = computeAssistAlpha(Math.abs(headingErrorDeg));
+      double driverScale = computeDriverOverrideScale(Math.abs(speeds.omegaRadiansPerSecond));
+      assistAlpha *= driverScale;
+
+      if (driverScale <= Constants.VisionConstants.DRIVER_OVERRIDE_DISABLE_SCALE) {
+        assistSuppressedUntilSec = now + Constants.VisionConstants.ASSIST_DISABLE_COOLDOWN_SEC;
+        publishAssistTelemetry(0.0, 0.0, headingErrorDeg, false, "override", Math.max(0.0, assistSuppressedUntilSec - now), true);
+        return speeds;
+      }
+
+      if (assistAlpha < Constants.VisionConstants.ASSIST_MIN_ACTIVE_ALPHA) {
+        publishAssistTelemetry(assistAlpha, 0.0, headingErrorDeg, false, "alpha", 0.0, true);
+        return speeds;
+      }
+
+      double omegaAssist = Constants.VisionConstants.HEADING_ASSIST_SIGN
+        * Constants.VisionConstants.HEADING_ASSIST_KP
+        * headingErrorRad
+        * assistAlpha;
+      omegaAssist = MathUtil.clamp(
+        omegaAssist,
+        -Constants.VisionConstants.HEADING_ASSIST_MAX_OMEGA_RAD_PER_SEC,
+        Constants.VisionConstants.HEADING_ASSIST_MAX_OMEGA_RAD_PER_SEC);
+
+      double omegaFinal = MathUtil.clamp(
+        speeds.omegaRadiansPerSecond + omegaAssist,
+        -Constants.VisionConstants.HEADING_ASSIST_MAX_FINAL_OMEGA_RAD_PER_SEC,
+        Constants.VisionConstants.HEADING_ASSIST_MAX_FINAL_OMEGA_RAD_PER_SEC);
+
+      publishAssistTelemetry(assistAlpha, omegaAssist, headingErrorDeg, true, "active", 0.0, true);
+      return new ChassisSpeeds(speeds.vxMetersPerSecond, speeds.vyMetersPerSecond, omegaFinal);
+    }
+
+    private static double computeAssistAlpha(double absHeadingErrorDeg) {
+      double start = Constants.VisionConstants.ASSIST_ALPHA_START_ERROR_DEG;
+      double full = Constants.VisionConstants.ASSIST_ALPHA_FULL_ERROR_DEG;
+      if (full <= start) {
+        return 0.0;
+      }
+      double ramp = (absHeadingErrorDeg - start) / (full - start);
+      return MathUtil.clamp(ramp, 0.0, 1.0) * Constants.VisionConstants.ASSIST_ALPHA_MAX;
+    }
+
+    private static double computeDriverOverrideScale(double absDriverOmega) {
+      double start = Constants.VisionConstants.DRIVER_OVERRIDE_START_OMEGA_RAD_PER_SEC;
+      double full = Constants.VisionConstants.DRIVER_OVERRIDE_FULL_OMEGA_RAD_PER_SEC;
+      if (full <= start) {
+        return 1.0;
+      }
+      if (absDriverOmega <= start) {
+        return 1.0;
+      }
+      if (absDriverOmega >= full) {
+        return 0.0;
+      }
+      double t = (absDriverOmega - start) / (full - start);
+      return 1.0 - MathUtil.clamp(t, 0.0, 1.0);
+    }
+
+    private void publishAssistTelemetry(
+      double alpha,
+      double omegaAssist,
+      double headingErrorDeg,
+      boolean active,
+      String state,
+      double cooldownRemainingSec,
+      boolean freshTarget) {
+      SmartDashboard.putBoolean("Vision/GamePiece/Assist/Active", active);
+      SmartDashboard.putString("Vision/GamePiece/Assist/State", state);
+      SmartDashboard.putNumber("Vision/GamePiece/Assist/Alpha", alpha);
+      SmartDashboard.putNumber("Vision/GamePiece/Assist/OmegaAssistRadPerSec", omegaAssist);
+      SmartDashboard.putNumber("Vision/GamePiece/Assist/HeadingErrorDeg", headingErrorDeg);
+      SmartDashboard.putNumber("Vision/GamePiece/Assist/CooldownRemainingSec", cooldownRemainingSec);
+      SmartDashboard.putBoolean("Vision/GamePiece/Assist/FreshTarget", freshTarget);
     }
 
     private void configureBindings() {
