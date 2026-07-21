@@ -116,7 +116,7 @@ public final class Constants {
      * heading faster but can overshoot or shake near the target; decreasing it produces slower,
      * smoother rotation and may leave heading behind during fast translation.
      */
-    public static final double ROTATION_KP = 3.0;
+    public static final double ROTATION_KP = 1.2;
 
     /**
      * Integral holonomic-rotation gain, in (radians/second) per radian-second of accumulated heading
@@ -130,7 +130,7 @@ public final class Constants {
      * change. Increasing it damps rotation and can suppress overshoot, while too much causes noisy or
      * hesitant turning; decreasing it makes rotation sharper but less damped.
      */
-    public static final double ROTATION_KD = 0.0;
+    public static final double ROTATION_KD = 0.3;
 
     /**
      * Proportional gain for cross-track correction, in (meters/second) per meter of perpendicular
