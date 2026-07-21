@@ -3,6 +3,7 @@ package frc.robot.autonomous;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
+import org.littletonrobotics.junction.Logger;
 import frc.robot.lib.BLine.BLineCommands;
 import frc.robot.lib.BLine.FollowPath;
 import frc.robot.lib.BLine.Path;
@@ -29,6 +30,8 @@ public class AutoCommands {
         this.intake = intake;
         this.shooter = shooter;
 
+        configureBLineLogging();
+
         Path.setDefaultGlobalConstraints(new Path.DefaultGlobalConstraints(
             BLineConstants.GLOBAL_MAX_VELOCITY_MPS,
             BLineConstants.GLOBAL_MAX_ACCELERATION_MPS2,
@@ -43,6 +46,22 @@ public class AutoCommands {
 
         FollowPath.registerEventTrigger("intake", intake());
         FollowPath.registerEventTrigger("retract", retract());
+    }
+
+    /**
+     * Connects BLine's built-in telemetry hooks to AdvantageKit. FollowPath calculates and publishes
+     * these values inside its execute() method while a trajectory is running. They appear beneath
+     * BLine/FollowPath in AdvantageScope and in the WPILOG written by Robot.
+     */
+    private static void configureBLineLogging() {
+        FollowPath.setDoubleLoggingConsumer(
+            value -> Logger.recordOutput("BLine/" + value.getFirst(), value.getSecond()));
+        FollowPath.setBooleanLoggingConsumer(
+            value -> Logger.recordOutput("BLine/" + value.getFirst(), value.getSecond()));
+        FollowPath.setPoseLoggingConsumer(
+            value -> Logger.recordOutput("BLine/" + value.getFirst(), value.getSecond()));
+        FollowPath.setTranslationListLoggingConsumer(
+            value -> Logger.recordOutput("BLine/" + value.getFirst(), value.getSecond()));
     }
 
     private FollowPath.Builder createPathBuilder() {
