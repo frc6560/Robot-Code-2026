@@ -14,6 +14,7 @@ import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
+import edu.wpi.first.math.filter.LinearFilter;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -21,6 +22,7 @@ import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StructPublisher;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
@@ -84,6 +86,19 @@ public class Autoalign extends SequentialCommandGroup {
     // Last consumed vision timestamp per camera, so a frame is never ingested twice.
     private final double[] lastVisionTimestamps = new double[kCameras.length];
 
+    // The drivetrain reports velocity but not acceleration, so it is differentiated here.
+    // Differentiated encoder velocity is noisy; a 5-sample (100ms) average makes it readable.
+    private final LinearFilter accelXFilter = LinearFilter.movingAverage(5);
+    private final LinearFilter accelYFilter = LinearFilter.movingAverage(5);
+    private final LinearFilter accelTangentialFilter = LinearFilter.movingAverage(5);
+    private final LinearFilter rotAccelFilter = LinearFilter.movingAverage(5);
+    private double lastVx;
+    private double lastVy;
+    private double lastSpeed;
+    private double lastOmega;
+    private double lastAccelTime;
+    private boolean accelPrimed;
+
     /** @param tagId the single tag the pose estimate is anchored to
      *  @param targetPose field-coordinate pose to drive to */
     public Autoalign(SwerveSubsystem drivetrain, int tagId, Pose2d targetPose) {
@@ -134,6 +149,11 @@ public class Autoalign extends SequentialCommandGroup {
             sd.kinematics, sd.getYaw(), sd.getModulePositions(), drivetrain.getPose());
         seeded = false;
         java.util.Arrays.fill(lastVisionTimestamps, 0.0);
+        accelXFilter.reset();
+        accelYFilter.reset();
+        accelTangentialFilter.reset();
+        rotAccelFilter.reset();
+        accelPrimed = false;
         rotationController.reset(drivetrain.getPose().getRotation().getRadians());
         for (String camera : kCameras) {
             // Restrict MegaTag2 to the anchor tag; restored in finallyDo.
@@ -313,11 +333,38 @@ public class Autoalign extends SequentialCommandGroup {
             SmartDashboard.putNumber("Autoalign/RotSetpointDeg",
                 Math.toDegrees(rotationController.getSetpoint().position));
 
+            // Commanded speed magnitude (what Autopilot's profile is asking for)
+            SmartDashboard.putNumber("Autoalign/Output_Speed", Math.hypot(xVel, yVel));
+
             // Actual robot velocity
             ChassisSpeeds actualVel = drivetrain.getFieldVelocity();
+            double speed = Math.hypot(actualVel.vxMetersPerSecond, actualVel.vyMetersPerSecond);
             SmartDashboard.putNumber("Autoalign/Actual_X_Vel", actualVel.vxMetersPerSecond);
             SmartDashboard.putNumber("Autoalign/Actual_Y_Vel", actualVel.vyMetersPerSecond);
             SmartDashboard.putNumber("Autoalign/Actual_Rot_Vel", actualVel.omegaRadiansPerSecond);
+            SmartDashboard.putNumber("Autoalign/Actual_Speed", speed);
+
+            // Acceleration, differentiated from measured velocity. Actual_TangentialAccel is the
+            // one that matters for the landing: it goes negative while braking, and its most
+            // negative value is the deceleration the jerk constant is actually demanding.
+            double now = Timer.getFPGATimestamp();
+            double dt = now - lastAccelTime;
+            if (accelPrimed && dt > 1e-3) {
+                SmartDashboard.putNumber("Autoalign/Actual_Accel_X",
+                    accelXFilter.calculate((actualVel.vxMetersPerSecond - lastVx) / dt));
+                SmartDashboard.putNumber("Autoalign/Actual_Accel_Y",
+                    accelYFilter.calculate((actualVel.vyMetersPerSecond - lastVy) / dt));
+                SmartDashboard.putNumber("Autoalign/Actual_TangentialAccel",
+                    accelTangentialFilter.calculate((speed - lastSpeed) / dt));
+                SmartDashboard.putNumber("Autoalign/Actual_Rot_Accel",
+                    rotAccelFilter.calculate((actualVel.omegaRadiansPerSecond - lastOmega) / dt));
+            }
+            lastVx = actualVel.vxMetersPerSecond;
+            lastVy = actualVel.vyMetersPerSecond;
+            lastSpeed = speed;
+            lastOmega = actualVel.omegaRadiansPerSecond;
+            lastAccelTime = now;
+            accelPrimed = true;
 
             SmartDashboard.putBoolean("Autoalign/Seeded", seeded);
             SmartDashboard.putBoolean("Autoalign/At_Target",
