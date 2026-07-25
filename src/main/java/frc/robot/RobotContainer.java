@@ -177,7 +177,7 @@ public class RobotContainer {
           .whileTrue(autoAlign.getAlignHeadOnToTag(21, edu.wpi.first.math.util.Units.feetToMeters(2.0)));
         driverXbox.b()
           .whileTrue(new Autoalign(drivebase, 26,
-              new Pose2d(3.5219, 4.0346, Rotation2d.fromDegrees(180)))); // 0.5m off tag 26 (blue hex west face), backs in on single-tag pose (hold B; release = stop)
+              new Pose2d(3.5219, 4.0346, Rotation2d.fromDegrees(0)))); // 0.5m off tag 26 (blue hex west face), intake-first on single-tag pose (hold B; release = stop)
 
         // --- SHOTS ---
         

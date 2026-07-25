@@ -39,15 +39,16 @@ import static edu.wpi.first.units.Units.MetersPerSecond;
  */
 public class Autoalign extends SequentialCommandGroup {
 
+    // Matches the tuned values in AutoAlignCommandFactory.
     private static final APConstraints kConstraints = new APConstraints()
-        .withVelocity(0.3)
-        .withAcceleration(0.3)
-        .withJerk(1.0);
+        .withVelocity(2.0)
+        .withAcceleration(1.8)
+        .withJerk(8.0);
 
     private static final APProfile kProfile = new APProfile(kConstraints)
         .withErrorXY(Centimeters.of(2))
-        .withErrorTheta(Degrees.of(0.5))
-        .withBeelineRadius(Centimeters.of(8));
+        .withErrorTheta(Degrees.of(1.0))
+        .withBeelineRadius(Centimeters.of(30));
 
     private static final Autopilot kAutopilot = new Autopilot(kProfile);
 
@@ -84,8 +85,9 @@ public class Autoalign extends SequentialCommandGroup {
             .toPose2d();
         this.targetPose = targetPose;
 
+        // 270 deg/s stays under the 360 deg/s vision reject so tracking survives rotation.
         this.rotationController = new ProfiledPIDController(5.5, 0.0, 0.05,
-            new TrapezoidProfile.Constraints(1.5, 3.0));
+            new TrapezoidProfile.Constraints(Math.toRadians(270), Math.toRadians(360)));
         this.rotationController.enableContinuousInput(-Math.PI, Math.PI);
 
         SmartDashboard.putNumber("Autoalign/TagId", tagId);
@@ -97,11 +99,22 @@ public class Autoalign extends SequentialCommandGroup {
         m_field.getObject("tag").setPose(tagFieldPose);
         targetPosePublisher.set(targetPose);
 
+        // finallyDo wraps BOTH steps: an interrupt landing while init() is the active step must
+        // still restore the tag filters, which a finallyDo on the drive step alone would miss.
         super.addCommands(
-            Commands.runOnce(this::init),
-            getDriveToTarget()
+            Commands.runOnce(this::init)
+                .andThen(getDriveToTarget())
+                .finallyDo(this::cleanup)
         );
         super.addRequirements(drivetrain);
+    }
+
+    /** Stop the drivetrain and hand every camera back to normal multi-tag vision. Idempotent. */
+    private void cleanup() {
+        drivetrain.drive(new ChassisSpeeds());
+        for (String camera : kCameras) {
+            LimelightHelpers.SetFiducialIDFiltersOverride(camera, kAllTagIds);
+        }
     }
 
     private void init() {
@@ -136,11 +149,16 @@ public class Autoalign extends SequentialCommandGroup {
         boolean anyValid = false;
         for (String camera : kCameras) {
             PoseEstimate est = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(camera);
+            // rawFiducials is sized to tagCount but left FULL OF NULLS when the botpose array
+            // length doesn't match what LimelightHelpers expects, so the element needs its own
+            // null check before .id.
             boolean valid = est != null
                 && est.pose != null
                 && !est.pose.equals(Pose2d.kZero)
                 && est.tagCount == 1
+                && est.rawFiducials != null
                 && est.rawFiducials.length == 1
+                && est.rawFiducials[0] != null
                 && est.rawFiducials[0].id == tagId;
             if (!valid) {
                 continue;
@@ -191,10 +209,9 @@ public class Autoalign extends SequentialCommandGroup {
         SmartDashboard.putBoolean("Autoalign/TagVisible", anyValid);
     }
 
-    /** Back-in arrival: approach direction is opposite the robot's facing (intake away from target). */
+    /** Intake-first arrival: approach direction is the robot's facing. */
     private APTarget getTarget() {
-        return new APTarget(targetPose)
-            .withEntryAngle(targetPose.getRotation().plus(Rotation2d.fromDegrees(180)));
+        return new APTarget(targetPose).withEntryAngle(targetPose.getRotation());
     }
 
     public Command getDriveToTarget() {
@@ -276,11 +293,6 @@ public class Autoalign extends SequentialCommandGroup {
                 seeded && kAutopilot.atTarget(currentPose, target));
         }, drivetrain).until(() ->
             seeded && kAutopilot.atTarget(estimator.getEstimatedPosition(), getTarget())
-        ).finallyDo(() -> {
-            drivetrain.drive(new ChassisSpeeds());
-            for (String camera : kCameras) {
-                LimelightHelpers.SetFiducialIDFiltersOverride(camera, kAllTagIds);
-            }
-        });
+        ).finallyDo(() -> drivetrain.drive(new ChassisSpeeds()));
     }
 }
