@@ -21,7 +21,6 @@ import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StructPublisher;
-import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
@@ -39,11 +38,13 @@ import static edu.wpi.first.units.Units.MetersPerSecond;
  */
 public class Autoalign extends SequentialCommandGroup {
 
-    // Matches the tuned values in AutoAlignCommandFactory.
+    // Jerk sets the landing brake: peak decel = (2/3)*sqrt(4.5*jerk*velocity). 4.0 here keeps that
+    // at ~5.7 m/s^2, the same braking already proven at velocity 2.0 / jerk 8.0. Braking starts
+    // ~1.9m out.
     private static final APConstraints kConstraints = new APConstraints()
-        .withVelocity(2.0)
-        .withAcceleration(1.8)
-        .withJerk(8.0);
+        .withVelocity(4.0)
+        .withAcceleration(3.0)
+        .withJerk(4.0);
 
     private static final APProfile kProfile = new APProfile(kConstraints)
         .withErrorXY(Centimeters.of(2))
@@ -58,6 +59,13 @@ public class Autoalign extends SequentialCommandGroup {
     private static final int[] kAllTagIds =
         kFieldLayout.getTags().stream().mapToInt(t -> t.ID).toArray();
     private static final double kMaxSpinRadPerSec = Math.toRadians(360);
+    // Deliberately looser than LimelightConstants.kStdvXYFloor: close to the tag that floor gives a
+    // ~1.5cm stddev, so vision overrides odometry every frame and the pose follows camera noise.
+    private static final double kVisionStdvFloor = 1.0;
+    // Below these the swerve modules hunt instead of holding still. Autopilot still commands
+    // ~0.24 m/s at 2cm out, so this only engages once the robot is effectively parked.
+    private static final double kMinTranslationMps = 0.05;
+    private static final double kMinRotationRadPerSec = 0.03;
 
     private final int tagId;
     private final Pose2d tagFieldPose;
@@ -73,6 +81,8 @@ public class Autoalign extends SequentialCommandGroup {
 
     private SwerveDrivePoseEstimator estimator;
     private boolean seeded;
+    // Last consumed vision timestamp per camera, so a frame is never ingested twice.
+    private final double[] lastVisionTimestamps = new double[kCameras.length];
 
     /** @param tagId the single tag the pose estimate is anchored to
      *  @param targetPose field-coordinate pose to drive to */
@@ -85,8 +95,9 @@ public class Autoalign extends SequentialCommandGroup {
             .toPose2d();
         this.targetPose = targetPose;
 
-        // 270 deg/s stays under the 360 deg/s vision reject so tracking survives rotation.
-        this.rotationController = new ProfiledPIDController(5.5, 0.0, 0.05,
+        // No kD: it differentiates pose noise straight into the rotation command. 270 deg/s stays
+        // under the 360 deg/s vision reject so tracking survives rotation.
+        this.rotationController = new ProfiledPIDController(4.0, 0.0, 0.0,
             new TrapezoidProfile.Constraints(Math.toRadians(270), Math.toRadians(360)));
         this.rotationController.enableContinuousInput(-Math.PI, Math.PI);
 
@@ -122,6 +133,7 @@ public class Autoalign extends SequentialCommandGroup {
         estimator = new SwerveDrivePoseEstimator(
             sd.kinematics, sd.getYaw(), sd.getModulePositions(), drivetrain.getPose());
         seeded = false;
+        java.util.Arrays.fill(lastVisionTimestamps, 0.0);
         rotationController.reset(drivetrain.getPose().getRotation().getRadians());
         for (String camera : kCameras) {
             // Restrict MegaTag2 to the anchor tag; restored in finallyDo.
@@ -147,7 +159,8 @@ public class Autoalign extends SequentialCommandGroup {
         estimator.update(sd.getYaw(), sd.getModulePositions());
 
         boolean anyValid = false;
-        for (String camera : kCameras) {
+        for (int i = 0; i < kCameras.length; i++) {
+            String camera = kCameras[i];
             PoseEstimate est = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(camera);
             // rawFiducials is sized to tagCount but left FULL OF NULLS when the botpose array
             // length doesn't match what LimelightHelpers expects, so the element needs its own
@@ -165,8 +178,14 @@ public class Autoalign extends SequentialCommandGroup {
             }
             anyValid = true;
 
+            // The cameras publish slower than the 20ms loop, so without this the same frame is fed
+            // in on consecutive ticks and the estimator over-trusts it into a twitch.
+            if (est.timestampSeconds <= lastVisionTimestamps[i]) {
+                continue;
+            }
+            lastVisionTimestamps[i] = est.timestampSeconds;
+
             Pose2d visionPose = est.pose;
-            double latency = est.latency / 1000.0;
             m_field.getObject("visionPose").setPose(visionPose);
             SmartDashboard.putNumber("Autoalign/AvgTagDist", est.avgTagDist);
             SmartDashboard.putNumber("Autoalign/Vision_X", visionPose.getX());
@@ -196,11 +215,13 @@ public class Autoalign extends SequentialCommandGroup {
                 continue;
             }
 
-            double kStdvXY = Math.max(LimelightConstants.kStdvXYFloor,
+            double kStdvXY = Math.max(kVisionStdvFloor,
                 est.avgTagDist * est.avgTagDist / est.tagCount);
+            // timestampSeconds is the NT receive time minus camera latency -- same clock as the
+            // estimator, and steadier than sampling Timer at an arbitrary point in the loop.
             estimator.addVisionMeasurement(
                 visionPose,
-                Timer.getFPGATimestamp() - latency,
+                est.timestampSeconds,
                 VecBuilder.fill(
                     kStdvXY * LimelightConstants.kStdvXYBase,
                     kStdvXY * LimelightConstants.kStdvXYBase,
@@ -236,6 +257,16 @@ public class Autoalign extends SequentialCommandGroup {
                     currentPose.getRotation().getRadians(),
                     output.targetAngle().getRadians());
                 targetAngleDeg = output.targetAngle().getDegrees();
+
+                // Deadband so the modules stop hunting once the robot is essentially parked.
+                if (Math.hypot(xVel, yVel) < kMinTranslationMps) {
+                    xVel = 0.0;
+                    yVel = 0.0;
+                }
+                if (Math.abs(rotVel) < kMinRotationRadPerSec) {
+                    rotVel = 0.0;
+                }
+
                 drivetrain.drive(
                     ChassisSpeeds.fromFieldRelativeSpeeds(xVel, yVel, rotVel, currentPose.getRotation()));
                 SmartDashboard.putString("Autoalign/Status", "Tracking tag " + tagId);
