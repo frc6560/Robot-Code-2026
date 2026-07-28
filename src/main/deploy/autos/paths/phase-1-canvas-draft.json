@@ -9,7 +9,7 @@
       },
       "rotation_target": {
         "rotation_radians": 0.00482,
-        "profiled_rotation": true
+        "profiled_rotation": false
       }
     },
     {
@@ -21,7 +21,7 @@
       },
       "rotation_target": {
         "rotation_radians": -1.54433,
-        "profiled_rotation": true
+        "profiled_rotation": false
       }
     },
     {
@@ -33,7 +33,7 @@
       },
       "rotation_target": {
         "rotation_radians": 3.09059,
-        "profiled_rotation": true
+        "profiled_rotation": false
       }
     },
     {
@@ -45,7 +45,7 @@
       },
       "rotation_target": {
         "rotation_radians": 1.55286,
-        "profiled_rotation": true
+        "profiled_rotation": false
       }
     },
     {
@@ -57,7 +57,7 @@
       },
       "rotation_target": {
         "rotation_radians": 0.00406,
-        "profiled_rotation": true
+        "profiled_rotation": false
       }
     }
   ],

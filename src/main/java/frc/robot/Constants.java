@@ -91,7 +91,7 @@ public final class Constants {
      * but increases overshoot/endpoint oscillation; decreasing it starts decelerating earlier and
      * is smoother, but can make the robot crawl toward the final target.
      */
-    public static final double TRANSLATION_KP = 0.5;
+    public static final double TRANSLATION_KP = 5;
 
     /**
      * Integral translation gain, in (meters/second) per meter-second of accumulated distance error.
@@ -108,7 +108,7 @@ public final class Constants {
      * odometry/velocity estimates and produces jerky speed commands; decreasing it makes translation
      * more responsive but leaves P alone to control braking.
      */
-    public static final double TRANSLATION_KD = 0.0;
+    public static final double TRANSLATION_KD = 0.5;
 
     /**
      * Proportional gain for holonomic rotation, in (radians/second) per radian of heading error.
@@ -116,14 +116,14 @@ public final class Constants {
      * heading faster but can overshoot or shake near the target; decreasing it produces slower,
      * smoother rotation and may leave heading behind during fast translation.
      */
-    public static final double ROTATION_KP = 1.2;
+    public static final double ROTATION_KP = 3;
 
     /**
      * Integral holonomic-rotation gain, in (radians/second) per radian-second of accumulated heading
      * error. Increasing it can correct a consistent rotational bias, but it introduces windup and
      * endpoint overshoot; leave it at zero unless the robot settles at a repeatable nonzero error.
      */
-    public static final double ROTATION_KI = 0.0;
+    public static final double ROTATION_KI = 0;
 
     /**
      * Derivative holonomic-rotation gain, in (radians/second) per (radian/second) of heading-error
@@ -138,7 +138,7 @@ public final class Constants {
      * line more aggressively, but too much causes fishtailing and unstable corners; decreasing it
      * allows wider deviation and smoother turns. Tune only after translation and rotation work.
      */
-    public static final double CROSS_TRACK_KP = 0.5;
+    public static final double CROSS_TRACK_KP = 5;
 
     /**
      * Integral cross-track gain, in (meters/second) per meter-second of accumulated lateral error.
