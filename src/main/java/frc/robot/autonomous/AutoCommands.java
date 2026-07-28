@@ -96,6 +96,11 @@ public class AutoCommands {
         return firstPathBuilder.build(new Path("phase-1-canvas-draft"));
     }
 
+    /** Runs the zigzag path exported from the BLine editor and resets odometry at its start. */
+    public Command getZigzagPath() {
+        return firstPathBuilder.build(new Path("zigzag"));
+    }
+
     public Command shoot() {
         return Commands.run(() -> {
             calculator.calculate(drivetrain.getPose(), drivetrain.getFieldVelocity());
