@@ -1,6 +1,8 @@
 package frc.robot.autonomous;
 
 import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import org.littletonrobotics.junction.Logger;
@@ -16,6 +18,8 @@ import frc.robot.utility.Shooter.ShotCalculator;
 
 /** Creates autonomous commands backed entirely by BLine. */
 public class AutoCommands {
+    private static final double BLINE_WAIT_EVENT_SECONDS = 5.0;
+
     private final SwerveSubsystem drivetrain;
     private final Feeder feeder;
     private final Intake intake;
@@ -23,6 +27,7 @@ public class AutoCommands {
     private final ShotCalculator calculator = new ShotCalculator();
     private final FollowPath.Builder pathBuilder;
     private final FollowPath.Builder firstPathBuilder;
+    private double bLinePauseUntilSeconds;
 
     public AutoCommands(SwerveSubsystem drivetrain, Feeder feeder, Intake intake, Shooter shooter) {
         this.drivetrain = drivetrain;
@@ -46,6 +51,7 @@ public class AutoCommands {
 
         FollowPath.registerEventTrigger("intake", intake());
         FollowPath.registerEventTrigger("retract", retract());
+        FollowPath.registerEventTrigger("wait", this::startBLineWait);
     }
 
     /**
@@ -69,7 +75,7 @@ public class AutoCommands {
             drivetrain,
             drivetrain::getPose,
             drivetrain::getRobotVelocity,
-            drivetrain::setChassisSpeeds,
+            this::setBLineChassisSpeeds,
             new PIDController(
                 BLineConstants.TRANSLATION_KP,
                 BLineConstants.TRANSLATION_KI,
@@ -85,6 +91,29 @@ public class AutoCommands {
             .withDefaultShouldFlip()
             .withTRatioBasedTranslationHandoffs(
                 BLineConstants.USE_T_RATIO_BASED_TRANSLATION_HANDOFFS);
+    }
+
+    /**
+     * Starts a non-blocking five-second pause when a BLine event with lib_key "wait" is reached.
+     * Using a timestamp instead of Thread.sleep() keeps the robot loop, watchdog, logging, and
+     * command scheduler running normally during the pause.
+     */
+    private void startBLineWait() {
+        bLinePauseUntilSeconds = Timer.getFPGATimestamp() + BLINE_WAIT_EVENT_SECONDS;
+    }
+
+    /**
+     * Gates only BLine's drivetrain output. While a wait event is active, the path follower keeps
+     * updating internally but the drivetrain receives zero velocity; afterward, following resumes
+     * from the robot's measured pose.
+     */
+    private void setBLineChassisSpeeds(ChassisSpeeds requestedSpeeds) {
+        boolean waiting = Timer.getFPGATimestamp() < bLinePauseUntilSeconds;
+        Logger.recordOutput("BLine/Wait/Active", waiting);
+        Logger.recordOutput(
+            "BLine/Wait/RemainingSeconds",
+            waiting ? bLinePauseUntilSeconds - Timer.getFPGATimestamp() : 0.0);
+        drivetrain.setChassisSpeeds(waiting ? new ChassisSpeeds() : requestedSpeeds);
     }
 
     public Command getNoAuto() {
