@@ -176,6 +176,15 @@ simgui.json
 # Simulation data log directory
 logs/
 
+# Local Shot Model Lab environment and caches
+tools/shot-calibrator/.venv/
+tools/shot-calibrator/.pytest_cache/
+tools/shot-calibrator/**/__pycache__/
+
+# Generated local inspection artifacts
+.DS_Store
+tmp/
+
 # Folder that has CTRE Phoenix Sim device config storage
 ctre_sim/
 
