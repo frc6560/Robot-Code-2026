@@ -1,7 +1,9 @@
 package frc.robot;
 
 import edu.wpi.first.wpilibj.Filesystem;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
@@ -21,6 +23,7 @@ import frc.robot.autonomous.AutoModeChooser;
 import frc.robot.commands.scoring.ShotCommand;
 import frc.robot.autonomous.AutoCommands;
 import frc.robot.commands.periodic.SuperstructureCommand;
+import frc.robot.commands.swervedrive.drivebase.AimAtHub;
 import frc.robot.utility.Shooter.PassCalculator;
 import frc.robot.utility.Shooter.ShotCalculator;
 
@@ -131,7 +134,8 @@ public class RobotContainer {
     private static final double MAX_PASSING_VELOCITY_MPS = 3.0;
 
     private boolean isShotCommandActive() {
-        return driverXbox.rightBumper().getAsBoolean();
+        return shotCommand != null
+            && CommandScheduler.getInstance().isScheduled(shotCommand);
     }
 
     private boolean isInPassingZone() {
@@ -161,7 +165,9 @@ public class RobotContainer {
 
     private void configureBindings() {
         Command driveFieldOrientedAnglularVelocity = drivebase.driveFieldOriented(
-            () -> clampSpeedsForShooting(driveAngularVelocity.get()));
+            () -> DriverStation.isTeleopEnabled()
+                ? clampSpeedsForShooting(driveAngularVelocity.get())
+                : new ChassisSpeeds());
         drivebase.setDefaultCommand(driveFieldOrientedAnglularVelocity);
 
         driverXbox.x()
@@ -176,8 +182,12 @@ public class RobotContainer {
         Trigger ungatedShootTrigger = new Trigger(m_Controls::getUngatedShootTrigger);
 
         shootTrigger.onTrue(Commands.runOnce(() -> {
-          shotCommand = new ShotCommand(feeder, turret, hood, shooter, shotCalculator, drivebase::getPose, led);
-          shotCommand.schedule();
+          shotCommand = new ShotCommand(
+              feeder, turret, hood, shooter, shotCalculator, drivebase::getPose, led)
+              .alongWith(new AimAtHub(
+                  drivebase,
+                  () -> clampSpeedsForShooting(driveAngularVelocity.get())));
+          CommandScheduler.getInstance().schedule(shotCommand);
         }));
         shootReleaseTrigger.onTrue(Commands.runOnce(() -> {
           if (shotCommand != null) {

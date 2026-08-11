@@ -13,6 +13,9 @@ import org.littletonrobotics.junction.wpilog.WPILOGWriter;
 
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.hal.AllianceStationID;
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.wpilibj.simulation.DriverStationSim;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import frc.robot.Constants.LimelightConstants;
@@ -33,17 +36,31 @@ public class Robot extends LoggedRobot
 
   private Timer disabledTimer;
 
+  private final boolean runHeadlessAutoDiagnostic =
+      isSimulation() && "1".equals(System.getenv("BLINE_HEADLESS_DIAGNOSTIC"));
+  private double headlessDiagnosticStartSeconds;
+  private double headlessAutoFinishedSeconds = -1.0;
+  private Pose2d headlessAutoFinishedPose;
+  private double headlessMaxPostAutoDisplacementMeters;
+  private double headlessMaxPostAutoSpeedMetersPerSecond;
+  private double headlessFinalPostAutoSpeedMetersPerSecond;
+
   public Robot()
   {
     Logger.recordMetadata("Robot", "2026 Alpha");
     if (isReal()) {
       Logger.addDataReceiver(new WPILOGWriter());
       Logger.addDataReceiver(new NT4Publisher());
-    } else {
+    } else if (Constants.currentMode == Constants.Mode.REPLAY) {
       setUseTiming(false); // Run as fast as possible
       String logPath = LogFileUtil.findReplayLog(); 
       Logger.setReplaySource(new WPILOGReader(logPath)); 
       Logger.addDataReceiver(new WPILOGWriter(LogFileUtil.addPathSuffix(logPath, "_sim"))); 
+    } else {
+      // Publish a live desktop simulation so AdvantageScope can connect over NT4.
+      // Keep normal 20 ms timing enabled so Driver Station mode changes and path motion
+      // can be watched in real time.
+      Logger.addDataReceiver(new NT4Publisher());
     }
 
     Logger.start();
@@ -186,6 +203,15 @@ public class Robot extends LoggedRobot
   @Override
   public void simulationInit()
   {
+    if (runHeadlessAutoDiagnostic) {
+      headlessDiagnosticStartSeconds = Timer.getFPGATimestamp();
+      DriverStationSim.setAllianceStationId(AllianceStationID.Blue1);
+      DriverStationSim.setDsAttached(true);
+      DriverStationSim.setAutonomous(true);
+      DriverStationSim.setEnabled(true);
+      DriverStationSim.notifyNewData();
+      System.out.println("BLINE_HEADLESS: Enabled Zigzag autonomous on Blue alliance");
+    }
   }
 
   /**
@@ -194,5 +220,61 @@ public class Robot extends LoggedRobot
   @Override
   public void simulationPeriodic()
   {
+    if (!runHeadlessAutoDiagnostic) {
+      return;
+    }
+
+    double now = Timer.getFPGATimestamp();
+    if (m_autonomousCommand != null
+        && !CommandScheduler.getInstance().isScheduled(m_autonomousCommand)) {
+      if (headlessAutoFinishedPose == null) {
+        headlessAutoFinishedPose = m_robotContainer.getDrivebase().getPose();
+        headlessAutoFinishedSeconds = now;
+        System.out.printf(
+            "BLINE_HEADLESS: Auto command finished at x=%.3f y=%.3f heading=%.1fdeg%n",
+            headlessAutoFinishedPose.getX(),
+            headlessAutoFinishedPose.getY(),
+            headlessAutoFinishedPose.getRotation().getDegrees());
+      }
+
+      Pose2d currentPose = m_robotContainer.getDrivebase().getPose();
+      double displacement =
+          currentPose.getTranslation().getDistance(headlessAutoFinishedPose.getTranslation());
+      double speed = Math.hypot(
+          m_robotContainer.getDrivebase().getRobotVelocity().vxMetersPerSecond,
+          m_robotContainer.getDrivebase().getRobotVelocity().vyMetersPerSecond);
+      headlessMaxPostAutoDisplacementMeters =
+          Math.max(headlessMaxPostAutoDisplacementMeters, displacement);
+      headlessMaxPostAutoSpeedMetersPerSecond =
+          Math.max(headlessMaxPostAutoSpeedMetersPerSecond, speed);
+      headlessFinalPostAutoSpeedMetersPerSecond = speed;
+
+      if (now - headlessAutoFinishedSeconds >= 3.0) {
+        boolean stayedStopped =
+            headlessMaxPostAutoDisplacementMeters < 0.05
+                && headlessFinalPostAutoSpeedMetersPerSecond < 0.05;
+        System.out.printf(
+            "BLINE_HEADLESS_RESULT: %s postAutoDisplacement=%.4fm "
+                + "initialCoastPeak=%.4fmps finalSpeed=%.4fmps%n",
+            stayedStopped ? "PASS" : "FAIL",
+            headlessMaxPostAutoDisplacementMeters,
+            headlessMaxPostAutoSpeedMetersPerSecond,
+            headlessFinalPostAutoSpeedMetersPerSecond);
+        stopHeadlessDiagnostic();
+      }
+    } else if (now - headlessDiagnosticStartSeconds >= 30.0) {
+      System.out.printf(
+          "BLINE_HEADLESS_RESULT: TIMEOUT pose=(%.3f, %.3f, %.1fdeg)%n",
+          m_robotContainer.getDrivebase().getPose().getX(),
+          m_robotContainer.getDrivebase().getPose().getY(),
+          m_robotContainer.getDrivebase().getPose().getRotation().getDegrees());
+      stopHeadlessDiagnostic();
+    }
+  }
+
+  private void stopHeadlessDiagnostic() {
+    DriverStationSim.setEnabled(false);
+    DriverStationSim.notifyNewData();
+    endCompetition();
   }
 }

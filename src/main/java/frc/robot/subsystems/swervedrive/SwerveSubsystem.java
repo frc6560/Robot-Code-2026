@@ -23,6 +23,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.FunctionalCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import org.littletonrobotics.junction.Logger;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Config;
 import frc.robot.Constants;
 import frc.robot.Constants.DrivebaseConstants;
@@ -119,6 +120,12 @@ public class SwerveSubsystem extends SubsystemBase {
 
   @Override
   public void periodic() {
+    // Pose2d is published as structured AdvantageKit data. In AdvantageScope, add
+    // Swerve/Pose to a 2D Field tab and BLine/FollowPath/pathTranslations as the path.
+    Logger.recordOutput("Swerve/Pose", getPose());
+    Logger.recordOutput("Swerve/RobotVelocity", getRobotVelocity());
+    Logger.recordOutput("Swerve/FieldVelocity", getFieldVelocity());
+
     // Set initial pose once based on auto selection (only while disabled)
     if (!initialPoseSet && DriverStation.isDisabled()) {
       System.out.println("Resetting pose!");
@@ -428,11 +435,6 @@ public class SwerveSubsystem extends SubsystemBase {
   {
     swerveDrive.resetOdometry(initialHolonomicPose);
     System.out.println("Resetting odometry to: " + initialHolonomicPose);
-    try {
-      throw new Exception();
-    } catch (Exception e) {
-      e.printStackTrace();
-  }
   }
 
 

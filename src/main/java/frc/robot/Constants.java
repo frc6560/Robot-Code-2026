@@ -67,6 +67,17 @@ public final class Constants {
      */
     public static final double ALIGN_ROTATION_KD = 0.2;
 
+    /** Heading controller gains used while the driver holds the aim-at-hub button. */
+    public static final double HUB_AIM_KP = 4.0;
+    public static final double HUB_AIM_KI = 0.0;
+    public static final double HUB_AIM_KD = 0.2;
+
+    /** Prevents the automatic hub alignment from demanding an excessively fast turn. */
+    public static final double HUB_AIM_MAX_ANGULAR_SPEED_RAD_PER_SEC = 6.0;
+
+    /** Stops small heading corrections once the chassis is pointed at the hub. */
+    public static final double HUB_AIM_TOLERANCE_RADIANS = Units.degreesToRadians(1.5);
+
     // Pure pursuit tuning (meters, meters per second)
     public static final double kPurePursuitMinLookahead = 0.3;
     public static final double kPurePursuitMaxLookahead = 1.5;

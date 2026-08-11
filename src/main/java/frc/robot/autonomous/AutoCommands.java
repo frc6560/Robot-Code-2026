@@ -52,6 +52,7 @@ public class AutoCommands {
         FollowPath.registerEventTrigger("intake", intake());
         FollowPath.registerEventTrigger("retract", retract());
         FollowPath.registerEventTrigger("wait", this::startBLineWait);
+        FollowPath.registerEventTrigger("Wait", this::startBLineWait);
     }
 
     /**
