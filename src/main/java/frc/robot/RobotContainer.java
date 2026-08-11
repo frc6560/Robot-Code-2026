@@ -177,11 +177,11 @@ public class RobotContainer {
 
         // --- SHOTS ---
         
-        Trigger shootTrigger = new Trigger(m_Controls::getShootTrigger);
-        Trigger shootReleaseTrigger = new Trigger(m_Controls::getShootReleaseTrigger);
         Trigger ungatedShootTrigger = new Trigger(m_Controls::getUngatedShootTrigger);
 
-        shootTrigger.onTrue(Commands.runOnce(() -> {
+        // Hold driver B in teleop to run the gated shot and align the chassis to the hub.
+        Trigger driverShootTrigger = driverXbox.b().and(DriverStation::isTeleopEnabled);
+        driverShootTrigger.onTrue(Commands.runOnce(() -> {
           shotCommand = new ShotCommand(
               feeder, turret, hood, shooter, shotCalculator, drivebase::getPose, led)
               .alongWith(new AimAtHub(
@@ -189,7 +189,7 @@ public class RobotContainer {
                   () -> clampSpeedsForShooting(driveAngularVelocity.get())));
           CommandScheduler.getInstance().schedule(shotCommand);
         }));
-        shootReleaseTrigger.onTrue(Commands.runOnce(() -> {
+        driverShootTrigger.onFalse(Commands.runOnce(() -> {
           if (shotCommand != null) {
             shotCommand.cancel();
           }
@@ -213,16 +213,6 @@ public class RobotContainer {
         intakeReleaseTrigger.onTrue(Commands.runOnce(() -> {
             intake.deactivate();
             feeder.setIntaking(false);
-        }));
-
-        // --- OUTTAKE/DEJAM ---
-        driverXbox.b().onTrue(Commands.runOnce(() -> {
-            intake.activateOuttake();
-            feeder.setOuttaking(true);
-        }));
-        driverXbox.b().onFalse(Commands.runOnce(() -> {
-            intake.deactivate();
-            feeder.setOuttaking(false);
         }));
 
         // --- RESETS ---
