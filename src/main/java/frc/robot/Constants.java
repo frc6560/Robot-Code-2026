@@ -75,8 +75,15 @@ public final class Constants {
     /** Prevents the automatic hub alignment from demanding an excessively fast turn. */
     public static final double HUB_AIM_MAX_ANGULAR_SPEED_RAD_PER_SEC = 6.0;
 
+    /** Trapezoid-profile acceleration limit for automatic hub alignment. */
+    public static final double HUB_AIM_MAX_ANGULAR_ACCELERATION_RAD_PER_SEC_SQ = 12.0;
+
     /** Stops small heading corrections once the chassis is pointed at the hub. */
     public static final double HUB_AIM_TOLERANCE_RADIANS = Units.degreesToRadians(1.5);
+
+    /** Required angular speed before hub alignment reports that it has settled. */
+    public static final double HUB_AIM_VELOCITY_TOLERANCE_RAD_PER_SEC =
+        Units.degreesToRadians(5.0);
 
     // Pure pursuit tuning (meters, meters per second)
     public static final double kPurePursuitMinLookahead = 0.3;

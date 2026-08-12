@@ -1,10 +1,11 @@
 package frc.robot.commands.swervedrive.drivebase;
 
 import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -22,24 +23,31 @@ import java.util.function.Supplier;
 public class AimAtHub extends Command {
   private final SwerveSubsystem drivebase;
   private final Supplier<ChassisSpeeds> driverSpeeds;
-  private final PIDController headingController =
-      new PIDController(
+  private final ProfiledPIDController headingController =
+      new ProfiledPIDController(
           DrivebaseConstants.HUB_AIM_KP,
           DrivebaseConstants.HUB_AIM_KI,
-          DrivebaseConstants.HUB_AIM_KD);
+          DrivebaseConstants.HUB_AIM_KD,
+          new TrapezoidProfile.Constraints(
+              DrivebaseConstants.HUB_AIM_MAX_ANGULAR_SPEED_RAD_PER_SEC,
+              DrivebaseConstants.HUB_AIM_MAX_ANGULAR_ACCELERATION_RAD_PER_SEC_SQ));
 
   public AimAtHub(SwerveSubsystem drivebase, Supplier<ChassisSpeeds> driverSpeeds) {
     this.drivebase = drivebase;
     this.driverSpeeds = driverSpeeds;
 
     headingController.enableContinuousInput(-Math.PI, Math.PI);
-    headingController.setTolerance(DrivebaseConstants.HUB_AIM_TOLERANCE_RADIANS);
+    headingController.setTolerance(
+        DrivebaseConstants.HUB_AIM_TOLERANCE_RADIANS,
+        DrivebaseConstants.HUB_AIM_VELOCITY_TOLERANCE_RAD_PER_SEC);
     addRequirements(drivebase);
   }
 
   @Override
   public void initialize() {
-    headingController.reset();
+    headingController.reset(
+        drivebase.getPose().getRotation().getRadians(),
+        drivebase.getRobotVelocity().omegaRadiansPerSecond);
     SmartDashboard.putBoolean("Hub Aim/Active", true);
   }
 
@@ -66,9 +74,10 @@ public class AimAtHub extends Command {
     double omega =
         headingController.calculate(robotPose.getRotation().getRadians(), targetHeading);
 
-    if (headingController.atSetpoint()) {
+    if (headingController.atGoal()) {
       omega = 0.0;
     }
+    // Keep a final safety bound even if PID feedback briefly exceeds the profile velocity.
     omega =
         MathUtil.clamp(
             omega,
@@ -81,8 +90,12 @@ public class AimAtHub extends Command {
     SmartDashboard.putBoolean("Hub Aim/Has Alliance", true);
     SmartDashboard.putNumber("Hub Aim/Target Heading Deg", Math.toDegrees(targetHeading));
     SmartDashboard.putNumber(
-        "Hub Aim/Heading Error Deg", Math.toDegrees(headingController.getError()));
-    SmartDashboard.putBoolean("Hub Aim/At Target", headingController.atSetpoint());
+        "Hub Aim/Heading Error Deg",
+        Math.toDegrees(MathUtil.angleModulus(targetHeading - robotPose.getRotation().getRadians())));
+    SmartDashboard.putNumber(
+        "Hub Aim/Profile Velocity Deg Per Sec",
+        Math.toDegrees(headingController.getSetpoint().velocity));
+    SmartDashboard.putBoolean("Hub Aim/At Target", headingController.atGoal());
   }
 
   @Override
