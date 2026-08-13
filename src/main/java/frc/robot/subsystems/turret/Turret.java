@@ -135,7 +135,7 @@ public class Turret extends SubsystemBase {
         return atTarget;
     }
 
-    @Override
+    //@Override
     public void periodic() {
         io.updateInputs(inputs);
         Logger.processInputs("Turret", inputs);

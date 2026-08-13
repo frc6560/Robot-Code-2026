@@ -1,12 +1,15 @@
 package frc.robot.autonomous;
 
 import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import org.littletonrobotics.junction.Logger;
 import frc.robot.lib.BLine.BLineCommands;
+import frc.robot.lib.BLine.FlippingUtil;
 import frc.robot.lib.BLine.FollowPath;
 import frc.robot.lib.BLine.Path;
 import frc.robot.Constants.BLineConstants;
@@ -19,6 +22,10 @@ import frc.robot.utility.Shooter.ShotCalculator;
 /** Creates autonomous commands backed entirely by BLine. */
 public class AutoCommands {
     private static final double BLINE_WAIT_EVENT_SECONDS = 5.0;
+    private static final Translation2d ZIGZAG_FINAL_SEGMENT_START =
+        new Translation2d(6.12575, 2.31825);
+    private static final Translation2d ZIGZAG_FINAL_WAYPOINT =
+        new Translation2d(6.13805, 3.71397);
 
     private final SwerveSubsystem drivetrain;
     private final Feeder feeder;
@@ -128,7 +135,33 @@ public class AutoCommands {
 
     /** Runs the zigzag path exported from the BLine editor and resets odometry at its start. */
     public Command getZigzagPath() {
-        return firstPathBuilder.build(new Path("zigzag"));
+        return firstPathBuilder.build(new Path("zigzag"))
+            // If momentum carries the robot through the final waypoint, finish immediately
+            // instead of allowing the endpoint PID to reverse back toward it.
+            .until(this::hasPassedZigzagFinishPlane)
+            .finallyDo(interrupted -> drivetrain.setChassisSpeeds(new ChassisSpeeds()));
+    }
+
+    private boolean hasPassedZigzagFinishPlane() {
+        Translation2d segmentStart = ZIGZAG_FINAL_SEGMENT_START;
+        Translation2d segmentEnd = ZIGZAG_FINAL_WAYPOINT;
+        if (DriverStation.getAlliance().orElse(DriverStation.Alliance.Blue)
+                == DriverStation.Alliance.Red) {
+            segmentStart = FlippingUtil.flipFieldPosition(segmentStart);
+            segmentEnd = FlippingUtil.flipFieldPosition(segmentEnd);
+        }
+
+        Translation2d finalSegment = segmentEnd.minus(segmentStart);
+        Translation2d startToRobot = drivetrain.getPose().getTranslation().minus(segmentStart);
+        double segmentLengthSquared =
+            finalSegment.getX() * finalSegment.getX() + finalSegment.getY() * finalSegment.getY();
+        double progress =
+            (startToRobot.getX() * finalSegment.getX()
+                + startToRobot.getY() * finalSegment.getY()) / segmentLengthSquared;
+        boolean passedFinishPlane = progress >= 1.0;
+        Logger.recordOutput("BLine/Zigzag/FinalSegmentProgress", progress);
+        Logger.recordOutput("BLine/Zigzag/PassedFinishPlane", passedFinishPlane);
+        return passedFinishPlane;
     }
 
     public Command shoot() {
