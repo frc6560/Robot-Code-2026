@@ -154,13 +154,23 @@ public class SwerveSubsystem extends SubsystemBase {
   public void rotateToAngle(double targetInRadians){
     m_pidControllerTheta.enableContinuousInput(-Math.PI, Math.PI);
 
-    SmartDashboard.getEntry("Yaw error").setDouble(m_pidControllerTheta.getError());
-    SmartDashboard.getEntry("Pose in radians").setDouble(getPose().getRotation().getRadians());
+    double currentHeading = getPose().getRotation().getRadians();
+    double headingError = MathUtil.angleModulus(targetInRadians - currentHeading);
+    double commandedOmega = m_pidControllerTheta.calculate(currentHeading, targetInRadians);
+
+    SmartDashboard.getEntry("Yaw error").setDouble(headingError);
+    SmartDashboard.getEntry("Pose in radians").setDouble(currentHeading);
+    Logger.recordOutput("HeadingAlign/TargetHeadingDeg", Math.toDegrees(targetInRadians));
+    Logger.recordOutput("HeadingAlign/CurrentHeadingDeg", Math.toDegrees(currentHeading));
+    Logger.recordOutput("HeadingAlign/HeadingErrorDeg", Math.toDegrees(headingError));
+    Logger.recordOutput("HeadingAlign/CommandedOmegaRadPerSec", commandedOmega);
+    Logger.recordOutput(
+        "HeadingAlign/MeasuredOmegaRadPerSec", getRobotVelocity().omegaRadiansPerSecond);
 
     ChassisSpeeds targetSpeeds = new ChassisSpeeds(
       getFieldVelocity().vxMetersPerSecond,
       getFieldVelocity().vyMetersPerSecond,
-      m_pidControllerTheta.calculate(getPose().getRotation().getRadians(), targetInRadians)
+      commandedOmega
     );
 
     swerveDrive.driveFieldOriented(targetSpeeds);

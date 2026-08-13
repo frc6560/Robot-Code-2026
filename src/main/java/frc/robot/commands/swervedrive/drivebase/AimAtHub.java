@@ -15,6 +15,7 @@ import frc.robot.Constants.FieldConstants;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import java.util.Optional;
 import java.util.function.Supplier;
+import org.littletonrobotics.junction.Logger;
 
 /**
  * Points the front of the chassis at the alliance hub while retaining driver-controlled
@@ -49,6 +50,7 @@ public class AimAtHub extends Command {
         drivebase.getPose().getRotation().getRadians(),
         drivebase.getRobotVelocity().omegaRadiansPerSecond);
     SmartDashboard.putBoolean("Hub Aim/Active", true);
+    Logger.recordOutput("HubAim/Active", true);
   }
 
   @Override
@@ -61,6 +63,8 @@ public class AimAtHub extends Command {
       drivebase.driveFieldOriented(speeds);
       SmartDashboard.putBoolean("Hub Aim/Has Alliance", false);
       SmartDashboard.putBoolean("Hub Aim/At Target", false);
+      Logger.recordOutput("HubAim/HasAlliance", false);
+      Logger.recordOutput("HubAim/AtTarget", false);
       return;
     }
 
@@ -71,6 +75,8 @@ public class AimAtHub extends Command {
             : FieldConstants.RED_HUB_CENTER;
     Translation2d robotToHub = hub.minus(robotPose.getTranslation());
     double targetHeading = Math.atan2(robotToHub.getY(), robotToHub.getX());
+    double headingError =
+        MathUtil.angleModulus(targetHeading - robotPose.getRotation().getRadians());
     double omega =
         headingController.calculate(robotPose.getRotation().getRadians(), targetHeading);
 
@@ -91,16 +97,37 @@ public class AimAtHub extends Command {
     SmartDashboard.putNumber("Hub Aim/Target Heading Deg", Math.toDegrees(targetHeading));
     SmartDashboard.putNumber(
         "Hub Aim/Heading Error Deg",
-        Math.toDegrees(MathUtil.angleModulus(targetHeading - robotPose.getRotation().getRadians())));
+        Math.toDegrees(headingError));
     SmartDashboard.putNumber(
         "Hub Aim/Profile Velocity Deg Per Sec",
         Math.toDegrees(headingController.getSetpoint().velocity));
     SmartDashboard.putBoolean("Hub Aim/At Target", headingController.atGoal());
+
+    Logger.recordOutput("HubAim/HasAlliance", true);
+    Logger.recordOutput("HubAim/AtTarget", headingController.atGoal());
+    Logger.recordOutput("HubAim/TargetHeadingDeg", Math.toDegrees(targetHeading));
+    Logger.recordOutput("HubAim/CurrentHeadingDeg", robotPose.getRotation().getDegrees());
+    Logger.recordOutput("HubAim/HeadingErrorDeg", Math.toDegrees(headingError));
+    Logger.recordOutput("HubAim/CommandedOmegaRadPerSec", omega);
+    Logger.recordOutput(
+        "HubAim/MeasuredOmegaRadPerSec", drivebase.getRobotVelocity().omegaRadiansPerSecond);
+    Logger.recordOutput(
+        "HubAim/ProfileSetpointPositionDeg",
+        Math.toDegrees(headingController.getSetpoint().position));
+    Logger.recordOutput(
+        "HubAim/ProfileSetpointVelocityDegPerSec",
+        Math.toDegrees(headingController.getSetpoint().velocity));
+    Logger.recordOutput("HubAim/DistanceToHubMeters", robotToHub.getNorm());
+    Logger.recordOutput("HubAim/CommandedFieldVxMetersPerSec", speeds.vxMetersPerSecond);
+    Logger.recordOutput("HubAim/CommandedFieldVyMetersPerSec", speeds.vyMetersPerSecond);
   }
 
   @Override
   public void end(boolean interrupted) {
     SmartDashboard.putBoolean("Hub Aim/Active", false);
     SmartDashboard.putBoolean("Hub Aim/At Target", false);
+    Logger.recordOutput("HubAim/Active", false);
+    Logger.recordOutput("HubAim/AtTarget", false);
+    Logger.recordOutput("HubAim/CommandedOmegaRadPerSec", 0.0);
   }
 }
