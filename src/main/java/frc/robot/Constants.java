@@ -225,6 +225,66 @@ public final class Constants {
     public static final int FLYWHEEL_STATOR_CURRENT_LIMIT = 50;
   }
 
+  /** Physics and scoring constraints shared by the on-robot hub shot solver. */
+  public static final class ShotModelConstants {
+    private ShotModelConstants() {}
+
+    /** Distance bounds retained from the validated hub-shot operating envelope. */
+    public static final double MIN_DISTANCE_METERS = 1.628;
+    public static final double MAX_DISTANCE_METERS = 6.050;
+
+    /** Measured game-piece and shooter geometry. */
+    public static final double BALL_MASS_KG = 0.215;
+    public static final double BALL_DIAMETER_METERS = 0.150;
+    public static final double TOP_WHEEL_DIAMETER_METERS = Units.inchesToMeters(2.5);
+    public static final double BOTTOM_WHEEL_DIAMETER_METERS = Units.inchesToMeters(4.0);
+    public static final double BOTTOM_TO_TOP_RPM_RATIO = 1.0;
+    public static final double RELEASE_HEIGHT_METERS = Units.inchesToMeters(21.0);
+
+    /** 2026 HUB upper funnel dimensions and ball-center scoring plane. */
+    public static final double HUB_OPENING_SPAN_METERS = Units.inchesToMeters(41.7);
+    public static final double HUB_RIM_HEIGHT_METERS = Units.inchesToMeters(72.0);
+    public static final double HUB_BALL_CENTER_HEIGHT_METERS =
+        HUB_RIM_HEIGHT_METERS + BALL_DIAMETER_METERS / 2.0;
+    public static final double HUB_RIM_MARGIN_METERS = Units.inchesToMeters(1.0);
+    public static final double MIN_ENTRY_ANGLE_DEGREES = 20.0;
+
+    /** Air and sphere model. */
+    public static final double AIR_DENSITY_KG_PER_CUBIC_METER = 1.225;
+    public static final double GRAVITY_METERS_PER_SECOND_SQUARED = 9.80665;
+    public static final double DRAG_COEFFICIENT = 0.47;
+    public static final double WIND_X_METERS_PER_SECOND = 0.0;
+
+    /**
+     * Empirical calibration values. Update these from the shot-calibrator fit rather than
+     * changing the numerical solver.
+     */
+    public static final double VELOCITY_TRANSFER = 0.72;
+    public static final double SPIN_TRANSFER = 0.70;
+    public static final double HOOD_OFFSET_DEGREES = 0.0;
+    public static final double DRAG_SCALE = 1.0;
+    public static final double LIFT_SLOPE = 0.75;
+    public static final double MAX_LIFT_COEFFICIENT = 0.35;
+    public static final double SPIN_DECAY_PER_SECOND = 0.10;
+
+    /** Objective weights used to break ties between equally robust scoring shots. */
+    public static final double FLIGHT_TIME_WEIGHT = 0.25;
+    public static final double ENTRY_ANGLE_WEIGHT = 0.50;
+    public static final double MECHANISM_EFFORT_WEIGHT = 0.15;
+
+    /**
+     * Quadratic runtime policy generated from 89 full robust-map solutions across the configured
+     * distance range. Coefficients are ordered as {@code a*d^2 + b*d + c}, with distance in meters.
+     * Regenerate these whenever an empirical model value above changes.
+     */
+    public static final double RPM_POLICY_DISTANCE_SQUARED = 0.7415266498361459;
+    public static final double RPM_POLICY_DISTANCE = 281.7610123639272;
+    public static final double RPM_POLICY_CONSTANT = 1471.6045658025246;
+    public static final double HOOD_POLICY_DISTANCE_SQUARED = -0.1856576706083259;
+    public static final double HOOD_POLICY_DISTANCE = 1.8256602181323835;
+    public static final double HOOD_POLICY_CONSTANT = 22.606246565585646;
+  }
+
   public static final class TurretConstants{ 
     public static final Transform3d ROBOT_RELATIVE_TURRET = new Transform3d(-0.048, 0.1143, 0, new Rotation3d()); // x --> front/back, y --> left/right
 
