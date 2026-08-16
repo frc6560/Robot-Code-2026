@@ -4,6 +4,7 @@ import base64
 import hashlib
 import os
 import tempfile
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
@@ -18,6 +19,31 @@ from shotlab.calibration import (
     model_with_candidate,
     trajectory_rmse,
 )
+from shotlab.flywheel import (
+    ALUMINUM_DENSITY_KG_M3,
+    HOLLOW_SHELL_INERTIA_FACTOR,
+    MATCH_SECONDS,
+    MOTOR_CHOICES,
+    SOLID_SPHERE_INERTIA_FACTOR,
+    STEEL_DENSITY_KG_M3,
+    Drivetrain,
+    ShotEnergy,
+    TubeFlywheel,
+    WallSweepResult,
+    WallTuning,
+    balanced_idle_rpm,
+    compare_idle_strategies,
+    drag_torque_from_coast_down,
+    firing_droop,
+    shot_schedule_candidates,
+    spin_down_time_s,
+    spin_up_time_s,
+    sweep_wall_thickness,
+    tube_shooter_model,
+    tune_wall_thickness,
+)
+from shotlab.flywheel import INCH_TO_METER as FW_INCH_TO_METER
+from shotlab.flywheel import STANDARD_WALL_INCHES as FW_STANDARD_WALL_INCHES
 from shotlab.llm import request_parameter_advice
 from shotlab.models import BallSpec, Environment, OptimizationWeights, ShotControls, ShooterModel, Target
 from shotlab.physics import (
@@ -115,7 +141,7 @@ st.markdown(
     .profile-strip div:last-child { border-right: 0; }
     .profile-strip span { display: block; color: var(--muted); font-size: .67rem; font-weight: 700; text-transform: uppercase; }
     .profile-strip strong { font-size: .93rem; }
-    .stage-rail { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin: .6rem 0 1rem; }
+    .stage-rail { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin: .6rem 0 1rem; }
     .stage-rail div { padding: .66rem .35rem; font-weight: 650; color: var(--muted); }
     .stage-rail span { color: var(--charge-blue); margin-right: .4rem; font-weight: 800; }
     .source-line { margin: -.15rem 0 .65rem; color: var(--muted); font-size: .78rem; }
@@ -1271,6 +1297,578 @@ def trajectory_figure(
     return figure
 
 
+@st.cache_data(show_spinner=False)
+def cached_wall_tuning(
+    outer_diameter_m: float,
+    length_m: float,
+    density_kg_m3: float,
+    exit_speed_ratio: float,
+    transfer_efficiency: float,
+    ball_mass_kg: float,
+    ball_diameter_m: float,
+    ball_count: int,
+    inertia_factor: float,
+    release_height_m: float,
+    drivetrain_key: tuple,
+    ceiling_rpm: float,
+    settle_band_rpm: float,
+    hopper_balls: int,
+) -> WallTuning:
+    """Run the shot calculator, then tune wall thickness against what it demands.
+
+    Cached on plain values because the band search integrates a few hundred
+    trajectories and only needs redoing when the mechanism itself changes.
+    """
+    flywheel = TubeFlywheel(outer_diameter_m, length_m, 0.125 * FW_INCH_TO_METER, density_kg_m3)
+    energy = ShotEnergy(
+        ball_mass_kg=ball_mass_kg,
+        ball_diameter_m=ball_diameter_m,
+        ball_count=ball_count,
+        inertia_factor=inertia_factor,
+        exit_speed_ratio=exit_speed_ratio,
+        transfer_efficiency=transfer_efficiency,
+    )
+    (
+        motor_name,
+        motor_count,
+        motor_teeth,
+        flywheel_teeth,
+        current_limit,
+        bus_voltage,
+        gear_efficiency,
+        drag_torque,
+        extra_inertia,
+    ) = drivetrain_key
+    drivetrain = Drivetrain(
+        motor=MOTOR_CHOICES[motor_name],
+        motor_count=motor_count,
+        motor_teeth=motor_teeth,
+        flywheel_teeth=flywheel_teeth,
+        stator_current_limit_a=current_limit,
+        bus_voltage_v=bus_voltage,
+        gear_efficiency=gear_efficiency,
+        drag_torque_at_free_speed_nm=drag_torque,
+        extra_inertia_kg_m2=extra_inertia,
+    )
+    schedules = shot_schedule_candidates(
+        tube_shooter_model(flywheel, energy, release_height_m),
+        BallSpec(mass_kg=ball_mass_kg, diameter_m=ball_diameter_m),
+        Environment(),
+        Target(distance_m=4.0, center_height_m=HUB_OPENING_PLANE_HEIGHT_M + ball_diameter_m / 2.0),
+        distances_m=np.linspace(SHOT_DISTANCE_MIN_M, SHOT_DISTANCE_MAX_M, 9),
+        hood_candidates_deg=np.arange(12.0, 45.0, 3.0),
+        rpm_bounds=(500.0, ceiling_rpm),
+    )
+    return tune_wall_thickness(
+        flywheel, drivetrain, energy, schedules, settle_band_rpm=settle_band_rpm, hopper_balls=hopper_balls
+    )
+
+
+def _inertia_axis_ticks(sweep: WallSweepResult) -> tuple[list[float], list[str]]:
+    """Tick positions and labels for the inertia axis drawn across the top.
+
+    Inertia is not linear in wall thickness, so the ticks are placed at wall
+    positions and labelled with the inertia actually reached there.
+    """
+    walls_in = sweep.wall_thickness_m / FW_INCH_TO_METER
+    positions = np.linspace(walls_in[0], walls_in[-1], 8)
+    labels = [f"{np.interp(pos, walls_in, sweep.inertia_kg_m2):.4f}" for pos in positions]
+    return list(positions), labels
+
+
+def flywheel_sizing_figure(
+    sweep: WallSweepResult,
+    *,
+    max_drop_rpm: float,
+    ball_count: int = 4,
+    chosen_wall_in: float | None = None,
+) -> go.Figure:
+    """Spin-up time against wall thickness, with the droop limit drawn as a wall."""
+    walls_in = sweep.wall_thickness_m / FW_INCH_TO_METER
+    boundary_in = (
+        sweep.minimum_feasible_wall_m / FW_INCH_TO_METER
+        if np.isfinite(sweep.minimum_feasible_wall_m)
+        else None
+    )
+    figure = go.Figure()
+
+    finite_spin_up = sweep.spin_up_s[np.isfinite(sweep.spin_up_s)]
+    ceiling = float(np.max(finite_spin_up)) * 1.18 if finite_spin_up.size else 1.0
+    plotted_spin_up = np.where(np.isfinite(sweep.spin_up_s), sweep.spin_up_s, np.nan)
+
+    if boundary_in is not None and boundary_in > walls_in[0]:
+        figure.add_shape(
+            type="rect",
+            x0=walls_in[0],
+            x1=min(boundary_in, walls_in[-1]),
+            y0=0.0,
+            y1=ceiling,
+            fillcolor="rgba(201,56,56,.085)",
+            line=dict(width=0),
+            layer="below",
+        )
+        figure.add_annotation(
+            x=(walls_in[0] + min(boundary_in, walls_in[-1])) / 2.0,
+            y=ceiling * 0.93,
+            text=f"Droop exceeds {max_drop_rpm:.0f} RPM<br>wall too thin",
+            showarrow=False,
+            font=dict(size=10, color="#A32B2B"),
+        )
+
+    customdata = np.column_stack(
+        [sweep.inertia_kg_m2, sweep.tube_mass_kg, sweep.tube_mass_kg * 2.20462, sweep.drop_rpm]
+    )
+    hover = (
+        "Wall %{x:.3f} in<br>Spin-up %{y:.3f} s<br>"
+        "Inertia %{customdata[0]:.5f} kg·m²<br>"
+        "Tube mass %{customdata[1]:.2f} kg (%{customdata[2]:.1f} lb)<br>"
+        "Volley droop %{customdata[3]:.0f} RPM<extra></extra>"
+    )
+
+    infeasible = np.where(sweep.feasible_mask, np.nan, plotted_spin_up)
+    figure.add_trace(
+        go.Scatter(
+            x=walls_in,
+            y=infeasible,
+            mode="lines",
+            name="Spin-up (droop over limit)",
+            line=dict(color="#C93838", width=2, dash="dot"),
+            customdata=customdata,
+            hovertemplate=hover,
+        )
+    )
+    feasible = np.where(sweep.feasible_mask, plotted_spin_up, np.nan)
+    figure.add_trace(
+        go.Scatter(
+            x=walls_in,
+            y=feasible,
+            mode="lines",
+            name="Spin-up, idle to shot speed",
+            line=dict(color="#1179EE", width=3),
+            customdata=customdata,
+            hovertemplate=hover,
+        )
+    )
+    figure.add_trace(
+        go.Scatter(
+            x=walls_in,
+            y=np.where(np.isfinite(sweep.recovery_s), sweep.recovery_s, np.nan),
+            mode="lines",
+            name=f"Recovery after a {ball_count}-ball volley",
+            line=dict(color="#33BECC", width=2, dash="dash"),
+            hovertemplate="Wall %{x:.3f} in<br>Recovery %{y:.3f} s<extra></extra>",
+        )
+    )
+
+    for wall in FW_STANDARD_WALL_INCHES:
+        if walls_in[0] <= wall <= walls_in[-1]:
+            figure.add_shape(
+                type="line",
+                x0=wall,
+                x1=wall,
+                y0=0.0,
+                y1=ceiling,
+                line=dict(color="rgba(91,101,112,.24)", width=1, dash="dot"),
+                layer="below",
+            )
+            # Sit the gauge labels just inside the plot so they do not collide
+            # with the axis ticks running underneath.
+            figure.add_annotation(
+                x=wall,
+                y=0.0,
+                yshift=22,
+                text=f"{wall:.3f}",
+                showarrow=False,
+                textangle=-90,
+                font=dict(size=8, color="#8A939C"),
+            )
+
+    if boundary_in is not None and walls_in[0] <= boundary_in <= walls_in[-1]:
+        spin_up_at_boundary = float(np.interp(boundary_in, walls_in, plotted_spin_up))
+        figure.add_trace(
+            go.Scatter(
+                x=[boundary_in],
+                y=[spin_up_at_boundary],
+                mode="markers",
+                name="Thinnest wall that meets the droop limit",
+                marker=dict(color="#080A0D", size=11, symbol="diamond"),
+                hovertemplate=(
+                    f"Minimum feasible wall {boundary_in:.3f} in<br>"
+                    f"Inertia {sweep.minimum_feasible_inertia_kg_m2:.5f} kg·m²<br>"
+                    f"Spin-up {spin_up_at_boundary:.3f} s<extra></extra>"
+                ),
+            )
+        )
+        figure.add_annotation(
+            x=boundary_in,
+            y=spin_up_at_boundary,
+            text=f"<b>{boundary_in:.3f} in</b> · {spin_up_at_boundary:.2f} s",
+            showarrow=True,
+            arrowhead=0,
+            arrowcolor="#080A0D",
+            ax=48,
+            ay=-38,
+            font=dict(size=11, color="#080A0D"),
+            bgcolor="rgba(255,255,255,.86)",
+        )
+
+    if chosen_wall_in is not None and walls_in[0] <= chosen_wall_in <= walls_in[-1]:
+        figure.add_trace(
+            go.Scatter(
+                x=[chosen_wall_in],
+                y=[float(np.interp(chosen_wall_in, walls_in, plotted_spin_up))],
+                mode="markers",
+                name="Your wall",
+                marker=dict(color="#00BAFF", size=13, symbol="circle-open", line=dict(width=3)),
+                hovertemplate=f"Selected wall {chosen_wall_in:.3f} in<extra></extra>",
+            )
+        )
+
+    tickvals, ticktext = _inertia_axis_ticks(sweep)
+    figure.add_trace(
+        go.Scatter(
+            x=[walls_in[0]],
+            y=[0.0],
+            xaxis="x2",
+            mode="markers",
+            marker=dict(opacity=0.0),
+            showlegend=False,
+            hoverinfo="skip",
+        )
+    )
+
+    if not sweep.shot_rpm_reachable:
+        figure.add_annotation(
+            x=0.5,
+            y=0.5,
+            xref="paper",
+            yref="paper",
+            text=(
+                f"<b>{sweep.shot_rpm:.0f} RPM is not reachable</b><br>"
+                f"this gearing tops out at {sweep.max_shot_rpm_reachable:.0f} RPM"
+            ),
+            showarrow=False,
+            font=dict(size=15, color="#C93838"),
+            bgcolor="rgba(255,255,255,.92)",
+            bordercolor="#C93838",
+            borderwidth=1,
+            borderpad=9,
+        )
+
+    figure.update_layout(
+        height=560,
+        margin=dict(l=64, r=28, t=74, b=76),
+        paper_bgcolor="#FFFFFF",
+        plot_bgcolor="#FFFFFF",
+        hovermode="x unified",
+        legend=dict(orientation="h", yanchor="bottom", y=1.14, xanchor="left", x=0),
+        xaxis=dict(
+            title="Tube wall thickness (in)",
+            range=[walls_in[0], walls_in[-1]],
+            showgrid=True,
+            gridcolor="#EDF1F4",
+            zeroline=False,
+        ),
+        xaxis2=dict(
+            title="Rotational inertia (kg·m²)",
+            overlaying="x",
+            side="top",
+            range=[walls_in[0], walls_in[-1]],
+            tickmode="array",
+            tickvals=tickvals,
+            ticktext=ticktext,
+            showgrid=False,
+            tickfont=dict(size=9, color="#5B6570"),
+            title_font=dict(size=11, color="#5B6570"),
+        ),
+        yaxis=dict(
+            title="Time (s)",
+            range=[0.0, ceiling],
+            showgrid=True,
+            gridcolor="#EDF1F4",
+            zeroline=False,
+        ),
+    )
+    return figure
+
+
+def wall_tuning_figure(tuning: WallTuning, flywheel: TubeFlywheel) -> go.Figure:
+    """The whole tuning problem on one pair of axes.
+
+    Wall thickness across, average time to reach shot speed up, and the share of
+    shots landing inside their scoring band as colour. The wall to build is the
+    leftmost point that has gone fully blue.
+    """
+    sweep = tuning.sweep
+    walls_in = sweep.wall_thickness_m / FW_INCH_TO_METER
+    hit_pct = sweep.in_range_fraction * 100.0
+    finite = np.isfinite(sweep.mean_volley_s)
+    times = np.where(finite, sweep.mean_volley_s, np.nan)
+
+    figure = go.Figure()
+    figure.add_trace(
+        go.Scatter(
+            x=walls_in,
+            y=times,
+            mode="lines",
+            line=dict(color="rgba(91,101,112,.30)", width=1),
+            hoverinfo="skip",
+            showlegend=False,
+        )
+    )
+    figure.add_trace(
+        go.Scatter(
+            x=walls_in,
+            y=times,
+            mode="markers",
+            marker=dict(
+                size=9,
+                color=hit_pct,
+                colorscale=[[0.0, "#C93838"], [0.5, "#D97706"], [0.85, "#33BECC"], [1.0, "#1179EE"]],
+                cmin=0.0,
+                cmax=100.0,
+                colorbar=dict(
+                    title=dict(text="Balls inside<br>scoring band", side="right", font=dict(size=11)),
+                    ticksuffix="%",
+                    thickness=14,
+                    len=0.86,
+                    outlinewidth=0,
+                ),
+                line=dict(width=0),
+            ),
+            customdata=np.column_stack(
+                [
+                    sweep.inertia_kg_m2,
+                    sweep.tube_mass_kg * 2.20462,
+                    hit_pct,
+                    sweep.in_range_fraction * sweep.hopper_balls,
+                    sweep.hopper_seconds,
+                ]
+            ),
+            hovertemplate=(
+                "Wall %{x:.3f} in<br>%{y:.3f} s per volley<br>"
+                "<b>%{customdata[3]:.0f} of "
+                + f"{sweep.hopper_balls}"
+                + " balls in band (%{customdata[2]:.0f}%)</b><br>"
+                "Hopper empties in %{customdata[4]:.1f} s<br>"
+                "Inertia %{customdata[0]:.5f} kg·m²<br>Tube %{customdata[1]:.1f} lb<extra></extra>"
+            ),
+            showlegend=False,
+        )
+    )
+
+    best_wall_in = tuning.best_wall_m / FW_INCH_TO_METER
+    figure.add_annotation(
+        x=best_wall_in,
+        y=tuning.best_mean_volley_s,
+        text=(
+            f"<b>build this: {best_wall_in:.3f} in</b><br>"
+            f"{tuning.balls_in_band:.0f}/{sweep.hopper_balls} balls in band · "
+            f"{tuning.best_mean_volley_s:.3f} s/volley · "
+            f"{flywheel.with_wall(tuning.best_wall_m).mass_kg * 2.20462:.1f} lb"
+        ),
+        showarrow=True,
+        arrowhead=0,
+        arrowcolor="#080A0D",
+        ax=58,
+        ay=-52,
+        align="left",
+        font=dict(size=11, color="#080A0D"),
+        bgcolor="rgba(255,255,255,.90)",
+        bordercolor="#080A0D",
+        borderwidth=1,
+        borderpad=5,
+    )
+
+    for wall in FW_STANDARD_WALL_INCHES:
+        if walls_in[0] <= wall <= walls_in[-1]:
+            figure.add_annotation(
+                x=wall,
+                y=0.0,
+                yref="paper",
+                yshift=6,
+                text=f"{wall:.3f}",
+                showarrow=False,
+                textangle=-90,
+                font=dict(size=8, color="#98A1AA"),
+            )
+
+    schedule = tuning.schedule
+    low_rpm, high_rpm = schedule.command_span_rpm
+    figure.update_layout(
+        height=520,
+        margin=dict(l=68, r=20, t=88, b=58),
+        paper_bgcolor="#FFFFFF",
+        plot_bgcolor="#FFFFFF",
+        title=dict(
+            text=(
+                f"<b>Tube wall tuning</b>   <span style='font-size:12px;color:#5B6570'>"
+                f"{sweep.hopper_balls}-ball hopper = {sweep.volleys} volleys of {sweep.hopper_balls // sweep.volleys} · "
+                f"static hood {schedule.hood_deg:.0f}° command ({90.0 - schedule.hood_deg:.0f}° launch) · "
+                f"{len(schedule.distances_m)} distances {min(schedule.distances_m):.2f}–"
+                f"{max(schedule.distances_m):.2f} m · {low_rpm:,.0f}–{high_rpm:,.0f} RPM</span>"
+            ),
+            x=0,
+            font=dict(size=15),
+        ),
+        xaxis=dict(
+            title="Tube wall thickness (in)",
+            showgrid=True,
+            gridcolor="#EDF1F4",
+            zeroline=False,
+        ),
+        yaxis=dict(
+            title="Average seconds per volley (spin-up + recovery)",
+            showgrid=True,
+            gridcolor="#EDF1F4",
+            zeroline=False,
+            rangemode="tozero",
+        ),
+    )
+    return figure
+
+
+def flywheel_idle_figure(
+    inertia_kg_m2: float,
+    drivetrain: Drivetrain,
+    *,
+    shot_rpm: float,
+    low_shot_rpm: float,
+    settle_band_rpm: float,
+    chosen_idle_rpm: float,
+) -> go.Figure:
+    """Where to park the flywheel: readiness against standing battery draw."""
+    idle_rpm = np.linspace(0.0, max(shot_rpm - settle_band_rpm, 1.0), 200)
+    target = max(0.0, shot_rpm - settle_band_rpm)
+    spin_up = np.array([spin_up_time_s(inertia_kg_m2, drivetrain, rpm, target) for rpm in idle_rpm])
+    spin_down = np.array(
+        [spin_down_time_s(inertia_kg_m2, drivetrain, rpm, low_shot_rpm + settle_band_rpm) for rpm in idle_rpm]
+    )
+    power = np.array([drivetrain.idle_draw(rpm).power_w for rpm in idle_rpm])
+
+    figure = go.Figure()
+    figure.add_trace(
+        go.Scatter(
+            x=idle_rpm,
+            y=np.where(np.isfinite(spin_up), spin_up, np.nan),
+            mode="lines",
+            name="Spin-up to the longest shot",
+            line=dict(color="#1179EE", width=3),
+            hovertemplate="Idle %{x:,.0f} RPM<br>Spin-up %{y:.2f} s<extra></extra>",
+        )
+    )
+    figure.add_trace(
+        go.Scatter(
+            x=idle_rpm,
+            y=spin_down,
+            mode="lines",
+            name="Spin-down to the shortest shot",
+            line=dict(color="#33BECC", width=2, dash="dash"),
+            hovertemplate="Idle %{x:,.0f} RPM<br>Spin-down %{y:.2f} s<extra></extra>",
+        )
+    )
+    figure.add_trace(
+        go.Scatter(
+            x=idle_rpm,
+            y=power,
+            mode="lines",
+            name="Standing battery draw",
+            yaxis="y2",
+            line=dict(color="#D97706", width=2, dash="dot"),
+            hovertemplate="Idle %{x:,.0f} RPM<br>%{y:.0f} W held continuously<extra></extra>",
+        )
+    )
+    figure.add_vline(
+        x=chosen_idle_rpm,
+        line=dict(color="#080A0D", width=1.5),
+        annotation_text=f"{chosen_idle_rpm:,.0f} RPM",
+        annotation_position="top left",
+        annotation_font=dict(size=11, color="#080A0D"),
+    )
+    figure.update_layout(
+        height=340,
+        margin=dict(l=64, r=64, t=54, b=48),
+        paper_bgcolor="#FFFFFF",
+        plot_bgcolor="#FFFFFF",
+        hovermode="x unified",
+        legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="left", x=0),
+        xaxis=dict(title="Idle speed (RPM)", showgrid=True, gridcolor="#EDF1F4", zeroline=False),
+        yaxis=dict(title="Transition time (s)", showgrid=True, gridcolor="#EDF1F4", zeroline=False, rangemode="tozero"),
+        yaxis2=dict(
+            title="Idle power (W)",
+            overlaying="y",
+            side="right",
+            showgrid=False,
+            zeroline=False,
+            rangemode="tozero",
+            title_font=dict(color="#B26205"),
+            tickfont=dict(color="#B26205"),
+        ),
+    )
+    return figure
+
+
+def flywheel_droop_figure(sweep: WallSweepResult, *, max_drop_rpm: float) -> go.Figure:
+    """Volley droop and tube mass against wall thickness, sharing the x axis."""
+    walls_in = sweep.wall_thickness_m / FW_INCH_TO_METER
+    figure = go.Figure()
+    figure.add_trace(
+        go.Scatter(
+            x=walls_in,
+            y=sweep.drop_rpm,
+            mode="lines",
+            name="Droop from one 4-ball volley",
+            line=dict(color="#1179EE", width=3),
+            hovertemplate="Wall %{x:.3f} in<br>Droop %{y:.0f} RPM<extra></extra>",
+        )
+    )
+    figure.add_trace(
+        go.Scatter(
+            x=walls_in,
+            y=sweep.tube_mass_kg,
+            mode="lines",
+            name="Tube mass",
+            yaxis="y2",
+            line=dict(color="#D97706", width=2, dash="dash"),
+            hovertemplate="Wall %{x:.3f} in<br>Mass %{y:.2f} kg<extra></extra>",
+        )
+    )
+    figure.add_hline(
+        y=max_drop_rpm,
+        line=dict(color="#C93838", width=2, dash="dot"),
+        annotation_text=f"Your limit: {max_drop_rpm:.0f} RPM",
+        annotation_position="top right",
+        annotation_font=dict(size=11, color="#C93838"),
+    )
+    figure.update_layout(
+        height=330,
+        margin=dict(l=64, r=64, t=54, b=48),
+        paper_bgcolor="#FFFFFF",
+        plot_bgcolor="#FFFFFF",
+        hovermode="x unified",
+        legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="left", x=0),
+        xaxis=dict(
+            title="Tube wall thickness (in)",
+            range=[walls_in[0], walls_in[-1]],
+            showgrid=True,
+            gridcolor="#EDF1F4",
+            zeroline=False,
+        ),
+        yaxis=dict(title="Droop (RPM)", showgrid=True, gridcolor="#EDF1F4", zeroline=False, rangemode="tozero"),
+        yaxis2=dict(
+            title="Tube mass (kg)",
+            overlaying="y",
+            side="right",
+            showgrid=False,
+            zeroline=False,
+            rangemode="tozero",
+            title_font=dict(color="#B26205"),
+            tickfont=dict(color="#B26205"),
+        ),
+    )
+    return figure
+
+
 def save_uploaded_video(uploaded_file) -> Path:
     data = uploaded_file.getvalue()
     signature = hashlib.sha256(data).hexdigest()
@@ -1411,6 +2009,7 @@ st.markdown(
       <div><span>01</span> Model</div>
       <div><span>02</span> Measure</div>
       <div><span>03</span> Calibrate</div>
+      <div><span>04</span> Flywheel</div>
     </div>
     """,
     unsafe_allow_html=True,
@@ -1419,7 +2018,9 @@ model_flash = st.session_state.pop("model_flash", None)
 if model_flash:
     st.success(model_flash)
 
-stage_model, stage_measure, stage_calibrate = st.tabs(["01  Model", "02  Measure", "03  Calibrate"])
+stage_model, stage_measure, stage_calibrate, stage_flywheel = st.tabs(
+    ["01  Model", "02  Measure", "03  Calibrate", "04  Flywheel"]
+)
 
 with stage_model:
     input_column, result_column = st.columns([0.38, 0.62], gap="large")
@@ -2099,3 +2700,582 @@ with stage_calibrate:
                     width="stretch",
                     config={"displayModeBar": False},
                 )
+
+
+with stage_flywheel:
+    st.subheader("Tube flywheel wall sizing")
+    st.markdown(
+        '<div class="source-line"><span class="source-chip code">Code</span>Kraken curve and gearing '
+        '<span class="source-chip">Form</span>Ball mass and diameter '
+        '<span class="source-chip assumption">Model</span>Transfer efficiency and exit-speed ratio</div>',
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        "Wall thickness is the only free variable on the rotating mass. Thicker wall means less speed lost "
+        "when the volley fires, and more time to reach shot speed. Everything below is at full available "
+        "torque, so the plotted times are the floor a perfect controller could hit."
+    )
+
+    control_column, output_column = st.columns([0.32, 0.68], gap="large")
+
+    with control_column:
+        with st.expander("Droop budget", expanded=False):
+            st.caption(
+                "The main chart no longer needs a droop budget: it reads each distance's real scoring "
+                "band off the trajectory model. This slider drives the manual exploration section only."
+            )
+            fw_max_drop_rpm = st.slider(
+                "Acceptable RPM drop per volley",
+                min_value=25.0,
+                max_value=800.0,
+                value=200.0,
+                step=5.0,
+                key="fw_max_drop_rpm",
+                help="Manual exploration only. The speed the flywheel is allowed to lose while the "
+                "balls are in contact.",
+            )
+            fw_settle_band = st.number_input(
+                "Settle band (RPM)",
+                1.0,
+                200.0,
+                25.0,
+                1.0,
+                key="fw_settle_band",
+                help="Spin-up counts as finished this far below the target. Torque goes to zero at the "
+                "top of the motor curve, so reaching the target exactly would take infinite time.",
+            )
+
+        with st.expander("Tube", expanded=True):
+            c1, c2 = st.columns(2)
+            fw_outer_diameter_in = c1.number_input("Outer diameter (in)", 1.0, 10.0, 4.0, 0.25, key="fw_od_in")
+            fw_length_in = c2.number_input("Tube length (in)", 4.0, 40.0, 26.0, 0.5, key="fw_length_in")
+            fw_material = c1.selectbox("Material", ["Steel", "Aluminum", "Custom"], index=0, key="fw_material")
+            if fw_material == "Steel":
+                fw_density = STEEL_DENSITY_KG_M3
+            elif fw_material == "Aluminum":
+                fw_density = ALUMINUM_DENSITY_KG_M3
+            else:
+                fw_density = c2.number_input(
+                    "Density (kg/m³)", 500.0, 20000.0, STEEL_DENSITY_KG_M3, 50.0, key="fw_density"
+                )
+            if fw_material != "Custom":
+                c2.metric("Density", f"{fw_density:.0f} kg/m³")
+            c1, c2 = st.columns(2)
+            fw_wall_min_in = c1.number_input(
+                "Sweep from wall (in)", 0.010, 1.0, 0.020, 0.005, format="%.3f", key="fw_wall_min_in"
+            )
+            fw_wall_max_in = c2.number_input(
+                "Sweep to wall (in)", 0.020, 2.0, 0.375, 0.005, format="%.3f", key="fw_wall_max_in"
+            )
+
+        with st.expander("Shot speed", expanded=True):
+            fw_speed_mode = st.segmented_control(
+                "Specify the shot by",
+                ["Ball exit speed", "Flywheel RPM"],
+                default="Ball exit speed",
+                key="fw_speed_mode",
+            )
+            fw_exit_ratio = st.slider(
+                "Ball speed / tube surface speed",
+                0.30,
+                0.55,
+                0.50,
+                0.01,
+                key="fw_exit_ratio",
+                help="A single wheel against a static hood tops out at 0.5, where the ball rolls without "
+                "slipping and leaves with full backspin. Real mechanisms land a little under.",
+            )
+            c1, c2 = st.columns(2)
+            if fw_speed_mode == "Flywheel RPM":
+                fw_shot_rpm = c1.number_input(
+                    "Shot speed (flywheel RPM)", 100.0, 12000.0, 4400.0, 25.0, key="fw_shot_rpm"
+                )
+                fw_low_shot_rpm = c2.number_input(
+                    "Slowest shot (flywheel RPM)", 100.0, 12000.0, 2600.0, 25.0, key="fw_low_shot_rpm"
+                )
+            else:
+                fw_fast_exit_speed = c1.number_input(
+                    "Longest shot, ball speed (m/s)", 2.0, 40.0, 13.0, 0.5, key="fw_fast_exit_speed"
+                )
+                fw_slow_exit_speed = c2.number_input(
+                    "Shortest shot, ball speed (m/s)", 1.0, 40.0, 7.5, 0.5, key="fw_slow_exit_speed"
+                )
+                fw_shot_rpm = None
+                fw_low_shot_rpm = None
+
+        with st.expander("Idle speed", expanded=True):
+            fw_idle_mode = st.segmented_control(
+                "Idle speed",
+                ["Balanced (solved)", "Manual"],
+                default="Balanced (solved)",
+                key="fw_idle_mode",
+                help="Balanced picks the idle that equalises the worst spin-up and the worst spin-down, "
+                "so no shot in the range waits longer than any other. It ignores battery cost, which "
+                "the cap below puts back in your hands.",
+            )
+            if fw_idle_mode == "Manual":
+                fw_manual_idle_rpm = st.number_input(
+                    "Idle RPM", 0.0, 12000.0, 800.0, 25.0, key="fw_manual_idle_rpm"
+                )
+                fw_idle_cap_rpm = None
+            else:
+                fw_manual_idle_rpm = None
+                fw_idle_cap_rpm = st.number_input(
+                    "Cap the solved idle at (RPM)",
+                    0.0,
+                    12000.0,
+                    12000.0,
+                    100.0,
+                    key="fw_idle_cap_rpm",
+                    help="Standing draw rises roughly with the square of idle speed. Set this to 1000 "
+                    "to hold the usual low-idle convention and see what the readiness costs.",
+                )
+            fw_low_idle_reference = st.number_input(
+                "Compare against a low idle of (RPM)",
+                0.0,
+                12000.0,
+                800.0,
+                25.0,
+                key="fw_low_idle_reference",
+                help="Used only for the break-even comparison below.",
+            )
+
+        with st.expander("Motors and gearing", expanded=False):
+            c1, c2 = st.columns(2)
+            fw_motor_name = c1.selectbox("Motor", list(MOTOR_CHOICES), index=0, key="fw_motor_name")
+            fw_motor_count = c2.number_input("Motor count", 1, 6, 2, 1, key="fw_motor_count")
+            fw_motor_teeth = c1.number_input("Motor gear teeth", 6, 90, 15, 1, key="fw_motor_teeth")
+            fw_flywheel_teeth = c2.number_input("Flywheel gear teeth", 6, 90, 18, 1, key="fw_flywheel_teeth")
+            fw_current_limit = c1.number_input(
+                "Stator current limit per motor (A)", 5.0, 400.0, 60.0, 5.0, key="fw_current_limit"
+            )
+            fw_bus_voltage = c2.number_input("Bus voltage (V)", 8.0, 13.0, 12.0, 0.1, key="fw_bus_voltage")
+            fw_gear_efficiency = c1.slider("Gear mesh efficiency", 0.80, 1.0, 0.97, 0.01, key="fw_gear_eff")
+            fw_drag_torque = c2.number_input(
+                "Bearing and windage torque at top speed (N·m)", 0.0, 1.0, 0.05, 0.01, key="fw_drag_torque"
+            )
+            fw_use_coast_down = st.checkbox(
+                "Fit drag from a measured coast-down",
+                value=False,
+                key="fw_use_coast_down",
+                help="Spin the flywheel up, disable the motors in coast (not brake) neutral mode, and time "
+                "the fall between two speeds. Idle cost is directly proportional to this number, so it is "
+                "the one input worth measuring instead of assuming.",
+            )
+            if fw_use_coast_down:
+                c1, c2, c3 = st.columns(3)
+                fw_coast_start_rpm = c1.number_input("From (RPM)", 100.0, 12000.0, 4000.0, 50.0, key="fw_coast_start")
+                fw_coast_end_rpm = c2.number_input("To (RPM)", 50.0, 12000.0, 2000.0, 50.0, key="fw_coast_end")
+                # A well-supported steel flywheel coasts for minutes, not seconds.
+                fw_coast_seconds = c3.number_input("Seconds", 0.1, 600.0, 120.0, 1.0, key="fw_coast_seconds")
+                fw_coast_wall_in = st.number_input(
+                    "Wall thickness of the tube you tested (in)",
+                    0.010,
+                    2.0,
+                    0.188,
+                    0.005,
+                    format="%.3f",
+                    key="fw_coast_wall_in",
+                )
+            fw_extra_inertia = st.number_input(
+                "Extra rotating inertia: shaft, gears, hubs (kg·m²)",
+                0.0,
+                0.05,
+                0.0,
+                0.0005,
+                format="%.4f",
+                key="fw_extra_inertia",
+            )
+
+        with st.expander("Balls and energy transfer", expanded=False):
+            c1, c2 = st.columns(2)
+            fw_ball_count = c1.number_input("Balls per volley", 1, 12, 4, 1, key="fw_ball_count")
+            fw_hopper_balls = c2.number_input(
+                "Balls in the hopper",
+                1,
+                300,
+                60,
+                1,
+                key="fw_hopper_balls",
+                help="How many balls you empty in one go. Deep hoppers are paced by recovery between "
+                "volleys rather than by the first spin-up.",
+            )
+            fw_ball_mass = c1.number_input(
+                "Ball mass (kg)", 0.01, 2.0, BALL_MASS_KG, 0.005, key="fw_ball_mass"
+            )
+            fw_ball_diameter = c2.number_input(
+                "Ball diameter (m)", 0.02, 0.5, BALL_DIAMETER_M, 0.005, key="fw_ball_diameter"
+            )
+            fw_ball_shell = c1.selectbox(
+                "Ball construction", ["Hollow shell", "Solid or foam"], index=0, key="fw_ball_shell"
+            )
+            fw_inertia_factor = (
+                HOLLOW_SHELL_INERTIA_FACTOR if fw_ball_shell == "Hollow shell" else SOLID_SPHERE_INERTIA_FACTOR
+            )
+            fw_transfer_efficiency = st.slider(
+                "Energy transfer efficiency",
+                0.20,
+                1.0,
+                0.60,
+                0.05,
+                key="fw_transfer_efficiency",
+                help="Share of the energy leaving the flywheel that ends up in the ball. The rest goes to "
+                "slip at the contacts and hysteresis in the ball. Lower means a bigger droop.",
+            )
+
+    fw_tube = TubeFlywheel(
+        outer_diameter_m=fw_outer_diameter_in * FW_INCH_TO_METER,
+        length_m=fw_length_in * FW_INCH_TO_METER,
+        wall_thickness_m=0.125 * FW_INCH_TO_METER,
+        density_kg_m3=fw_density,
+    )
+    fw_drivetrain = Drivetrain(
+        motor=MOTOR_CHOICES[fw_motor_name],
+        motor_count=int(fw_motor_count),
+        motor_teeth=int(fw_motor_teeth),
+        flywheel_teeth=int(fw_flywheel_teeth),
+        stator_current_limit_a=fw_current_limit,
+        bus_voltage_v=fw_bus_voltage,
+        gear_efficiency=fw_gear_efficiency,
+        drag_torque_at_free_speed_nm=fw_drag_torque,
+        extra_inertia_kg_m2=fw_extra_inertia,
+    )
+    fw_coast_note = None
+    if fw_use_coast_down:
+        fw_tested_inertia = (
+            fw_tube.with_wall(fw_coast_wall_in * FW_INCH_TO_METER).inertia_kg_m2
+            + fw_extra_inertia
+            + fw_drivetrain.reflected_rotor_inertia_kg_m2
+        )
+        fw_fitted_drag = drag_torque_from_coast_down(
+            fw_tested_inertia,
+            fw_coast_start_rpm,
+            fw_coast_end_rpm,
+            fw_coast_seconds,
+            fw_drivetrain.free_speed_rpm,
+        )
+        if np.isfinite(fw_fitted_drag):
+            fw_drivetrain = replace(fw_drivetrain, drag_torque_at_free_speed_nm=float(fw_fitted_drag))
+            fw_coast_note = (
+                f"Measured coast-down gives {fw_fitted_drag:.4f} N·m of drag at top speed, "
+                f"against the {fw_drag_torque:.4f} N·m estimate."
+            )
+        else:
+            fw_coast_note = "Coast-down needs a start speed above the end speed and a positive duration."
+    fw_energy = ShotEnergy(
+        ball_mass_kg=fw_ball_mass,
+        ball_diameter_m=fw_ball_diameter,
+        ball_count=int(fw_ball_count),
+        inertia_factor=fw_inertia_factor,
+        exit_speed_ratio=fw_exit_ratio,
+        transfer_efficiency=fw_transfer_efficiency,
+    )
+    if fw_shot_rpm is None:
+        fw_shot_rpm = fw_tube.rpm_for_surface_speed(fw_fast_exit_speed / fw_exit_ratio)
+        fw_low_shot_rpm = fw_tube.rpm_for_surface_speed(fw_slow_exit_speed / fw_exit_ratio)
+
+    fw_reference_inertia = (
+        fw_tube.with_wall(0.125 * FW_INCH_TO_METER).inertia_kg_m2
+        + fw_drivetrain.extra_inertia_kg_m2
+        + fw_drivetrain.reflected_rotor_inertia_kg_m2
+    )
+    if fw_manual_idle_rpm is not None:
+        fw_idle_rpm = fw_manual_idle_rpm
+    else:
+        fw_idle_rpm = balanced_idle_rpm(
+            fw_reference_inertia, fw_drivetrain, fw_low_shot_rpm, fw_shot_rpm, fw_settle_band
+        )
+        if fw_idle_cap_rpm is not None:
+            fw_idle_rpm = min(fw_idle_rpm, fw_idle_cap_rpm)
+
+    fw_sweep = sweep_wall_thickness(
+        fw_tube,
+        fw_drivetrain,
+        fw_energy,
+        shot_rpm=fw_shot_rpm,
+        idle_rpm=fw_idle_rpm,
+        max_drop_rpm=fw_max_drop_rpm,
+        settle_band_rpm=fw_settle_band,
+        wall_range_m=(fw_wall_min_in * FW_INCH_TO_METER, fw_wall_max_in * FW_INCH_TO_METER),
+    )
+    fw_top_speed_rpm = fw_drivetrain.max_flywheel_speed_rad_s() * (60.0 / (2.0 * np.pi))
+
+    with output_column:
+        try:
+            with st.spinner("Running the shot calculator over the shot range..."):
+                fw_tuning = cached_wall_tuning(
+                    fw_tube.outer_diameter_m,
+                    fw_tube.length_m,
+                    fw_density,
+                    fw_exit_ratio,
+                    fw_transfer_efficiency,
+                    fw_ball_mass,
+                    fw_ball_diameter,
+                    int(fw_ball_count),
+                    fw_inertia_factor,
+                    RELEASE_HEIGHT_M,
+                    (
+                        fw_motor_name,
+                        int(fw_motor_count),
+                        int(fw_motor_teeth),
+                        int(fw_flywheel_teeth),
+                        fw_current_limit,
+                        fw_bus_voltage,
+                        fw_gear_efficiency,
+                        fw_drivetrain.drag_torque_at_free_speed_nm,
+                        fw_extra_inertia,
+                    ),
+                    fw_top_speed_rpm,
+                    fw_settle_band,
+                    int(fw_hopper_balls),
+                )
+        except ValueError:
+            fw_tuning = None
+
+        if fw_tuning is None:
+            st.error(
+                "The shot calculator could not land a single shot with this mechanism at any static "
+                "hood angle. Check the tube diameter, gearing and exit-speed ratio before reading "
+                "anything below."
+            )
+        else:
+            fw_best_tube = fw_tube.with_wall(fw_tuning.best_wall_m)
+            fw_nearest_stock = min(
+                (w for w in FW_STANDARD_WALL_INCHES if w >= fw_tuning.best_wall_m / FW_INCH_TO_METER),
+                default=None,
+            )
+            st.plotly_chart(
+                wall_tuning_figure(fw_tuning, fw_tube),
+                width="stretch",
+                config={"displayModeBar": False},
+            )
+            t1, t2, t3, t4 = st.columns(4)
+            t1.metric(
+                "Wall to build",
+                f"{fw_tuning.best_wall_m / FW_INCH_TO_METER:.3f} in",
+                f"nearest stock {fw_nearest_stock:.3f} in" if fw_nearest_stock else "above stock sizes",
+                delta_color="off",
+            )
+            t2.metric(
+                "Seconds per volley",
+                f"{fw_tuning.best_mean_volley_s:.3f} s",
+                f"hopper empties in {fw_tuning.best_hopper_seconds:.1f} s",
+                delta_color="off",
+            )
+            t3.metric(
+                "Balls inside band",
+                f"{fw_tuning.balls_in_band:.0f} / {fw_tuning.sweep.hopper_balls}",
+                f"static hood {fw_tuning.schedule.hood_deg:.0f}° · idle {fw_tuning.best_idle_rpm:,.0f} RPM",
+                delta_color="off",
+            )
+            t4.metric(
+                "Tube mass",
+                f"{fw_best_tube.mass_kg:.2f} kg",
+                f"{fw_best_tube.mass_kg * 2.20462:.1f} lb",
+                delta_color="off",
+            )
+            fw_widths = [r.band_width_rpm for r in fw_tuning.schedule.requirements]
+            st.caption(
+                f"Each distance's scoring band comes from the trajectory model, not a chosen tolerance: "
+                f"{min(fw_widths):.0f}–{max(fw_widths):.0f} RPM wide across the range. Balls in one volley "
+                f"leave spread across the droop, so the in-band share falls off as band ÷ droop rather than "
+                f"collapsing to zero — even a badly sagging wheel lands the balls that get out early. "
+                f"Over {fw_tuning.sweep.volleys} volleys the pace is set by recovery, which barely depends "
+                f"on inertia, so time per volley is nearly flat and the colour is what picks the wall: "
+                f"build the leftmost fully-blue point, since anything thicker is mass for no extra scoring."
+            )
+
+        st.divider()
+        with st.expander("Manual exploration: fixed droop budget, idle cost, stock walls", expanded=False):
+            if not fw_sweep.shot_rpm_reachable:
+                st.error(
+                    f"**{fw_shot_rpm:,.0f} RPM is above what this drivetrain can hold.** "
+                    f"A {fw_motor_teeth}:{fw_flywheel_teeth} gear pair on {fw_motor_count} "
+                    f"{fw_motor_name}s tops the tube out at {fw_top_speed_rpm:,.0f} RPM with zero torque left. "
+                    f"Wall thickness cannot fix this: lower the target speed, use a larger tube, or change the "
+                    f"gear pair so the flywheel turns faster than the motors."
+                )
+            elif fw_shot_rpm > 0.90 * fw_top_speed_rpm:
+                st.warning(
+                    f"**{fw_shot_rpm:,.0f} RPM is {fw_shot_rpm / fw_top_speed_rpm * 100:.0f}% of this "
+                    f"drivetrain's {fw_top_speed_rpm:,.0f} RPM ceiling.** Torque there is nearly gone, so "
+                    f"spin-up and recovery both stretch out badly and the flywheel will struggle to hold speed. "
+                    f"Staying under about 85% of the ceiling is where this design gets usable."
+                )
+
+            fw_boundary_wall_in = fw_sweep.minimum_feasible_wall_m / FW_INCH_TO_METER
+            if np.isfinite(fw_boundary_wall_in):
+                fw_boundary_tube = fw_tube.with_wall(fw_sweep.minimum_feasible_wall_m)
+                fw_boundary_spin_up = spin_up_time_s(
+                    fw_sweep.minimum_feasible_inertia_kg_m2,
+                    fw_drivetrain,
+                    fw_idle_rpm,
+                    max(0.0, fw_shot_rpm - fw_settle_band),
+                )
+                fw_boundary_droop = firing_droop(
+                    fw_sweep.minimum_feasible_inertia_kg_m2, fw_boundary_tube, fw_energy, fw_shot_rpm
+                )
+                m1, m2, m3, m4 = st.columns(4)
+                m1.metric(
+                    "Thinnest usable wall",
+                    f"{fw_boundary_wall_in:.3f} in",
+                    f"{fw_boundary_wall_in * 25.4:.2f} mm",
+                    delta_color="off",
+                )
+                m2.metric("Inertia there", f"{fw_sweep.minimum_feasible_inertia_kg_m2:.5f} kg·m²")
+                m3.metric(
+                    "Tube mass",
+                    f"{fw_boundary_tube.mass_kg:.2f} kg",
+                    f"{fw_boundary_tube.mass_kg * 2.20462:.1f} lb",
+                    delta_color="off",
+                )
+                m4.metric(
+                    "Spin-up at that wall",
+                    f"{fw_boundary_spin_up:.2f} s" if np.isfinite(fw_boundary_spin_up) else "unreachable",
+                )
+                m1, m2, m3, m4 = st.columns(4)
+                m1.metric("Idle speed", f"{fw_idle_rpm:,.0f} RPM", fw_idle_mode, delta_color="off")
+                m2.metric("Shot speed", f"{fw_shot_rpm:,.0f} RPM", f"{fw_top_speed_rpm:,.0f} RPM ceiling", delta_color="off")
+                m3.metric("Recovery after volley", f"{fw_sweep.recovery_s[fw_sweep.feasible_mask][0]:.2f} s" if fw_sweep.feasible_mask.any() else "n/a")
+                m4.metric(
+                    "Ball speed spread in volley",
+                    f"{fw_boundary_droop.exit_speed_before_m_s - fw_boundary_droop.exit_speed_after_m_s:.2f} m/s",
+                    f"mean {fw_boundary_droop.mean_exit_speed_m_s:.2f} m/s",
+                    delta_color="off",
+                )
+            else:
+                st.warning(
+                    f"No wall thickness inside the sweep holds the droop to {fw_max_drop_rpm:.0f} RPM. "
+                    f"A solid bar of this diameter would still fall short. Raise the droop budget, fire fewer "
+                    f"balls at once, or use a larger-diameter tube."
+                )
+
+            st.plotly_chart(
+                flywheel_sizing_figure(fw_sweep, max_drop_rpm=fw_max_drop_rpm, ball_count=int(fw_ball_count)),
+                width="stretch",
+                config={"displayModeBar": False},
+            )
+            st.caption(
+                "Bottom axis is wall thickness, top axis is the inertia that wall produces. The red band is where "
+                "the volley droop breaks your budget. Dotted verticals mark stock tube walls you can actually buy."
+            )
+
+            st.plotly_chart(
+                flywheel_droop_figure(fw_sweep, max_drop_rpm=fw_max_drop_rpm),
+                width="stretch",
+                config={"displayModeBar": False},
+            )
+
+            st.markdown("##### Where to park the flywheel")
+            if fw_coast_note:
+                st.caption(fw_coast_note)
+            fw_sizing_inertia = (
+                fw_sweep.minimum_feasible_inertia_kg_m2
+                if np.isfinite(fw_sweep.minimum_feasible_inertia_kg_m2)
+                else fw_reference_inertia
+            )
+            fw_idle_draw = fw_drivetrain.idle_draw(fw_idle_rpm, MATCH_SECONDS)
+            fw_strategy = compare_idle_strategies(
+                fw_sizing_inertia,
+                fw_drivetrain,
+                fw_shot_rpm,
+                fw_low_idle_reference,
+                fw_idle_rpm,
+                fw_settle_band,
+                MATCH_SECONDS,
+            )
+            i1, i2, i3, i4 = st.columns(4)
+            i1.metric(
+                "Standing draw at idle",
+                f"{fw_idle_draw.power_w:.0f} W",
+                f"{fw_idle_draw.supply_current_a:.1f} A from the battery",
+                delta_color="off",
+            )
+            i2.metric(
+                "Cost over a 2:30 match",
+                f"{fw_idle_draw.battery_fraction * 100:.2f}%",
+                f"{fw_idle_draw.match_energy_j / 1000:.1f} kJ of an 18 Ah pack",
+                delta_color="off",
+            )
+            i3.metric(
+                f"Spin-up from {fw_low_idle_reference:,.0f} RPM",
+                f"{fw_strategy.low_idle_spin_up_s:.2f} s"
+                if np.isfinite(fw_strategy.low_idle_spin_up_s)
+                else "unreachable",
+                f"vs {fw_strategy.high_idle_spin_up_s:.2f} s at {fw_idle_rpm:,.0f}",
+                delta_color="off",
+            )
+            i4.metric(
+                "Break-even volleys",
+                f"{fw_strategy.breakeven_volleys:.1f}"
+                if np.isfinite(fw_strategy.breakeven_volleys)
+                else "n/a",
+                "above this, the high idle uses less total energy",
+                delta_color="off",
+            )
+            st.plotly_chart(
+                flywheel_idle_figure(
+                    fw_sizing_inertia,
+                    fw_drivetrain,
+                    shot_rpm=fw_shot_rpm,
+                    low_shot_rpm=fw_low_shot_rpm,
+                    settle_band_rpm=fw_settle_band,
+                    chosen_idle_rpm=fw_idle_rpm,
+                ),
+                width="stretch",
+                config={"displayModeBar": False},
+            )
+            st.caption(
+                "Holding speed costs almost no current, but it needs applied voltage proportional to speed, "
+                "so standing draw climbs roughly with the square of idle RPM. Idling low saves that draw but "
+                "throws away the stored energy after every shot and buys it back through the windings — which "
+                "is what the break-even count weighs."
+            )
+
+            fw_rows = []
+            for wall_in in FW_STANDARD_WALL_INCHES:
+                if not (fw_wall_min_in <= wall_in <= fw_wall_max_in):
+                    continue
+                stock_tube = fw_tube.with_wall(wall_in * FW_INCH_TO_METER)
+                stock_inertia = (
+                    stock_tube.inertia_kg_m2
+                    + fw_drivetrain.extra_inertia_kg_m2
+                    + fw_drivetrain.reflected_rotor_inertia_kg_m2
+                )
+                stock_droop = firing_droop(stock_inertia, stock_tube, fw_energy, fw_shot_rpm)
+                stock_spin_up = spin_up_time_s(
+                    stock_inertia, fw_drivetrain, fw_idle_rpm, max(0.0, fw_shot_rpm - fw_settle_band)
+                )
+                fw_rows.append(
+                    {
+                        "Wall (in)": f"{wall_in:.3f}",
+                        "Inertia (kg·m²)": f"{stock_inertia:.5f}",
+                        "Tube mass (lb)": f"{stock_tube.mass_kg * 2.20462:.1f}",
+                        "Droop (RPM)": f"{stock_droop.drop_rpm:.0f}",
+                        "Spin-up (s)": f"{stock_spin_up:.2f}" if np.isfinite(stock_spin_up) else "—",
+                        "Recovery (s)": f"{spin_up_time_s(stock_inertia, fw_drivetrain, stock_droop.rpm_after, max(0.0, fw_shot_rpm - fw_settle_band)):.2f}",
+                        "Meets budget": "yes" if stock_droop.drop_rpm <= fw_max_drop_rpm else "no",
+                    }
+                )
+            if fw_rows:
+                st.markdown("##### Stock tube walls")
+                st.dataframe(pd.DataFrame(fw_rows), hide_index=True, width="stretch")
+
+            st.download_button(
+                "Download sweep as CSV",
+                pd.DataFrame(
+                    {
+                        "wall_in": fw_sweep.wall_thickness_m / FW_INCH_TO_METER,
+                        "wall_mm": fw_sweep.wall_thickness_m * 1000.0,
+                        "inertia_kg_m2": fw_sweep.inertia_kg_m2,
+                        "tube_mass_kg": fw_sweep.tube_mass_kg,
+                        "spin_up_s": fw_sweep.spin_up_s,
+                        "recovery_s": fw_sweep.recovery_s,
+                        "droop_rpm": fw_sweep.drop_rpm,
+                        "mean_exit_speed_m_s": fw_sweep.mean_exit_speed_m_s,
+                        "meets_droop_budget": fw_sweep.feasible_mask,
+                    }
+                ).to_csv(index=False),
+                file_name="flywheel_wall_sweep.csv",
+                mime="text/csv",
+            )

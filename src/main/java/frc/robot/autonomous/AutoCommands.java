@@ -188,10 +188,12 @@ public class AutoCommands {
         return Commands.run(() -> {
             calculator.calculate(drivetrain.getPose(), drivetrain.getFieldVelocity());
             shooter.setGoal(calculator.getFlywheelRPM());
-            if (shooter.atTarget()) {
+            if (calculator.isShotValid() && shooter.atTarget()) {
                 feeder.setShooting(true);
                 feeder.setIntaking(true);
                 intake.activate();
+            } else {
+                feeder.setShooting(false);
             }
         }, shooter, feeder, intake).withTimeout(3.0).finallyDo(interrupted -> {
             feeder.setShooting(false);

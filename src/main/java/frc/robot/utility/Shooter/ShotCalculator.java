@@ -8,13 +8,14 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Twist2d;
-import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.FieldConstants;
+import frc.robot.Constants.ShotModelConstants;
 import frc.robot.Constants.TurretConstants;
+import frc.robot.utility.Shooter.PhysicsShotSolver.Solution;
 
 public class ShotCalculator {
     /** State container for turret position and velocity. */
@@ -35,15 +36,16 @@ public class ShotCalculator {
     private double hoodAzimuth; // in degrees
     private double turretAngle;
     private double turretVelocityFF; // feedforward velocity in rad/s 
+    private double timeOfFlightSeconds;
+    private boolean calculationValid;
+    private Solution physicsSolution;
 
     private static final double TIME_PARAMETER = 0.051; 
+    private static final double MOVING_VELOCITY_THRESHOLD_METERS_PER_SECOND = 0.3;
+    private static final double TIME_OF_FLIGHT_EPSILON_SECONDS = 0.005;
+    private static final int MAX_VIRTUAL_TARGET_ITERATIONS = 4;
 
-    private static final InterpolatingDoubleTreeMap hoodAzimuthMap = new InterpolatingDoubleTreeMap();
-    private static final InterpolatingDoubleTreeMap flywheelRPMMap = new InterpolatingDoubleTreeMap();
-    private static final InterpolatingDoubleTreeMap timeOfFlightMap = new InterpolatingDoubleTreeMap();
-
-    private static final double MIN_DISTANCE = 1.628;
-    private static final double MAX_DISTANCE = 6.050;
+    private final PhysicsShotSolver physicsSolver = new PhysicsShotSolver();
 
     public Translation2d virtualTargetPose;
     private double distanceToVirtualTarget = 0.0; 
@@ -54,45 +56,9 @@ public class ShotCalculator {
         this.hoodAzimuth = 0;
         this.turretAngle = 0;
         this.turretVelocityFF = 0;
+        this.timeOfFlightSeconds = 0;
+        this.calculationValid = false;
         this.virtualTargetPose = new Translation2d();
-        populateLUTs();
-    }
-
-    public void populateLUTs(){
-        // Units are in meters/RPM/degrees/seconds.
-        // shooter RPM
-        flywheelRPMMap.put(1.628, 1500.0);
-        flywheelRPMMap.put(1.942, 1500.0);
-        flywheelRPMMap.put(2.573, 1700.0);
-        flywheelRPMMap.put(3.219, 2000.0); 
-        flywheelRPMMap.put(3.742, 2100.0);
-        flywheelRPMMap.put(4.357, 2200.0);
-        flywheelRPMMap.put(4.943, 2400.0);
-        flywheelRPMMap.put(5.590, 2700.0); 
-        flywheelRPMMap.put(6.050, 2800.0);
-
-        // hood azimuth
-        hoodAzimuthMap.put(1.628, 25.9);
-        hoodAzimuthMap.put(1.942, 25.9);
-        hoodAzimuthMap.put(2.573, 25.9);
-        hoodAzimuthMap.put(3.219, 27.0); 
-        hoodAzimuthMap.put(3.742, 31.0);
-        hoodAzimuthMap.put(4.357, 33.0);
-        hoodAzimuthMap.put(4.943, 36.0);
-        hoodAzimuthMap.put(5.590, 38.0);
-        hoodAzimuthMap.put(6.050, 40.0);
-
-
-        // time of flight 
-        timeOfFlightMap.put(1.628, 0.801);
-        timeOfFlightMap.put(1.942, 0.931);
-        timeOfFlightMap.put(2.573, 1.071);
-        timeOfFlightMap.put(3.219, 1.125); 
-        timeOfFlightMap.put(3.742, 1.127); 
-        timeOfFlightMap.put(4.357, 1.161); 
-        timeOfFlightMap.put(4.943, 1.222);
-        timeOfFlightMap.put(5.590, 1.250);
-        timeOfFlightMap.put(6.050, 1.250);
     }
 
     /** Returns the current hood azimuth in degrees. */
@@ -120,13 +86,23 @@ public class ShotCalculator {
         return flywheelRPM;
     }
 
+    /** Returns the physics model's flight time for the current virtual target. */
+    public double getTimeOfFlightSeconds() {
+        return timeOfFlightSeconds;
+    }
+
+    /** Returns the predicted downward entry angle at the upper HUB opening. */
+    public double getEntryAngleDegrees() {
+        return physicsSolution != null ? physicsSolution.entryAngleDegrees() : Double.NaN;
+    }
+
     public Translation2d getVirtualTargetPose() {
         return virtualTargetPose;
     }
 
-    /** Returns true if the distance to the virtual target is within the LUT range. */
+    /** Returns true when range and all modeled HUB scoring constraints are valid. */
     public boolean isShotValid() {
-        return distanceToVirtualTarget >= MIN_DISTANCE && distanceToVirtualTarget <= MAX_DISTANCE;
+        return calculationValid;
     }
 
     /** Returns the current distance to the virtual target. */
@@ -147,6 +123,8 @@ public class ShotCalculator {
     /** Calculates the shot parameters for a hub shot based on current robot pose and field velocity. */
     public void calculate(Pose2d currentRobotPose, 
                             ChassisSpeeds fieldVelocity) {
+        calculationValid = false;
+
         // Gets our target pose
         Optional<Alliance> alliance = DriverStation.getAlliance();
         if(alliance.isEmpty()){
@@ -164,7 +142,8 @@ public class ShotCalculator {
             currentRobotPose.getRotation()
         );
         
-        if(Math.hypot(robotVelocity.vxMetersPerSecond, robotVelocity.vyMetersPerSecond) < 0.3){
+        if(Math.hypot(robotVelocity.vxMetersPerSecond, robotVelocity.vyMetersPerSecond)
+                < MOVING_VELOCITY_THRESHOLD_METERS_PER_SECOND){
             robotVelocity = new ChassisSpeeds(0, 0, robotVelocity.omegaRadiansPerSecond);
         }
 
@@ -205,29 +184,19 @@ public class ShotCalculator {
         SmartDashboard.putNumber("SOTM/TurretVel/vY", turretVy);
         SmartDashboard.putNumber("SOTM/TurretVel/magnitude", Math.hypot(turretVx, turretVy));
 
-        // calculates a virtual target iteratively based upon our parameters.
+        // Calculates a virtual target from the flight time returned by the same physics
+        // solution that supplies the final hood and RPM commands.
         virtualTargetPose = targetPose; 
-        double timeOfFlight = 0;
         double distanceToTarget = turretPose.getTranslation().getDistance(targetPose);
         double staticDistance = distanceToTarget; // save for logging
-
-        // Convergence threshold for early exit (seconds)
-        final double EPSILON = 0.01;
-        double prevTimeOfFlight = 0;
+        Solution solution = solveAtBoundedDistance(distanceToTarget);
+        double timeOfFlight = solution.valid() ? solution.timeOfFlightSeconds() : 0.0;
         int iterationsUsed = 0;
 
-        if(Math.hypot(turretVx, turretVy) > 0.3){
-            for(int i = 0; i < 20; i++){
-                timeOfFlight = timeOfFlightMap.get(distanceToTarget);
+        if(Math.hypot(turretVx, turretVy) > MOVING_VELOCITY_THRESHOLD_METERS_PER_SECOND){
+            for(int i = 0; i < MAX_VIRTUAL_TARGET_ITERATIONS && solution.valid(); i++){
+                double previousTimeOfFlight = timeOfFlight;
                 iterationsUsed = i + 1;
-
-                // Early exit if time of flight has converged
-                if (i > 0 && Math.abs(timeOfFlight - prevTimeOfFlight) < EPSILON) {
-                    break;
-                }
-
-                prevTimeOfFlight = timeOfFlight;
-
                 virtualTargetPose = targetPose.minus(
                     new Translation2d(
                         turretVx * timeOfFlight,
@@ -235,10 +204,28 @@ public class ShotCalculator {
                     )
                 );
                 distanceToTarget = turretPose.getTranslation().getDistance(virtualTargetPose);
+                solution = solveAtBoundedDistance(distanceToTarget);
+                if (!solution.valid()) {
+                    break;
+                }
+                timeOfFlight = solution.timeOfFlightSeconds();
+
+                if (Math.abs(timeOfFlight - previousTimeOfFlight)
+                        < TIME_OF_FLIGHT_EPSILON_SECONDS) {
+                    break;
+                }
             }
         }
         
         distanceToVirtualTarget = distanceToTarget;
+        physicsSolution = solution;
+        timeOfFlightSeconds = timeOfFlight;
+        boolean distanceInRange = distanceToTarget >= ShotModelConstants.MIN_DISTANCE_METERS
+            && distanceToTarget <= ShotModelConstants.MAX_DISTANCE_METERS;
+        calculationValid = distanceInRange && solution.valid();
+
+        hoodAzimuth = solution.hoodCommandDegrees();
+        flywheelRPM = solution.flywheelRPM();
 
         SmartDashboard.putNumber("SOTM/Iterations", iterationsUsed);
         SmartDashboard.putNumber("SOTM/TimeOfFlight", timeOfFlight);
@@ -251,9 +238,6 @@ public class ShotCalculator {
         SmartDashboard.putNumber("SOTM/VirtualOffset/Y", targetOffset.getY());
         SmartDashboard.putNumber("SOTM/VirtualOffset/magnitude", targetOffset.getNorm());
 
-        // calculates hood angle and flywheel RPM from virtual target
-        hoodAzimuth = hoodAzimuthMap.get(distanceToTarget);
-        flywheelRPM = flywheelRPMMap.get(distanceToTarget);
         turretAngle = MathUtil.angleModulus(Math.atan2(
             virtualTargetPose.getY() - turretPose.getY(),
             virtualTargetPose.getX() - turretPose.getX()
@@ -263,7 +247,8 @@ public class ShotCalculator {
         double deltaY = virtualTargetPose.getY() - turretPose.getY();
         double distSquared = distanceToTarget * distanceToTarget;
 
-        if (distSquared > 0.01 && Math.hypot(turretVx, turretVy) > 0.3) { // avoid division by zero and ignore very small velocities
+        if (distSquared > 0.01
+                && Math.hypot(turretVx, turretVy) > MOVING_VELOCITY_THRESHOLD_METERS_PER_SECOND) {
             double losRate = (turretVx * deltaY - turretVy * deltaX) / distSquared;
             turretVelocityFF = losRate - fieldVelocity.omegaRadiansPerSecond;
         } else {
@@ -273,7 +258,20 @@ public class ShotCalculator {
         // Log final output values
         SmartDashboard.putNumber("SOTM/Output/TurretAngleDeg", Math.toDegrees(turretAngle));
         SmartDashboard.putNumber("SOTM/Output/HoodAngleDeg", hoodAzimuth);
+        SmartDashboard.putNumber("SOTM/Output/LaunchElevationDeg", solution.launchElevationDegrees());
         SmartDashboard.putNumber("SOTM/Output/FlywheelRPM", flywheelRPM);
         SmartDashboard.putNumber("SOTM/Output/TurretVelocityFF", Math.toDegrees(turretVelocityFF));
+        SmartDashboard.putNumber("SOTM/Model/EntryAngleDeg", solution.entryAngleDegrees());
+        SmartDashboard.putNumber("SOTM/Model/OpeningClearanceMeters", solution.openingClearanceMeters());
+        SmartDashboard.putNumber("SOTM/Model/NearRimClearanceMeters", solution.nearRimClearanceMeters());
+        SmartDashboard.putBoolean("SOTM/Model/PolicyValidated", solution.valid());
+    }
+
+    private Solution solveAtBoundedDistance(double distanceMeters) {
+        return physicsSolver.solveRuntime(MathUtil.clamp(
+            distanceMeters,
+            ShotModelConstants.MIN_DISTANCE_METERS,
+            ShotModelConstants.MAX_DISTANCE_METERS
+        ));
     }
 }

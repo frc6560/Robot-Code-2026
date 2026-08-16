@@ -61,7 +61,7 @@ public class ShotCommand extends Command {
     @Override
     public void execute() {
         Optional<Alliance> alliance = DriverStation.getAlliance();
-        if(alliance == null){
+        if(alliance.isEmpty()){
             return;
         }
 
