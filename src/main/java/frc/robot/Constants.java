@@ -27,7 +27,10 @@ public final class Constants {
   public static final double ROBOT_MASS = 62.59; // TODO: replace with true robot mass
   public static final Matter CHASSIS    = new Matter(new Translation3d(0, 0, Units.inchesToMeters(8)), ROBOT_MASS);
   public static final double LOOP_TIME  = 0.13; //s, 20ms + 110ms sprk max velocity lag
-  public static final double MAX_SPEED  = Units.feetToMeters(14.5);
+  // public static final double MAX_SPEED = Units.feetToMeters(14.5); // Previous limit
+  public static final double MAX_SPEED = Units.feetToMeters(19.5);
+  public static final double MAX_ANGULAR_VELOCITY_RAD_PER_SEC = 12.5;
+  public static final double MAX_ANGULAR_ACCELERATION_RAD_PER_SEC_SQ = 24.0;
   // Maximum speed of the robot in meters per second, used to limit acceleration.
 
   // Robot dimensions (in meters, from PathPlanner settings)
@@ -73,10 +76,14 @@ public final class Constants {
     public static final double HUB_AIM_KD = 0.2;
 
     /** Prevents the automatic hub alignment from demanding an excessively fast turn. */
-    public static final double HUB_AIM_MAX_ANGULAR_SPEED_RAD_PER_SEC = 6.0;
+    // public static final double HUB_AIM_MAX_ANGULAR_SPEED_RAD_PER_SEC = 6.0;
+    public static final double HUB_AIM_MAX_ANGULAR_SPEED_RAD_PER_SEC =
+        MAX_ANGULAR_VELOCITY_RAD_PER_SEC;
 
     /** Trapezoid-profile acceleration limit for automatic hub alignment. */
-    public static final double HUB_AIM_MAX_ANGULAR_ACCELERATION_RAD_PER_SEC_SQ = 12.0;
+    // public static final double HUB_AIM_MAX_ANGULAR_ACCELERATION_RAD_PER_SEC_SQ = 12.0;
+    public static final double HUB_AIM_MAX_ANGULAR_ACCELERATION_RAD_PER_SEC_SQ =
+        MAX_ANGULAR_ACCELERATION_RAD_PER_SEC_SQ;
 
     /** Stops small heading corrections once the chassis is pointed at the hub. */
     public static final double HUB_AIM_TOLERANCE_RADIANS = Units.degreesToRadians(1.5);
@@ -193,14 +200,18 @@ public final class Constants {
      * changes but can saturate modules and harm translation tracking; decreasing it makes rotation
      * slower and may prevent the requested heading from completing before a segment ends.
      */
-    public static final double GLOBAL_MAX_ANGULAR_VELOCITY_DEG_PER_SEC = 720.0;
+    // public static final double GLOBAL_MAX_ANGULAR_VELOCITY_DEG_PER_SEC = 720.0;
+    public static final double GLOBAL_MAX_ANGULAR_VELOCITY_DEG_PER_SEC =
+        Units.radiansToDegrees(MAX_ANGULAR_VELOCITY_RAD_PER_SEC);
 
     /**
      * Default maximum angular acceleration in degrees per second squared. Increasing it makes angular
      * velocity change more abruptly, improving response while increasing slip/current and mechanical
      * shock; decreasing it smooths rotation but can make heading lag along short segments.
      */
-    public static final double GLOBAL_MAX_ANGULAR_ACCELERATION_DEG_PER_SEC2 = 1500.0;
+    // public static final double GLOBAL_MAX_ANGULAR_ACCELERATION_DEG_PER_SEC2 = 1500.0;
+    public static final double GLOBAL_MAX_ANGULAR_ACCELERATION_DEG_PER_SEC2 =
+        Units.radiansToDegrees(MAX_ANGULAR_ACCELERATION_RAD_PER_SEC_SQ);
 
     /**
      * Maximum final-position error in meters for path completion. Increasing it lets commands finish

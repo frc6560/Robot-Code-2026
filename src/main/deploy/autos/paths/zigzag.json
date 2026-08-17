@@ -93,14 +93,14 @@
     ],
     "max_velocity_deg_per_sec": [
       {
-        "value": 720.0,
+        "value": 716.1972439,
         "start_ordinal": 0,
         "end_ordinal": 3
       }
     ],
     "max_acceleration_deg_per_sec2": [
       {
-        "value": 1500.0,
+        "value": 1375.0987083,
         "start_ordinal": 0,
         "end_ordinal": 3
       }
