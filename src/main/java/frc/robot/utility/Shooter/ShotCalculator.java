@@ -13,6 +13,8 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.FieldConstants;
+import frc.robot.Constants.HoodConstants;
+import frc.robot.Constants.ShooterConstants;
 import frc.robot.Constants.ShotModelConstants;
 import frc.robot.Constants.TurretConstants;
 import frc.robot.utility.Shooter.PhysicsShotSolver.Solution;
@@ -52,13 +54,7 @@ public class ShotCalculator {
 
     /** A util class for outputting shooter state values, even while the robot is moving! */
     public ShotCalculator() {
-        this.flywheelRPM = 0;
-        this.hoodAzimuth = 0;
-        this.turretAngle = 0;
-        this.turretVelocityFF = 0;
-        this.timeOfFlightSeconds = 0;
-        this.calculationValid = false;
-        this.virtualTargetPose = new Translation2d();
+        resetToSafeState();
     }
 
     /** Returns the current hood azimuth in degrees. */
@@ -105,6 +101,22 @@ public class ShotCalculator {
         return calculationValid;
     }
 
+    /**
+     * Returns whether the measured mechanism state still satisfies every modeled scoring
+     * constraint at the current virtual-target range. This closes the release gate around the
+     * physics-valid command window instead of relying only on broad subsystem tolerances.
+     */
+    public boolean measuredControlsScore(double measuredFlywheelRPM, double measuredHoodCommandDegrees) {
+        if (!calculationValid) {
+            return false;
+        }
+        return physicsSolver.evaluate(
+            distanceToVirtualTarget,
+            measuredFlywheelRPM,
+            measuredHoodCommandDegrees
+        ).valid();
+    }
+
     /** Returns the current distance to the virtual target. */
     public double getDistanceToVirtualTarget() {
         return distanceToVirtualTarget;
@@ -124,11 +136,19 @@ public class ShotCalculator {
     public void calculate(Pose2d currentRobotPose, 
                             ChassisSpeeds fieldVelocity) {
         calculationValid = false;
+        SmartDashboard.putBoolean("SOTM/ShotValid", false);
+
+        if (!hasFiniteInputs(currentRobotPose, fieldVelocity)) {
+            resetToSafeState();
+            DriverStation.reportWarning("Non-finite pose or velocity; shot calculation aborted.", false);
+            return;
+        }
 
         // Gets our target pose
         Optional<Alliance> alliance = DriverStation.getAlliance();
         if(alliance.isEmpty()){
-            DriverStation.reportWarning("Alliance color not detected! Shot calculation aborted.", true);
+            resetToSafeState();
+            DriverStation.reportWarning("Alliance color not detected! Shot calculation aborted.", false);
             return;
         }
         Translation2d targetPose = (alliance.get() == Alliance.Blue) ? 
@@ -189,7 +209,7 @@ public class ShotCalculator {
         virtualTargetPose = targetPose; 
         double distanceToTarget = turretPose.getTranslation().getDistance(targetPose);
         double staticDistance = distanceToTarget; // save for logging
-        Solution solution = solveAtBoundedDistance(distanceToTarget);
+        Solution solution = solveAtDistance(distanceToTarget);
         double timeOfFlight = solution.valid() ? solution.timeOfFlightSeconds() : 0.0;
         int iterationsUsed = 0;
 
@@ -204,7 +224,7 @@ public class ShotCalculator {
                     )
                 );
                 distanceToTarget = turretPose.getTranslation().getDistance(virtualTargetPose);
-                solution = solveAtBoundedDistance(distanceToTarget);
+                solution = solveAtDistance(distanceToTarget);
                 if (!solution.valid()) {
                     break;
                 }
@@ -267,11 +287,30 @@ public class ShotCalculator {
         SmartDashboard.putBoolean("SOTM/Model/PolicyValidated", solution.valid());
     }
 
-    private Solution solveAtBoundedDistance(double distanceMeters) {
-        return physicsSolver.solveRuntime(MathUtil.clamp(
-            distanceMeters,
-            ShotModelConstants.MIN_DISTANCE_METERS,
-            ShotModelConstants.MAX_DISTANCE_METERS
-        ));
+    private Solution solveAtDistance(double distanceMeters) {
+        return physicsSolver.solveRuntime(distanceMeters);
+    }
+
+    private static boolean hasFiniteInputs(Pose2d pose, ChassisSpeeds velocity) {
+        return pose != null
+            && velocity != null
+            && Double.isFinite(pose.getX())
+            && Double.isFinite(pose.getY())
+            && Double.isFinite(pose.getRotation().getRadians())
+            && Double.isFinite(velocity.vxMetersPerSecond)
+            && Double.isFinite(velocity.vyMetersPerSecond)
+            && Double.isFinite(velocity.omegaRadiansPerSecond);
+    }
+
+    private void resetToSafeState() {
+        flywheelRPM = ShooterConstants.FLYWHEEL_IDLE_RPM;
+        hoodAzimuth = HoodConstants.HOOD_MIN_ANGLE;
+        turretAngle = 0.0;
+        turretVelocityFF = 0.0;
+        timeOfFlightSeconds = 0.0;
+        calculationValid = false;
+        physicsSolution = null;
+        virtualTargetPose = new Translation2d();
+        distanceToVirtualTarget = 0.0;
     }
 }

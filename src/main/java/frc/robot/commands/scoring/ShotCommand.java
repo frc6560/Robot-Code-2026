@@ -62,6 +62,9 @@ public class ShotCommand extends Command {
     public void execute() {
         Optional<Alliance> alliance = DriverStation.getAlliance();
         if(alliance.isEmpty()){
+            debouncer.calculate(false);
+            isReady = false;
+            feeder.setShooting(false);
             return;
         }
 
@@ -76,7 +79,16 @@ public class ShotCommand extends Command {
         boolean hoodAtTolerance = inPassingZone ? true : hood.atTarget();
         boolean shooterAtTolerance = inPassingZone ? true : shooter.atTarget();
 
-        boolean raw = shotCalculator.isShotValid() && turret.getAtTarget(turretTolerance) && hoodAtTolerance && shooterAtTolerance;
+        boolean calculatorReady = inPassingZone || shotCalculator.isShotValid();
+        boolean measuredControlsScore = inPassingZone || shotCalculator.measuredControlsScore(
+            shooter.getCurrentRPM(),
+            hood.getHoodCommandAngle()
+        );
+        boolean raw = calculatorReady
+            && measuredControlsScore
+            && turret.getAtTarget(turretTolerance)
+            && hoodAtTolerance
+            && shooterAtTolerance;
 
         boolean allAtTarget = debouncer.calculate(raw);
 

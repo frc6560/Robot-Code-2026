@@ -3,6 +3,7 @@ package frc.robot.autonomous;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -14,9 +15,11 @@ import frc.robot.lib.BLine.FollowPath;
 import frc.robot.lib.BLine.Path;
 import frc.robot.Constants.BLineConstants;
 import frc.robot.subsystems.feeder.Feeder;
+import frc.robot.subsystems.hood.Hood;
 import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
+import frc.robot.subsystems.turret.Turret;
 import frc.robot.utility.Shooter.ShotCalculator;
 import java.util.List;
 
@@ -28,16 +31,29 @@ public class AutoCommands {
     private final Feeder feeder;
     private final Intake intake;
     private final Shooter shooter;
-    private final ShotCalculator calculator = new ShotCalculator();
+    private final Hood hood;
+    private final Turret turret;
+    private final ShotCalculator calculator;
     private final FollowPath.Builder pathBuilder;
     private final FollowPath.Builder firstPathBuilder;
     private double bLinePauseUntilSeconds;
 
-    public AutoCommands(SwerveSubsystem drivetrain, Feeder feeder, Intake intake, Shooter shooter) {
+    public AutoCommands(
+        SwerveSubsystem drivetrain,
+        Feeder feeder,
+        Intake intake,
+        Shooter shooter,
+        Hood hood,
+        Turret turret,
+        ShotCalculator calculator
+    ) {
         this.drivetrain = drivetrain;
         this.feeder = feeder;
         this.intake = intake;
         this.shooter = shooter;
+        this.hood = hood;
+        this.turret = turret;
+        this.calculator = calculator;
 
         configureBLineLogging();
 
@@ -188,18 +204,32 @@ public class AutoCommands {
         return Commands.run(() -> {
             calculator.calculate(drivetrain.getPose(), drivetrain.getFieldVelocity());
             shooter.setGoal(calculator.getFlywheelRPM());
-            if (calculator.isShotValid() && shooter.atTarget()) {
+            hood.setGoal(calculator.getHoodAzimuth());
+            turret.setGoalWithVelocity(
+                Units.radiansToDegrees(calculator.getTurretAngle()),
+                Units.radiansToDegrees(calculator.getTurretVelocityFF())
+            );
+
+            boolean ready = calculator.isShotValid()
+                && shooter.atTarget()
+                && hood.atTarget()
+                && turret.getAtTarget(calculator.getTurretTolerance())
+                && calculator.measuredControlsScore(
+                    shooter.getCurrentRPM(),
+                    hood.getHoodCommandAngle()
+                );
+            if (ready) {
                 feeder.setShooting(true);
                 feeder.setIntaking(true);
                 intake.activate();
             } else {
                 feeder.setShooting(false);
             }
-        }, shooter, feeder, intake).withTimeout(3.0).finallyDo(interrupted -> {
+        }, shooter, hood, turret, feeder, intake).withTimeout(3.0).finallyDo(interrupted -> {
             feeder.setShooting(false);
             feeder.setIntaking(false);
             intake.deactivate();
-            shooter.setGoal(0);
+            shooter.setIdle();
         });
     }
 

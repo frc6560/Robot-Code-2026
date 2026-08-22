@@ -103,7 +103,15 @@ public class RobotContainer {
           led = new LED(new LEDIO() {}, hood, shooter, turret, shotCalculator);
       }
 
-      factory = new AutoCommands(drivebase, feeder, intake, shooter);
+      factory = new AutoCommands(
+        drivebase,
+        feeder,
+        intake,
+        shooter,
+        hood,
+        turret,
+        shotCalculator
+      );
       autoChooser = new AutoModeChooser(factory);
       SmartDashboard.putData("Auto Chooser", autoChooser.getAutoChooser());
       SmartDashboard.putBoolean("Pit Coast Mode", false);

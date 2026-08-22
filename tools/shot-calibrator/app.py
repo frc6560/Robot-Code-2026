@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+from plotly.subplots import make_subplots
 
 from shotlab.calibration import (
     PARAMETER_BOUNDS,
@@ -44,6 +45,15 @@ from shotlab.flywheel import (
 )
 from shotlab.flywheel import INCH_TO_METER as FW_INCH_TO_METER
 from shotlab.flywheel import STANDARD_WALL_INCHES as FW_STANDARD_WALL_INCHES
+from shotlab.history import (
+    PARAMETER_NAMES as HISTORY_PARAMETER_NAMES,
+    CalibrationHistoryError,
+    create_calibration_attempt,
+    ensure_robot_code_baseline,
+    history_rows,
+    load_calibration_history,
+    save_calibration_history,
+)
 from shotlab.llm import request_parameter_advice
 from shotlab.models import BallSpec, Environment, OptimizationWeights, ShotControls, ShooterModel, Target
 from shotlab.physics import (
@@ -83,6 +93,7 @@ from shotlab.robot_profile import (
     SHOT_DISTANCE_MIN_M,
     TOP_WHEEL_DIAMETER_M,
 )
+from shotlab.robot_code import RobotCodeParseError, load_robot_shot_config, robot_config_rows
 from shotlab.tracking import TrackingConfig, track_video, video_reference_frame
 
 
@@ -183,8 +194,296 @@ EMPIRICAL_WIDGET_KEYS = {
     "hood_offset_deg": "model_hood_offset_deg",
     "drag_scale": "model_drag_scale",
     "lift_slope": "model_lift_slope",
+    "max_lift_coefficient": "model_max_lift_coefficient",
     "spin_decay_per_s": "model_spin_decay_per_s",
 }
+
+PARAMETER_LABELS = {
+    "velocity_transfer": "Velocity transfer",
+    "spin_transfer": "Spin transfer",
+    "hood_offset_deg": "Launch-angle offset",
+    "drag_scale": "Drag scale",
+    "lift_slope": "Magnus lift slope",
+    "max_lift_coefficient": "Maximum lift coefficient",
+    "spin_decay_per_s": "Spin decay",
+}
+
+PARAMETER_UNITS = {
+    "velocity_transfer": "ratio",
+    "spin_transfer": "ratio",
+    "hood_offset_deg": "deg",
+    "drag_scale": "scale",
+    "lift_slope": "slope",
+    "max_lift_coefficient": "coefficient",
+    "spin_decay_per_s": "1/s",
+}
+
+PARAMETER_COLORS = {
+    "velocity_transfer": "#1179EE",
+    "spin_transfer": "#33BECC",
+    "hood_offset_deg": "#D97706",
+    "drag_scale": "#C93838",
+    "lift_slope": "#6B5FB5",
+    "max_lift_coefficient": "#16835A",
+    "spin_decay_per_s": "#5B6570",
+}
+
+
+def _model_parameter_snapshot(model: ShooterModel) -> dict[str, float]:
+    parameters = model.empirical_parameters()
+    parameters["max_lift_coefficient"] = float(model.max_lift_coefficient)
+    return {name: float(parameters[name]) for name in HISTORY_PARAMETER_NAMES}
+
+
+def _save_history(attempts: list[dict]) -> None:
+    try:
+        save_calibration_history(attempts)
+        st.session_state.calibration_history = attempts
+        st.session_state.calibration_history_error = None
+    except CalibrationHistoryError as error:
+        st.session_state.calibration_history_error = str(error)
+
+
+def _record_calibration_attempt(
+    *,
+    source: str,
+    model: ShooterModel,
+    before_rmse_m: float | None,
+    after_rmse_m: float | None,
+    controls: ShotControls | None = None,
+    target: Target | None = None,
+    fitted_parameters: list[str] | tuple[str, ...] = (),
+    jacobian_condition: float | None = None,
+) -> None:
+    attempts = list(st.session_state.get("calibration_history", []))
+    attempt = create_calibration_attempt(
+        attempts,
+        source=source,
+        parameters=_model_parameter_snapshot(model),
+        before_rmse_m=before_rmse_m,
+        after_rmse_m=after_rmse_m,
+        target_distance_m=target.distance_m if target is not None else None,
+        top_rpm=controls.top_rpm if controls is not None else None,
+        bottom_rpm=controls.bottom_rpm if controls is not None else None,
+        hood_command_deg=controls.hood_angle_deg if controls is not None else None,
+        fitted_parameters=fitted_parameters,
+        jacobian_condition=jacobian_condition,
+        robot_code_hash=st.session_state.get("robot_code_hash"),
+        video_signature=st.session_state.get("video_signature"),
+    )
+    attempts.append(attempt)
+    _save_history(attempts)
+
+
+def reload_robot_code(*, announce: bool = True) -> None:
+    try:
+        config = load_robot_shot_config()
+        for state_key, value in config.app_state_values.items():
+            st.session_state[state_key] = float(value)
+        st.session_state.model_target_distance = float(
+            np.clip(
+                st.session_state.get("model_target_distance", DEFAULT_TARGET_DISTANCE_FT * FOOT_TO_METER),
+                config.values["MIN_DISTANCE_METERS"],
+                config.values["MAX_DISTANCE_METERS"],
+            )
+        )
+        st.session_state.robot_code_hash = config.source_hash
+        st.session_state.robot_code_path = str(config.source_path)
+        st.session_state.robot_code_rows = robot_config_rows(config)
+        st.session_state.robot_code_policy = config.runtime_policy
+        st.session_state.robot_code_empirical_parameters = config.empirical_parameters
+        st.session_state.robot_code_error = None
+
+        attempts = list(st.session_state.get("calibration_history", []))
+        attempts, baseline_added = ensure_robot_code_baseline(
+            attempts,
+            parameters=config.empirical_parameters,
+            robot_code_hash=config.source_hash,
+        )
+        if baseline_added:
+            _save_history(attempts)
+
+        st.session_state.optimal_result = None
+        st.session_state.optimal_target_distance_m = None
+        st.session_state.shot_map = None
+        st.session_state.shot_map_context = None
+        st.session_state.fit_result = None
+        st.session_state.control_correction = None
+        st.session_state.llm_advice = None
+        st.session_state.llm_candidate_rmse = None
+        if announce:
+            st.session_state.model_flash = (
+                "Robot shot constants reloaded. Recalculate the shot map before using a recommendation."
+            )
+    except (RobotCodeParseError, CalibrationHistoryError) as error:
+        st.session_state.robot_code_error = str(error)
+
+
+def clear_calibration_history() -> None:
+    attempts: list[dict] = []
+    parameters = st.session_state.get("robot_code_empirical_parameters")
+    source_hash = st.session_state.get("robot_code_hash")
+    if parameters and source_hash:
+        attempts, _ = ensure_robot_code_baseline(
+            attempts,
+            parameters=parameters,
+            robot_code_hash=source_hash,
+        )
+    _save_history(attempts)
+
+
+def calibration_rmse_figure(attempts: list[dict]) -> go.Figure | None:
+    fitted = [item for item in attempts if item.get("after_rmse_m") is not None]
+    if not fitted:
+        return None
+    figure = go.Figure()
+    figure.add_trace(
+        go.Scatter(
+            x=[item["attempt"] for item in fitted],
+            y=[item["before_rmse_m"] for item in fitted],
+            mode="lines+markers",
+            name="Before fit",
+            line=dict(color="#8A96A3", width=2),
+            marker=dict(size=8),
+            customdata=[item["source"] for item in fitted],
+            hovertemplate="Attempt %{x}<br>Before %{y:.4f} m<br>%{customdata}<extra></extra>",
+        )
+    )
+    figure.add_trace(
+        go.Scatter(
+            x=[item["attempt"] for item in fitted],
+            y=[item["after_rmse_m"] for item in fitted],
+            mode="lines+markers",
+            name="After fit",
+            line=dict(color="#1179EE", width=3),
+            marker=dict(size=9),
+            customdata=[item["source"] for item in fitted],
+            hovertemplate="Attempt %{x}<br>After %{y:.4f} m<br>%{customdata}<extra></extra>",
+        )
+    )
+    figure.update_layout(
+        height=340,
+        margin=dict(l=16, r=16, t=24, b=16),
+        plot_bgcolor="#FFFFFF",
+        paper_bgcolor="#FFFFFF",
+        legend=dict(orientation="h", y=1.12, x=0.0),
+        xaxis=dict(title="Attempt", dtick=1, gridcolor="#E7EBEF"),
+        yaxis=dict(title="Trajectory RMSE (m)", rangemode="tozero", gridcolor="#E7EBEF"),
+    )
+    return figure
+
+
+def calibration_parameter_figure(attempts: list[dict]) -> go.Figure:
+    columns = 2
+    rows = int(np.ceil(len(HISTORY_PARAMETER_NAMES) / columns))
+    figure = make_subplots(
+        rows=rows,
+        cols=columns,
+        subplot_titles=[PARAMETER_LABELS[name] for name in HISTORY_PARAMETER_NAMES],
+        vertical_spacing=0.10,
+        horizontal_spacing=0.10,
+    )
+    for index, name in enumerate(HISTORY_PARAMETER_NAMES):
+        row = index // columns + 1
+        column = index % columns + 1
+        values = [item.get("parameters", {}).get(name) for item in attempts]
+        figure.add_trace(
+            go.Scatter(
+                x=[item["attempt"] for item in attempts],
+                y=values,
+                mode="lines+markers",
+                line=dict(color=PARAMETER_COLORS[name], width=2.5),
+                marker=dict(size=8),
+                customdata=[item["source"] for item in attempts],
+                hovertemplate=(
+                    f"Attempt %{{x}}<br>{PARAMETER_LABELS[name]} %{{y:.6g}} {PARAMETER_UNITS[name]}"
+                    "<br>%{customdata}<extra></extra>"
+                ),
+                showlegend=False,
+            ),
+            row=row,
+            col=column,
+        )
+        figure.update_xaxes(title_text="Attempt", dtick=1, gridcolor="#E7EBEF", row=row, col=column)
+        figure.update_yaxes(title_text=PARAMETER_UNITS[name], gridcolor="#E7EBEF", row=row, col=column)
+    figure.update_layout(
+        height=760,
+        margin=dict(l=20, r=20, t=42, b=20),
+        plot_bgcolor="#FFFFFF",
+        paper_bgcolor="#FFFFFF",
+    )
+    return figure
+
+
+def render_calibration_progression() -> None:
+    st.divider()
+    st.markdown("### Calibration progression")
+    history_error = st.session_state.get("calibration_history_error")
+    if history_error:
+        st.error(history_error)
+    attempts = list(st.session_state.get("calibration_history", []))
+    if not attempts:
+        st.info("No robot-code baseline or calibration attempts are available.")
+        return
+
+    fitted = [item for item in attempts if item.get("after_rmse_m") is not None]
+    latest_rmse = fitted[-1]["after_rmse_m"] if fitted else None
+    best_rmse = min((item["after_rmse_m"] for item in fitted), default=None)
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Recorded attempts", str(len(fitted)))
+    m2.metric("Latest RMSE", "--" if latest_rmse is None else f"{latest_rmse:.4f} m")
+    m3.metric("Best RMSE", "--" if best_rmse is None else f"{best_rmse:.4f} m")
+    m4.metric("Robot revision", str(st.session_state.get("robot_code_hash", ""))[:8] or "--")
+
+    rmse_figure = calibration_rmse_figure(attempts)
+    if rmse_figure is not None:
+        st.plotly_chart(
+            rmse_figure,
+            width="stretch",
+            config={"displayModeBar": False},
+            key="calibration_rmse_progression",
+        )
+    else:
+        st.caption("The Java baseline is loaded. RMSE progression begins after the first fitted attempt.")
+    st.plotly_chart(
+        calibration_parameter_figure(attempts),
+        width="stretch",
+        config={"displayModeBar": False},
+        key="calibration_parameter_progression",
+    )
+
+    rows = history_rows(attempts)
+    frame = pd.DataFrame(rows)
+    summary_columns = [
+        "attempt",
+        "timestamp",
+        "source",
+        "target_distance_m",
+        "top_rpm",
+        "hood_command_deg",
+        "before_rmse_m",
+        "after_rmse_m",
+        "improvement_percent",
+    ]
+    with st.expander("Attempt records", expanded=False):
+        st.dataframe(frame[summary_columns], hide_index=True, width="stretch")
+        action_column, reset_column = st.columns([0.62, 0.38])
+        action_column.download_button(
+            "Download attempt history",
+            frame.to_csv(index=False).encode("utf-8"),
+            file_name="shot_calibration_history.csv",
+            mime="text/csv",
+            icon=":material/download:",
+            width="stretch",
+        )
+        allow_reset = reset_column.checkbox("Enable reset", key="enable_history_reset")
+        reset_column.button(
+            "Reset history",
+            icon=":material/delete:",
+            disabled=not allow_reset,
+            on_click=clear_calibration_history,
+            width="stretch",
+        )
 
 
 def initialize_state() -> None:
@@ -220,7 +519,36 @@ def initialize_state() -> None:
         "model_hood_offset_deg": 0.0,
         "model_drag_scale": 1.0,
         "model_lift_slope": 0.75,
+        "model_max_lift_coefficient": 0.35,
         "model_spin_decay_per_s": 0.10,
+        "model_ball_mass": BALL_MASS_KG,
+        "model_ball_diameter": BALL_DIAMETER_M,
+        "model_drag_coefficient": 0.47,
+        "model_air_density": 1.225,
+        "model_gravity": 9.80665,
+        "model_wind_x": 0.0,
+        "model_robot_velocity": 0.0,
+        "model_target_distance": DEFAULT_TARGET_DISTANCE_FT * FOOT_TO_METER,
+        "model_min_entry_angle": HUB_DEFAULT_MIN_ENTRY_ANGLE_DEG,
+        "model_rim_margin_in": HUB_DEFAULT_RIM_MARGIN_M / 0.0254,
+        "model_release_height": RELEASE_HEIGHT_M,
+        "model_top_wheel_diameter": TOP_WHEEL_DIAMETER_M,
+        "model_bottom_wheel_diameter": BOTTOM_WHEEL_DIAMETER_M,
+        "model_min_rpm": FLYWHEEL_IDLE_RPM,
+        "model_max_rpm": FLYWHEEL_MAX_RPM,
+        "model_min_hood": HOOD_MIN_DEG,
+        "model_max_hood": HOOD_MAX_DEG,
+        "model_rpm_ratio": FOLLOWER_TO_LEADER_RPM_RATIO,
+        "model_time_weight": 0.25,
+        "model_entry_weight": 0.50,
+        "model_effort_weight": 0.15,
+        "model_hub_opening_span": HUB_OPENING_SPAN_M,
+        "model_hub_rim_height": HUB_FUNNEL_RIM_HEIGHT_M,
+        "model_shot_distance_min": SHOT_DISTANCE_MIN_M,
+        "model_shot_distance_max": SHOT_DISTANCE_MAX_M,
+        "robot_code_initialized": False,
+        "robot_code_error": None,
+        "calibration_history_error": None,
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -242,12 +570,23 @@ def initialize_state() -> None:
         st.session_state.model_hood_offset_deg = 0.0
         st.session_state.model_drag_scale = 1.0
         st.session_state.model_lift_slope = 0.75
+        st.session_state.model_max_lift_coefficient = 0.35
         st.session_state.model_spin_decay_per_s = 0.10
         if had_prior_model_state:
             st.session_state.model_flash = (
                 "Hood convention corrected: launch elevation is 90 deg minus the rear-referenced hood command. "
                 "Old fitted coefficients and recommendations were reset; the tracked video is still available to refit."
             )
+    if "calibration_history" not in st.session_state:
+        try:
+            st.session_state.calibration_history = load_calibration_history()
+            st.session_state.calibration_history_error = None
+        except CalibrationHistoryError as error:
+            st.session_state.calibration_history = []
+            st.session_state.calibration_history_error = str(error)
+    if not st.session_state.robot_code_initialized:
+        reload_robot_code(announce=False)
+        st.session_state.robot_code_initialized = True
 
 
 def apply_model_parameters(
@@ -566,6 +905,16 @@ def render_numerical_calibration(
                         else None
                     )
                     st.session_state.llm_advice = None
+                    _record_calibration_attempt(
+                        source=f"Numerical fit ({widget_prefix.title()})",
+                        model=fit_candidate.fitted_model,
+                        before_rmse_m=fit_candidate.before_rmse_m,
+                        after_rmse_m=fit_candidate.after_rmse_m,
+                        controls=controls,
+                        target=target,
+                        fitted_parameters=fit_candidate.fitted_parameters,
+                        jacobian_condition=fit_candidate.jacobian_condition,
+                    )
                 st.success(
                     "Calibration finished. Orange validates the fitted equation against the recording; "
                     "the corrected next-shot trace changes RPM and hood command to follow the reference optimum."
@@ -1996,9 +2345,9 @@ st.markdown(
       <div class="profile-state"><span>Robot profile</span><strong>Form + repository loaded</strong></div>
     </header>
     <div class="profile-strip">
-      <div><span>Mechanism RPM</span><strong>{FLYWHEEL_IDLE_RPM:.0f}-{FLYWHEEL_MAX_RPM:.0f}</strong></div>
-      <div><span>Hood command (back ref)</span><strong>{HOOD_MIN_DEG:.1f}-{HOOD_MAX_DEG:.1f} deg</strong></div>
-      <div><span>Calibrated distance</span><strong>{SHOT_DISTANCE_MIN_M:.3f}-{SHOT_DISTANCE_MAX_M:.3f} m</strong></div>
+      <div><span>Mechanism RPM</span><strong>{st.session_state.model_min_rpm:.0f}-{st.session_state.model_max_rpm:.0f}</strong></div>
+      <div><span>Hood command (back ref)</span><strong>{st.session_state.model_min_hood:.1f}-{st.session_state.model_max_hood:.1f} deg</strong></div>
+      <div><span>Calibrated distance</span><strong>{st.session_state.model_shot_distance_min:.3f}-{st.session_state.model_shot_distance_max:.3f} m</strong></div>
     </div>
     """,
     unsafe_allow_html=True,
@@ -2026,6 +2375,39 @@ with stage_model:
     input_column, result_column = st.columns([0.38, 0.62], gap="large")
     with input_column:
         st.subheader("Required variables")
+        with st.expander("Robot code synchronization", expanded=True):
+            code_error = st.session_state.get("robot_code_error")
+            if code_error:
+                st.error(code_error)
+            else:
+                status_col, hash_col = st.columns([0.65, 0.35])
+                status_col.metric("Source", "Constants.java")
+                hash_col.metric("Revision", st.session_state.robot_code_hash[:8])
+                st.caption(st.session_state.robot_code_path)
+                policy = st.session_state.robot_code_policy
+                rpm_a, rpm_b, rpm_c = policy["rpm"]
+                hood_a, hood_b, hood_c = policy["hood"]
+                st.code(
+                    "\n".join(
+                        (
+                            f"RPM(d) = {rpm_a:.9g} d^2 + {rpm_b:.9g} d + {rpm_c:.9g}",
+                            f"hood_back(d) = {hood_a:.9g} d^2 + {hood_b:.9g} d + {hood_c:.9g}",
+                        )
+                    ),
+                    language="text",
+                )
+                st.dataframe(
+                    pd.DataFrame(st.session_state.robot_code_rows),
+                    hide_index=True,
+                    width="stretch",
+                    height=245,
+                )
+            st.button(
+                "Reload from robot code",
+                icon=":material/refresh:",
+                on_click=reload_robot_code,
+                width="stretch",
+            )
         with st.expander("Loaded robot profile", expanded=False):
             profile_frame = pd.DataFrame(PROFILE_ROWS, columns=["Variable", "Value", "Source", "Status"])
             st.dataframe(profile_frame, hide_index=True, width="stretch")
@@ -2034,12 +2416,13 @@ with stage_model:
         with st.expander("Ball and environment", expanded=True):
             st.markdown('<div class="source-line"><span class="source-chip">Form default</span>Ball values were not checked as confirmed.</div>', unsafe_allow_html=True)
             c1, c2 = st.columns(2)
-            ball_mass = c1.number_input("Ball mass (kg)", 0.01, 2.0, BALL_MASS_KG, 0.005)
-            ball_diameter = c2.number_input("Ball diameter (m)", 0.02, 0.50, BALL_DIAMETER_M, 0.005)
-            drag_coefficient = c1.number_input("Sphere drag coefficient", 0.0, 2.0, 0.47, 0.01)
-            air_density = c2.number_input("Air density (kg/m³)", 0.8, 1.5, 1.225, 0.005)
-            wind_x = c1.number_input("Wind toward target (m/s)", -10.0, 10.0, 0.0, 0.1)
-            robot_velocity = c2.number_input("Robot velocity toward target (m/s)", -6.0, 6.0, 0.0, 0.1)
+            ball_mass = c1.number_input("Ball mass (kg)", 0.01, 2.0, step=0.005, key="model_ball_mass")
+            ball_diameter = c2.number_input("Ball diameter (m)", 0.02, 0.50, step=0.005, key="model_ball_diameter")
+            drag_coefficient = c1.number_input("Sphere drag coefficient", 0.0, 2.0, step=0.01, key="model_drag_coefficient")
+            air_density = c2.number_input("Air density (kg/m³)", 0.8, 1.5, step=0.005, key="model_air_density")
+            wind_x = c1.number_input("Wind toward target (m/s)", -10.0, 10.0, step=0.1, key="model_wind_x")
+            gravity = c2.number_input("Gravity (m/s²)", 5.0, 15.0, step=0.01, key="model_gravity")
+            robot_velocity = c1.number_input("Robot velocity toward target (m/s)", -6.0, 6.0, step=0.1, key="model_robot_velocity")
 
         with st.expander("Target and release", expanded=True):
             st.markdown(
@@ -2051,31 +2434,35 @@ with stage_model:
             c1, c2 = st.columns(2)
             target_distance = c1.number_input(
                 "Distance to HUB center (m)",
-                0.25,
-                15.0,
-                DEFAULT_TARGET_DISTANCE_FT * FOOT_TO_METER,
-                0.05,
+                float(st.session_state.model_shot_distance_min),
+                float(st.session_state.model_shot_distance_max),
+                step=0.05,
                 format="%.3f",
+                key="model_target_distance",
             )
-            target_height = HUB_OPENING_PLANE_HEIGHT_M + ball_diameter / 2.0
+            c1.caption(
+                f"Robot policy range: {st.session_state.model_shot_distance_min:.3f}-"
+                f"{st.session_state.model_shot_distance_max:.3f} m"
+            )
+            target_height = st.session_state.model_hub_rim_height + ball_diameter / 2.0
             c2.metric("Ball-center scoring plane", f"{target_height:.4f} m")
             minimum_entry_angle = c1.number_input(
                 "Minimum entry angle (deg)",
                 0.0,
                 60.0,
-                HUB_DEFAULT_MIN_ENTRY_ANGLE_DEG,
-                1.0,
+                step=1.0,
+                key="model_min_entry_angle",
                 help="Hard constraint at the descending ball-center crossing through the upper funnel entrance.",
             )
             rim_margin_in = c2.number_input(
                 "Funnel safety margin (in)",
                 0.0,
                 6.0,
-                HUB_DEFAULT_RIM_MARGIN_M / 0.0254,
-                0.25,
+                step=0.25,
+                key="model_rim_margin_in",
                 help="Extra clearance beyond the ball radius at the front rim and opening edges.",
             )
-            release_height = c1.number_input("Release height (m)", 0.05, 3.0, RELEASE_HEIGHT_M, 0.01)
+            release_height = c1.number_input("Release height (m)", 0.05, 3.0, step=0.01, key="model_release_height")
             st.caption(
                 "The upper funnel entrance is 41.7 in wide at 72 in; the lower HUB throat is 23.95 in wide at 56.44 in. "
                 "Scoring clearance is checked at the upper rim after subtracting ball radius and the selected safety margin."
@@ -2089,12 +2476,12 @@ with stage_model:
                 default="Coupled dual wheel",
             )
             c1, c2 = st.columns(2)
-            top_wheel_diameter = c1.number_input("Top wheel diameter (m)", 0.02, 0.40, TOP_WHEEL_DIAMETER_M, 0.0005, format="%.4f")
-            bottom_wheel_diameter = c2.number_input("Bottom wheel diameter (m)", 0.02, 0.40, BOTTOM_WHEEL_DIAMETER_M, 0.0005, format="%.4f")
-            min_rpm = c1.number_input("Minimum mechanism RPM", 0.0, 12000.0, FLYWHEEL_IDLE_RPM, 50.0)
-            max_rpm = c2.number_input("Maximum mechanism RPM", 100.0, 15000.0, FLYWHEEL_MAX_RPM, 50.0)
-            min_hood = c1.number_input("Minimum hood command from back (deg)", 0.0, 89.0, HOOD_MIN_DEG, 0.1)
-            max_hood = c2.number_input("Maximum hood command from back (deg)", 0.0, 89.0, HOOD_MAX_DEG, 0.1)
+            top_wheel_diameter = c1.number_input("Top wheel diameter (m)", 0.02, 0.40, step=0.0005, format="%.4f", key="model_top_wheel_diameter")
+            bottom_wheel_diameter = c2.number_input("Bottom wheel diameter (m)", 0.02, 0.40, step=0.0005, format="%.4f", key="model_bottom_wheel_diameter")
+            min_rpm = c1.number_input("Minimum mechanism RPM", 0.0, 12000.0, step=50.0, key="model_min_rpm")
+            max_rpm = c2.number_input("Maximum mechanism RPM", 100.0, 15000.0, step=50.0, key="model_max_rpm")
+            min_hood = c1.number_input("Minimum hood command from back (deg)", 0.0, 89.0, step=0.1, key="model_min_hood")
+            max_hood = c2.number_input("Maximum hood command from back (deg)", 0.0, 89.0, step=0.1, key="model_max_hood")
             st.caption(
                 f"Physical launch elevation before fitted offset: {90.0 - max_hood:.1f} deg to "
                 f"{90.0 - min_hood:.1f} deg. A smaller hood command produces a steeper launch."
@@ -2103,8 +2490,8 @@ with stage_model:
                 "Follower / leader RPM ratio",
                 0.0,
                 2.0,
-                FOLLOWER_TO_LEADER_RPM_RATIO,
-                0.01,
+                step=0.01,
+                key="model_rpm_ratio",
                 disabled=shooter_mode_label != "Coupled dual wheel",
                 help="The current robot code commands an opposed follower at the leader's mechanism RPM.",
             )
@@ -2116,22 +2503,27 @@ with stage_model:
             hood_offset = c1.number_input("Launch-angle offset (deg)", -15.0, 15.0, step=0.1, key="model_hood_offset_deg")
             drag_scale = c2.number_input("Drag scale", 0.20, 3.00, step=0.05, key="model_drag_scale")
             lift_slope = c1.number_input("Magnus lift slope", 0.0, 2.50, step=0.05, key="model_lift_slope")
-            spin_decay = c2.number_input("Spin decay (1/s)", 0.0, 2.00, step=0.02, key="model_spin_decay_per_s")
+            max_lift_coefficient = c2.number_input("Maximum lift coefficient", 0.0, 2.0, step=0.01, key="model_max_lift_coefficient")
+            spin_decay = c1.number_input("Spin decay (1/s)", 0.0, 2.00, step=0.02, key="model_spin_decay_per_s")
 
         with st.expander("Robust-map tie-breaks", expanded=False):
-            time_weight = st.slider("Short flight time", 0.0, 1.0, 0.25, 0.05)
-            entry_weight = st.slider("Steep entry angle", 0.0, 1.0, 0.50, 0.05)
-            effort_weight = st.slider("Lower mechanism effort", 0.0, 1.0, 0.15, 0.05)
+            time_weight = st.slider("Short flight time", 0.0, 1.0, step=0.05, key="model_time_weight")
+            entry_weight = st.slider("Steep entry angle", 0.0, 1.0, step=0.05, key="model_entry_weight")
+            effort_weight = st.slider("Lower mechanism effort", 0.0, 1.0, step=0.05, key="model_effort_weight")
 
         optimize_clicked = st.button("Calculate robust shot map", type="primary", width="stretch")
 
     ball = BallSpec(ball_mass, ball_diameter, drag_coefficient)
-    environment = Environment(air_density_kg_m3=air_density, wind_x_m_s=wind_x)
+    environment = Environment(
+        air_density_kg_m3=air_density,
+        gravity_m_s2=gravity,
+        wind_x_m_s=wind_x,
+    )
     target = Target(
         distance_m=target_distance,
         center_height_m=target_height,
         opening_height_m=ball_diameter,
-        opening_span_m=HUB_OPENING_SPAN_M,
+        opening_span_m=st.session_state.model_hub_opening_span,
         min_entry_angle_deg=minimum_entry_angle,
         rim_margin_m=rim_margin_in * 0.0254,
     )
@@ -2151,6 +2543,7 @@ with stage_model:
         hood_offset_deg=hood_offset,
         drag_scale=drag_scale,
         lift_slope=lift_slope,
+        max_lift_coefficient=max_lift_coefficient,
         spin_decay_per_s=spin_decay,
     )
     weights = OptimizationWeights(time_weight, entry_weight, effort_weight)
@@ -2180,7 +2573,8 @@ with stage_model:
                     "optimal_result": st.session_state.optimal_result,
                     "shot_map": st.session_state.shot_map,
                 }
-                use_optimal_controls()
+                if st.session_state.optimal_result.success:
+                    use_optimal_controls()
 
     with result_column:
         optimal_result = st.session_state.optimal_result
@@ -2278,7 +2672,10 @@ with stage_measure:
                 st.session_state[key] = float(value)
         st.button(
             "Use recommended controls",
-            disabled=st.session_state.optimal_result is None,
+            disabled=(
+                st.session_state.optimal_result is None
+                or not st.session_state.optimal_result.success
+            ),
             on_click=use_optimal_controls,
             width="stretch",
         )
@@ -2658,6 +3055,15 @@ with stage_calibrate:
                         )
                         st.session_state.llm_advice = advice
                         st.session_state.llm_candidate_rmse = trajectory_rmse(tracked, llm_trajectory)
+                        _record_calibration_attempt(
+                            source="LLM candidate",
+                            model=llm_model,
+                            before_rmse_m=fit.after_rmse_m,
+                            after_rmse_m=st.session_state.llm_candidate_rmse,
+                            controls=actual_controls,
+                            target=measurement_target,
+                            fitted_parameters=tuple(advice["recommended_parameters"]),
+                        )
                 except Exception as error:
                     st.error(f"LLM review failed: {error}")
 
@@ -2676,7 +3082,7 @@ with stage_calibrate:
                 a1.metric("LLM confidence", str(advice.get("confidence", "unknown")).title())
                 a2.metric("LLM candidate RMSE", f"{st.session_state.llm_candidate_rmse:.3f} m")
                 st.json(advice)
-                llm_improves = st.session_state.llm_candidate_rmse < fit.before_rmse_m
+                llm_improves = st.session_state.llm_candidate_rmse <= fit.after_rmse_m
                 st.button(
                     "Apply validated LLM candidate",
                     disabled=not llm_improves,
@@ -2684,7 +3090,7 @@ with stage_calibrate:
                     args=(advice["recommended_parameters"],),
                 )
                 if not llm_improves:
-                    st.error("The LLM candidate does not improve measured-path RMSE and cannot be applied.")
+                    st.error("The LLM candidate is worse than the numerical fit and cannot be applied.")
                 st.plotly_chart(
                     trajectory_figure(
                         measurement_target,
@@ -2700,6 +3106,8 @@ with stage_calibrate:
                     width="stretch",
                     config={"displayModeBar": False},
                 )
+
+    render_calibration_progression()
 
 
 with stage_flywheel:
