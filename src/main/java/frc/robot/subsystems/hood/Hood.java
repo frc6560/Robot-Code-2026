@@ -17,7 +17,7 @@ public class Hood extends SubsystemBase {
 
     private double targetAngle = HoodConstants.HOOD_MIN_ANGLE - ANGLE_OFFSET;
     private static final double ANGLE_TOLERANCE = 2.0;
-    private static final double ANGLE_OFFSET = 25.0;
+    private static final double ANGLE_OFFSET = HoodConstants.HOOD_HORIZONTAL_OFFSET;
 
 
     public Hood(HoodIO io) {
@@ -26,6 +26,11 @@ public class Hood extends SubsystemBase {
 
     public double getHoodAngle() {
         return inputs.hoodAngleDegrees;
+    }
+
+    /** Returns the measured hood angle in the rear-referenced shot-command convention. */
+    public double getHoodCommandAngle() {
+        return getHoodAngle() + ANGLE_OFFSET;
     }
 
     /**

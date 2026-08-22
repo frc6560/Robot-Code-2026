@@ -44,6 +44,18 @@ class ShotCalculatorTest {
         assertEquals(expected.hoodCommandDegrees(), calculator.getHoodAzimuth(), 1e-6);
         assertEquals(expected.timeOfFlightSeconds(), calculator.getTimeOfFlightSeconds(), 1e-5);
         assertEquals(FIFTEEN_FEET_METERS, calculator.getDistanceToVirtualTarget(), 1e-9);
+        assertTrue(calculator.measuredControlsScore(
+            calculator.getFlywheelRPM(),
+            calculator.getHoodAzimuth()
+        ));
+        assertFalse(calculator.measuredControlsScore(
+            calculator.getFlywheelRPM() - 200.0,
+            calculator.getHoodAzimuth()
+        ));
+        assertFalse(calculator.measuredControlsScore(
+            calculator.getFlywheelRPM() + 200.0,
+            calculator.getHoodAzimuth()
+        ));
     }
 
     @Test
@@ -73,6 +85,59 @@ class ShotCalculatorTest {
         calculator.calculate(robotPoseAtBlueHubDistance(7.0), new ChassisSpeeds());
 
         assertFalse(calculator.isShotValid());
+        assertEquals(500.0, calculator.getFlywheelRPM(), 1e-9);
+        assertEquals(25.1, calculator.getHoodAzimuth(), 1e-9);
+        assertFalse(calculator.measuredControlsScore(2500.0, 30.0));
+    }
+
+    @Test
+    void rejectsNonFiniteLocalizationWithoutProducingUnsafeOutputs() {
+        DriverStationSim.setAllianceStationId(AllianceStationID.Blue1);
+        DriverStationSim.notifyNewData();
+
+        Object[][] invalidInputs = new Object[][] {
+            {null, new ChassisSpeeds()},
+            {new Pose2d(), null},
+            {new Pose2d(Double.NaN, 0.0, new Rotation2d()), new ChassisSpeeds()},
+            {new Pose2d(0.0, Double.POSITIVE_INFINITY, new Rotation2d()), new ChassisSpeeds()},
+            {new Pose2d(0.0, 0.0, Rotation2d.fromRadians(Double.NaN)), new ChassisSpeeds()},
+            {new Pose2d(), new ChassisSpeeds(Double.NaN, 0.0, 0.0)},
+            {new Pose2d(), new ChassisSpeeds(0.0, Double.NEGATIVE_INFINITY, 0.0)},
+            {new Pose2d(), new ChassisSpeeds(0.0, 0.0, Double.NaN)}
+        };
+
+        for (Object[] invalidInput : invalidInputs) {
+            ShotCalculator calculator = new ShotCalculator();
+            calculator.calculate((Pose2d) invalidInput[0], (ChassisSpeeds) invalidInput[1]);
+
+            assertFalse(calculator.isShotValid());
+            assertEquals(500.0, calculator.getFlywheelRPM(), 1e-9);
+            assertEquals(25.1, calculator.getHoodAzimuth(), 1e-9);
+            assertTrue(Double.isFinite(calculator.getTurretAngle()));
+            assertTrue(Double.isFinite(calculator.getTurretVelocityFF()));
+            assertTrue(Double.isFinite(calculator.getDistanceToVirtualTarget()));
+            assertTrue(Double.isFinite(calculator.getVirtualTargetPose().getX()));
+            assertTrue(Double.isFinite(calculator.getVirtualTargetPose().getY()));
+        }
+    }
+
+    @Test
+    void missingAllianceResetsPreviouslyValidShotToSafeState() {
+        DriverStationSim.setAllianceStationId(AllianceStationID.Blue1);
+        DriverStationSim.notifyNewData();
+
+        ShotCalculator calculator = new ShotCalculator();
+        calculator.calculate(robotPoseAtBlueHubDistance(FIFTEEN_FEET_METERS), new ChassisSpeeds());
+        assertTrue(calculator.isShotValid());
+
+        DriverStationSim.resetData();
+        DriverStationSim.notifyNewData();
+        calculator.calculate(robotPoseAtBlueHubDistance(FIFTEEN_FEET_METERS), new ChassisSpeeds());
+
+        assertFalse(calculator.isShotValid());
+        assertEquals(500.0, calculator.getFlywheelRPM(), 1e-9);
+        assertEquals(25.1, calculator.getHoodAzimuth(), 1e-9);
+        assertEquals(0.0, calculator.getDistanceToVirtualTarget(), 1e-9);
     }
 
     private static Pose2d robotPoseAtBlueHubDistance(double distanceMeters) {

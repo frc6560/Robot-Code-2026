@@ -74,7 +74,7 @@ public final class PhysicsShotSolver {
      * cached in 2.5 cm range bins, then the selected command is validated at the exact range.
      */
     public synchronized Solution solve(double distanceMeters) {
-        if (!Double.isFinite(distanceMeters) || distanceMeters <= 0.0) {
+        if (!isDistanceInRange(distanceMeters)) {
             return invalidSolution(distanceMeters);
         }
 
@@ -106,7 +106,7 @@ public final class PhysicsShotSolver {
      * from the drag/Magnus equation rather than from another fitted curve.
      */
     public Solution solveRuntime(double distanceMeters) {
-        if (!Double.isFinite(distanceMeters) || distanceMeters <= 0.0) {
+        if (!isDistanceInRange(distanceMeters)) {
             return invalidSolution(distanceMeters);
         }
         double rpm = evaluateQuadratic(
@@ -136,10 +136,9 @@ public final class PhysicsShotSolver {
             && flywheelRPM <= ShooterConstants.MAX_RPM
             && hoodCommandDegrees >= HoodConstants.HOOD_MIN_ANGLE
             && hoodCommandDegrees <= HoodConstants.HOOD_MAX_ANGLE;
-        if (!Double.isFinite(distanceMeters)
+        if (!isDistanceInRange(distanceMeters)
                 || !Double.isFinite(flywheelRPM)
                 || !Double.isFinite(hoodCommandDegrees)
-                || distanceMeters <= 0.0
                 || !controlsInRange) {
             return invalidSolution(distanceMeters);
         }
@@ -452,7 +451,10 @@ public final class PhysicsShotSolver {
                     Math.atan2(-crossingVz, Math.max(Math.abs(crossingVx), 1e-9))
                 );
                 boolean inside = centerOffset <= usableHalfSpan;
-                boolean scoring = inside
+                boolean scoring = usableHalfSpan > 0.0
+                    && crossingVx > 0.0
+                    && crossingVz < 0.0
+                    && inside
                     && nearRimClearance >= ShotModelConstants.HUB_RIM_MARGIN_METERS
                     && entryAngle >= ShotModelConstants.MIN_ENTRY_ANGLE_DEGREES;
                 return new EntryMetrics(
@@ -553,6 +555,12 @@ public final class PhysicsShotSolver {
         double value
     ) {
         return (distanceSquaredCoefficient * value + distanceCoefficient) * value + constant;
+    }
+
+    private static boolean isDistanceInRange(double distanceMeters) {
+        return Double.isFinite(distanceMeters)
+            && distanceMeters >= ShotModelConstants.MIN_DISTANCE_METERS
+            && distanceMeters <= ShotModelConstants.MAX_DISTANCE_METERS;
     }
 
     private static double clamp(double value, double minimum, double maximum) {

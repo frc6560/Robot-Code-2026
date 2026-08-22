@@ -5,12 +5,15 @@ import choreo.auto.AutoFactory;
 import choreo.auto.AutoRoutine;
 import choreo.auto.AutoTrajectory;
 import frc.robot.subsystems.feeder.Feeder;
+import frc.robot.subsystems.hood.Hood;
 import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
+import frc.robot.subsystems.turret.Turret;
 import frc.robot.utility.Shooter.ShotCalculator;
 
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 
@@ -22,19 +25,27 @@ public class AutoCommands {
     private Feeder feeder;
     private Intake intake;
     private Shooter shooter;
-    private ShotCalculator calculator = new ShotCalculator();
+    private Hood hood;
+    private Turret turret;
+    private ShotCalculator calculator;
 
     private AutoFactory autoFactory;
 
     public AutoCommands(SwerveSubsystem drivetrain,
         Feeder feeder,
         Intake intake,
-        Shooter shooter
+        Shooter shooter,
+        Hood hood,
+        Turret turret,
+        ShotCalculator calculator
     ) {
         this.drivetrain = drivetrain;
         this.feeder = feeder;
         this.intake = intake;
         this.shooter = shooter;
+        this.hood = hood;
+        this.turret = turret;
+        this.calculator = calculator;
 
         autoFactory = new AutoFactory(
             drivetrain::getPose,
@@ -85,19 +96,33 @@ public class AutoCommands {
         return Commands.run(() -> {
             calculator.calculate(drivetrain.getPose(), drivetrain.getFieldVelocity());
             shooter.setGoal(calculator.getFlywheelRPM());
-            if(calculator.isShotValid() && shooter.atTarget()){
+            hood.setGoal(calculator.getHoodAzimuth());
+            turret.setGoalWithVelocity(
+                Units.radiansToDegrees(calculator.getTurretAngle()),
+                Units.radiansToDegrees(calculator.getTurretVelocityFF())
+            );
+
+            boolean ready = calculator.isShotValid()
+                && shooter.atTarget()
+                && hood.atTarget()
+                && turret.getAtTarget(calculator.getTurretTolerance())
+                && calculator.measuredControlsScore(
+                    shooter.getCurrentRPM(),
+                    hood.getHoodCommandAngle()
+                );
+            if(ready){
                 feeder.setShooting(true);
                 feeder.setIntaking(true);
                 intake.activate();
             } else {
                 feeder.setShooting(false);
             }
-        }).withTimeout(3.0)
+        }, shooter, hood, turret, feeder, intake).withTimeout(3.0)
         .finallyDo((interrupted) -> {
             feeder.setShooting(false);
             feeder.setIntaking(false);
             intake.deactivate();
-            shooter.setGoal(0);
+            shooter.setIdle();
         });
     }
 

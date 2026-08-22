@@ -180,6 +180,7 @@ logs/
 tools/shot-calibrator/.venv/
 tools/shot-calibrator/.pytest_cache/
 tools/shot-calibrator/**/__pycache__/
+tools/shot-calibrator/.data/
 
 # Generated local inspection artifacts
 .DS_Store

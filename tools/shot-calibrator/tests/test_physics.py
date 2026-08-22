@@ -2,6 +2,7 @@ import numpy as np
 
 from shotlab.models import BallSpec, Environment, OptimizationWeights, ShotControls, ShooterModel, Target, Trajectory
 from shotlab.physics import (
+    _is_scoring_entry,
     build_shot_map,
     hub_entry_metrics,
     launch_elevation_deg,
@@ -154,3 +155,20 @@ def test_shallow_center_crossing_fails_minimum_entry_constraint():
     assert entry["near_rim_clearance_m"] >= target.rim_margin_m
     assert entry["entry_angle_deg"] < target.min_entry_angle_deg
     assert score >= 20_000.0
+
+
+def test_scoring_entry_requires_forward_descending_motion_and_usable_opening():
+    target = Target()
+    valid_metrics = {
+        "usable_half_span_m": 0.40,
+        "vx_m_s": 5.0,
+        "vz_m_s": -4.0,
+        "inside": True,
+        "near_rim_clearance_m": target.rim_margin_m,
+        "entry_angle_deg": target.min_entry_angle_deg,
+    }
+
+    assert _is_scoring_entry(valid_metrics, target)
+    assert not _is_scoring_entry({**valid_metrics, "vx_m_s": -5.0}, target)
+    assert not _is_scoring_entry({**valid_metrics, "vz_m_s": 4.0}, target)
+    assert not _is_scoring_entry({**valid_metrics, "usable_half_span_m": 0.0}, target)

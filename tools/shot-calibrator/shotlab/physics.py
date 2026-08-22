@@ -205,7 +205,7 @@ def hub_entry_metrics(
             "height_m": plane_height_m,
             "vx_m_s": vx_m_s,
             "vz_m_s": vz_m_s,
-            "entry_angle_deg": float(np.degrees(np.arctan2(-vz_m_s, max(abs(vx_m_s), 1e-9)))),
+            "entry_angle_deg": float(np.degrees(np.arctan2(-vz_m_s, max(vx_m_s, 1e-9)))),
             "height_error_m": (
                 float(center_crossing["height_error_m"]) if center_crossing is not None else float("nan")
             ),
@@ -259,6 +259,9 @@ def shot_objective(
 def _is_scoring_entry(metrics: dict[str, float | bool] | None, target: Target) -> bool:
     return bool(
         metrics is not None
+        and float(metrics["usable_half_span_m"]) > 0.0
+        and float(metrics["vx_m_s"]) > 0.0
+        and float(metrics["vz_m_s"]) < 0.0
         and bool(metrics["inside"])
         and float(metrics["near_rim_clearance_m"]) >= target.rim_margin_m
         and float(metrics["entry_angle_deg"]) >= target.min_entry_angle_deg
