@@ -73,20 +73,6 @@ public class AutoCommands {
             double measurement = value.getSecond();
             Logger.recordOutput("BLine/" + key, measurement);
 
-            // Short aliases keep the most useful turn traces together in AdvantageScope.
-            switch (key) {
-                case "FollowPath/targetRotationDeg" ->
-                    Logger.recordOutput("AutoTurn/TargetHeadingDeg", measurement);
-                case "FollowPath/rotationErrorDeg" ->
-                    Logger.recordOutput("AutoTurn/HeadingErrorDeg", measurement);
-                case "FollowPath/rotationPidOutputRadPerSec" ->
-                    Logger.recordOutput("AutoTurn/PIDOutputRadPerSec", measurement);
-                case "FollowPath/outputOmegaRadPerSec" ->
-                    Logger.recordOutput("AutoTurn/CommandedOmegaRadPerSec", measurement);
-                case "FollowPath/maxRotationVelocityDegPerSec" ->
-                    Logger.recordOutput("AutoTurn/MaxVelocityDegPerSec", measurement);
-                default -> { }
-            }
         });
         FollowPath.setBooleanLoggingConsumer(
             value -> Logger.recordOutput("BLine/" + value.getFirst(), value.getSecond()));
@@ -141,8 +127,6 @@ public class AutoCommands {
         Logger.recordOutput(
             "BLine/Wait/RemainingSeconds",
             waiting ? bLinePauseUntilSeconds - Timer.getFPGATimestamp() : 0.0);
-        Logger.recordOutput("AutoTurn/CurrentHeadingDeg", drivetrain.getPose().getRotation().getDegrees());
-        Logger.recordOutput("AutoTurn/MeasuredOmegaRadPerSec", measuredSpeeds.omegaRadiansPerSecond);
         Logger.recordOutput("BLine/Drive/RequestedRobotVxMetersPerSec", requestedSpeeds.vxMetersPerSecond);
         Logger.recordOutput("BLine/Drive/RequestedRobotVyMetersPerSec", requestedSpeeds.vyMetersPerSecond);
         Logger.recordOutput("BLine/Drive/RequestedOmegaRadPerSec", requestedSpeeds.omegaRadiansPerSecond);

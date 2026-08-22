@@ -75,15 +75,17 @@ public final class Constants {
     public static final double HUB_AIM_KI = 0.0;
     public static final double HUB_AIM_KD = 0.2;
 
-    /** Prevents the automatic hub alignment from demanding an excessively fast turn. */
-    // public static final double HUB_AIM_MAX_ANGULAR_SPEED_RAD_PER_SEC = 6.0;
-    public static final double HUB_AIM_MAX_ANGULAR_SPEED_RAD_PER_SEC =
-        MAX_ANGULAR_VELOCITY_RAD_PER_SEC;
+    /**
+     * Maximum velocity for the shooting auto-turn profile. This is intentionally independent of
+     * BLine's path-rotation constraints so changing an autonomous path cannot slow down hub aim.
+     */
+    public static final double HUB_AIM_MAX_ANGULAR_SPEED_RAD_PER_SEC = 12.5;
 
-    /** Trapezoid-profile acceleration limit for automatic hub alignment. */
-    // public static final double HUB_AIM_MAX_ANGULAR_ACCELERATION_RAD_PER_SEC_SQ = 12.0;
-    public static final double HUB_AIM_MAX_ANGULAR_ACCELERATION_RAD_PER_SEC_SQ =
-        MAX_ANGULAR_ACCELERATION_RAD_PER_SEC_SQ;
+    /**
+     * Maximum acceleration for the shooting auto-turn profile. This is intentionally independent
+     * of BLine's path-rotation constraints.
+     */
+    public static final double HUB_AIM_MAX_ANGULAR_ACCELERATION_RAD_PER_SEC_SQ = 24.0;
 
     /** Stops small heading corrections once the chassis is pointed at the hub. */
     public static final double HUB_AIM_TOLERANCE_RADIANS = Units.degreesToRadians(1.5);

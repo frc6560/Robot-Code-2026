@@ -51,6 +51,7 @@ public class AimAtHub extends Command {
         drivebase.getRobotVelocity().omegaRadiansPerSecond);
     SmartDashboard.putBoolean("Hub Aim/Active", true);
     Logger.recordOutput("HubAim/Active", true);
+    Logger.recordOutput("AutoTurn/Active", true);
   }
 
   @Override
@@ -77,8 +78,13 @@ public class AimAtHub extends Command {
     double targetHeading = Math.atan2(robotToHub.getY(), robotToHub.getX());
     double headingError =
         MathUtil.angleModulus(targetHeading - robotPose.getRotation().getRadians());
-    double omega =
+    double feedbackOmega =
         headingController.calculate(robotPose.getRotation().getRadians(), targetHeading);
+    double profileOmega = headingController.getSetpoint().velocity;
+    // ProfiledPIDController returns feedback for the profiled position setpoint, but it does not
+    // include the setpoint velocity. Add that velocity as feedforward so the chassis actually
+    // follows the requested fast trapezoidal profile instead of slowly chasing it with PID alone.
+    double omega = feedbackOmega + profileOmega;
 
     if (headingController.atGoal()) {
       omega = 0.0;
@@ -109,6 +115,8 @@ public class AimAtHub extends Command {
     Logger.recordOutput("HubAim/CurrentHeadingDeg", robotPose.getRotation().getDegrees());
     Logger.recordOutput("HubAim/HeadingErrorDeg", Math.toDegrees(headingError));
     Logger.recordOutput("HubAim/CommandedOmegaRadPerSec", omega);
+    Logger.recordOutput("HubAim/PIDFeedbackRadPerSec", feedbackOmega);
+    Logger.recordOutput("HubAim/ProfileFeedforwardRadPerSec", profileOmega);
     Logger.recordOutput(
         "HubAim/MeasuredOmegaRadPerSec", drivebase.getRobotVelocity().omegaRadiansPerSecond);
     Logger.recordOutput(
@@ -120,6 +128,23 @@ public class AimAtHub extends Command {
     Logger.recordOutput("HubAim/DistanceToHubMeters", robotToHub.getNorm());
     Logger.recordOutput("HubAim/CommandedFieldVxMetersPerSec", speeds.vxMetersPerSecond);
     Logger.recordOutput("HubAim/CommandedFieldVyMetersPerSec", speeds.vyMetersPerSecond);
+
+    // Keep shooting auto-turn traces together and separate from BLine path-rotation telemetry.
+    Logger.recordOutput("AutoTurn/TargetHeadingDeg", Math.toDegrees(targetHeading));
+    Logger.recordOutput("AutoTurn/CurrentHeadingDeg", robotPose.getRotation().getDegrees());
+    Logger.recordOutput("AutoTurn/HeadingErrorDeg", Math.toDegrees(headingError));
+    Logger.recordOutput("AutoTurn/ProfilePositionDeg", Math.toDegrees(headingController.getSetpoint().position));
+    Logger.recordOutput("AutoTurn/ProfileVelocityDegPerSec", Math.toDegrees(profileOmega));
+    Logger.recordOutput("AutoTurn/PIDFeedbackRadPerSec", feedbackOmega);
+    Logger.recordOutput("AutoTurn/CommandedOmegaRadPerSec", omega);
+    Logger.recordOutput(
+        "AutoTurn/MeasuredOmegaRadPerSec", drivebase.getRobotVelocity().omegaRadiansPerSecond);
+    Logger.recordOutput(
+        "AutoTurn/MaxVelocityDegPerSec",
+        Math.toDegrees(DrivebaseConstants.HUB_AIM_MAX_ANGULAR_SPEED_RAD_PER_SEC));
+    Logger.recordOutput(
+        "AutoTurn/MaxAccelerationDegPerSecSq",
+        Math.toDegrees(DrivebaseConstants.HUB_AIM_MAX_ANGULAR_ACCELERATION_RAD_PER_SEC_SQ));
   }
 
   @Override
@@ -129,5 +154,7 @@ public class AimAtHub extends Command {
     Logger.recordOutput("HubAim/Active", false);
     Logger.recordOutput("HubAim/AtTarget", false);
     Logger.recordOutput("HubAim/CommandedOmegaRadPerSec", 0.0);
+    Logger.recordOutput("AutoTurn/Active", false);
+    Logger.recordOutput("AutoTurn/CommandedOmegaRadPerSec", 0.0);
   }
 }
