@@ -56,6 +56,7 @@ public class SwerveSubsystem extends SubsystemBase {
   private final SwerveDrive swerveDrive;
   private final StringSubscriber autoChooserSubscriber;
   private boolean initialPoseSet = false;
+  private boolean pitCoastMode = false;
 
   private final SimpleMotorFeedforward driveFF = new SimpleMotorFeedforward(DrivebaseConstants.kS, 
                                                                             DrivebaseConstants.kV, 
@@ -125,6 +126,7 @@ public class SwerveSubsystem extends SubsystemBase {
     Logger.recordOutput("Swerve/Pose", getPose());
     Logger.recordOutput("Swerve/RobotVelocity", getRobotVelocity());
     Logger.recordOutput("Swerve/FieldVelocity", getFieldVelocity());
+    Logger.recordOutput("Swerve/PitCoastMode", pitCoastMode);
 
     // Set initial pose once based on auto selection (only while disabled)
     if (!initialPoseSet && DriverStation.isDisabled()) {
@@ -152,6 +154,10 @@ public class SwerveSubsystem extends SubsystemBase {
 
   /** Rotates to a specified angle while inheriting the chassis's original translational velocity */
   public void rotateToAngle(double targetInRadians){
+    if (pitCoastMode) {
+      stopAllMotors();
+      return;
+    }
     m_pidControllerTheta.enableContinuousInput(-Math.PI, Math.PI);
 
     double currentHeading = getPose().getRotation().getRadians();
@@ -333,12 +339,12 @@ public class SwerveSubsystem extends SubsystemBase {
   {
     return run(() -> {
       // Make the robot move
-      swerveDrive.drive(SwerveMath.scaleTranslation(new Translation2d(
-                            translationX.getAsDouble() * swerveDrive.getMaximumChassisVelocity(),
-                            translationY.getAsDouble() * swerveDrive.getMaximumChassisVelocity()), 0.8),
-                        Math.pow(angularRotationX.getAsDouble(), 3) * -swerveDrive.getMaximumChassisAngularVelocity(),
-                        true,
-                        false);
+      drive(SwerveMath.scaleTranslation(new Translation2d(
+                translationX.getAsDouble() * swerveDrive.getMaximumChassisVelocity(),
+                translationY.getAsDouble() * swerveDrive.getMaximumChassisVelocity()), 0.8),
+            Math.pow(angularRotationX.getAsDouble(), 3)
+                * -swerveDrive.getMaximumChassisAngularVelocity(),
+            true);
     });
   }
 
@@ -385,6 +391,10 @@ public class SwerveSubsystem extends SubsystemBase {
    */
   public void drive(Translation2d translation, double rotation, boolean fieldRelative)
   {
+    if (pitCoastMode) {
+      stopAllMotors();
+      return;
+    }
     swerveDrive.drive(translation,
                       rotation,
                       fieldRelative,
@@ -398,6 +408,10 @@ public class SwerveSubsystem extends SubsystemBase {
    */
   public void driveFieldOriented(ChassisSpeeds velocity)
   {
+    if (pitCoastMode) {
+      stopAllMotors();
+      return;
+    }
     swerveDrive.driveFieldOriented(velocity);
   }
 
@@ -408,9 +422,7 @@ public class SwerveSubsystem extends SubsystemBase {
    */
   public Command driveFieldOriented(Supplier<ChassisSpeeds> velocity)
   {
-    return run(() -> {
-      swerveDrive.driveFieldOriented(velocity.get());
-    });
+    return run(() -> driveFieldOriented(velocity.get()));
   }
 
   /**
@@ -420,6 +432,10 @@ public class SwerveSubsystem extends SubsystemBase {
    */
   public void drive(ChassisSpeeds velocity)
   {
+    if (pitCoastMode) {
+      stopAllMotors();
+      return;
+    }
     swerveDrive.drive(velocity);
   }
 
@@ -465,6 +481,10 @@ public class SwerveSubsystem extends SubsystemBase {
    */
   public void setChassisSpeeds(ChassisSpeeds chassisSpeeds)
   {
+    if (pitCoastMode) {
+      stopAllMotors();
+      return;
+    }
     swerveDrive.setChassisSpeeds(chassisSpeeds);
   }
 
@@ -505,6 +525,29 @@ public class SwerveSubsystem extends SubsystemBase {
   public void setMotorBrake(boolean brake)
   {
     swerveDrive.setMotorIdleMode(brake);
+  }
+
+  /**
+   * Stops all drive and steering outputs and toggles every swerve motor between coast and its
+   * normal brake mode. Unlike disabling the robot, this mode can be toggled while teleop remains
+   * enabled so the modules and wheels can be moved by hand.
+   */
+  public void setPitCoastMode(boolean enabled)
+  {
+    pitCoastMode = enabled;
+    stopAllMotors();
+    Arrays.asList(swerveDrive.getModules()).forEach(module -> {
+      module.getDriveMotor().setMotorBrake(!enabled);
+      module.getAngleMotor().setMotorBrake(!enabled);
+    });
+  }
+
+  private void stopAllMotors()
+  {
+    Arrays.asList(swerveDrive.getModules()).forEach(module -> {
+      module.getDriveMotor().set(0.0);
+      module.getAngleMotor().set(0.0);
+    });
   }
 
   /**

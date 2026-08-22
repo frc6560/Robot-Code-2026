@@ -28,6 +28,9 @@ public interface TurretIO {
     /** Stop the turret motor */
     default void stop() {}
 
+    /** Select coast mode for manual movement, or restore the normal brake mode. */
+    default void setCoastMode(boolean coast) {}
+
     /** Re-seed the motor encoder from the absolute encoder */
     default void seedMotorEncoder() {}
 

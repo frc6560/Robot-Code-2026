@@ -48,6 +48,7 @@ import frc.robot.subsystems.led.LEDIOAddressable;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import frc.robot.subsystems.vision.LimelightVision;
 import frc.robot.subsystems.vision.VisionSubsystem;
+import org.littletonrobotics.junction.Logger;
 
 
 public class RobotContainer {
@@ -70,6 +71,7 @@ public class RobotContainer {
     private final ShotCalculator shotCalculator = new ShotCalculator();
     private final PassCalculator passCalculator = new PassCalculator();
     private Command shotCommand;
+    private boolean pitCoastMode = false;
 
     private final AutoCommands factory;
     private final AutoModeChooser autoChooser;
@@ -104,6 +106,7 @@ public class RobotContainer {
       factory = new AutoCommands(drivebase, feeder, intake, shooter);
       autoChooser = new AutoModeChooser(factory);
       SmartDashboard.putData("Auto Chooser", autoChooser.getAutoChooser());
+      SmartDashboard.putBoolean("Pit Coast Mode", false);
 
       List<LimelightVision> limelights = new ArrayList<LimelightVision>();
       for(String name : LimelightConstants.LIMELIGHT_NAMES) {
@@ -175,6 +178,13 @@ public class RobotContainer {
         driverXbox.start().
           onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
 
+        // Driver Back/View toggles a zero-output coast mode so every mechanism can be moved by hand.
+        driverXbox.back()
+          .and(DriverStation::isTeleopEnabled)
+          .onTrue(Commands.runOnce(
+              this::togglePitCoastMode,
+              drivebase, hood, shooter, turret, feeder, intake));
+
         // --- SHOTS ---
         
         Trigger ungatedShootTrigger = new Trigger(m_Controls::getUngatedShootTrigger);
@@ -218,6 +228,30 @@ public class RobotContainer {
         // --- RESETS ---
         Trigger resetPoseTrigger = new Trigger(m_Controls::getVisionResetTrigger);
         resetPoseTrigger.onTrue(Commands.runOnce(() -> vision.hardReset("limelight-br"), vision));
+    }
+
+    private void togglePitCoastMode() {
+        setPitCoastMode(!pitCoastMode);
+    }
+
+    private void setPitCoastMode(boolean enabled) {
+        pitCoastMode = enabled;
+        drivebase.setPitCoastMode(enabled);
+        hood.setPitCoastMode(enabled);
+        shooter.setPitCoastMode(enabled);
+        turret.setPitCoastMode(enabled);
+        feeder.setPitCoastMode(enabled);
+        intake.setPitCoastMode(enabled);
+
+        SmartDashboard.putBoolean("Pit Coast Mode", enabled);
+        Logger.recordOutput("Robot/PitCoastMode", enabled);
+    }
+
+    /** Always restore normal motor control before an autonomous period begins. */
+    public void disablePitCoastMode() {
+        if (pitCoastMode) {
+            setPitCoastMode(false);
+        }
     }
 
 

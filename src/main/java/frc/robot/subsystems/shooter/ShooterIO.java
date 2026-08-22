@@ -30,4 +30,7 @@ public interface ShooterIO {
 
     /** Coast the motors (neutral output) */
     default void stop() {}
+
+    /** Select pit coast mode; flywheels normally remain in coast mode as well. */
+    default void setCoastMode(boolean coast) {}
 }

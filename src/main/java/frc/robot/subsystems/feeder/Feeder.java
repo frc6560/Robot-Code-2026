@@ -19,6 +19,7 @@ public class Feeder extends SubsystemBase {
     private boolean shooting = false;
     private boolean outtaking = false;
     private FeederState state = FeederState.IDLE;
+    private boolean pitCoastMode = false;
 
     public Feeder(FeederIO io) {
         this.io = io;
@@ -68,10 +69,26 @@ public class Feeder extends SubsystemBase {
         return state;
     }
 
+    public void setPitCoastMode(boolean enabled) {
+        pitCoastMode = enabled;
+        intaking = false;
+        shooting = false;
+        outtaking = false;
+        state = FeederState.IDLE;
+        io.stop();
+        io.setCoastMode(enabled);
+    }
+
     @Override
     public void periodic() {
         io.updateInputs(inputs);
         Logger.processInputs("Feeder", inputs);
+
+        Logger.recordOutput("Feeder/PitCoastMode", pitCoastMode);
+        if (pitCoastMode) {
+            io.stop();
+            return;
+        }
 
         // Floor and wall run when intaking or shooting, reverse when outtaking
         if (outtaking) {

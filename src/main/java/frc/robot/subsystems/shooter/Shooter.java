@@ -15,6 +15,7 @@ public class Shooter extends SubsystemBase {
     private final ShooterIOInputsAutoLogged inputs = new ShooterIOInputsAutoLogged();
 
     private double goalRPM = 0.0;
+    private boolean pitCoastMode = false;
 
     public Shooter(ShooterIO io) {
         this.io = io;
@@ -37,6 +38,13 @@ public class Shooter extends SubsystemBase {
         io.stop();
     }
 
+    public void setPitCoastMode(boolean enabled) {
+        pitCoastMode = enabled;
+        goalRPM = 0.0;
+        io.stop();
+        io.setCoastMode(enabled);
+    }
+
     public double getGoalRPM() {
         return goalRPM;
     }
@@ -54,6 +62,12 @@ public class Shooter extends SubsystemBase {
     public void periodic() {
         io.updateInputs(inputs);
         Logger.processInputs("Shooter", inputs);
+
+        Logger.recordOutput("Shooter/PitCoastMode", pitCoastMode);
+        if (pitCoastMode) {
+            io.stop();
+            return;
+        }
 
         if (goalRPM > 0) {
             double goalRPS = goalRPM / 60.0; // mechanism RPS

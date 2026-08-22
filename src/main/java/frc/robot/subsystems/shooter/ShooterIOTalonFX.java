@@ -158,4 +158,11 @@ public class ShooterIOTalonFX implements ShooterIO {
     public void stop() {
         leaderMotor.setControl(coastControl);
     }
+
+    @Override
+    public void setCoastMode(boolean coast) {
+        // Flywheels use coast as their normal neutral mode to avoid abrupt stops.
+        leaderMotor.setNeutralMode(NeutralModeValue.Coast);
+        followerMotor.setNeutralMode(NeutralModeValue.Coast);
+    }
 }

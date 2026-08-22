@@ -15,6 +15,7 @@ public class Turret extends SubsystemBase {
     private boolean useVelocityFeedforward = false;
     private boolean atTarget = false;
     private double tolerance = 0.0;
+    private boolean pitCoastMode = false;
 
     public Turret(TurretIO io) {
         this.io = io;
@@ -125,6 +126,17 @@ public class Turret extends SubsystemBase {
         io.stop();
     }
 
+    public void setPitCoastMode(boolean enabled) {
+        pitCoastMode = enabled;
+        if (!enabled) {
+            goalDegrees = getTurretAngle();
+            goalVelocityDegreesPerSec = 0.0;
+            useVelocityFeedforward = false;
+        }
+        io.stop();
+        io.setCoastMode(enabled);
+    }
+
     public void reseedEncoder() {
         io.seedMotorEncoder();
     }
@@ -139,6 +151,12 @@ public class Turret extends SubsystemBase {
     public void periodic() {
         io.updateInputs(inputs);
         Logger.processInputs("Turret", inputs);
+
+        Logger.recordOutput("Turret/PitCoastMode", pitCoastMode);
+        if (pitCoastMode) {
+            io.stop();
+            return;
+        }
 
         if (useVelocityFeedforward) {
             io.setTargetAngleWithVelocity(goalDegrees, goalVelocityDegreesPerSec);

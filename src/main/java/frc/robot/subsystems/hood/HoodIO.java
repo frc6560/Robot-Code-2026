@@ -24,6 +24,9 @@ public interface HoodIO {
     /** Stop the hood motor */
     default void stop() {}
 
+    /** Select coast mode for manual movement, or restore the normal brake mode. */
+    default void setCoastMode(boolean coast) {}
+
     /** Set voltage directly (for SysId) */
     default void setVoltage(double volts) {}
 }

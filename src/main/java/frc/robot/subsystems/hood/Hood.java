@@ -16,6 +16,7 @@ public class Hood extends SubsystemBase {
     private final HoodIOInputsAutoLogged inputs = new HoodIOInputsAutoLogged();
 
     private double targetAngle = HoodConstants.HOOD_MIN_ANGLE - ANGLE_OFFSET;
+    private boolean pitCoastMode = false;
     private static final double ANGLE_TOLERANCE = 2.0;
     private static final double ANGLE_OFFSET = 25.0;
 
@@ -50,11 +51,26 @@ public class Hood extends SubsystemBase {
         io.stop();
     }
 
+    public void setPitCoastMode(boolean enabled) {
+        pitCoastMode = enabled;
+        if (!enabled) {
+            targetAngle = getHoodAngle();
+        }
+        io.stop();
+        io.setCoastMode(enabled);
+    }
+
 
     @Override
     public void periodic() {
         io.updateInputs(inputs);
         Logger.processInputs("Hood", inputs);
+
+        Logger.recordOutput("Hood/PitCoastMode", pitCoastMode);
+        if (pitCoastMode) {
+            io.stop();
+            return;
+        }
 
         io.setTargetAngle(targetAngle);
 

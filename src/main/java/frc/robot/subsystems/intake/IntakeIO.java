@@ -21,4 +21,7 @@ public interface IntakeIO {
     default void setRollerRPM(double rpm) {}
 
     default void stop() {}
+
+    /** Select pit coast mode; intake rollers normally remain in coast mode as well. */
+    default void setCoastMode(boolean coast) {}
 }

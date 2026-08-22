@@ -44,4 +44,7 @@ public interface FeederIO {
 
     /** Stop both motors */
     default void stop() {}
+
+    /** Select coast mode for manual movement, or restore the normal brake mode. */
+    default void setCoastMode(boolean coast) {}
 }

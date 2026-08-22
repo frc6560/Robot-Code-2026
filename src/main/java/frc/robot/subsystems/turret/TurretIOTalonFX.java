@@ -171,6 +171,11 @@ public class TurretIOTalonFX implements TurretIO {
     }
 
     @Override
+    public void setCoastMode(boolean coast) {
+        turretMotor.setNeutralMode(coast ? NeutralModeValue.Coast : NeutralModeValue.Brake);
+    }
+
+    @Override
     public void setVoltage(double volts) {
         turretMotor.setControl(voltageRequest.withOutput(volts));
     }
