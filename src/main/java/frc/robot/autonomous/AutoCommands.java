@@ -18,14 +18,11 @@ import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import frc.robot.utility.Shooter.ShotCalculator;
+import java.util.List;
 
 /** Creates autonomous commands backed entirely by BLine. */
 public class AutoCommands {
     private static final double BLINE_WAIT_EVENT_SECONDS = 5.0;
-    private static final Translation2d ZIGZAG_FINAL_SEGMENT_START =
-        new Translation2d(6.12575, 2.31825);
-    private static final Translation2d ZIGZAG_FINAL_WAYPOINT =
-        new Translation2d(6.13805, 3.71397);
 
     private final SwerveSubsystem drivetrain;
     private final Feeder feeder;
@@ -149,16 +146,25 @@ public class AutoCommands {
 
     /** Runs the zigzag path exported from the BLine editor and resets odometry at its start. */
     public Command getZigzagPath() {
-        return firstPathBuilder.build(new Path("zigzag"))
+        Path zigzagPath = new Path("zigzag");
+        List<Translation2d> translations = zigzagPath.getTranslations();
+        if (translations.size() < 2) {
+            throw new IllegalArgumentException("Zigzag path must contain at least two translation targets");
+        }
+
+        Translation2d finalSegmentStart = translations.get(translations.size() - 2);
+        Translation2d finalWaypoint = translations.get(translations.size() - 1);
+        return firstPathBuilder.build(zigzagPath)
             // If momentum carries the robot through the final waypoint, finish immediately
             // instead of allowing the endpoint PID to reverse back toward it.
-            .until(this::hasPassedZigzagFinishPlane)
+            .until(() -> hasPassedFinishPlane(finalSegmentStart, finalWaypoint))
             .finallyDo(interrupted -> drivetrain.setChassisSpeeds(new ChassisSpeeds()));
     }
 
-    private boolean hasPassedZigzagFinishPlane() {
-        Translation2d segmentStart = ZIGZAG_FINAL_SEGMENT_START;
-        Translation2d segmentEnd = ZIGZAG_FINAL_WAYPOINT;
+    private boolean hasPassedFinishPlane(
+            Translation2d blueSegmentStart, Translation2d blueSegmentEnd) {
+        Translation2d segmentStart = blueSegmentStart;
+        Translation2d segmentEnd = blueSegmentEnd;
         if (DriverStation.getAlliance().orElse(DriverStation.Alliance.Blue)
                 == DriverStation.Alliance.Red) {
             segmentStart = FlippingUtil.flipFieldPosition(segmentStart);
