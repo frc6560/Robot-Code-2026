@@ -15,6 +15,11 @@ from shotlab.robot_profile import (
 )
 
 from shotlab.flywheel import (
+    BATTERY_MATCH_RESISTANCE_OHM,
+    BATTERY_RESISTANCE_OHM,
+    MAIN_BREAKER_A,
+    MAX_CHANNEL_BREAKER_A,
+    check_power_budget,
     HOLLOW_SHELL_INERTIA_FACTOR,
     INCH_TO_METER,
     KRAKEN_X60,
@@ -101,9 +106,60 @@ def test_fifteen_to_eighteen_gearing_slows_the_flywheel():
 
 
 def test_net_torque_crosses_zero_at_the_datasheet_free_speed():
-    drivetrain = Drivetrain(drag_torque_at_free_speed_nm=0.0, gear_efficiency=1.0)
+    """With a stiff supply the curve must land exactly on the published free speed."""
+    drivetrain = Drivetrain(
+        drag_torque_at_free_speed_nm=0.0,
+        gear_efficiency=1.0,
+        battery_resistance_ohm=0.0,
+        channel_resistance_ohm=0.0,
+    )
     terminal_rpm = drivetrain.max_flywheel_speed_rad_s() * RAD_S_TO_RPM
     np.testing.assert_allclose(terminal_rpm, KRAKEN_X60.free_speed_rad_s * RAD_S_TO_RPM / 1.2, rtol=1e-9)
+
+
+def test_battery_health_is_graded_against_the_beak_thresholds():
+    assert Drivetrain(battery_resistance_ohm=0.011).battery_health == "match ready"
+    assert Drivetrain(battery_resistance_ohm=BATTERY_MATCH_RESISTANCE_OHM).battery_health == "match ready"
+    assert Drivetrain(battery_resistance_ohm=0.017).battery_health == "practice only"
+    assert Drivetrain(battery_resistance_ohm=0.022).battery_health == "retire"
+
+
+def test_shared_battery_path_counts_per_motor_but_channel_wiring_does_not():
+    """Every motor's draw sags the shared bus, so the battery path scales with
+    motor count. Branch wiring carries one motor's current and adds once."""
+    one = Drivetrain(motor_count=1, battery_resistance_ohm=0.015, channel_resistance_ohm=0.010)
+    two = Drivetrain(motor_count=2, battery_resistance_ohm=0.015, channel_resistance_ohm=0.010)
+    np.testing.assert_allclose(one.effective_resistance_ohm, KRAKEN_X60.resistance_ohm + 0.010 + 0.015)
+    np.testing.assert_allclose(two.effective_resistance_ohm, KRAKEN_X60.resistance_ohm + 0.010 + 0.030)
+
+
+def test_a_tired_battery_draws_less_current_and_spins_up_slower():
+    """Sag is self-limiting: a high-resistance pack cannot deliver the current,
+    so peak draw falls while the flywheel takes longer to get there."""
+    fresh = Drivetrain(battery_resistance_ohm=0.010)
+    tired = Drivetrain(battery_resistance_ohm=0.025)
+    inertia = team_tube(0.100).inertia_kg_m2
+    peak_fresh = float(np.max(fresh.supply_current_a(np.linspace(0.0, 400.0, 300))))
+    peak_tired = float(np.max(tired.supply_current_a(np.linspace(0.0, 400.0, 300))))
+    assert peak_tired < peak_fresh
+    assert spin_up_time_s(inertia, tired, 3000.0, 4018.0) > spin_up_time_s(
+        inertia, fresh, 3000.0, 4018.0
+    )
+
+
+def test_battery_sag_barely_moves_free_speed_but_moves_the_knee_a_lot():
+    """No-load current is tiny, so sag hardly touches top speed. Under a current
+    limit the draw is large, so the knee drops sharply — which is where the
+    spin-up actually lives."""
+    stiff = Drivetrain(battery_resistance_ohm=0.0)
+    sagging = Drivetrain(battery_resistance_ohm=BATTERY_RESISTANCE_OHM)
+    stiff_top = stiff.max_flywheel_speed_rad_s() * RAD_S_TO_RPM
+    sagging_top = sagging.max_flywheel_speed_rad_s() * RAD_S_TO_RPM
+    assert 0.985 < sagging_top / stiff_top < 1.0
+
+    stiff_knee = stiff.knee_speed_rad_s * RAD_S_TO_RPM
+    sagging_knee = sagging.knee_speed_rad_s * RAD_S_TO_RPM
+    assert sagging_knee < 0.85 * stiff_knee
 
 
 def test_drag_pulls_the_terminal_speed_below_free_speed():
@@ -505,3 +561,81 @@ def test_tuning_returns_the_lightest_wall_meeting_the_target():
     sweep = strict.sweep
     chosen = int(np.argmin(np.abs(sweep.wall_thickness_m - strict.best_wall_m)))
     assert not np.any(sweep.in_range_fraction[:chosen] >= 1.0 - 1e-9)
+
+
+# --- FRC power rules: 120 A main breaker, 40 A channel breakers, one 12 V SLA ---
+
+def test_supply_current_is_far_below_stator_current_at_low_speed():
+    """A controller is a switching converter, not a resistor. Below the knee it
+    holds winding current at the limit while drawing only duty of it from the
+    battery, which is why a 60 A stator limit does not mean 60 A of breaker."""
+    drivetrain = Drivetrain(stator_current_limit_a=60.0)
+    slow = 500.0 * RPM_TO_RAD_S
+    stator_total = float(drivetrain.stator_current_a(slow)) * drivetrain.motor_count
+    supply = float(drivetrain.supply_current_a(slow))
+    np.testing.assert_allclose(float(drivetrain.stator_current_a(slow)), 60.0, rtol=1e-9)
+    assert supply < 0.5 * stator_total
+
+
+def test_peak_battery_draw_lands_at_the_current_limit_knee():
+    """Duty reaches one exactly at the knee, so that is where supply current
+    peaks — and a spin-up to shot speed passes straight through it."""
+    drivetrain = Drivetrain(stator_current_limit_a=60.0)
+    knee_rpm = drivetrain.knee_speed_rad_s * RAD_S_TO_RPM
+    speeds = np.linspace(0.0, drivetrain.free_speed_rpm * 0.98, 400) * RPM_TO_RAD_S
+    draw = drivetrain.supply_current_a(speeds)
+    peak_rpm = float(speeds[int(np.argmax(draw))] * RAD_S_TO_RPM)
+    assert abs(peak_rpm - knee_rpm) < 0.06 * drivetrain.free_speed_rpm
+
+
+def test_sixty_amp_limit_breaches_the_forty_amp_channel_breaker():
+    drivetrain = Drivetrain(stator_current_limit_a=60.0)
+    inertia = team_tube(0.100).inertia_kg_m2 + drivetrain.reflected_rotor_inertia_kg_m2
+    check = check_power_budget(inertia, drivetrain, 3261.0, 4018.0)
+    assert check.over_channel
+    assert check.peak_channel_a > MAX_CHANNEL_BREAKER_A
+    # Thermal breakers ride through a brief overshoot, so the duration matters.
+    assert 0.0 < check.seconds_over_channel < 2.0
+
+
+def test_forty_amp_limit_stays_inside_both_breakers():
+    drivetrain = Drivetrain(stator_current_limit_a=40.0)
+    inertia = team_tube(0.100).inertia_kg_m2 + drivetrain.reflected_rotor_inertia_kg_m2
+    check = check_power_budget(inertia, drivetrain, 3332.0, 4018.0)
+    assert not check.over_channel
+    assert check.peak_channel_a <= MAX_CHANNEL_BREAKER_A + 1e-6
+    assert check.peak_total_a < MAIN_BREAKER_A
+    # Enough left over that the drivetrain can still move while the wheel spins up.
+    assert check.headroom_a > 30.0
+
+
+def test_main_breaker_check_accounts_for_a_drivetrain_drawing_at_the_same_time():
+    drivetrain = Drivetrain(stator_current_limit_a=60.0)
+    inertia = team_tube(0.100).inertia_kg_m2 + drivetrain.reflected_rotor_inertia_kg_m2
+    alone = check_power_budget(inertia, drivetrain, 3261.0, 4018.0, drivetrain_allowance_a=0.0)
+    driving = check_power_budget(inertia, drivetrain, 3261.0, 4018.0, drivetrain_allowance_a=40.0)
+    assert not alone.over_main
+    assert driving.over_main
+
+
+def test_sag_deepens_with_draw_and_recovers_as_the_wheel_reaches_speed():
+    """Current falls away once the flywheel is up, so the bus comes back."""
+    drivetrain = Drivetrain(stator_current_limit_a=60.0)
+    at_knee = float(drivetrain.loaded_bus_voltage_v(drivetrain.knee_speed_rad_s))
+    near_top = float(drivetrain.loaded_bus_voltage_v(4800.0 * RPM_TO_RAD_S))
+    assert at_knee < drivetrain.bus_voltage_v - 1.5
+    assert near_top > at_knee + 1.0
+
+
+def test_sag_lengthens_spin_up_without_changing_the_plateau():
+    """Holding current at the limit is unaffected by bus voltage, so the low-speed
+    plateau torque is identical; the cost shows up past the knee."""
+    stiff = Drivetrain(battery_resistance_ohm=0.0)
+    sagging = Drivetrain(battery_resistance_ohm=BATTERY_RESISTANCE_OHM)
+    np.testing.assert_allclose(
+        stiff.accelerating_torque_nm(0.0), sagging.accelerating_torque_nm(0.0), rtol=1e-12
+    )
+    inertia = team_tube(0.100).inertia_kg_m2
+    assert spin_up_time_s(inertia, sagging, 3300.0, 4018.0) > spin_up_time_s(
+        inertia, stiff, 3300.0, 4018.0
+    )

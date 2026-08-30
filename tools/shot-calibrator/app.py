@@ -23,7 +23,9 @@ from shotlab.calibration import (
 from shotlab.flywheel import (
     ALUMINUM_DENSITY_KG_M3,
     HOLLOW_SHELL_INERTIA_FACTOR,
+    MAIN_BREAKER_A,
     MATCH_SECONDS,
+    MAX_CHANNEL_BREAKER_A,
     MOTOR_CHOICES,
     SOLID_SPHERE_INERTIA_FACTOR,
     STEEL_DENSITY_KG_M3,
@@ -33,6 +35,7 @@ from shotlab.flywheel import (
     WallSweepResult,
     WallTuning,
     balanced_idle_rpm,
+    check_power_budget,
     compare_idle_strategies,
     drag_torque_from_coast_down,
     firing_droop,
@@ -1687,6 +1690,8 @@ def cached_wall_tuning(
         gear_efficiency,
         drag_torque,
         extra_inertia,
+        battery_resistance,
+        channel_resistance,
     ) = drivetrain_key
     drivetrain = Drivetrain(
         motor=MOTOR_CHOICES[motor_name],
@@ -1698,6 +1703,8 @@ def cached_wall_tuning(
         gear_efficiency=gear_efficiency,
         drag_torque_at_free_speed_nm=drag_torque,
         extra_inertia_kg_m2=extra_inertia,
+        battery_resistance_ohm=battery_resistance,
+        channel_resistance_ohm=channel_resistance,
     )
     schedules = shot_schedule_candidates(
         tube_shooter_model(flywheel, energy, release_height_m),
@@ -3257,7 +3264,32 @@ with stage_flywheel:
             fw_current_limit = c1.number_input(
                 "Stator current limit per motor (A)", 5.0, 400.0, 60.0, 5.0, key="fw_current_limit"
             )
-            fw_bus_voltage = c2.number_input("Bus voltage (V)", 8.0, 13.0, 12.0, 0.1, key="fw_bus_voltage")
+            fw_bus_voltage = c2.number_input(
+                "Open-circuit bus voltage (V)", 8.0, 13.0, 12.0, 0.1, key="fw_bus_voltage",
+                help="Resting battery voltage. The model sags it under load from the resistance below.",
+            )
+            fw_battery_mohm = c1.number_input(
+                "Battery internal resistance (mohm)", 1.0, 60.0, 15.0, 0.5,
+                key="fw_battery_mohm",
+                help="Straight off a battery beak. Under 15 is match ready, over 20 should be retired "
+                "rather than used even for testing. Shared by every motor, so its effect scales with "
+                "how many are pulling at once.",
+            )
+            fw_battery_resistance = fw_battery_mohm / 1000.0
+            fw_channel_mohm = c1.number_input(
+                "Channel wiring resistance (mohm)", 0.0, 60.0, 10.0, 0.5,
+                key="fw_channel_mohm",
+                help="Branch wiring and the channel breaker for one motor. A 40 A channel runs 10-12 AWG "
+                "at roughly 1.0-1.6 mohm per foot per conductor, so a few feet out and back is near 10. "
+                "Carries only this motor's current, so it does not scale with motor count.",
+            )
+            fw_channel_resistance = fw_channel_mohm / 1000.0
+            fw_drivetrain_allowance = c2.number_input(
+                "Drivetrain current to reserve (A)", 0.0, 120.0, 40.0, 5.0,
+                key="fw_drivetrain_allowance",
+                help="How much of the 120 A main breaker the rest of the robot may be pulling while "
+                "the flywheel spins up.",
+            )
             fw_gear_efficiency = c1.slider("Gear mesh efficiency", 0.80, 1.0, 0.97, 0.01, key="fw_gear_eff")
             fw_drag_torque = c2.number_input(
                 "Bearing and windage torque at top speed (N·m)", 0.0, 1.0, 0.05, 0.01, key="fw_drag_torque"
@@ -3344,6 +3376,8 @@ with stage_flywheel:
         flywheel_teeth=int(fw_flywheel_teeth),
         stator_current_limit_a=fw_current_limit,
         bus_voltage_v=fw_bus_voltage,
+        battery_resistance_ohm=fw_battery_resistance,
+        channel_resistance_ohm=fw_channel_resistance,
         gear_efficiency=fw_gear_efficiency,
         drag_torque_at_free_speed_nm=fw_drag_torque,
         extra_inertia_kg_m2=fw_extra_inertia,
@@ -3432,6 +3466,8 @@ with stage_flywheel:
                         fw_gear_efficiency,
                         fw_drivetrain.drag_torque_at_free_speed_nm,
                         fw_extra_inertia,
+                        fw_battery_resistance,
+                        fw_channel_resistance,
                     ),
                     fw_top_speed_rpm,
                     fw_settle_band,
@@ -3457,6 +3493,11 @@ with stage_flywheel:
                 width="stretch",
                 config={"displayModeBar": False},
             )
+            fw_peak_shot_rpm = fw_tuning.schedule.command_span_rpm[1]
+            fw_low_shot_command = fw_tuning.schedule.command_span_rpm[0]
+
+            # What you physically build and set on the robot.
+            st.markdown("###### Build to this")
             t1, t2, t3, t4 = st.columns(4)
             t1.metric(
                 "Wall to build",
@@ -3465,23 +3506,94 @@ with stage_flywheel:
                 delta_color="off",
             )
             t2.metric(
+                "Tube mass",
+                f"{fw_best_tube.mass_kg * 2.20462:.1f} lb",
+                f"{fw_best_tube.mass_kg:.2f} kg",
+                delta_color="off",
+            )
+            t3.metric(
+                "Static hood",
+                f"{fw_tuning.schedule.hood_deg:.0f}°",
+                f"{90.0 - fw_tuning.schedule.hood_deg:.0f}° launch elevation",
+                delta_color="off",
+            )
+            t4.metric(
+                "Idle speed",
+                f"{fw_tuning.best_idle_rpm:,.0f} RPM",
+                "solved for the fastest average",
+                delta_color="off",
+            )
+            fw_power = check_power_budget(
+                fw_tube.with_wall(fw_tuning.best_wall_m).inertia_kg_m2
+                + fw_drivetrain.extra_inertia_kg_m2
+                + fw_drivetrain.reflected_rotor_inertia_kg_m2,
+                fw_drivetrain,
+                fw_tuning.best_idle_rpm,
+                fw_peak_shot_rpm,
+                drivetrain_allowance_a=fw_drivetrain_allowance,
+            )
+            # How it performs and what it costs electrically.
+            st.markdown("###### What that gets you")
+            p1, p2, p3, p4 = st.columns(4)
+            p1.metric(
                 "Seconds per volley",
                 f"{fw_tuning.best_mean_volley_s:.3f} s",
                 f"hopper empties in {fw_tuning.best_hopper_seconds:.1f} s",
                 delta_color="off",
             )
-            t3.metric(
+            p2.metric(
                 "Balls inside band",
                 f"{fw_tuning.balls_in_band:.0f} / {fw_tuning.sweep.hopper_balls}",
-                f"static hood {fw_tuning.schedule.hood_deg:.0f}° · idle {fw_tuning.best_idle_rpm:,.0f} RPM",
+                f"over {len(fw_tuning.schedule.distances_m)} distances",
                 delta_color="off",
             )
-            t4.metric(
-                "Tube mass",
-                f"{fw_best_tube.mass_kg:.2f} kg",
-                f"{fw_best_tube.mass_kg * 2.20462:.1f} lb",
+            p3.metric(
+                "Peak draw per channel",
+                f"{fw_power.peak_channel_a:.0f} A",
+                f"{MAX_CHANNEL_BREAKER_A:.0f} A breaker limit",
                 delta_color="off",
             )
+            p4.metric(
+                "Peak total draw",
+                f"{fw_power.peak_total_a:.0f} A",
+                f"{fw_power.headroom_a:.0f} A left of {MAIN_BREAKER_A:.0f} A",
+                delta_color="off",
+            )
+            st.caption(
+                f"Shot speeds run {fw_low_shot_command:,.0f}–{fw_peak_shot_rpm:,.0f} RPM. Peak battery draw "
+                f"lands at {fw_power.peak_speed_rpm:,.0f} RPM, the current-limit knee, where the bus sags "
+                f"from {fw_bus_voltage:.1f} V to {fw_power.sagged_bus_v:.1f} V. "
+                f"Battery at {fw_battery_mohm:.0f} mohm is **{fw_drivetrain.battery_health}**."
+            )
+            # Both FRC breakers are thermal: a 40 A part carries roughly 150 % for
+            # tens of seconds. Bursts this short do not trip anything, so the
+            # honest risk is repeated over-rating and combined voltage sag, not a
+            # trip. Sized against a swerve module, which peaks near 40 A per
+            # channel on a 40 A stator limit and is what everyone already runs.
+            fw_combined_a = fw_power.peak_total_a + fw_drivetrain_allowance
+            fw_combined_sag = fw_bus_voltage - fw_combined_a * fw_battery_resistance
+            if fw_power.over_channel:
+                st.warning(
+                    f"**{fw_power.peak_channel_a:.0f} A per channel against a {MAX_CHANNEL_BREAKER_A:.0f} A "
+                    f"breaker**, for {fw_power.seconds_over_channel:.2f} s per spin-up. That will not trip a "
+                    f"thermal breaker at this duration, but it is over rating on every shot. A swerve drive "
+                    f"motor on a {MAX_CHANNEL_BREAKER_A:.0f} A stator limit peaks right at "
+                    f"{MAX_CHANNEL_BREAKER_A:.0f} A per channel; this one is "
+                    f"{fw_power.peak_channel_a / MAX_CHANNEL_BREAKER_A - 1:.0%} over."
+                )
+            else:
+                st.success(
+                    f"{fw_power.peak_channel_a:.0f} A per channel against {MAX_CHANNEL_BREAKER_A:.0f} A, "
+                    f"and {fw_power.peak_total_a:.0f} A peak total — in line with how a swerve module runs."
+                )
+            if fw_combined_sag < 9.0:
+                st.warning(
+                    f"**Spinning up while the drivetrain pulls {fw_drivetrain_allowance:.0f} A takes the bus "
+                    f"to about {fw_combined_sag:.1f} V** ({fw_combined_a:.0f} A combined). Brownout, not the "
+                    f"breakers, is the real limit here — the fix is to not spin up during a hard launch, or "
+                    f"to lower the stator limit."
+                )
+
             fw_widths = [r.band_width_rpm for r in fw_tuning.schedule.requirements]
             st.caption(
                 f"Each distance's scoring band comes from the trajectory model, not a chosen tolerance: "

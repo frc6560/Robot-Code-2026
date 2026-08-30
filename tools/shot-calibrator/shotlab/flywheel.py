@@ -37,6 +37,25 @@ STANDARD_WALL_INCHES = (0.035, 0.049, 0.065, 0.083, 0.095, 0.120, 0.156, 0.188, 
 MATCH_SECONDS = 150.0
 BATTERY_ENERGY_J = 18.0 * 12.0 * 3600.0
 
+# FRC electrical rules: one 120 A main breaker for the whole robot, and channel
+# breakers on the PDP/PDH capped at 40 A. Both are thermal, so a short burst
+# above rating rides through; it is sustained draw that trips them.
+MAIN_BREAKER_A = 120.0
+MAX_CHANNEL_BREAKER_A = 40.0
+
+# Battery health, as teams measure it with a beak. A pack fit for a match sits
+# under 15 milliohms; anything over 20 milliohms should be retired rather than
+# used even for testing.
+BATTERY_MATCH_RESISTANCE_OHM = 0.015
+BATTERY_SCRAP_RESISTANCE_OHM = 0.020
+BATTERY_RESISTANCE_OHM = BATTERY_MATCH_RESISTANCE_OHM
+
+# Everything between one channel breaker and its motor: branch wiring and the
+# breaker itself. A 40 A channel runs 10-12 AWG, which is about 1.0-1.6 mohm per
+# foot per conductor, so a few feet out and back lands near 10 milliohms. Unlike
+# the battery path this is not shared between motors.
+CHANNEL_RESISTANCE_OHM = 0.010
+
 # Ball inertia factors for I = factor * m * r^2.
 HOLLOW_SHELL_INERTIA_FACTOR = 2.0 / 3.0
 SOLID_SPHERE_INERTIA_FACTOR = 2.0 / 5.0
@@ -127,7 +146,13 @@ class Drivetrain:
     motor_teeth: int = 15
     flywheel_teeth: int = 18
     stator_current_limit_a: float = 60.0
+    # Open-circuit bus voltage. What the controller actually sees is lower by
+    # the sag across ``battery_resistance_ohm``, which this model accounts for.
     bus_voltage_v: float = 12.0
+    battery_resistance_ohm: float = BATTERY_RESISTANCE_OHM
+    channel_resistance_ohm: float = CHANNEL_RESISTANCE_OHM
+    channel_breaker_a: float = MAX_CHANNEL_BREAKER_A
+    main_breaker_a: float = MAIN_BREAKER_A
     gear_efficiency: float = 0.97
     # Bearing and windage loss, quoted at the flywheel's no-load top speed and
     # modelled as viscous (linear in speed) between there and rest.
@@ -182,12 +207,41 @@ class Drivetrain:
             * self.gear_efficiency
         )
 
+    @property
+    def battery_health(self) -> str:
+        """Where this pack sits against the usual beak thresholds."""
+        if self.battery_resistance_ohm > BATTERY_SCRAP_RESISTANCE_OHM:
+            return "retire"
+        if self.battery_resistance_ohm > BATTERY_MATCH_RESISTANCE_OHM:
+            return "practice only"
+        return "match ready"
+
+    @property
+    def effective_resistance_ohm(self) -> float:
+        """Everything in series with one motor's windings, as that motor sees it.
+
+        Two different paths, and they do not count the same way. Branch wiring
+        and the channel breaker carry only this motor's current, so they add
+        once. The battery, its cable and the main breaker are shared, so every
+        other motor's draw sags the bus this motor is working against — from one
+        motor's point of view that path looks ``motor_count`` times larger.
+
+        Both are linear in current, which keeps the torque curve piecewise
+        linear in speed and lets spin-up stay closed-form.
+        """
+        return (
+            self.motor.resistance_ohm
+            + self.channel_resistance_ohm
+            + self.motor_count * self.battery_resistance_ohm
+        )
+
     def _voltage_limited_line(self) -> tuple[float, float]:
         """Gross flywheel torque as ``intercept - slope * omega`` on the motor curve."""
         motor = self.motor
+        resistance = self.effective_resistance_ohm
         common = self.motor_count * motor.kt_nm_per_a * self.ratio * self.gear_efficiency
-        intercept = common * self.bus_voltage_v / motor.resistance_ohm
-        slope = common * self.ratio / (motor.kv_rad_s_per_v * motor.resistance_ohm)
+        intercept = common * self.bus_voltage_v / resistance
+        slope = common * self.ratio / (motor.kv_rad_s_per_v * resistance)
         return intercept, slope
 
     def _accelerating_lines(self) -> tuple[tuple[float, float], tuple[float, float]]:
@@ -272,6 +326,53 @@ class Drivetrain:
             match_energy_j=power * match_seconds,
         )
 
+    def stator_current_a(self, omega_rad_s: float | np.ndarray) -> np.ndarray:
+        """Winding current per motor at full accelerating effort, after sag."""
+        omega = np.asarray(omega_rad_s, dtype=float)
+        back_emf = omega * self.ratio / self.motor.kv_rad_s_per_v
+        available = (self.bus_voltage_v - back_emf) / self.effective_resistance_ohm
+        return np.clip(available, 0.0, self.stator_current_limit_a)
+
+    def supply_current_a(self, omega_rad_s: float | np.ndarray) -> np.ndarray:
+        """Total battery current at full accelerating effort — what breakers see.
+
+        A motor controller is a switching converter, not a resistor: below the
+        current-limit knee it holds winding current at the limit while drawing
+        only ``duty`` of it from the battery, so supply current is far below
+        stator current at low speed. The two converge at the knee, where duty
+        reaches one. Peak battery draw therefore lands at the knee, not at stall
+        — which is exactly where a spin-up passes through.
+        """
+        omega = np.asarray(omega_rad_s, dtype=float)
+        motor = self.motor
+        stator = self.stator_current_a(omega)
+        back_emf = omega * self.ratio / motor.kv_rad_s_per_v
+
+        # Voltage the windings need to carry this current at this speed.
+        applied = back_emf + stator * motor.resistance_ohm
+        # Sag ahead of the controller rises with the supply current it draws, and
+        # that current depends on the sag, so solve the pair rather than iterate:
+        # sag_path * i^2 - V_open * i + stator * applied = 0, smaller root.
+        sag_path = self.motor_count * self.battery_resistance_ohm + self.channel_resistance_ohm
+        product = stator * applied
+        if sag_path <= 0.0:
+            per_motor = np.divide(
+                product, self.bus_voltage_v, out=np.zeros_like(product), where=self.bus_voltage_v > 0.0
+            )
+        else:
+            discriminant = self.bus_voltage_v**2 - 4.0 * product * sag_path
+            # A negative discriminant means the supply cannot deliver this at all;
+            # clamp to the peak-power point rather than returning a complex root.
+            root = np.sqrt(np.maximum(0.0, discriminant))
+            per_motor = (self.bus_voltage_v - root) / (2.0 * sag_path)
+        # Duty cannot exceed one: past that the motor is simply across the bus.
+        return self.motor_count * np.minimum(per_motor, stator)
+
+    def loaded_bus_voltage_v(self, omega_rad_s: float | np.ndarray) -> np.ndarray:
+        """Bus voltage after sag while accelerating at this speed."""
+        omega = np.asarray(omega_rad_s, dtype=float)
+        return self.bus_voltage_v - self.supply_current_a(omega) * self.battery_resistance_ohm
+
     def max_flywheel_speed_rad_s(self) -> float:
         """Speed where net accelerating torque reaches zero, including all losses."""
         (plateau_p, plateau_q), (curve_p, curve_q) = self._accelerating_lines()
@@ -350,6 +451,91 @@ def spin_down_time_s(inertia_kg_m2: float, drivetrain: Drivetrain, start_rpm: fl
     if boundary > end:
         total += _linear_segment_time(inertia_kg_m2, unsat_p, unsat_q, end, boundary)
     return total
+
+
+@dataclass(frozen=True)
+class PowerCheck:
+    """Battery and breaker draw over a spin-up, against the FRC power rules."""
+
+    peak_channel_a: float
+    peak_total_a: float
+    peak_speed_rpm: float
+    sagged_bus_v: float
+    seconds_over_channel: float
+    seconds_over_main: float
+    channel_breaker_a: float
+    main_breaker_a: float
+    drivetrain_allowance_a: float
+
+    @property
+    def over_channel(self) -> bool:
+        return self.peak_channel_a > self.channel_breaker_a
+
+    @property
+    def over_main(self) -> bool:
+        return self.peak_total_a + self.drivetrain_allowance_a > self.main_breaker_a
+
+    @property
+    def headroom_a(self) -> float:
+        """Current left for everything else while the flywheel is at peak draw."""
+        return self.main_breaker_a - self.peak_total_a
+
+
+def check_power_budget(
+    inertia_kg_m2: float,
+    drivetrain: Drivetrain,
+    start_rpm: float,
+    end_rpm: float,
+    drivetrain_allowance_a: float = 0.0,
+    samples: int = 400,
+) -> PowerCheck:
+    """Peak battery draw over a spin-up, and how long it stays above the breakers.
+
+    Both FRC breakers are thermal, so the number that matters is not just the
+    peak but how long it is held: a 40 A breaker passes 60 A for tens of
+    seconds, and a flywheel spin-up lasts well under one. Time above rating is
+    reported so a brief overshoot can be told apart from a real trip risk.
+    """
+    if end_rpm <= start_rpm:
+        zero_speed = start_rpm * RPM_TO_RAD_S
+        return PowerCheck(
+            peak_channel_a=float(drivetrain.supply_current_a(zero_speed)) / drivetrain.motor_count,
+            peak_total_a=float(drivetrain.supply_current_a(zero_speed)),
+            peak_speed_rpm=start_rpm,
+            sagged_bus_v=float(drivetrain.loaded_bus_voltage_v(zero_speed)),
+            seconds_over_channel=0.0,
+            seconds_over_main=0.0,
+            channel_breaker_a=drivetrain.channel_breaker_a,
+            main_breaker_a=drivetrain.main_breaker_a,
+            drivetrain_allowance_a=drivetrain_allowance_a,
+        )
+
+    omega = np.linspace(start_rpm * RPM_TO_RAD_S, end_rpm * RPM_TO_RAD_S, samples)
+    total = drivetrain.supply_current_a(omega)
+    channel = total / drivetrain.motor_count
+    peak_index = int(np.argmax(total))
+
+    # dt = J domega / torque, integrated only where the draw exceeds a rating.
+    torque = drivetrain.accelerating_torque_nm(omega)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        dt_domega = np.where(torque > 0.0, inertia_kg_m2 / torque, np.inf)
+
+    def seconds_above(mask: np.ndarray) -> float:
+        if not mask.any() or not np.all(np.isfinite(dt_domega[mask])):
+            return float("inf") if mask.any() else 0.0
+        return float(np.trapezoid(np.where(mask, dt_domega, 0.0), omega))
+
+    return PowerCheck(
+        peak_channel_a=float(channel[peak_index]),
+        peak_total_a=float(total[peak_index]),
+        peak_speed_rpm=float(omega[peak_index] * RAD_S_TO_RPM),
+        sagged_bus_v=float(drivetrain.loaded_bus_voltage_v(omega[peak_index])),
+        seconds_over_channel=seconds_above(channel > drivetrain.channel_breaker_a),
+        seconds_over_main=seconds_above(total + drivetrain_allowance_a > drivetrain.main_breaker_a),
+        channel_breaker_a=drivetrain.channel_breaker_a,
+        main_breaker_a=drivetrain.main_breaker_a,
+        drivetrain_allowance_a=drivetrain_allowance_a,
+    )
 
 
 @dataclass(frozen=True)

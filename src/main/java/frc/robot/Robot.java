@@ -19,6 +19,7 @@ import edu.wpi.first.wpilibj.simulation.DriverStationSim;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import frc.robot.Constants.LimelightConstants;
+import frc.robot.subsystems.shooter.FlywheelVisualizer;
 import frc.robot.utility.LimelightHelpers;
 
 /**
@@ -33,6 +34,9 @@ public class Robot extends LoggedRobot
   private        Command m_autonomousCommand;
 
   private RobotContainer m_robotContainer;
+
+  /** Simulation-only spinning-wheel view of the physics-calculated flywheel schedule. */
+  private FlywheelVisualizer flywheelVisualizer;
 
   private Timer disabledTimer;
 
@@ -205,6 +209,8 @@ public class Robot extends LoggedRobot
   @Override
   public void simulationInit()
   {
+    flywheelVisualizer = new FlywheelVisualizer();
+
     if (runHeadlessAutoDiagnostic) {
       headlessDiagnosticStartSeconds = Timer.getFPGATimestamp();
       DriverStationSim.setAllianceStationId(AllianceStationID.Blue1);
@@ -222,6 +228,10 @@ public class Robot extends LoggedRobot
   @Override
   public void simulationPeriodic()
   {
+    if (flywheelVisualizer != null) {
+      flywheelVisualizer.update(getPeriod());
+    }
+
     if (!runHeadlessAutoDiagnostic) {
       return;
     }
