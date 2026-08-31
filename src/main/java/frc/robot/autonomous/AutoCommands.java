@@ -16,7 +16,7 @@ import frc.robot.lib.BLine.Path;
 import frc.robot.Constants.BLineConstants;
 import frc.robot.subsystems.feeder.Feeder;
 import frc.robot.subsystems.hood.Hood;
-import frc.robot.subsystems.intake.Intake;
+import frc.robot.intake.IntakeStateSpaceSubsystem;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import frc.robot.subsystems.turret.Turret;
@@ -29,7 +29,7 @@ public class AutoCommands {
 
     private final SwerveSubsystem drivetrain;
     private final Feeder feeder;
-    private final Intake intake;
+    private final IntakeStateSpaceSubsystem intake;
     private final Shooter shooter;
     private final Hood hood;
     private final Turret turret;
@@ -41,7 +41,7 @@ public class AutoCommands {
     public AutoCommands(
         SwerveSubsystem drivetrain,
         Feeder feeder,
-        Intake intake,
+        IntakeStateSpaceSubsystem intake,
         Shooter shooter,
         Hood hood,
         Turret turret,

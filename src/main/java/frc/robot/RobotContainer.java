@@ -39,9 +39,9 @@ import frc.robot.subsystems.turret.TurretIOTalonFX;
 import frc.robot.subsystems.feeder.Feeder;
 import frc.robot.subsystems.feeder.FeederIO;
 import frc.robot.subsystems.feeder.FeederIOTalonFX;
-import frc.robot.subsystems.intake.Intake;
-import frc.robot.subsystems.intake.IntakeIO;
-import frc.robot.subsystems.intake.IntakeIOTalonFX;
+import frc.robot.intake.IntakeStateSpaceSubsystem;
+import frc.robot.intake.TalonFXIntakeStateSpaceIO;
+import frc.robot.intake.IntakeStateSpaceIO;
 import frc.robot.subsystems.led.LED;
 import frc.robot.subsystems.led.LEDIO;
 import frc.robot.subsystems.led.LEDIOAddressable;
@@ -65,7 +65,7 @@ public class RobotContainer {
     private final Shooter shooter;
     private final Turret turret;
     private final Feeder feeder;
-    private final Intake intake;
+    private final IntakeStateSpaceSubsystem intake;
     private final LED led;
 
     private final ShotCalculator shotCalculator = new ShotCalculator();
@@ -92,14 +92,14 @@ public class RobotContainer {
         shooter = new Shooter(new ShooterIOTalonFX());
         turret = new Turret(new TurretIOTalonFX());
         feeder = new Feeder(new FeederIOTalonFX());
-        intake = new Intake(new IntakeIOTalonFX());
+        intake = new IntakeStateSpaceSubsystem(new TalonFXIntakeStateSpaceIO());
         led = new LED(new LEDIOAddressable(3, 65), hood, shooter, turret, shotCalculator);
       } else {
           hood = new Hood(new HoodIO() {});
           shooter = new Shooter(new ShooterIO() {});
           turret = new Turret(new TurretIO() {});
           feeder = new Feeder(new FeederIO() {});
-          intake = new Intake(new IntakeIO() {});
+          intake = new IntakeStateSpaceSubsystem(new IntakeStateSpaceIO() {});
           led = new LED(new LEDIO() {}, hood, shooter, turret, shotCalculator);
       }
 
