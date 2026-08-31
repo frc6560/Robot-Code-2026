@@ -13,9 +13,9 @@ import org.littletonrobotics.junction.mechanism.LoggedMechanismRoot2d;
  * so spin-up, firing droop and recovery can be watched in AdvantageScope.
  *
  * <p>This is a self-contained simulation, not a view onto the real shooter. It
- * runs a scripted match sequence — idle, climb to a shot speed, fire a four-ball
- * volley, recover, repeat until the hopper is empty, then move to a new
- * distance — and publishes both the wheel and the numbers behind it.
+ * runs a repeating demonstration — idle, climb through five target RPMs, fire a
+ * four-ball volley at each target, recover from the RPM drop, then return to
+ * idle — and publishes both the spinning wheel and the numbers behind it.
  *
  * <p>The model mirrors {@code tools/shot-calibrator/shotlab/flywheel.py}: a
  * stator-current-limited torque plateau below the knee, the voltage-limited
@@ -44,18 +44,21 @@ public class FlywheelVisualizer {
   private static final double DRAG_TORQUE_AT_FREE_SPEED = 0.05;
 
   // --- Shot schedule, from the trajectory model ----------------------------
-  private static final double IDLE_RPM = 3332.0;
+  private static final double IDLE_RPM = 800.0;
   private static final double SETTLE_BAND_RPM = 25.0;
   private static final int BALLS_PER_VOLLEY = 4;
-  private static final int HOPPER_BALLS = 60;
 
-  /** Distance, band centre and band half-width for each scripted shot. */
-  private static final double[][] SHOTS = {
-    // {distance m, command RPM, band low RPM, band high RPM}
-    {6.05, 4018.0, 3848.0, 4188.0},
-    {3.29, 2917.0, 2743.0, 3091.0},
-    {1.63, 2301.0, 2183.0, 2418.0},
+  /** Five increasing distance/RPM targets spanning the calculated shot range. */
+  private static final double[][] SETPOINTS = {
+    // {distance m, target RPM}
+    {1.63, 2301.0},
+    {2.74, 2712.0},
+    {3.84, 3156.0},
+    {4.95, 3587.0},
+    {6.05, 4018.0},
   };
+  private static final double MAX_TARGET_RPM = SETPOINTS[SETPOINTS.length - 1][1];
+  private static final int DEMONSTRATION_BALLS = SETPOINTS.length * BALLS_PER_VOLLEY;
 
   private static final double BALL_MASS_KG = 0.215;
   private static final double BALL_INERTIA_FACTOR = 2.0 / 3.0;
@@ -71,10 +74,10 @@ public class FlywheelVisualizer {
   private static final double DISPLAY_SPIN_SCALE = 0.06;
 
   private static final int SPOKE_COUNT = 6;
-  private static final double SECONDS_BETWEEN_VOLLEYS = 0.35;
-  private static final double SECONDS_AT_IDLE_BEFORE_START = 1.0;
-  /** Pause on an empty hopper before reloading, so the run repeats for watching. */
-  private static final double SECONDS_BEFORE_RELOAD = 3.0;
+  private static final double SECONDS_AT_IDLE_BEFORE_START = 1.5;
+  private static final double SECONDS_SETTLED_BEFORE_SHOT = 0.30;
+  private static final double SECONDS_SETTLED_AFTER_RECOVERY = 0.45;
+  private static final double SECONDS_TO_HOLD_TARGET = 0.65;
 
   /**
    * Proportional gain of the speed controller, in stator amps per rad/s of error.
@@ -95,21 +98,21 @@ public class FlywheelVisualizer {
 
   private double velocityRadPerSec = 0.0;
   private double angleRad = 0.0;
-  private double elapsed = 0.0;
-
-  private int shotIndex = 0;
-  private int ballsRemaining = HOPPER_BALLS;
-  private double volleyCooldown = 0.0;
+  private int setpointIndex = 0;
+  private int ballsRemaining = DEMONSTRATION_BALLS;
+  private double phaseElapsedSeconds = 0.0;
+  private double settledElapsedSeconds = 0.0;
   private double lastDroopRpm = 0.0;
   private double flashTimer = 0.0;
-  private double emptyTimer = 0.0;
   private int volleysFired = 0;
 
   private enum Phase {
     IDLING,
     SPINNING_UP,
     FIRING,
-    EMPTY
+    RECOVERING,
+    HOLDING,
+    RETURNING_TO_IDLE
   }
 
   private Phase phase = Phase.IDLING;
@@ -149,7 +152,6 @@ public class FlywheelVisualizer {
 
   /** Step the model and republish. Call from {@code simulationPeriodic()}. */
   public void update(double dtSeconds) {
-    elapsed += dtSeconds;
     double commandRpm = advanceSequence(dtSeconds);
 
     integrate(dtSeconds, commandRpm);
@@ -161,50 +163,72 @@ public class FlywheelVisualizer {
   }
 
   /**
-   * Runs the scripted hopper: hold idle, climb to the shot, fire a volley every
-   * time the wheel settles back inside its band, then move to the next distance.
+   * Runs the five-point demonstration. Each target jump is held until the wheel
+   * settles, then one volley removes energy, making the RPM drop visible before
+   * the controller recovers. After the fifth target the wheel returns to idle.
    *
    * @return the speed currently being commanded, in flywheel RPM
    */
   private double advanceSequence(double dtSeconds) {
-    if (phase == Phase.EMPTY) {
-      // Reload and start over, so the sequence can be watched on a loop.
-      emptyTimer += dtSeconds;
-      if (emptyTimer >= SECONDS_BEFORE_RELOAD) {
-        ballsRemaining = HOPPER_BALLS;
-        shotIndex = 0;
-        emptyTimer = 0.0;
-        phase = Phase.IDLING;
-      }
-      return IDLE_RPM;
-    }
-    if (elapsed < SECONDS_AT_IDLE_BEFORE_START) {
-      phase = Phase.IDLING;
-      return IDLE_RPM;
-    }
-
-    double commandRpm = SHOTS[shotIndex][1];
-    double rpm = velocityRadPerSec * 30.0 / Math.PI;
-    volleyCooldown = Math.max(0.0, volleyCooldown - dtSeconds);
+    phaseElapsedSeconds += dtSeconds;
     flashTimer = Math.max(0.0, flashTimer - dtSeconds);
+    double rpm = velocityRadPerSec * 30.0 / Math.PI;
 
-    boolean atSpeed = rpm >= commandRpm - SETTLE_BAND_RPM;
-    if (atSpeed && volleyCooldown <= 0.0 && ballsRemaining > 0) {
-      fireVolley(commandRpm);
-      volleysFired++;
-      phase = Phase.FIRING;
-      volleyCooldown = SECONDS_BETWEEN_VOLLEYS;
-      // A third of the hopper per distance, then move on.
-      if (ballsRemaining % (HOPPER_BALLS / SHOTS.length) == 0 && ballsRemaining > 0) {
-        shotIndex = Math.min(SHOTS.length - 1, shotIndex + 1);
+    if (phase == Phase.IDLING) {
+      if (phaseElapsedSeconds >= SECONDS_AT_IDLE_BEFORE_START) {
+        transitionTo(Phase.SPINNING_UP);
       }
-    } else if (!atSpeed) {
-      phase = Phase.SPINNING_UP;
+      return IDLE_RPM;
     }
-    if (ballsRemaining <= 0) {
-      phase = Phase.EMPTY;
+
+    if (phase == Phase.RETURNING_TO_IDLE) {
+      if (Math.abs(rpm - IDLE_RPM) <= SETTLE_BAND_RPM) {
+        setpointIndex = 0;
+        ballsRemaining = DEMONSTRATION_BALLS;
+        transitionTo(Phase.IDLING);
+      }
+      return IDLE_RPM;
+    }
+
+    double commandRpm = SETPOINTS[setpointIndex][1];
+    boolean atSpeed = Math.abs(rpm - commandRpm) <= SETTLE_BAND_RPM;
+    settledElapsedSeconds = atSpeed ? settledElapsedSeconds + dtSeconds : 0.0;
+
+    switch (phase) {
+      case SPINNING_UP -> {
+        if (settledElapsedSeconds >= SECONDS_SETTLED_BEFORE_SHOT) {
+          fireVolley();
+          volleysFired++;
+          transitionTo(Phase.FIRING);
+        }
+      }
+      case FIRING -> transitionTo(Phase.RECOVERING);
+      case RECOVERING -> {
+        if (settledElapsedSeconds >= SECONDS_SETTLED_AFTER_RECOVERY) {
+          transitionTo(Phase.HOLDING);
+        }
+      }
+      case HOLDING -> {
+        if (phaseElapsedSeconds >= SECONDS_TO_HOLD_TARGET) {
+          if (setpointIndex < SETPOINTS.length - 1) {
+            setpointIndex++;
+            transitionTo(Phase.SPINNING_UP);
+          } else {
+            transitionTo(Phase.RETURNING_TO_IDLE);
+          }
+        }
+      }
+      default -> {
+        // IDLING and RETURNING_TO_IDLE are handled above.
+      }
     }
     return commandRpm;
+  }
+
+  private void transitionTo(Phase nextPhase) {
+    phase = nextPhase;
+    phaseElapsedSeconds = 0.0;
+    settledElapsedSeconds = 0.0;
   }
 
   /**
@@ -214,7 +238,7 @@ public class FlywheelVisualizer {
    * more than the balls receive because contact slips. Subtracting energy rather
    * than speed is what makes a fast wheel droop less than a slow one.
    */
-  private void fireVolley(double commandRpm) {
+  private void fireVolley() {
     double before = velocityRadPerSec;
     double surfaceSpeed = velocityRadPerSec * (WHEEL_DIAMETER_M / 2.0);
     double exitSpeed = EXIT_SPEED_RATIO * surfaceSpeed;
@@ -272,15 +296,15 @@ public class FlywheelVisualizer {
   }
 
   private void publish(double rpm, double commandRpm) {
-    double bandLow = SHOTS[shotIndex][2];
-    double bandHigh = SHOTS[shotIndex][3];
+    double bandLow = commandRpm - SETTLE_BAND_RPM;
+    double bandHigh = commandRpm + SETTLE_BAND_RPM;
     boolean inBand = rpm >= bandLow && rpm <= bandHigh;
 
     // Blue while it is where it should be, amber the instant a volley pulls it
-    // out of band, grey while idling between shots.
+    // out of band, grey while idling or returning to idle.
     Color8Bit color;
     if (flashTimer > 0.0 || !inBand) {
-      boolean resting = phase == Phase.IDLING || phase == Phase.EMPTY;
+      boolean resting = phase == Phase.IDLING || phase == Phase.RETURNING_TO_IDLE;
       color = resting ? new Color8Bit(120, 130, 140) : new Color8Bit(217, 119, 6);
     } else {
       color = new Color8Bit(17, 121, 238);
@@ -292,7 +316,7 @@ public class FlywheelVisualizer {
       spokes[i].setColor(color);
     }
 
-    double sweep = 270.0 / SHOTS[0][1];
+    double sweep = 270.0 / MAX_TARGET_RPM;
     tachNeedle.setAngle(rpm * sweep);
     tachNeedle.setColor(color);
     targetNeedle.setAngle(commandRpm * sweep);
@@ -305,9 +329,31 @@ public class FlywheelVisualizer {
     Logger.recordOutput("Flywheel/InBand", inBand);
     Logger.recordOutput("Flywheel/LastDroopRPM", lastDroopRpm);
     Logger.recordOutput("Flywheel/BallsRemaining", ballsRemaining);
-    Logger.recordOutput("Flywheel/ShotDistanceMeters", SHOTS[shotIndex][0]);
+    Logger.recordOutput("Flywheel/TargetIndex", setpointIndex + 1);
+    Logger.recordOutput("Flywheel/TargetCount", SETPOINTS.length);
+    Logger.recordOutput("Flywheel/ShotDistanceMeters", SETPOINTS[setpointIndex][0]);
     Logger.recordOutput("Flywheel/Phase", phase.toString());
     Logger.recordOutput("Flywheel/InertiaKgM2", inertia);
     Logger.recordOutput("Flywheel/VolleysFired", volleysFired);
+  }
+
+  int getCurrentTargetNumber() {
+    return setpointIndex + 1;
+  }
+
+  int getTargetCount() {
+    return SETPOINTS.length;
+  }
+
+  int getVolleysFired() {
+    return volleysFired;
+  }
+
+  double getLastDroopRpm() {
+    return lastDroopRpm;
+  }
+
+  boolean isReturningToIdle() {
+    return phase == Phase.RETURNING_TO_IDLE;
   }
 }
