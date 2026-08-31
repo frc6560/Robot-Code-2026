@@ -197,8 +197,8 @@ public class RobotContainer {
         
         Trigger ungatedShootTrigger = new Trigger(m_Controls::getUngatedShootTrigger);
 
-        // Hold driver B in teleop to run the gated shot and align the chassis to the hub.
-        Trigger driverShootTrigger = driverXbox.b().and(DriverStation::isTeleopEnabled);
+        // Hold the driver right trigger in teleop to run the gated shot and align to the hub.
+        Trigger driverShootTrigger = driverXbox.rightTrigger().and(DriverStation::isTeleopEnabled);
         driverShootTrigger.onTrue(Commands.runOnce(() -> {
           shotCommand = new ShotCommand(
               feeder, turret, hood, shooter, shotCalculator, drivebase::getPose, led)
