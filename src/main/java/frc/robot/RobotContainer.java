@@ -18,6 +18,7 @@ import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import frc.robot.Constants.LimelightConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.autonomous.AutoModeChooser;
+import frc.robot.commands.indexer.LoadIndexerCommand;
 import frc.robot.commands.scoring.ShotCommand;
 import frc.robot.autonomous.AutoCommands;
 import frc.robot.commands.periodic.SuperstructureCommand;
@@ -39,6 +40,10 @@ import frc.robot.subsystems.feeder.FeederIOTalonFX;
 import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.intake.IntakeIO;
 import frc.robot.subsystems.intake.IntakeIOTalonFX;
+import frc.robot.subsystems.indexer.Indexer;
+import frc.robot.subsystems.indexer.IndexerIO;
+import frc.robot.subsystems.indexer.IndexerIOSim;
+import frc.robot.subsystems.indexer.IndexerIOTalonFX;
 import frc.robot.subsystems.led.LED;
 import frc.robot.subsystems.led.LEDIO;
 import frc.robot.subsystems.led.LEDIOAddressable;
@@ -48,8 +53,14 @@ import frc.robot.subsystems.vision.VisionSubsystem;
 
 
 public class RobotContainer {
+    private static final int INDEXER_FLOOR_LEADER_ID = 26;
+    private static final int INDEXER_FLOOR_FOLLOWER_ID = 27;
+    private static final int INDEXER_TOWER_MOTOR_ID = 28;
+    private static final int INDEXER_TOWER_SENSOR_ID = 29;
+
     // Controllers
     private final CommandXboxController driverXbox = new CommandXboxController(0);
+    private final CommandXboxController operatorXbox = new CommandXboxController(1);
     private final ManualControls m_Controls = new ManualControls(1);
 
      // The robot's subsystems and commands are defined here...
@@ -62,6 +73,7 @@ public class RobotContainer {
     private final Turret turret;
     private final Feeder feeder;
     private final Intake intake;
+    private final Indexer indexer;
     private final LED led;
 
     private final ShotCalculator shotCalculator = new ShotCalculator();
@@ -82,6 +94,22 @@ public class RobotContainer {
 
     public RobotContainer() {
       // Initialize subsystems with appropriate IO implementations
+      Constants.Mode indexerMode = Robot.isReal()
+          ? Constants.Mode.REAL
+          : Constants.currentMode == Constants.Mode.REPLAY
+              ? Constants.Mode.REPLAY
+              : Constants.Mode.SIM;
+
+      indexer = switch (indexerMode) {
+        case REAL -> new Indexer(new IndexerIOTalonFX(
+            INDEXER_FLOOR_LEADER_ID,
+            INDEXER_FLOOR_FOLLOWER_ID,
+            INDEXER_TOWER_MOTOR_ID,
+            INDEXER_TOWER_SENSOR_ID));
+        case SIM -> new Indexer(new IndexerIOSim());
+        case REPLAY -> new Indexer(new IndexerIO() {});
+      };
+
       if (Robot.isReal()) {
         hood = new Hood(new HoodIOTalonFX());
         shooter = new Shooter(new ShooterIOTalonFX());
@@ -163,6 +191,8 @@ public class RobotContainer {
         Command driveFieldOrientedAnglularVelocity = drivebase.driveFieldOriented(
             () -> clampSpeedsForShooting(driveAngularVelocity.get()));
         drivebase.setDefaultCommand(driveFieldOrientedAnglularVelocity);
+
+        operatorXbox.a().onTrue(new LoadIndexerCommand(indexer));
 
         driverXbox.x()
           .onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
