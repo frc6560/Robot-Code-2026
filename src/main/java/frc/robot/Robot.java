@@ -16,6 +16,7 @@ import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import frc.robot.Constants.LimelightConstants;
+import frc.robot.subsystems.shooter.FlywheelVisualizer;
 import frc.robot.utility.LimelightHelpers;
 
 /**
@@ -31,6 +32,9 @@ public class Robot extends LoggedRobot
 
   private RobotContainer m_robotContainer;
 
+  /** Simulation-only spinning-wheel view of the flywheel, for AdvantageScope. */
+  private FlywheelVisualizer flywheelVisualizer;
+
   private Timer disabledTimer;
 
   public Robot()
@@ -39,11 +43,18 @@ public class Robot extends LoggedRobot
     if (isReal()) {
       Logger.addDataReceiver(new WPILOGWriter());
       Logger.addDataReceiver(new NT4Publisher());
-    } else {
+    } else if (System.getenv("AKIT_LOG_PATH") != null) {
+      // Replay: re-run a recorded log through this code. AdvantageScope sets
+      // AKIT_LOG_PATH when it launches a replay, and it can be exported by hand.
       setUseTiming(false); // Run as fast as possible
-      String logPath = LogFileUtil.findReplayLog(); 
-      Logger.setReplaySource(new WPILOGReader(logPath)); 
-      Logger.addDataReceiver(new WPILOGWriter(LogFileUtil.addPathSuffix(logPath, "_sim"))); 
+      String logPath = LogFileUtil.findReplayLog();
+      Logger.setReplaySource(new WPILOGReader(logPath));
+      Logger.addDataReceiver(new WPILOGWriter(LogFileUtil.addPathSuffix(logPath, "_sim")));
+    } else {
+      // Live simulation: run at wall-clock speed and publish to NetworkTables so
+      // AdvantageScope can watch it. Without this the constructor would ask for a
+      // log to replay and block on a file chooser before the robot ever started.
+      Logger.addDataReceiver(new NT4Publisher());
     }
 
     Logger.start();
@@ -186,6 +197,7 @@ public class Robot extends LoggedRobot
   @Override
   public void simulationInit()
   {
+    flywheelVisualizer = new FlywheelVisualizer();
   }
 
   /**
@@ -194,5 +206,9 @@ public class Robot extends LoggedRobot
   @Override
   public void simulationPeriodic()
   {
+    if (flywheelVisualizer != null)
+    {
+      flywheelVisualizer.update(getPeriod());
+    }
   }
 }
