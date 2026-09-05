@@ -93,6 +93,13 @@ task(replayWatch, type: JavaExec) {
 wpi.sim.addGui().defaultEnabled = !project.hasProperty("headless")
 wpi.sim.addDriverstation()
 
+// Import this autos archive into BLine Web, or open src/main/deploy/autos directly on desktop.
+tasks.register('exportBLineProject', Zip) {
+    from('src/main/deploy/autos')
+    archiveFileName = 'bline-project.zip'
+    destinationDirectory = layout.buildDirectory.dir('bline')
+}
+
 // Setting up my Jar File. In this case, adding all libraries into the main jar ('fat jar')
 // in order to make them all available at runtime. Also adding the manifest so WPILib
 // knows where to look for our Robot Class.

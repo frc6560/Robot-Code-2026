@@ -41,6 +41,14 @@ public class AutoCommands {
 
         configureBLineLogging();
 
+        Logger.recordOutput("BLine/Config/Source", "deploy/autos/config.json");
+        Logger.recordOutput("BLine/Config/MaxVelocityMps", BLineConstants.GLOBAL_MAX_VELOCITY_MPS);
+        Logger.recordOutput("BLine/Config/MaxAccelerationMps2", BLineConstants.GLOBAL_MAX_ACCELERATION_MPS2);
+        Logger.recordOutput("BLine/Config/MaxAngularVelocityDegPerSec",
+            BLineConstants.GLOBAL_MAX_ANGULAR_VELOCITY_DEG_PER_SEC);
+        Logger.recordOutput("BLine/Config/MaxAngularAccelerationDegPerSecSq",
+            BLineConstants.GLOBAL_MAX_ANGULAR_ACCELERATION_DEG_PER_SEC2);
+
         Path.setDefaultGlobalConstraints(new Path.DefaultGlobalConstraints(
             BLineConstants.GLOBAL_MAX_VELOCITY_MPS,
             BLineConstants.GLOBAL_MAX_ACCELERATION_MPS2,

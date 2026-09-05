@@ -13,6 +13,8 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.util.Units;
 import swervelib.math.Matter;
+import frc.robot.lib.BLine.JsonUtils;
+import frc.robot.lib.BLine.Path;
 
 /**
  * The Constants class provides a convenient place for teams to hold robot-wide numerical or boolean constants. This
@@ -104,12 +106,15 @@ public final class Constants {
    * BLine path-following tuning.
    *
    * <p>Tune in this order: translation, rotation, then cross-track. Keep translation I at zero;
-   * accumulated distance error makes that controller unstable near the end of a path. JSON paths
-   * also read their global motion limits from deploy/autos/config.json, which should match the
-   * GLOBAL_* values below.
+   * accumulated distance error makes that controller unstable near the end of a path. All default
+   * path limits below are loaded from deploy/autos/config.json, shared with BLine Web. Explicit
+   * path/segment constraints still override these defaults. Hub aim has separate tuning above.
    */
   public static final class BLineConstants {
     private BLineConstants() {}
+
+    private static final Path.DefaultGlobalConstraints CONFIG =
+        JsonUtils.loadGlobalConstraints(JsonUtils.PROJECT_ROOT);
 
     /**
      * Proportional gain for translation, in (meters/second) per meter of remaining path distance.
@@ -187,7 +192,7 @@ public final class Constants {
      * decreasing it makes paths slower, easier to track, and safer during initial tuning. A path-level
      * constraint may override this value.
      */
-    public static final double GLOBAL_MAX_VELOCITY_MPS = 4.5;
+    public static final double GLOBAL_MAX_VELOCITY_MPS = CONFIG.getMaxVelocityMetersPerSec();
 
     /**
      * Default maximum translational acceleration in meters per second squared. Increasing it makes
@@ -195,25 +200,23 @@ public final class Constants {
      * decreasing it produces gentler motion but increases path time and stopping distance in time.
      * JSON paths read the matching value from deploy/autos/config.json.
      */
-    public static final double GLOBAL_MAX_ACCELERATION_MPS2 = 12.0;
+    public static final double GLOBAL_MAX_ACCELERATION_MPS2 = CONFIG.getMaxAccelerationMetersPerSec2();
 
     /**
      * Default maximum angular velocity in degrees per second. Increasing it allows faster heading
      * changes but can saturate modules and harm translation tracking; decreasing it makes rotation
      * slower and may prevent the requested heading from completing before a segment ends.
      */
-    // public static final double GLOBAL_MAX_ANGULAR_VELOCITY_DEG_PER_SEC = 720.0;
     public static final double GLOBAL_MAX_ANGULAR_VELOCITY_DEG_PER_SEC =
-        Units.radiansToDegrees(MAX_ANGULAR_VELOCITY_RAD_PER_SEC);
+        CONFIG.getMaxVelocityDegPerSec();
 
     /**
      * Default maximum angular acceleration in degrees per second squared. Increasing it makes angular
      * velocity change more abruptly, improving response while increasing slip/current and mechanical
      * shock; decreasing it smooths rotation but can make heading lag along short segments.
      */
-    // public static final double GLOBAL_MAX_ANGULAR_ACCELERATION_DEG_PER_SEC2 = 1500.0;
     public static final double GLOBAL_MAX_ANGULAR_ACCELERATION_DEG_PER_SEC2 =
-        Units.radiansToDegrees(MAX_ANGULAR_ACCELERATION_RAD_PER_SEC_SQ);
+        CONFIG.getMaxAccelerationDegPerSec2();
 
     /**
      * Maximum final-position error in meters for path completion. Increasing it lets commands finish
@@ -221,14 +224,14 @@ public final class Constants {
      * demands greater precision but can prevent completion when odometry noise or wheel slip exceeds
      * the tolerance. Both translation and rotation tolerances must be satisfied.
      */
-    public static final double END_TRANSLATION_TOLERANCE_METERS = 0.03;
+    public static final double END_TRANSLATION_TOLERANCE_METERS = CONFIG.getEndTranslationToleranceMeters();
 
     /**
      * Maximum final-heading error in degrees for path completion. Increasing it finishes sooner with
      * looser orientation; decreasing it improves final heading accuracy but can cause prolonged
      * rotation or jitter near the endpoint. Both endpoint tolerances must be satisfied.
      */
-    public static final double END_ROTATION_TOLERANCE_DEGREES = 2.0;
+    public static final double END_ROTATION_TOLERANCE_DEGREES = CONFIG.getEndRotationToleranceDeg();
 
     /**
      * Default intermediate handoff radius in meters. With radius-based handoffs, BLine advances to
@@ -237,7 +240,7 @@ public final class Constants {
      * closely but can make the robot overshoot, reverse, and oscillate if the radius is smaller than
      * its stopping distance. This does not control final-point tolerance.
      */
-    public static final double INTERMEDIATE_HANDOFF_RADIUS_METERS = 0.45;
+    public static final double INTERMEDIATE_HANDOFF_RADIUS_METERS = CONFIG.getIntermediateHandoffRadiusMeters();
 
     /**
      * Selects the translation-target handoff algorithm; this is dimensionless. False uses distance
