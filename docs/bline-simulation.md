@@ -6,16 +6,18 @@ Save before building/deploying. Java reads defaults at startup; redeploy and res
 after changing them. The separate `Documents/Bline-paths` project is a copy, not a
 live connection to this repository.
 
-For a browser or another computer, run `./gradlew exportBLineProject` and import
-`build/bline/bline-project.zip` as an autos ZIP in BLine Web. Export the complete
-autos folder back to the repository after editing (including `config.json`, not
-just the path). Reopen/reimport after external file changes so an old in-memory
-editor session cannot save stale settings over the updated file.
-
 Current defaults are 4.5 m/s, 12 m/s², 716.1972439 deg/s (12.5 rad/s), and
 1375.0987083 deg/s² (24 rad/s²). The drivetrain's 19.5 ft/s = 5.9436 m/s wheel
 speed is a separate hardware speed bound, not the selected autonomous speed.
-`DrivebaseConstants.HUB_AIM_*` still controls shooting alignment independently.
+The top-level angular constants and `DrivebaseConstants.HUB_AIM_MAX_*` read the
+same JSON angular defaults (converted to radians). Hub aim retains its own PID
+gains and profiled controller; path-specific constraints do not change hub aim.
+Change the shared angular limits in this JSON, rather than adding another literal
+to Constants.java. The Documents/Bline-paths config has also been corrected, but
+it remains an independent project: use the repository autos folder for ongoing work.
+Reopen projects after external configuration edits, and refresh stale optimizer
+results with Auto all. Existing input signatures deliberately retain the old
+settings so the editor can identify which generated caps need refreshing.
 
 Explicit path/segment constraints override defaults. Java-authored paths in
 `BLinePaths.java` also intentionally set their own translation constraints.
@@ -45,10 +47,8 @@ The module locations (±10.875 inches) give a radius of 0.39064 m. With 5.9436 m
 wheel speed, the ideal stationary spin ceiling is about 15.21 rad/s; the configured
 12.5 rad/s is below that. Simultaneous translation reduces available spin speed.
 
-Footprints disagree: Java says 0.812 m square, the repository editor project says
-1.2 by 1.1 m, and Documents/Bline-paths says 0.8 m square. Measure the bumper
-envelope before changing these; they may represent different physical envelopes.
-Existing editor footprints are preserved. Mass is also unverified: Constants.java says 62.59 kg
+The footprint here uses the existing 0.812 m square code dimensions; measure the
+actual bumper envelope. Mass is also unverified: Constants.java says 62.59 kg
 (TODO), while YAGSL physicalproperties.json says 136 lb (61.69 kg). Do not treat
 either as a measurement or silently average them.
 

@@ -31,8 +31,12 @@ public final class Constants {
   public static final double LOOP_TIME  = 0.13; //s, 20ms + 110ms sprk max velocity lag
   // public static final double MAX_SPEED = Units.feetToMeters(14.5); // Previous limit
   public static final double MAX_SPEED = Units.feetToMeters(19.5);
-  public static final double MAX_ANGULAR_VELOCITY_RAD_PER_SEC = 12.5;
-  public static final double MAX_ANGULAR_ACCELERATION_RAD_PER_SEC_SQ = 24.0;
+  // Shared with the BLine editor/optimizer via deploy/autos/config.json.
+  // These are selected operating limits, not measured physical maxima.
+  public static final double MAX_ANGULAR_VELOCITY_RAD_PER_SEC =
+      Units.degreesToRadians(BLineConstants.GLOBAL_MAX_ANGULAR_VELOCITY_DEG_PER_SEC);
+  public static final double MAX_ANGULAR_ACCELERATION_RAD_PER_SEC_SQ =
+      Units.degreesToRadians(BLineConstants.GLOBAL_MAX_ANGULAR_ACCELERATION_DEG_PER_SEC2);
   // Maximum speed of the robot in meters per second, used to limit acceleration.
 
   // Robot dimensions (in meters, from PathPlanner settings)
@@ -78,16 +82,16 @@ public final class Constants {
     public static final double HUB_AIM_KD = 0.2;
 
     /**
-     * Maximum velocity for the shooting auto-turn profile. This is intentionally independent of
-     * BLine's path-rotation constraints so changing an autonomous path cannot slow down hub aim.
+     * Shared maximum velocity for the shooting auto-turn profile. Path-specific overrides do not
+     * affect hub aim; the shared project default sets its operating ceiling.
      */
-    public static final double HUB_AIM_MAX_ANGULAR_SPEED_RAD_PER_SEC = 12.5;
+    public static final double HUB_AIM_MAX_ANGULAR_SPEED_RAD_PER_SEC = MAX_ANGULAR_VELOCITY_RAD_PER_SEC;
 
     /**
-     * Maximum acceleration for the shooting auto-turn profile. This is intentionally independent
-     * of BLine's path-rotation constraints.
+     * Shared maximum acceleration for the shooting auto-turn profile.
      */
-    public static final double HUB_AIM_MAX_ANGULAR_ACCELERATION_RAD_PER_SEC_SQ = 24.0;
+    public static final double HUB_AIM_MAX_ANGULAR_ACCELERATION_RAD_PER_SEC_SQ =
+        MAX_ANGULAR_ACCELERATION_RAD_PER_SEC_SQ;
 
     /** Stops small heading corrections once the chassis is pointed at the hub. */
     public static final double HUB_AIM_TOLERANCE_RADIANS = Units.degreesToRadians(1.5);
