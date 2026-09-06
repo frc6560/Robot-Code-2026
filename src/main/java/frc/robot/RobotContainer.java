@@ -45,6 +45,14 @@ import frc.robot.subsystems.led.LEDIOAddressable;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import frc.robot.subsystems.vision.LimelightVision;
 import frc.robot.subsystems.vision.VisionSubsystem;
+import com.ctre.phoenix6.hardware.TalonFX;
+import java.util.function.DoubleSupplier;
+import frc.robot.Constants.ShooterConstants;
+import frc.robot.Constants.FeederConstants;
+import frc.robot.Constants.IntakeConstants;
+import frc.robot.Constants.HoodConstants;
+import frc.robot.Constants.TurretConstants;
+import frc.robot.power.MotorCurrentMonitor;
 
 
 public class RobotContainer {
@@ -63,6 +71,9 @@ public class RobotContainer {
     private final Feeder feeder;
     private final Intake intake;
     private final LED led;
+
+    // Power monitoring: per-subsystem current sourced from the TalonFX motors by CAN ID.
+    private final MotorCurrentMonitor powerMonitor = new MotorCurrentMonitor();
 
     private final ShotCalculator shotCalculator = new ShotCalculator();
     private final PassCalculator passCalculator = new PassCalculator();
@@ -89,6 +100,7 @@ public class RobotContainer {
         feeder = new Feeder(new FeederIOTalonFX());
         intake = new Intake(new IntakeIOTalonFX());
         led = new LED(new LEDIOAddressable(3, 65), hood, shooter, turret, shotCalculator);
+        configurePowerMonitor();
       } else {
           hood = new Hood(new HoodIO() {});
           shooter = new Shooter(new ShooterIO() {});
@@ -157,6 +169,40 @@ public class RobotContainer {
         }
 
         return new ChassisSpeeds(vx, vy, speeds.omegaRadiansPerSecond);
+    }
+
+    /** Read-only supply-current source for a TalonFX by CAN ID on the given CAN bus. */
+    private static DoubleSupplier talon(int canId, String canbus) {
+        TalonFX fx = new TalonFX(canId, canbus);
+        var sig = fx.getSupplyCurrent();
+        sig.setUpdateFrequency(50);
+        return () -> sig.refresh().getValueAsDouble();
+    }
+
+    /** Registers every subsystem's motor current with the power monitor (by CAN ID). */
+    private void configurePowerMonitor() {
+        final String CANIVORE = "Canivore";
+        final String RIO = "rio";
+        powerMonitor.driveGroup("Swerve Drive", 160.0)
+            .addMotor(talon(1, CANIVORE)).addMotor(talon(4, CANIVORE))
+            .addMotor(talon(7, CANIVORE)).addMotor(talon(10, CANIVORE));
+        powerMonitor.group("Swerve Steer", 100.0)
+            .addMotor(talon(3, CANIVORE)).addMotor(talon(6, CANIVORE))
+            .addMotor(talon(9, CANIVORE)).addMotor(talon(12, CANIVORE));
+        powerMonitor.group("Shooter", 100.0)
+            .addMotor(talon(ShooterConstants.LEFT_FLYWHEEL_ID, RIO))
+            .addMotor(talon(ShooterConstants.RIGHT_FLYWHEEL_ID, RIO));
+        powerMonitor.group("Feeder", 120.0)
+            .addMotor(talon(FeederConstants.PAN_MOTOR_ID, RIO))
+            .addMotor(talon(FeederConstants.FLOOR_ID, RIO))
+            .addMotor(talon(FeederConstants.PUSHER_MOTOR_ID, RIO));
+        powerMonitor.group("Intake", 60.0)
+            .addMotor(talon(IntakeConstants.LEFT_MOTOR_ID, RIO))
+            .addMotor(talon(IntakeConstants.RIGHT_MOTOR_ID, RIO));
+        powerMonitor.group("Hood", 40.0)
+            .addMotor(talon(HoodConstants.HOOD_MOTOR_ID, RIO));
+        powerMonitor.group("Turret", 30.0)
+            .addMotor(talon(TurretConstants.MOTOR_ID, RIO));
     }
 
     private void configureBindings() {
