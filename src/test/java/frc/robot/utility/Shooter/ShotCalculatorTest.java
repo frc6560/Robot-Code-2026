@@ -14,6 +14,7 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.simulation.DriverStationSim;
+import frc.robot.Constants;
 import frc.robot.Constants.FieldConstants;
 import frc.robot.Constants.TurretConstants;
 
@@ -88,6 +89,25 @@ class ShotCalculatorTest {
         assertEquals(500.0, calculator.getFlywheelRPM(), 1e-9);
         assertEquals(25.1, calculator.getHoodAzimuth(), 1e-9);
         assertFalse(calculator.measuredControlsScore(2500.0, 30.0));
+    }
+
+    @Test
+    void ungatedShotUsesNearestCalibratedSetpointOutsideConfiguredDistance() {
+        DriverStationSim.setAllianceStationId(AllianceStationID.Blue1);
+        DriverStationSim.notifyNewData();
+
+        ShotCalculator calculator = new ShotCalculator();
+        calculator.calculateUngated(robotPoseAtBlueHubDistance(7.0), new ChassisSpeeds());
+
+        PhysicsShotSolver.Solution expected =
+            new PhysicsShotSolver().solveRuntime(Constants.ShotModelConstants.MAX_DISTANCE_METERS);
+        assertFalse(calculator.isShotValid());
+        assertEquals(expected.flywheelRPM(), calculator.getFlywheelRPM(), 1e-6);
+        assertEquals(expected.hoodCommandDegrees(), calculator.getHoodAzimuth(), 1e-6);
+        assertTrue(calculator.getFlywheelRPM() > Constants.ShooterConstants.FLYWHEEL_IDLE_RPM);
+        assertTrue(calculator.getHoodAzimuth() > Constants.HoodConstants.HOOD_MIN_ANGLE);
+        assertFalse(calculator.measuredControlsScore(
+            calculator.getFlywheelRPM(), calculator.getHoodAzimuth()));
     }
 
     @Test

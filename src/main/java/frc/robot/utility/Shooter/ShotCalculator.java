@@ -135,6 +135,22 @@ public class ShotCalculator {
     /** Calculates the shot parameters for a hub shot based on current robot pose and field velocity. */
     public void calculate(Pose2d currentRobotPose, 
                             ChassisSpeeds fieldVelocity) {
+        calculate(currentRobotPose, fieldVelocity, false);
+    }
+
+    /**
+     * Calculates an ungated driver shot. A finite pose outside the calibrated range uses the
+     * nearest calibrated mechanism setpoint instead of retracting the hood and idling the
+     * flywheel. {@link #isShotValid()} remains false outside the validated scoring range.
+     */
+    public void calculateUngated(Pose2d currentRobotPose, ChassisSpeeds fieldVelocity) {
+        calculate(currentRobotPose, fieldVelocity, true);
+    }
+
+    private void calculate(
+            Pose2d currentRobotPose,
+            ChassisSpeeds fieldVelocity,
+            boolean clampCommandDistance) {
         calculationValid = false;
         SmartDashboard.putBoolean("SOTM/ShotValid", false);
 
@@ -209,7 +225,7 @@ public class ShotCalculator {
         virtualTargetPose = targetPose; 
         double distanceToTarget = turretPose.getTranslation().getDistance(targetPose);
         double staticDistance = distanceToTarget; // save for logging
-        Solution solution = solveAtDistance(distanceToTarget);
+        Solution solution = solveAtDistance(distanceToTarget, clampCommandDistance);
         double timeOfFlight = solution.valid() ? solution.timeOfFlightSeconds() : 0.0;
         int iterationsUsed = 0;
 
@@ -224,7 +240,7 @@ public class ShotCalculator {
                     )
                 );
                 distanceToTarget = turretPose.getTranslation().getDistance(virtualTargetPose);
-                solution = solveAtDistance(distanceToTarget);
+                solution = solveAtDistance(distanceToTarget, clampCommandDistance);
                 if (!solution.valid()) {
                     break;
                 }
@@ -251,6 +267,8 @@ public class ShotCalculator {
         SmartDashboard.putNumber("SOTM/TimeOfFlight", timeOfFlight);
         SmartDashboard.putNumber("SOTM/Distance/Static", staticDistance);
         SmartDashboard.putNumber("SOTM/Distance/Virtual", distanceToTarget);
+        SmartDashboard.putNumber("SOTM/Distance/Command", solution.targetDistanceMeters());
+        SmartDashboard.putBoolean("SOTM/RangeClamped", clampCommandDistance && !distanceInRange);
         SmartDashboard.putBoolean("SOTM/ShotValid", isShotValid());
 
         Translation2d targetOffset = virtualTargetPose.minus(targetPose);
@@ -287,8 +305,14 @@ public class ShotCalculator {
         SmartDashboard.putBoolean("SOTM/Model/PolicyValidated", solution.valid());
     }
 
-    private Solution solveAtDistance(double distanceMeters) {
-        return physicsSolver.solveRuntime(distanceMeters);
+    private Solution solveAtDistance(double distanceMeters, boolean clampCommandDistance) {
+        double commandDistance = clampCommandDistance
+            ? MathUtil.clamp(
+                distanceMeters,
+                ShotModelConstants.MIN_DISTANCE_METERS,
+                ShotModelConstants.MAX_DISTANCE_METERS)
+            : distanceMeters;
+        return physicsSolver.solveRuntime(commandDistance);
     }
 
     private static boolean hasFiniteInputs(Pose2d pose, ChassisSpeeds velocity) {

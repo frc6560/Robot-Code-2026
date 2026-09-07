@@ -172,7 +172,7 @@ public class RobotContainer {
 
     /** Recalculates and applies the driver-requested hub shot once per scheduler cycle. */
     private void updateDriverShot() {
-        shotCalculator.calculate(drivebase.getPose(), drivebase.getFieldVelocity());
+        shotCalculator.calculateUngated(drivebase.getPose(), drivebase.getFieldVelocity());
         shooter.setGoal(shotCalculator.getFlywheelRPM());
         hood.setGoal(shotCalculator.getHoodAzimuth());
         turret.setGoalWithVelocity(

@@ -47,10 +47,9 @@ class RobotContainerDriverControlsTest {
         DriverStationSim.notifyNewData();
 
         RobotContainer container = new RobotContainer();
-        // This pose is inside the blue-right trench. The held driver shot must still own the
-        // mechanisms instead of being overwritten by the background trench state machine.
-        container.getDrivebase().resetOdometry(
-            new Pose2d(4.5, 0.5, new Rotation2d()));
+        // The default field origin is just outside the calibrated HUB range. An ungated driver
+        // shot must use the nearest setpoint instead of retracting the hood and idling the wheel.
+        container.getDrivebase().resetOdometry(new Pose2d(0.0, 0.0, new Rotation2d()));
         CommandScheduler scheduler = CommandScheduler.getInstance();
         scheduler.run();
 
