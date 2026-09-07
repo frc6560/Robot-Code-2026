@@ -1,6 +1,6 @@
 plugins {
-    id "java"
-    id "edu.wpi.first.GradleRIO" version "2026.2.1"
+    id 'java'
+    id 'edu.wpi.first.GradleRIO' version '2026.2.1'
 }
 
 java {
@@ -8,33 +8,18 @@ java {
     targetCompatibility = JavaVersion.VERSION_17
 }
 
-def ROBOT_MAIN_CLASS = "frc.robot.Main"
+def ROBOT_MAIN_CLASS = 'frc.robot.Main'
 
-// Define my targets (RoboRIO) and artifacts (deployable files)
-// This is added by GradleRIO's backing project DeployUtils.
 deploy {
     targets {
         roborio(getTargetTypeClass('RoboRIO')) {
-            // Team number is loaded either from the .wpilib/wpilib_preferences.json
-            // or from command line. If not found an exception will be thrown.
-            // You can use getTeamOrDefault(team) instead of getTeamNumber if you
-            // want to store a team number in this file.
             team = project.frc.getTeamNumber()
             debug = project.frc.getDebugOrDefault(false)
-
             artifacts {
-                // First part is artifact name, 2nd is artifact type
-                // getTargetTypeClass is a shortcut to get the class type using a string
-
-                frcJava(getArtifactTypeClass('FRCJavaArtifact')) {
-                }
-
-                // Static files artifact
+                frcJava(getArtifactTypeClass('FRCJavaArtifact')) {}
                 frcStaticFileDeploy(getArtifactTypeClass('FileTreeArtifact')) {
                     files = project.fileTree('src/main/deploy')
                     directory = '/home/lvuser/deploy'
-                    // Keep the roboRIO deploy directory synchronized with source so renamed or
-                    // deleted BLine paths cannot survive deployments as stale autonomous files.
                     deleteOldFiles = true
                 }
             }
@@ -43,59 +28,30 @@ deploy {
 }
 
 def deployArtifact = deploy.targets.roborio.artifacts.frcJava
-
-// Set to true to use debug for all targets including JNI, which will drastically impact
-// performance.
 wpi.java.debugJni = false
 
-// Set this to true to enable desktop support.
-def includeDesktopSupport = false
-
-// Defining my dependencies. In this case, WPILib (+ friends), and vendor libraries.
-// Also defines JUnit 5.
 dependencies {
     annotationProcessor wpi.java.deps.wpilibAnnotations()
     implementation wpi.java.deps.wpilib()
     implementation wpi.java.vendor.java()
-
     roborioDebug wpi.java.deps.wpilibJniDebug(wpi.platforms.roborio)
     roborioDebug wpi.java.vendor.jniDebug(wpi.platforms.roborio)
-
     roborioRelease wpi.java.deps.wpilibJniRelease(wpi.platforms.roborio)
     roborioRelease wpi.java.vendor.jniRelease(wpi.platforms.roborio)
-
     nativeDebug wpi.java.deps.wpilibJniDebug(wpi.platforms.desktop)
     nativeDebug wpi.java.vendor.jniDebug(wpi.platforms.desktop)
     simulationDebug wpi.sim.enableDebug()
-
     nativeRelease wpi.java.deps.wpilibJniRelease(wpi.platforms.desktop)
     nativeRelease wpi.java.vendor.jniRelease(wpi.platforms.desktop)
     simulationRelease wpi.sim.enableRelease()
 
-    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.1'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-
-    def akitJson = new groovy.json.JsonSlurper().parseText(new File(projectDir.getAbsolutePath() + "/vendordeps/AdvantageKit.json").text)
+    def akitJson = new groovy.json.JsonSlurper().parseText(file('vendordeps/AdvantageKit.json').text)
     annotationProcessor "org.littletonrobotics.akit:akit-autolog:$akitJson.version"
 }
 
-test {
-    useJUnitPlatform()
-    systemProperty 'junit.jupiter.extensions.autodetection.enabled', 'true'
-}
-
-task(replayWatch, type: JavaExec) {
-    mainClass = "org.littletonrobotics.junction.ReplayWatch"
-    classpath = sourceSets.main.runtimeClasspath
-}
-
-// Simulation configuration (e.g. environment variables).
-wpi.sim.addGui().defaultEnabled = !project.hasProperty("headless")
+wpi.sim.addGui().defaultEnabled = !project.hasProperty('headless')
 wpi.sim.addDriverstation()
 
-// Setting up my Jar File. In this case, adding all libraries into the main jar ('fat jar')
-// in order to make them all available at runtime. Also adding the manifest so WPILib
-// knows where to look for our Robot Class.
 jar {
     from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
     from('src') { into 'backup/src' }
@@ -105,20 +61,7 @@ jar {
     duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }
 
-// Configure jar and deploy tasks
 deployArtifact.jarTask = jar
 wpi.java.configureExecutableTasks(jar)
 wpi.java.configureTestTasks(test)
-
-// Configure string concat to always inline compile
-tasks.withType(JavaCompile) {
-    options.compilerArgs.add '-XDstringConcat=inline'
-}
-
-tasks.register('runPathGui', JavaExec) {
-    group = "application"
-    description = "Run Pathing GUI"
-    classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'frc.robot.utility.Pathing.gui.PathGuiMain'
-    workingDir = projectDir
-}
+tasks.withType(JavaCompile).configureEach { options.compilerArgs.add('-XDstringConcat=inline') }
