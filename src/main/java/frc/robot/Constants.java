@@ -10,7 +10,10 @@ public final class Constants {
   public static final class Drive {
     private Drive() {}
 
+    // The swerve motors and CANcoders are connected through the CANivore.
     public static final String CAN_BUS = "Canivore";
+    // The Pigeon2 is connected to the roboRIO CAN network, matching the Beeline configuration.
+    public static final String GYRO_CAN_BUS = "rio";
     public static final int GYRO_CAN_ID = 13;
     public static final double LOOP_PERIOD_SECONDS = 0.020;
     public static final double WHEEL_DIAMETER_METERS = Units.inchesToMeters(3.91);

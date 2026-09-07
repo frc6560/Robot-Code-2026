@@ -20,7 +20,7 @@ import org.littletonrobotics.junction.Logger;
  */
 public class StateSpaceSwerve extends SubsystemBase {
   private final Pigeon2 gyro = new Pigeon2(
-      Constants.Drive.GYRO_CAN_ID, new CANBus(Constants.Drive.CAN_BUS));
+      Constants.Drive.GYRO_CAN_ID, new CANBus(Constants.Drive.GYRO_CAN_BUS));
   private final StateSpaceModule[] modules = new StateSpaceModule[] {
       new StateSpaceModule(Constants.Drive.FRONT_LEFT),
       new StateSpaceModule(Constants.Drive.FRONT_RIGHT),
