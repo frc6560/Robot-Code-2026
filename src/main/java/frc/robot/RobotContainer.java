@@ -1,7 +1,9 @@
 package frc.robot;
 
 import edu.wpi.first.wpilibj.Filesystem;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
@@ -139,7 +141,34 @@ public class RobotContainer {
     private static final double MAX_PASSING_VELOCITY_MPS = 3.0;
 
     private boolean isShotCommandActive() {
-        return driverXbox.rightBumper().getAsBoolean();
+        return driverXbox.rightTrigger().getAsBoolean()
+            || (shotCommand != null
+                && CommandScheduler.getInstance().isScheduled(shotCommand));
+    }
+
+    private void scheduleShotCommand() {
+        cancelShotCommand();
+        shotCommand = new ShotCommand(
+            feeder, turret, hood, shooter, shotCalculator, drivebase::getPose, led);
+        CommandScheduler.getInstance().schedule(shotCommand);
+    }
+
+    private void cancelShotCommand() {
+        if (shotCommand != null) {
+            CommandScheduler.getInstance().cancel(shotCommand);
+        }
+    }
+
+    private void startUngatedDriverShot() {
+        cancelShotCommand();
+        led.setShootIntent(true);
+        feeder.setShooting(true);
+    }
+
+    private void stopUngatedDriverShot() {
+        cancelShotCommand();
+        feeder.setShooting(false);
+        led.setShootIntent(false);
     }
 
     private boolean isInPassingZone() {
@@ -182,21 +211,16 @@ public class RobotContainer {
         Trigger shootTrigger = new Trigger(m_Controls::getShootTrigger);
         Trigger shootReleaseTrigger = new Trigger(m_Controls::getShootReleaseTrigger);
         Trigger ungatedShootTrigger = new Trigger(m_Controls::getUngatedShootTrigger);
+        Trigger driverShootTrigger = driverXbox.rightTrigger().and(DriverStation::isTeleopEnabled);
 
-        shootTrigger.onTrue(Commands.runOnce(() -> {
-          shotCommand = new ShotCommand(feeder, turret, hood, shooter, shotCalculator, drivebase::getPose, led);
-          shotCommand.schedule();
-        }));
-        shootReleaseTrigger.onTrue(Commands.runOnce(() -> {
-          if (shotCommand != null) {
-            shotCommand.cancel();
-          }
-        }));
-        ungatedShootTrigger.onTrue(Commands.sequence(Commands.runOnce(() -> {
-          if (shotCommand != null) {
-            shotCommand.cancel();
-          }
-        }), Commands.runOnce(() -> feeder.setShooting(true))));
+        driverShootTrigger.onTrue(Commands.runOnce(this::startUngatedDriverShot));
+        driverShootTrigger.onFalse(Commands.runOnce(this::stopUngatedDriverShot));
+
+        shootTrigger.onTrue(Commands.runOnce(this::scheduleShotCommand));
+        shootReleaseTrigger.onTrue(Commands.runOnce(this::cancelShotCommand));
+        ungatedShootTrigger.onTrue(Commands.sequence(
+            Commands.runOnce(this::cancelShotCommand),
+            Commands.runOnce(() -> feeder.setShooting(true))));
         ungatedShootTrigger.onFalse(Commands.runOnce(() -> feeder.setShooting(false)));
 
         // --- INTAKE ---
