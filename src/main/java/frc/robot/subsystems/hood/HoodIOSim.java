@@ -9,11 +9,14 @@ public class HoodIOSim implements HoodIO {
     private final SingleJointedArmSim hoodSim;
     private final PIDController pidController;
 
-    private double targetAngleDegrees = HoodConstants.HOOD_MIN_ANGLE;
+    private double targetAngleDegrees =
+        HoodConstants.HOOD_MIN_ANGLE - HoodConstants.HOOD_HORIZONTAL_OFFSET;
     private double appliedVolts = 0.0;
 
     private static final double HOOD_LENGTH_METERS = 0.2;
     private static final double HOOD_MASS_KG = 1.0;
+    private static final double SIM_KP_VOLTS_PER_DEGREE = 0.08;
+    private static final double SIM_KD_VOLTS_PER_DEGREE_PER_SECOND = 0.002;
 
     public HoodIOSim() {
         hoodSim = new SingleJointedArmSim(
@@ -21,13 +24,18 @@ public class HoodIOSim implements HoodIO {
             HoodConstants.HOOD_GEAR_RATIO,
             SingleJointedArmSim.estimateMOI(HOOD_LENGTH_METERS, HOOD_MASS_KG),
             HOOD_LENGTH_METERS,
-            Math.toRadians(HoodConstants.HOOD_MIN_ANGLE - 15.0),
-            Math.toRadians(HoodConstants.HOOD_MAX_ANGLE - 15.0),
+            Math.toRadians(HoodConstants.HOOD_MIN_ANGLE - HoodConstants.HOOD_HORIZONTAL_OFFSET),
+            Math.toRadians(HoodConstants.HOOD_MAX_ANGLE - HoodConstants.HOOD_HORIZONTAL_OFFSET),
             true,
-            Math.toRadians(HoodConstants.HOOD_MIN_ANGLE - 15.0)
+            Math.toRadians(HoodConstants.HOOD_MIN_ANGLE - HoodConstants.HOOD_HORIZONTAL_OFFSET)
         );
 
-        pidController = new PIDController(HoodConstants.kP, HoodConstants.kI, HoodConstants.kD);
+        // The real Talon gains operate in motor rotations. The simulation controller works in
+        // mechanism degrees, so it needs gains expressed in volts per degree.
+        pidController = new PIDController(
+            SIM_KP_VOLTS_PER_DEGREE,
+            0.0,
+            SIM_KD_VOLTS_PER_DEGREE_PER_SECOND);
         pidController.setTolerance(0.5);
     }
 

@@ -12,9 +12,13 @@ import org.junit.jupiter.api.Test;
 
 import edu.wpi.first.hal.AllianceStationID;
 import edu.wpi.first.hal.HAL;
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.simulation.DriverStationSim;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import frc.robot.subsystems.hood.Hood;
+import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.feeder.Feeder;
 
 class RobotContainerDriverControlsTest {
@@ -37,21 +41,40 @@ class RobotContainerDriverControlsTest {
         DriverStationSim.setAutonomous(false);
         DriverStationSim.setAllianceStationId(AllianceStationID.Blue1);
         DriverStationSim.setJoystickAxisCount(0, 6);
+        DriverStationSim.setJoystickButtonCount(0, 10);
         DriverStationSim.setJoystickIsXbox(0, true);
         DriverStationSim.setJoystickAxis(0, XboxController.Axis.kRightTrigger.value, 0.0);
         DriverStationSim.notifyNewData();
 
         RobotContainer container = new RobotContainer();
+        // This pose is inside the blue-right trench. The held driver shot must still own the
+        // mechanisms instead of being overwritten by the background trench state machine.
+        container.getDrivebase().resetOdometry(
+            new Pose2d(4.5, 0.5, new Rotation2d()));
         CommandScheduler scheduler = CommandScheduler.getInstance();
         scheduler.run();
 
+        Shooter shooter = getField(container, "shooter", Shooter.class);
+        Hood hood = getField(container, "hood", Hood.class);
+        double initialHoodAngle = hood.getHoodAngle();
+
         DriverStationSim.setJoystickAxis(0, XboxController.Axis.kRightTrigger.value, 1.0);
         DriverStationSim.notifyNewData();
-        scheduler.run();
+        for (int i = 0; i < 50; i++) {
+            scheduler.run();
+        }
 
-        Feeder feeder = getFeeder(container);
+        Feeder feeder = getField(container, "feeder", Feeder.class);
         assertNotNull(feeder);
         assertTrue(feeder.isShooting());
+        assertTrue(shooter.getGoalRPM() > Constants.ShooterConstants.FLYWHEEL_IDLE_RPM);
+        assertTrue(shooter.getCurrentRPM() > 0.0);
+        assertTrue(hood.getTargetAngle() > Constants.HoodConstants.HOOD_MIN_ANGLE);
+        assertTrue(
+            hood.getHoodAngle() > initialHoodAngle,
+            "hood did not move: initial=" + initialHoodAngle
+                + ", current=" + hood.getHoodAngle()
+                + ", target=" + hood.getTargetAngle());
 
         DriverStationSim.setJoystickAxis(0, XboxController.Axis.kRightTrigger.value, 0.0);
         DriverStationSim.notifyNewData();
@@ -60,9 +83,10 @@ class RobotContainerDriverControlsTest {
         assertFalse(feeder.isShooting());
     }
 
-    private static Feeder getFeeder(RobotContainer container) throws ReflectiveOperationException {
-        Field field = RobotContainer.class.getDeclaredField("feeder");
+    private static <T> T getField(RobotContainer container, String name, Class<T> type)
+            throws ReflectiveOperationException {
+        Field field = RobotContainer.class.getDeclaredField(name);
         field.setAccessible(true);
-        return (Feeder) field.get(container);
+        return type.cast(field.get(container));
     }
 }

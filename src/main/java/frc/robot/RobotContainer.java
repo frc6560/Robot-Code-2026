@@ -12,7 +12,6 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 import swervelib.SwerveInputStream;
 import edu.wpi.first.math.geometry.Pose3d;
@@ -27,23 +26,23 @@ import frc.robot.utility.Shooter.PassCalculator;
 import frc.robot.utility.Shooter.ShotCalculator;
 
 import frc.robot.subsystems.hood.Hood;
-import frc.robot.subsystems.hood.HoodIO;
+import frc.robot.subsystems.hood.HoodIOSim;
 import frc.robot.subsystems.hood.HoodIOTalonFX;
 import frc.robot.subsystems.shooter.Shooter;
-import frc.robot.subsystems.shooter.ShooterIO;
+import frc.robot.subsystems.shooter.ShooterIOSim;
 import frc.robot.subsystems.shooter.ShooterIOTalonFX;
 import frc.robot.subsystems.turret.Turret;
-import frc.robot.subsystems.turret.TurretIO;
+import frc.robot.subsystems.turret.TurretIOSim;
 import frc.robot.subsystems.turret.TurretIOTalonFX;
 import frc.robot.subsystems.feeder.Feeder;
-import frc.robot.subsystems.feeder.FeederIO;
+import frc.robot.subsystems.feeder.FeederIOSim;
 import frc.robot.subsystems.feeder.FeederIOTalonFX;
 import frc.robot.subsystems.intake.Intake;
-import frc.robot.subsystems.intake.IntakeIO;
+import frc.robot.subsystems.intake.IntakeIOSim;
 import frc.robot.subsystems.intake.IntakeIOTalonFX;
 import frc.robot.subsystems.led.LED;
-import frc.robot.subsystems.led.LEDIO;
 import frc.robot.subsystems.led.LEDIOAddressable;
+import frc.robot.subsystems.led.LEDIOSim;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import frc.robot.subsystems.vision.LimelightVision;
 import frc.robot.subsystems.vision.VisionSubsystem;
@@ -92,12 +91,12 @@ public class RobotContainer {
         intake = new Intake(new IntakeIOTalonFX());
         led = new LED(new LEDIOAddressable(3, 65), hood, shooter, turret, shotCalculator);
       } else {
-          hood = new Hood(new HoodIO() {});
-          shooter = new Shooter(new ShooterIO() {});
-          turret = new Turret(new TurretIO() {});
-          feeder = new Feeder(new FeederIO() {});
-          intake = new Intake(new IntakeIO() {});
-          led = new LED(new LEDIO() {}, hood, shooter, turret, shotCalculator);
+          hood = new Hood(new HoodIOSim());
+          shooter = new Shooter(new ShooterIOSim());
+          turret = new Turret(new TurretIOSim());
+          feeder = new Feeder(new FeederIOSim());
+          intake = new Intake(new IntakeIOSim());
+          led = new LED(new LEDIOSim(65), hood, shooter, turret, shotCalculator);
       }
 
       factory = new AutoCommands(
@@ -171,6 +170,22 @@ public class RobotContainer {
         led.setShootIntent(false);
     }
 
+    /** Recalculates and applies the driver-requested hub shot once per scheduler cycle. */
+    private void updateDriverShot() {
+        shotCalculator.calculate(drivebase.getPose(), drivebase.getFieldVelocity());
+        shooter.setGoal(shotCalculator.getFlywheelRPM());
+        hood.setGoal(shotCalculator.getHoodAzimuth());
+        turret.setGoalWithVelocity(
+            Math.toDegrees(shotCalculator.getTurretAngle()),
+            Math.toDegrees(shotCalculator.getTurretVelocityFF()));
+    }
+
+    private Command driverShotCommand() {
+        return Commands.run(this::updateDriverShot, hood, shooter, turret)
+            .beforeStarting(this::startUngatedDriverShot)
+            .finallyDo(interrupted -> stopUngatedDriverShot());
+    }
+
     private boolean isInPassingZone() {
         double poseX = drivebase.getPose().getX();
         return poseX > Constants.FieldConstants.BLUE_ZONE_X && poseX < Constants.FieldConstants.RED_ZONE_X;
@@ -202,7 +217,8 @@ public class RobotContainer {
         drivebase.setDefaultCommand(driveFieldOrientedAnglularVelocity);
 
         driverXbox.x()
-          .onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
+          .and(DriverStation::isTeleopEnabled)
+          .onTrue(Commands.runOnce(() -> vision.hardReset("limelight-br"), vision));
         driverXbox.start().
           onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
 
@@ -213,8 +229,7 @@ public class RobotContainer {
         Trigger ungatedShootTrigger = new Trigger(m_Controls::getUngatedShootTrigger);
         Trigger driverShootTrigger = driverXbox.rightTrigger().and(DriverStation::isTeleopEnabled);
 
-        driverShootTrigger.onTrue(Commands.runOnce(this::startUngatedDriverShot));
-        driverShootTrigger.onFalse(Commands.runOnce(this::stopUngatedDriverShot));
+        driverShootTrigger.whileTrue(driverShotCommand());
 
         shootTrigger.onTrue(Commands.runOnce(this::scheduleShotCommand));
         shootReleaseTrigger.onTrue(Commands.runOnce(this::cancelShotCommand));
