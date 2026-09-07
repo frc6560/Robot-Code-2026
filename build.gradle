@@ -64,4 +64,6 @@ jar {
 deployArtifact.jarTask = jar
 wpi.java.configureExecutableTasks(jar)
 wpi.java.configureTestTasks(test)
-tasks.withType(JavaCompile).configureEach { options.compilerArgs.add('-XDstringConcat=inline') }
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs.addAll(['-XDstringConcat=inline', '-Xlint:deprecation'])
+}

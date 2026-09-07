@@ -3,7 +3,7 @@ pluginManagement {
         mavenLocal()
         gradlePluginPortal()
         String frcYear = '2026'
-        File frcHome = FileSystem.getProperty('user.home')
+        File frcHome = new File(System.getProperty('user.home'))
         File frcFolder = new File(frcHome, 'wpilib' + frcYear)
         File frcVsCodeFolder = new File(frcFolder, 'vscode')
         File versionFile = new File(frcVsCodeFolder, 'wpilibVersion.json')
@@ -15,7 +15,7 @@ pluginManagement {
 }
 
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
     repositories { mavenCentral() }
 }
 

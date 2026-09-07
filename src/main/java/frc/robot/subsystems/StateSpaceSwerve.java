@@ -1,6 +1,7 @@
 package frc.robot.subsystems;
 
 import com.ctre.phoenix6.hardware.Pigeon2;
+import com.ctre.phoenix6.CANBus;
 
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
@@ -18,7 +19,8 @@ import org.littletonrobotics.junction.Logger;
  * tracks its wheel-speed reference with an LQR/Kalman state-space loop in {@link StateSpaceModule}.
  */
 public class StateSpaceSwerve extends SubsystemBase {
-  private final Pigeon2 gyro = new Pigeon2(Constants.Drive.GYRO_CAN_ID, Constants.Drive.CAN_BUS);
+  private final Pigeon2 gyro = new Pigeon2(
+      Constants.Drive.GYRO_CAN_ID, new CANBus(Constants.Drive.CAN_BUS));
   private final StateSpaceModule[] modules = new StateSpaceModule[] {
       new StateSpaceModule(Constants.Drive.FRONT_LEFT),
       new StateSpaceModule(Constants.Drive.FRONT_RIGHT),

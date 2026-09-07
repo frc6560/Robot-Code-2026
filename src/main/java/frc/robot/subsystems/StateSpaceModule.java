@@ -1,5 +1,6 @@
 package frc.robot.subsystems;
 
+import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.configs.CANcoderConfiguration;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.PositionVoltage;
@@ -36,9 +37,10 @@ class StateSpaceModule {
 
   StateSpaceModule(Constants.ModuleConfig config) {
     this.config = config;
-    driveMotor = new TalonFX(config.driveMotorCanId(), Constants.Drive.CAN_BUS);
-    steerMotor = new TalonFX(config.steerMotorCanId(), Constants.Drive.CAN_BUS);
-    encoder = new CANcoder(config.encoderCanId(), Constants.Drive.CAN_BUS);
+    CANBus canBus = new CANBus(Constants.Drive.CAN_BUS);
+    driveMotor = new TalonFX(config.driveMotorCanId(), canBus);
+    steerMotor = new TalonFX(config.steerMotorCanId(), canBus);
+    encoder = new CANcoder(config.encoderCanId(), canBus);
     configureHardware();
     // The steering controller uses the TalonFX integrated sensor. Align it to the CANcoder before
     // the first command so a 0-radian request is a real module angle, not merely rotor zero.
@@ -76,7 +78,8 @@ class StateSpaceModule {
   }
 
   void setDesiredState(SwerveModuleState wantedState) {
-    desiredState = SwerveModuleState.optimize(wantedState, getAngle());
+    desiredState = new SwerveModuleState(wantedState.speedMetersPerSecond, wantedState.angle);
+    desiredState.optimize(getAngle());
     driveLoop.setNextR(VecBuilder.fill(desiredState.speedMetersPerSecond));
     driveLoop.correct(VecBuilder.fill(getDriveVelocityMetersPerSecond()));
     double driveVolts = driveLoop.getU(0);
