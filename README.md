@@ -13,7 +13,7 @@ The map was copied from `frc6560/Robot-Code-2026`, branch `bline-transition`.
 | Back left | 7 | 9 | 8 | 250.313° |
 | Back right | 10 | 12 | 11 | 203.730° |
 
-All devices use the `Canivore` bus. The Pigeon 2 is CAN ID 13. Drive and steer supply-current limits are 40 A and open-loop voltage ramps are 0.25 s.
+All devices use the roboRIO CAN bus. The Pigeon 2 is CAN ID 13. Drive and steer supply-current limits are 40 A and open-loop voltage ramps are 0.25 s.
 
 ## Driver controls
 
@@ -26,7 +26,7 @@ All devices use the `Canivore` bus. The Pigeon 2 is CAN ID 13. Drive and steer s
 
 The project compiles to a roboRIO artifact and uses real hardware I/O, but it is not safe to compete with until these checks are completed on blocks:
 
-1. Confirm every motor and CANcoder ID and the Pigeon 2 are visible on the `Canivore` bus. The program aligns each steering TalonFX's integrated position to its CANcoder at startup; verify that behavior while disabled.
+1. Confirm every motor and CANcoder ID and the Pigeon 2 are visible on the roboRIO CAN bus. Steering targets are calculated as the shortest change from each CANcoder angle, without moving the modules merely because the robot was enabled.
 2. Verify all four absolute encoder offsets and steering directions. The imported offsets are from the BLine transition branch; they must be re-checked after any module service.
 3. Run drivetrain SysId and replace `DRIVE_KV_VOLTS_PER_MPS` and `DRIVE_KA_VOLTS_PER_MPS_SQUARED` in `Constants.java`. The checked-in values are conservative values inherited from the existing drivetrain configuration, not a new characterization.
 4. Confirm each wheel's forward direction and gyro sign before a full-speed test.
