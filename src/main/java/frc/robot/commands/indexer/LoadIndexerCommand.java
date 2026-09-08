@@ -13,12 +13,12 @@ public class LoadIndexerCommand extends Command {
 
     @Override
     public void execute() {
-        indexer.runAll(0.5);
+        indexer.runIndexer(0.5);
     }
 
     @Override
     public boolean isFinished() {
-        return indexer.hasGamePiece(0.1);
+        return indexer.hasGamePiece();
     }
 
     @Override

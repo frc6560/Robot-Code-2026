@@ -121,18 +121,11 @@ public class IndexerIOTalonFX implements IndexerIO {
                 towerCurrent,
                 towerDistance);
 
-        inputs.floorPositionRotations = floorPosition.getValueAsDouble();
-        inputs.floorVelocityRPS = floorVelocity.getValueAsDouble();
-        inputs.floorAppliedVolts = floorVoltage.getValueAsDouble();
-        inputs.floorLeaderCurrentAmps = floorLeaderCurrent.getValueAsDouble();
-        inputs.floorFollowerCurrentAmps = floorFollowerCurrent.getValueAsDouble();
-
-        inputs.towerPositionRotations = towerPosition.getValueAsDouble();
-        inputs.towerVelocityRPS = towerVelocity.getValueAsDouble();
-        inputs.towerAppliedVolts = towerVoltage.getValueAsDouble();
-        inputs.towerCurrentAmps = towerCurrent.getValueAsDouble();
-        inputs.towerSensorDistanceMeters = towerDistance.getValueAsDouble();
-        inputs.hasGamePiece = inputs.towerSensorDistanceMeters <= GAME_PIECE_DISTANCE_METERS;
+        inputs.appliedVolts = towerVoltage.getValueAsDouble();
+        inputs.currentAmps = floorLeaderCurrent.getValueAsDouble()
+                + floorFollowerCurrent.getValueAsDouble()
+                + towerCurrent.getValueAsDouble();
+        inputs.sensorTriggered = towerDistance.getValueAsDouble() <= GAME_PIECE_DISTANCE_METERS;
 
         Logger.recordOutput("Indexer/Connected/FloorLeader", floorLeader.isConnected());
         Logger.recordOutput("Indexer/Connected/FloorFollower", floorFollower.isConnected());
@@ -141,12 +134,8 @@ public class IndexerIOTalonFX implements IndexerIO {
     }
 
     @Override
-    public void setFloorDutyCycle(double dutyCycle) {
+    public void setSpeed(double dutyCycle) {
         floorLeader.setControl(floorRequest.withOutput(dutyCycle));
-    }
-
-    @Override
-    public void setTowerDutyCycle(double dutyCycle) {
         towerMotor.setControl(towerRequest.withOutput(dutyCycle));
     }
 

@@ -38,15 +38,13 @@ public class Robot extends LoggedRobot
     Logger.recordMetadata("Robot", "2026 Alpha");
     if (isReal()) {
       Logger.addDataReceiver(new WPILOGWriter());
-      Logger.addDataReceiver(new NT4Publisher());
-    } else {
+    } else if (Constants.currentMode == Constants.Mode.REPLAY) {
       setUseTiming(false); // Run as fast as possible
       String logPath = LogFileUtil.findReplayLog(); 
       Logger.setReplaySource(new WPILOGReader(logPath)); 
       Logger.addDataReceiver(new WPILOGWriter(LogFileUtil.addPathSuffix(logPath, "_sim"))); 
     }
 
-    Logger.start();
     instance = this;
   }
 
@@ -61,6 +59,8 @@ public class Robot extends LoggedRobot
   @Override
   public void robotInit()
   {
+    Logger.addDataReceiver(new NT4Publisher());
+
     // Instantiate our RobotContainer.  This will perform all our button bindings, and put our
     // autonomous chooser on the dashboard.
     m_robotContainer = new RobotContainer();
@@ -73,6 +73,8 @@ public class Robot extends LoggedRobot
     {
       DriverStation.silenceJoystickConnectionWarning(true);
     }
+
+    Logger.start();
   }
 
   /**

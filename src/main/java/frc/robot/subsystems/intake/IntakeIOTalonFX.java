@@ -91,6 +91,7 @@ public class IntakeIOTalonFX implements IntakeIO {
         inputs.rightAppliedVolts = rightVoltage.getValueAsDouble();
         inputs.rightCurrentAmps = rightCurrent.getValueAsDouble();
         inputs.rightTempCelsius = rightTemp.getValueAsDouble();
+        inputs.currentAmps = Math.max(inputs.leftCurrentAmps, inputs.rightCurrentAmps);
     }
 
     @Override

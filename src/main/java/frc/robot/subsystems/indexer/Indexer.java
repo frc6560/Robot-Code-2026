@@ -1,6 +1,5 @@
 package frc.robot.subsystems.indexer;
 
-import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import org.littletonrobotics.junction.Logger;
 import org.littletonrobotics.junction.mechanism.LoggedMechanism2d;
@@ -8,29 +7,20 @@ import org.littletonrobotics.junction.mechanism.LoggedMechanismLigament2d;
 import org.littletonrobotics.junction.mechanism.LoggedMechanismRoot2d;
 
 public class Indexer extends SubsystemBase {
-    private static final double MECHANISM_WIDTH_METERS = 3.0;
-    private static final double MECHANISM_HEIGHT_METERS = 3.0;
-    private static final double TOWER_SENSOR_X_METERS = 2.25;
-    private static final double TOWER_SENSOR_Y_METERS = 2.5;
+    private static final double LOOP_PERIOD_SECONDS = 0.02;
+    private static final double MAX_VISUALIZER_SPEED_DEGREES_PER_SECOND = 720.0;
 
     private final IndexerIO io;
     private final IndexerIOInputsAutoLogged inputs = new IndexerIOInputsAutoLogged();
+    private final LoggedMechanism2d mech2d = new LoggedMechanism2d(2.0, 2.0);
+    private final LoggedMechanismRoot2d rollerRoot = mech2d.getRoot("RollerRoot", 1.0, 1.0);
+    private final LoggedMechanismLigament2d roller = rollerRoot.append(
+            new LoggedMechanismLigament2d("Roller", 0.75, 0.0));
+    private final LoggedMechanismRoot2d sensorRoot = mech2d.getRoot("SensorRoot", 1.65, 0.25);
+    private final LoggedMechanismLigament2d sensorIndicator = sensorRoot.append(
+            new LoggedMechanismLigament2d("SensorTriggered", 0.1, 90.0));
 
-    private final LoggedMechanism2d mechanism =
-            new LoggedMechanism2d(MECHANISM_WIDTH_METERS, MECHANISM_HEIGHT_METERS);
-
-    private final LoggedMechanismRoot2d floorRoot = mechanism.getRoot("FloorRoot", 0.75, 0.5);
-    private final LoggedMechanismLigament2d floorLigament = floorRoot.append(
-            new LoggedMechanismLigament2d("FloorRollers", 0.75, 0.0));
-
-    private final LoggedMechanismRoot2d towerRoot = mechanism.getRoot("TowerRoot", 2.25, 1.25);
-    private final LoggedMechanismLigament2d towerLigament = towerRoot.append(
-            new LoggedMechanismLigament2d("TowerRollers", 0.75, 0.0));
-
-    private final LoggedMechanismRoot2d gamePieceRoot =
-            mechanism.getRoot("GamePieceRoot", TOWER_SENSOR_X_METERS, 0.5);
-    private final LoggedMechanismLigament2d gamePieceLigament = gamePieceRoot.append(
-            new LoggedMechanismLigament2d("GamePiece", 0.25, 90.0));
+    private double rollerAngleDegrees = 0.0;
 
     public Indexer(IndexerIO io) {
         this.io = io;
@@ -41,36 +31,23 @@ public class Indexer extends SubsystemBase {
         io.updateInputs(inputs);
         Logger.processInputs("Indexer", inputs);
 
-        floorLigament.setAngle(inputs.floorPositionRotations * 360.0);
-        towerLigament.setAngle(inputs.towerPositionRotations * 360.0);
-
-        double gamePieceY = MathUtil.clamp(
-                TOWER_SENSOR_Y_METERS - inputs.towerSensorDistanceMeters,
-                0.0,
-                MECHANISM_HEIGHT_METERS - gamePieceLigament.getLength());
-        gamePieceRoot.setPosition(TOWER_SENSOR_X_METERS, gamePieceY);
-
-        Logger.recordOutput("Indexer/Mechanism", mechanism);
+        rollerAngleDegrees += inputs.appliedVolts / 12.0
+                * MAX_VISUALIZER_SPEED_DEGREES_PER_SECOND
+                * LOOP_PERIOD_SECONDS;
+        roller.setAngle(rollerAngleDegrees);
+        sensorIndicator.setLength(inputs.sensorTriggered ? 0.5 : 0.1);
+        Logger.recordOutput("Indexer/Mechanism", mech2d);
     }
 
-    public void runFloor(double speed) {
-        io.setFloorDutyCycle(speed);
-    }
-
-    public void runTower(double speed) {
-        io.setTowerDutyCycle(speed);
-    }
-
-    public void runAll(double speed) {
-        runFloor(speed);
-        runTower(speed);
+    public void runIndexer(double speed) {
+        io.setSpeed(speed);
     }
 
     public void stop() {
         io.stop();
     }
 
-    public boolean hasGamePiece(double threshold) {
-        return inputs.towerSensorDistanceMeters <= threshold;
+    public boolean hasGamePiece() {
+        return inputs.sensorTriggered;
     }
 }

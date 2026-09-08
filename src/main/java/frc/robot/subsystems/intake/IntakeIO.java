@@ -5,6 +5,8 @@ import org.littletonrobotics.junction.AutoLog;
 public interface IntakeIO {
     @AutoLog
     public static class IntakeIOInputs {
+        public double currentAmps;
+
         public double leftVelocityRPS = 0.0;
         public double leftAppliedVolts = 0.0;
         public double leftCurrentAmps = 0.0;

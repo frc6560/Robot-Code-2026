@@ -34,6 +34,21 @@ public class IntakeIOSim implements IntakeIO {
 
     @Override
     public void updateInputs(IntakeIOInputs inputs) {
+        if (inputs instanceof IntakeIOInputsAutoLogged loggedInputs) {
+            updateInputs(loggedInputs);
+            return;
+        }
+
+        updateMotorInputs(inputs);
+        inputs.currentAmps = new edu.wpi.first.wpilibj.Joystick(1).getRawButton(1) ? 25.0 : 0.0;
+    }
+
+    public void updateInputs(IntakeIOInputsAutoLogged inputs) {
+        updateMotorInputs(inputs);
+        inputs.currentAmps = new edu.wpi.first.wpilibj.Joystick(1).getRawButton(1) ? 25.0 : 0.0;
+    }
+
+    private void updateMotorInputs(IntakeIOInputs inputs) {
         leftSim.setInputVoltage(appliedVolts);
         rightSim.setInputVoltage(appliedVolts);
 

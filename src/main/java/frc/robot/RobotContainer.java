@@ -3,6 +3,7 @@ package frc.robot;
 import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
+import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -154,7 +155,6 @@ public class RobotContainer {
       configureBindings();
     }
 
-
     private static final double MAX_SHOOTING_VELOCITY_MPS = 1.2;
     private static final double MAX_PASSING_VELOCITY_MPS = 3.0;
 
@@ -193,6 +193,12 @@ public class RobotContainer {
         drivebase.setDefaultCommand(driveFieldOrientedAnglularVelocity);
 
         operatorXbox.a().onTrue(new LoadIndexerCommand(indexer));
+
+        new Trigger(intake::isIntakingPiece).debounce(0.5, edu.wpi.first.math.filter.Debouncer.DebounceType.kFalling).onTrue(new RunCommand(() -> indexer.runIndexer(0.5), indexer).until(indexer::hasGamePiece));
+
+        driverXbox.rightBumper()
+            .whileTrue(new RunCommand(() -> indexer.runIndexer(1.0), indexer)
+                .finallyDo(interrupted -> indexer.stop()));
 
         driverXbox.x()
           .onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
