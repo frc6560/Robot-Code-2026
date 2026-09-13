@@ -148,29 +148,29 @@ public class Turret extends SubsystemBase {
     }
 
     //@Override
-    public void periodic() {
-        io.updateInputs(inputs);
-        Logger.processInputs("Turret", inputs);
+    // public void periodic() {
+    //     io.updateInputs(inputs);
+    //     Logger.processInputs("Turret", inputs);
 
-        Logger.recordOutput("Turret/PitCoastMode", pitCoastMode);
-        if (pitCoastMode) {
-            io.stop();
-            return;
-        }
+    //     Logger.recordOutput("Turret/PitCoastMode", pitCoastMode);
+    //     if (pitCoastMode) {
+    //         io.stop();
+    //         return;
+    //     }
 
-        if (useVelocityFeedforward) {
-            io.setTargetAngleWithVelocity(goalDegrees, goalVelocityDegreesPerSec);
-        } else {
-            io.setTargetAngle(goalDegrees);
-        }
+    //     if (useVelocityFeedforward) {
+    //         io.setTargetAngleWithVelocity(goalDegrees, goalVelocityDegreesPerSec);
+    //     } else {
+    //         io.setTargetAngle(goalDegrees);
+    //     }
 
-        Logger.recordOutput("Turret/GoalDegrees", goalDegrees);
-        Logger.recordOutput("Turret/GoalVelocityDegreesPerSec", goalVelocityDegreesPerSec);
-        Logger.recordOutput("Turret/CurrentAngleDegrees", getTurretAngle());
-        Logger.recordOutput("Turret/VelocityDegreesPerSec", getTurretVelocity());
-        Logger.recordOutput("Turret/ErrorDegrees", getTurretAngle() - goalDegrees);
-        Logger.recordOutput("Turret/AtTarget", atTarget);
-        Logger.recordOutput("Turret/ToleranceDegrees", tolerance);
-        Logger.recordOutput("Turret/UsingFF", io.getFF());
-    }
+    //     Logger.recordOutput("Turret/GoalDegrees", goalDegrees);
+    //     Logger.recordOutput("Turret/GoalVelocityDegreesPerSec", goalVelocityDegreesPerSec);
+    //     Logger.recordOutput("Turret/CurrentAngleDegrees", getTurretAngle());
+    //     Logger.recordOutput("Turret/VelocityDegreesPerSec", getTurretVelocity());
+    //     Logger.recordOutput("Turret/ErrorDegrees", getTurretAngle() - goalDegrees);
+    //     Logger.recordOutput("Turret/AtTarget", atTarget);
+    //     Logger.recordOutput("Turret/ToleranceDegrees", tolerance);
+    //     Logger.recordOutput("Turret/UsingFF", io.getFF());
+    // }
 }
