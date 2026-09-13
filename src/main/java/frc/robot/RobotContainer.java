@@ -194,7 +194,15 @@ public class RobotContainer {
 
         operatorXbox.a().onTrue(new LoadIndexerCommand(indexer));
 
-        new Trigger(intake::isIntakingPiece).debounce(0.5, edu.wpi.first.math.filter.Debouncer.DebounceType.kFalling).onTrue(new RunCommand(() -> indexer.runIndexer(0.5), indexer).until(indexer::hasGamePiece));
+        /*
+         * Indexer staging sequence for a sustained hopper jam:
+         * 1) The Wait: A 0.5-second rising-edge debounce monitors for a sustained
+         *    current spike, indicating that the hopper is full.
+         * 2) The Activation: The trigger runs the indexer motor at 6V to pull pieces up.
+         * 3) The Cutoff: The .until() command stops the motor at 0V exactly when the
+         *    top staging sensor is tripped.
+         */
+        new Trigger(intake::isIntakingPiece).debounce(0.5, edu.wpi.first.math.filter.Debouncer.DebounceType.kRising).onTrue(new RunCommand(() -> indexer.runIndexer(0.5), indexer).until(indexer::hasGamePiece));
 
         driverXbox.rightBumper()
             .whileTrue(new RunCommand(() -> indexer.runIndexer(1.0), indexer)
