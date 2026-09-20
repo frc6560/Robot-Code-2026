@@ -259,9 +259,9 @@ public final class Constants {
      * Empirical calibration values. Update these from the shot-calibrator fit rather than
      * changing the numerical solver.
      */
-    public static final double VELOCITY_TRANSFER = 0.72;
+    public static final double VELOCITY_TRANSFER = 0.8819447990122069;
     public static final double SPIN_TRANSFER = 0.70;
-    public static final double HOOD_OFFSET_DEGREES = 0.0;
+    public static final double HOOD_OFFSET_DEGREES = 11.394416920229768;
     public static final double DRAG_SCALE = 1.0;
     public static final double LIFT_SLOPE = 0.75;
     public static final double MAX_LIFT_COEFFICIENT = 0.35;
@@ -277,12 +277,12 @@ public final class Constants {
      * distance range. Coefficients are ordered as {@code a*d^2 + b*d + c}, with distance in meters.
      * Regenerate these whenever an empirical model value above changes.
      */
-    public static final double RPM_POLICY_DISTANCE_SQUARED = 0.7415266498361459;
-    public static final double RPM_POLICY_DISTANCE = 281.7610123639272;
-    public static final double RPM_POLICY_CONSTANT = 1471.6045658025246;
-    public static final double HOOD_POLICY_DISTANCE_SQUARED = -0.1856576706083259;
-    public static final double HOOD_POLICY_DISTANCE = 1.8256602181323835;
-    public static final double HOOD_POLICY_CONSTANT = 22.606246565585646;
+    public static final double RPM_POLICY_DISTANCE_SQUARED = 8.493066861497663;
+    public static final double RPM_POLICY_DISTANCE = 224.07415012861622;
+    public static final double RPM_POLICY_CONSTANT = 1334.584356423225;
+    public static final double HOOD_POLICY_DISTANCE_SQUARED = -0.43127959127565657;
+    public static final double HOOD_POLICY_DISTANCE = 3.9674971917554624;
+    public static final double HOOD_POLICY_CONSTANT = 23.34501229268793;
   }
 
   public static final class TurretConstants{ 

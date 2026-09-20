@@ -16,8 +16,8 @@ class PhysicsShotSolverTest {
 
     @Test
     void convertsRearReferencedHoodCommandToLaunchElevation() {
-        assertEquals(64.9, PhysicsShotSolver.launchElevationDegrees(25.1), 1e-9);
-        assertEquals(45.0, PhysicsShotSolver.launchElevationDegrees(45.0), 1e-9);
+        assertEquals(76.29441692022977, PhysicsShotSolver.launchElevationDegrees(25.1), 1e-9);
+        assertEquals(56.39441692022977, PhysicsShotSolver.launchElevationDegrees(45.0), 1e-9);
     }
 
     @Test
@@ -25,11 +25,11 @@ class PhysicsShotSolverTest {
         Solution solution = new PhysicsShotSolver().solve(FIFTEEN_FEET_METERS);
 
         assertTrue(solution.valid());
-        assertEquals(2750.0, solution.flywheelRPM(), 1e-9);
-        assertEquals(27.942857142857143, solution.hoodCommandDegrees(), 1e-9);
-        assertEquals(62.05714285714286, solution.launchElevationDegrees(), 1e-9);
-        assertEquals(1.2919535997040075, solution.timeOfFlightSeconds(), 2e-4);
-        assertEquals(56.42044609938561, solution.entryAngleDegrees(), 0.03);
+        assertEquals(2637.5, solution.flywheelRPM(), 1e-9);
+        assertEquals(30.075000000000003, solution.hoodCommandDegrees(), 1e-9);
+        assertEquals(71.31941692022977, solution.launchElevationDegrees(), 1e-9);
+        assertEquals(1.6961832488944215, solution.timeOfFlightSeconds(), 2e-4);
+        assertEquals(70.45924947629163, solution.entryAngleDegrees(), 0.03);
         assertTrue(solution.openingClearanceMeters() > 0.0);
         assertTrue(solution.nearRimClearanceMeters() >= ShotModelConstants.HUB_RIM_MARGIN_METERS);
     }

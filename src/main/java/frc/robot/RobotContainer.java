@@ -160,30 +160,12 @@ public class RobotContainer {
 
     private void startUngatedDriverShot() {
         cancelShotCommand();
-        led.setShootIntent(true);
         feeder.setShooting(true);
     }
 
     private void stopUngatedDriverShot() {
         cancelShotCommand();
         feeder.setShooting(false);
-        led.setShootIntent(false);
-    }
-
-    /** Recalculates and applies the driver-requested hub shot once per scheduler cycle. */
-    private void updateDriverShot() {
-        shotCalculator.calculateUngated(drivebase.getPose(), drivebase.getFieldVelocity());
-        shooter.setGoal(shotCalculator.getFlywheelRPM());
-        hood.setGoal(shotCalculator.getHoodAzimuth());
-        turret.setGoalWithVelocity(
-            Math.toDegrees(shotCalculator.getTurretAngle()),
-            Math.toDegrees(shotCalculator.getTurretVelocityFF()));
-    }
-
-    private Command driverShotCommand() {
-        return Commands.run(this::updateDriverShot, hood, shooter, turret)
-            .beforeStarting(this::startUngatedDriverShot)
-            .finallyDo(interrupted -> stopUngatedDriverShot());
     }
 
     private boolean isInPassingZone() {
@@ -229,7 +211,8 @@ public class RobotContainer {
         Trigger ungatedShootTrigger = new Trigger(m_Controls::getUngatedShootTrigger);
         Trigger driverShootTrigger = driverXbox.rightTrigger().and(DriverStation::isTeleopEnabled);
 
-        driverShootTrigger.whileTrue(driverShotCommand());
+        driverShootTrigger.onTrue(Commands.runOnce(this::startUngatedDriverShot));
+        driverShootTrigger.onFalse(Commands.runOnce(this::stopUngatedDriverShot));
 
         shootTrigger.onTrue(Commands.runOnce(this::scheduleShotCommand));
         shootReleaseTrigger.onTrue(Commands.runOnce(this::cancelShotCommand));

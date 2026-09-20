@@ -137,7 +137,14 @@ public class SuperstructureCommand extends Command {
         Pose2d pose = poseSupplier.getPose();
         ChassisSpeeds velocity = velocitySupplier.getFieldVelocity();
 
-        shotCalculator.calculate(pose, velocity);
+        // In teleop, keep the mechanisms tracking the nearest calibrated setpoint even when
+        // localization is slightly outside the validated scoring range. Shooting remains a
+        // separate feeder action and does not alter turret control.
+        if (DriverStation.isTeleopEnabled()) {
+            shotCalculator.calculateUngated(pose, velocity);
+        } else {
+            shotCalculator.calculate(pose, velocity);
+        }
 
         if(!DriverStation.isAutonomous()){
             shooter.setGoal(shotCalculator.getFlywheelRPM());

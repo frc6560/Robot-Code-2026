@@ -1,6 +1,7 @@
 package frc.robot;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -20,6 +21,7 @@ import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import frc.robot.subsystems.hood.Hood;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.feeder.Feeder;
+import frc.robot.subsystems.turret.Turret;
 
 class RobotContainerDriverControlsTest {
     @BeforeAll
@@ -55,7 +57,10 @@ class RobotContainerDriverControlsTest {
 
         Shooter shooter = getField(container, "shooter", Shooter.class);
         Hood hood = getField(container, "hood", Hood.class);
+        Turret turret = getField(container, "turret", Turret.class);
         double initialHoodAngle = hood.getHoodAngle();
+        scheduler.run();
+        double turretGoalBeforeTrigger = turret.getGoalDegrees();
 
         DriverStationSim.setJoystickAxis(0, XboxController.Axis.kRightTrigger.value, 1.0);
         DriverStationSim.notifyNewData();
@@ -69,6 +74,7 @@ class RobotContainerDriverControlsTest {
         assertTrue(shooter.getGoalRPM() > Constants.ShooterConstants.FLYWHEEL_IDLE_RPM);
         assertTrue(shooter.getCurrentRPM() > 0.0);
         assertTrue(hood.getTargetAngle() > Constants.HoodConstants.HOOD_MIN_ANGLE);
+        assertEquals(turretGoalBeforeTrigger, turret.getGoalDegrees(), 0.01);
         assertTrue(
             hood.getHoodAngle() > initialHoodAngle,
             "hood did not move: initial=" + initialHoodAngle
