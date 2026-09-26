@@ -181,14 +181,19 @@ public class RobotContainer {
 
     /** Registers every subsystem's motor current with the power monitor (by CAN ID). */
     private void configurePowerMonitor() {
-        final String CANIVORE = "Canivore";
         final String RIO = "rio";
-        powerMonitor.driveGroup("Swerve Drive", 160.0)
-            .addMotor(talon(1, CANIVORE)).addMotor(talon(4, CANIVORE))
-            .addMotor(talon(7, CANIVORE)).addMotor(talon(10, CANIVORE));
-        powerMonitor.group("Swerve Steer", 100.0)
-            .addMotor(talon(3, CANIVORE)).addMotor(talon(6, CANIVORE))
-            .addMotor(talon(9, CANIVORE)).addMotor(talon(12, CANIVORE));
+        // Swerve: read from YAGSL's own TalonFX objects so the CAN bus is always
+        // correct (no hard-coded bus name, no duplicate device handles).
+        var swerveGroupDrive = powerMonitor.driveGroup("Swerve Drive", 160.0);
+        var swerveGroupSteer = powerMonitor.group("Swerve Steer", 100.0);
+        for (var module : drivebase.getSwerveDrive().getModules()) {
+            TalonFX driveMotor = (TalonFX) module.getDriveMotor().getMotor();
+            TalonFX steerMotor = (TalonFX) module.getAngleMotor().getMotor();
+            var driveSig = driveMotor.getSupplyCurrent(); driveSig.setUpdateFrequency(50);
+            var steerSig = steerMotor.getSupplyCurrent(); steerSig.setUpdateFrequency(50);
+            swerveGroupDrive.addMotor(() -> driveSig.refresh().getValueAsDouble());
+            swerveGroupSteer.addMotor(() -> steerSig.refresh().getValueAsDouble());
+        }
         powerMonitor.group("Shooter", 100.0)
             .addMotor(talon(ShooterConstants.LEFT_FLYWHEEL_ID, RIO))
             .addMotor(talon(ShooterConstants.RIGHT_FLYWHEEL_ID, RIO));
