@@ -61,6 +61,11 @@ public class Robot extends LoggedRobot
       // Keep normal 20 ms timing enabled so Driver Station mode changes and path motion
       // can be watched in real time.
       Logger.addDataReceiver(new NT4Publisher());
+      // Optional saved evidence for headless path comparisons; ignored on hardware.
+      String comparisonLogDir = System.getenv("BLINE_COMPARE_LOG_DIR");
+      if (runHeadlessAutoDiagnostic && comparisonLogDir != null) {
+        Logger.addDataReceiver(new WPILOGWriter(comparisonLogDir));
+      }
     }
 
     Logger.start();
@@ -107,6 +112,11 @@ public class Robot extends LoggedRobot
     // and running subsystem periodic() methods.  This must be called from the robot's periodic
     // block in order for anything in the Command-based framework to work.
     CommandScheduler.getInstance().run();
+    if (runHeadlessAutoDiagnostic) {
+      Logger.recordOutput("BLine/Diagnostic/AutoActive",
+          m_autonomousCommand != null
+              && CommandScheduler.getInstance().isScheduled(m_autonomousCommand));
+    }
   }
 
   /**
@@ -212,7 +222,9 @@ public class Robot extends LoggedRobot
       DriverStationSim.setAutonomous(true);
       DriverStationSim.setEnabled(true);
       DriverStationSim.notifyNewData();
-      System.out.println("BLINE_HEADLESS: Enabled Zigzag autonomous on Blue alliance");
+      System.out.println("BLINE_HEADLESS: Enabled "
+          + ("editor".equals(System.getenv("BLINE_HEADLESS_AUTO")) ? "BLine Editor Path" : "Zigzag")
+          + " autonomous on Blue alliance");
     }
   }
 

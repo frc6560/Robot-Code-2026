@@ -1,0 +1,8 @@
+[
+  {"name":"cross-only","gains":{"TRANSLATION_KP":5,"TRANSLATION_KD":0.5,"ROTATION_KP":3,"ROTATION_KD":0.3,"CROSS_TRACK_KP":1,"CROSS_TRACK_KD":0}},
+  {"name":"gentle-rotation","gains":{"TRANSLATION_KP":5,"TRANSLATION_KD":0.5,"ROTATION_KP":2,"ROTATION_KD":0.3,"CROSS_TRACK_KP":1,"CROSS_TRACK_KD":0}},
+  {"name":"faster-damped-translation","gains":{"TRANSLATION_KP":6,"TRANSLATION_KD":0.5,"ROTATION_KP":3,"ROTATION_KD":0.3,"CROSS_TRACK_KP":1,"CROSS_TRACK_KD":0}},
+  {"name":"rotation-anticipation","gains":{"TRANSLATION_KP":5,"TRANSLATION_KD":0.5,"ROTATION_KP":4,"ROTATION_KD":0.5,"CROSS_TRACK_KP":1,"CROSS_TRACK_KD":0}},
+  {"name":"balanced-damping","gains":{"TRANSLATION_KP":6,"TRANSLATION_KD":0.5,"ROTATION_KP":2,"ROTATION_KD":0.5,"CROSS_TRACK_KP":3,"CROSS_TRACK_KD":0}},
+  {"name":"less-translation-damping","gains":{"TRANSLATION_KP":5,"TRANSLATION_KD":0.3,"ROTATION_KP":3,"ROTATION_KD":0.3,"CROSS_TRACK_KP":1,"CROSS_TRACK_KD":0}}
+]

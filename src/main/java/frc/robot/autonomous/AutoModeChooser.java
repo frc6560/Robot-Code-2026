@@ -12,7 +12,13 @@ public class AutoModeChooser {
         if (RobotBase.isSimulation()) {
             // Make desktop BLine simulation work immediately without requiring a separate
             // dashboard just to change the chooser selection.
-            autoChooser.setDefaultOption("Zigzag", factory.getZigzagPath());
+            if ("1".equals(System.getenv("BLINE_HEADLESS_DIAGNOSTIC"))
+                    && "editor".equals(System.getenv("BLINE_HEADLESS_AUTO"))) {
+                autoChooser.setDefaultOption("BLine Editor Path", factory.getBLineEditorPath());
+                autoChooser.addOption("Zigzag", factory.getZigzagPath());
+            } else {
+                autoChooser.setDefaultOption("Zigzag", factory.getZigzagPath());
+            }
             autoChooser.addOption("Idle", factory.getNoAuto());
         } else {
             autoChooser.setDefaultOption("Idle", factory.getNoAuto());

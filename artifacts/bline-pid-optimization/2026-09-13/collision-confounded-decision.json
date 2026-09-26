@@ -1,0 +1,220 @@
+{
+  "baseline_vector": [
+    5,
+    0.5,
+    4,
+    0.5,
+    0,
+    0
+  ],
+  "candidate_vector": [
+    5,
+    0.5,
+    4,
+    0.7,
+    0,
+    0
+  ],
+  "phase_screen": {
+    "baseline": {
+      "mean": 3.1084484238046093,
+      "standard_deviation": 0.06431396248890467,
+      "samples": 5
+    },
+    "candidate": {
+      "mean": 3.155982221058577,
+      "standard_deviation": 0.08048606513100662,
+      "samples": 3
+    },
+    "improvement_fraction": -0.01529180825068618,
+    "combined_standard_error": 0.054649727486015216,
+    "accepted": false,
+    "rule": "All repeated runs complete/stop; >=3% lower mean score; mean-score advantage exceeds one combined standard error. This is only a small-sample noise screen."
+  },
+  "all_phase_finalists": [
+    {
+      "vector": [
+        5,
+        0.5,
+        4,
+        0.7,
+        0,
+        0
+      ],
+      "records": [
+        9,
+        25,
+        26
+      ],
+      "screen": {
+        "baseline": {
+          "mean": 3.1084484238046093,
+          "standard_deviation": 0.06431396248890467,
+          "samples": 5
+        },
+        "candidate": {
+          "mean": 3.155982221058577,
+          "standard_deviation": 0.08048606513100662,
+          "samples": 3
+        },
+        "improvement_fraction": -0.01529180825068618,
+        "combined_standard_error": 0.054649727486015216,
+        "accepted": false,
+        "rule": "All repeated runs complete/stop; >=3% lower mean score; mean-score advantage exceeds one combined standard error. This is only a small-sample noise screen."
+      }
+    },
+    {
+      "vector": [
+        5.5,
+        0.5,
+        4,
+        0.5,
+        0,
+        0
+      ],
+      "records": [
+        13,
+        27,
+        28
+      ],
+      "screen": {
+        "baseline": {
+          "mean": 3.1084484238046093,
+          "standard_deviation": 0.06431396248890467,
+          "samples": 5
+        },
+        "candidate": {
+          "mean": 3.170898354454789,
+          "standard_deviation": 0.09592468427687662,
+          "samples": 3
+        },
+        "improvement_fraction": -0.020090386628883967,
+        "combined_standard_error": 0.06240543917595912,
+        "accepted": false,
+        "rule": "All repeated runs complete/stop; >=3% lower mean score; mean-score advantage exceeds one combined standard error. This is only a small-sample noise screen."
+      }
+    }
+  ],
+  "holdouts": [
+    {
+      "fixture": "straight",
+      "results": [
+        {
+          "label": "baseline",
+          "vector": [
+            5,
+            0.5,
+            4,
+            0.5,
+            0,
+            0
+          ],
+          "directory": "/Users/andrei/Robot-Code-2026/build/bline-pid-optimizer-2026-09-13/holdout-straight-baseline/run",
+          "name": "run",
+          "gains": {
+            "TRANSLATION_KP": 5,
+            "TRANSLATION_KD": 0.5,
+            "ROTATION_KP": 4,
+            "ROTATION_KD": 0.5,
+            "CROSS_TRACK_KP": 0,
+            "CROSS_TRACK_KD": 0
+          },
+          "failed": true,
+          "objective": null
+        },
+        {
+          "label": "candidate",
+          "vector": [
+            5,
+            0.5,
+            4,
+            0.7,
+            0,
+            0
+          ],
+          "directory": "/Users/andrei/Robot-Code-2026/build/bline-pid-optimizer-2026-09-13/holdout-straight-candidate/run",
+          "name": "run",
+          "gains": {
+            "TRANSLATION_KP": 5,
+            "TRANSLATION_KD": 0.5,
+            "ROTATION_KP": 4,
+            "ROTATION_KD": 0.7,
+            "CROSS_TRACK_KP": 0,
+            "CROSS_TRACK_KD": 0
+          },
+          "failed": true,
+          "objective": null
+        }
+      ],
+      "passed": false,
+      "reasons": [
+        "Baseline or candidate failed completion/stopping"
+      ]
+    },
+    {
+      "fixture": "profiled-corner",
+      "results": [
+        {
+          "label": "baseline",
+          "vector": [
+            5,
+            0.5,
+            4,
+            0.5,
+            0,
+            0
+          ],
+          "directory": "/Users/andrei/Robot-Code-2026/build/bline-pid-optimizer-2026-09-13/holdout-profiled-corner-baseline/run",
+          "name": "run",
+          "gains": {
+            "TRANSLATION_KP": 5,
+            "TRANSLATION_KD": 0.5,
+            "ROTATION_KP": 4,
+            "ROTATION_KD": 0.5,
+            "CROSS_TRACK_KP": 0,
+            "CROSS_TRACK_KD": 0
+          },
+          "failed": true,
+          "objective": null
+        },
+        {
+          "label": "candidate",
+          "vector": [
+            5,
+            0.5,
+            4,
+            0.7,
+            0,
+            0
+          ],
+          "directory": "/Users/andrei/Robot-Code-2026/build/bline-pid-optimizer-2026-09-13/holdout-profiled-corner-candidate/run",
+          "name": "run",
+          "gains": {
+            "TRANSLATION_KP": 5,
+            "TRANSLATION_KD": 0.5,
+            "ROTATION_KP": 4,
+            "ROTATION_KD": 0.7,
+            "CROSS_TRACK_KP": 0,
+            "CROSS_TRACK_KD": 0
+          },
+          "failed": true,
+          "objective": null
+        }
+      ],
+      "passed": false,
+      "reasons": [
+        "Baseline or candidate failed completion/stopping"
+      ]
+    }
+  ],
+  "accepted": false,
+  "recommended_vector": [
+    5,
+    0.5,
+    4,
+    0.5,
+    0,
+    0
+  ],
+  "caveat": "Small-sample simulation comparison only; no physical-robot validation or automatic constants mutation."
+}

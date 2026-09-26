@@ -1,0 +1,46 @@
+{
+  "source": "/Users/andrei/Robot-Code-2026/LogsFrThePath.csv",
+  "source_sha256": "61ce592a9c09640f57f0349d1a7f44f01f653c554d291e92b96bf94e05d7463b",
+  "git_path": "/Users/andrei/Robot-Code-2026/src/main/deploy/autos/paths/phase-1-canvas-draft.json",
+  "path_sha256": "6db4c6319e7eba25192ea2c288d4d59eb48523cfad93657232e24d13d9090df0",
+  "waypoints_match": true,
+  "history_positions": 169,
+  "robot_polyline_length_m": 19.18221948711391,
+  "gui_polyline_length_m": 17.93412303171582,
+  "distance_sample_spacing_m": 0.02,
+  "distance_uniform_samples": 961,
+  "order_aligned_geometric_deviation": {
+    "rms_cm": 9.841089564097674,
+    "mean_cm": 7.490787364985479,
+    "p95_cm": 21.10658427355469,
+    "max_cm": 29.464298809937684
+  },
+  "unrestricted_nearest_curve_lower_bound": {
+    "rms_cm": 5.70942712047926,
+    "mean_cm": 4.130336275197634,
+    "p95_cm": 13.361668622562958,
+    "max_cm": 21.84348673970794
+  },
+  "endpoint_error_cm": 0.1333216224161572,
+  "start_error_cm": 0,
+  "peak": {
+    "x": 7.761982069030611,
+    "y": 5.99705902040364,
+    "s": 15.159999999999766,
+    "gui_x": 7.5216258682259705,
+    "gui_y": 5.826637815235713,
+    "error": 0.29464298809937683,
+    "gui_segment": 248,
+    "unrestricted_error": 0.05886783555485441
+  },
+  "heading_error": null,
+  "timing_error": null,
+  "method": "Distance-uniform 2 cm robot/GUI sampling, full monotone XY DTW, continuous projection onto local matched GUI preview segments. Approximate order-aligned geometry, not a time-aligned control error. No shifting, rotation, scale, or start/end snapping.",
+  "limitations": [
+    "Position history has no headings or per-position timestamps. No 60 ms timestamps fabricated.",
+    "History is every third FollowPath execution, not an independently measured ground-truth trace.",
+    "Logged waypoints match, but export does not identify historical constraints/config; comparison assumes current checked-in values.",
+    "Linear interpolation between stored robot positions can miss excursions between samples.",
+    "DTW is optimistic about progress/timing; nearest-curve lower bound can hide wrong-lap matches."
+  ]
+}

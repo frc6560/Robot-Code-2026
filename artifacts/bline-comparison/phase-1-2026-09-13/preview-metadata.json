@@ -1,0 +1,22 @@
+{
+  "source_revision": "e7bad71d071e2a485f0170bf2ced32e3c370ad45",
+  "path": "/Users/andrei/Robot-Code-2026/src/main/deploy/autos/paths/phase-1-canvas-draft.json",
+  "config": "/Users/andrei/Robot-Code-2026/src/main/deploy/autos/config.json",
+  "path_sha256": "824734f04901d113ed13fa466323e19b2f19a701ae9b7dd96a83ab94c0ce6be7",
+  "config_sha256": "f31e2ec5d1216a48ffb1ff1415dd1ab13da1a1661fa9a1b72eb4ed9f3f6301db",
+  "dt_seconds": 0.02,
+  "samples": 340,
+  "duration_seconds": 6.78,
+  "start": [
+    0,
+    4.431068448860526,
+    7.40695798142392,
+    -0.0106
+  ],
+  "end": [
+    6.78,
+    4.42627,
+    7.40708,
+    -0.0106
+  ]
+}

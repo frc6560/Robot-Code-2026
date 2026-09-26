@@ -1,0 +1,8 @@
+[
+  {"name":"more-rotation-damping","gains":{"TRANSLATION_KP":5,"TRANSLATION_KD":0.5,"ROTATION_KP":4,"ROTATION_KD":0.8,"CROSS_TRACK_KP":1,"CROSS_TRACK_KD":0}},
+  {"name":"stronger-damped-rotation","gains":{"TRANSLATION_KP":5,"TRANSLATION_KD":0.5,"ROTATION_KP":5,"ROTATION_KD":0.8,"CROSS_TRACK_KP":1,"CROSS_TRACK_KD":0}},
+  {"name":"no-cross-anticipation","gains":{"TRANSLATION_KP":5,"TRANSLATION_KD":0.5,"ROTATION_KP":4,"ROTATION_KD":0.5,"CROSS_TRACK_KP":0,"CROSS_TRACK_KD":0}},
+  {"name":"medium-cross-anticipation","gains":{"TRANSLATION_KP":5,"TRANSLATION_KD":0.5,"ROTATION_KP":4,"ROTATION_KD":0.5,"CROSS_TRACK_KP":3,"CROSS_TRACK_KD":0}},
+  {"name":"gentler-translation","gains":{"TRANSLATION_KP":4,"TRANSLATION_KD":0.5,"ROTATION_KP":4,"ROTATION_KD":0.5,"CROSS_TRACK_KP":1,"CROSS_TRACK_KD":0}},
+  {"name":"original-rotation-more-d","gains":{"TRANSLATION_KP":5,"TRANSLATION_KD":0.5,"ROTATION_KP":3,"ROTATION_KD":0.5,"CROSS_TRACK_KP":1,"CROSS_TRACK_KD":0}}
+]
