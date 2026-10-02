@@ -15,9 +15,6 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
-import frc.robot.Constants.LimelightConstants;
-import frc.robot.subsystems.shooter.FlywheelVisualizer;
-import frc.robot.utility.LimelightHelpers;
 
 /**
  * The VM is configured to automatically run this class, and to call the functions corresponding to each mode, as
@@ -31,9 +28,6 @@ public class Robot extends LoggedRobot
   private        Command m_autonomousCommand;
 
   private RobotContainer m_robotContainer;
-
-  /** Simulation-only spinning-wheel view of the flywheel, for AdvantageScope. */
-  private FlywheelVisualizer flywheelVisualizer;
 
   private Timer disabledTimer;
 
@@ -121,9 +115,6 @@ public class Robot extends LoggedRobot
       disabledTimer.stop();
       disabledTimer.reset();
     }
-    for(String limelightName : LimelightConstants.LIMELIGHT_NAMES){
-      LimelightHelpers.SetIMUMode(limelightName, 1);
-    }
   }
 
   /**
@@ -132,10 +123,6 @@ public class Robot extends LoggedRobot
   @Override
   public void autonomousInit()
   {
-    for(String limelightName : LimelightConstants.LIMELIGHT_NAMES){
-      LimelightHelpers.SetIMUMode(limelightName, 4);
-    }
-
     m_autonomousCommand = m_robotContainer.getAutonomousCommand();
 
     // schedule the autonomous command (example)
@@ -161,10 +148,6 @@ public class Robot extends LoggedRobot
     } else
     {
       CommandScheduler.getInstance().cancelAll();
-    }
-
-    for(String limelightName : LimelightConstants.LIMELIGHT_NAMES){
-      LimelightHelpers.SetIMUMode(limelightName, 4);
     }
   }
 
@@ -197,7 +180,6 @@ public class Robot extends LoggedRobot
   @Override
   public void simulationInit()
   {
-    flywheelVisualizer = new FlywheelVisualizer();
   }
 
   /**
@@ -206,9 +188,5 @@ public class Robot extends LoggedRobot
   @Override
   public void simulationPeriodic()
   {
-    if (flywheelVisualizer != null)
-    {
-      flywheelVisualizer.update(getPeriod());
-    }
   }
 }

@@ -11,7 +11,6 @@ import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
@@ -28,9 +27,6 @@ import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Config;
 import frc.robot.Constants;
 import frc.robot.Constants.DrivebaseConstants;
 import frc.robot.Constants.FieldConstants;
-import frc.robot.Constants.TurretConstants;
-import frc.robot.utility.LimelightHelpers;
-import frc.robot.utility.LimelightHelpers.PoseEstimate;
 
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StringSubscriber;
@@ -136,18 +132,6 @@ public class SwerveSubsystem extends SubsystemBase {
     if (DriverStation.isAutonomousEnabled()) {
       initialPoseSet = true;  // Lock in the pose once auto starts
     }
-
-    // Update distance to hub on SmartDashboard for debugging
-    Transform2d turretTransform = new Transform2d(
-            TurretConstants.ROBOT_RELATIVE_TURRET.getX(), 
-            TurretConstants.ROBOT_RELATIVE_TURRET.getY(),
-            new Rotation2d()
-        );
-    Pose2d robotRelativeTurret = getPose().transformBy( turretTransform );
-    swerveDrive.field.getObject("TurretPose").setPose(robotRelativeTurret);
-    swerveDrive.field.getObject("BlueHub").setPose(new Pose2d(FieldConstants.BLUE_HUB_CENTER, new Rotation2d()));
-    SmartDashboard.getEntry("DistToBlueHub").setDouble(
-      robotRelativeTurret.getTranslation().getDistance(FieldConstants.BLUE_HUB_CENTER));
   }
 
   /**
@@ -289,18 +273,6 @@ public class SwerveSubsystem extends SubsystemBase {
         3.0, 5.0, 3.0);
   }
 
-  // a hack method to reset the MT2 gyro
-  public void resetOdometryToLimelight() {
-    PoseEstimate poseEstimate = LimelightHelpers.getBotPoseEstimate_wpiBlue("limelight");
-    Pose2d pose = poseEstimate.pose;
-    if(pose != null){
-      resetOdometry(pose);
-      System.out.println("Resetting odometry to Limelight pose: " + pose);
-    } else {
-      System.out.println("Limelight pose is null, cannot reset odometry.");
-    }
-  }
-  
   /**
    * Returns a Command that centers the modules of the SwerveDrive subsystem.
    *

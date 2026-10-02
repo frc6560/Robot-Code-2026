@@ -1,76 +1,24 @@
 package frc.robot;
 
 import edu.wpi.first.wpilibj.Filesystem;
-import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
-import edu.wpi.first.wpilibj2.command.button.Trigger;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 
 import swervelib.SwerveInputStream;
-import edu.wpi.first.math.geometry.Pose3d;
-import edu.wpi.first.math.kinematics.ChassisSpeeds;
-import frc.robot.Constants.LimelightConstants;
 import frc.robot.Constants.OperatorConstants;
-import frc.robot.autonomous.AutoModeChooser;
-import frc.robot.commands.scoring.ShotCommand;
-import frc.robot.autonomous.AutoCommands;
-import frc.robot.commands.periodic.SuperstructureCommand;
-import frc.robot.utility.Shooter.PassCalculator;
-import frc.robot.utility.Shooter.ShotCalculator;
-
-import frc.robot.subsystems.hood.Hood;
-import frc.robot.subsystems.hood.HoodIOSim;
-import frc.robot.subsystems.hood.HoodIOTalonFX;
-import frc.robot.subsystems.shooter.Shooter;
-import frc.robot.subsystems.shooter.ShooterIOSim;
-import frc.robot.subsystems.shooter.ShooterIOTalonFX;
-import frc.robot.subsystems.turret.Turret;
-import frc.robot.subsystems.turret.TurretIOSim;
-import frc.robot.subsystems.turret.TurretIOTalonFX;
-import frc.robot.subsystems.feeder.Feeder;
-import frc.robot.subsystems.feeder.FeederIOSim;
-import frc.robot.subsystems.feeder.FeederIOTalonFX;
-import frc.robot.subsystems.intake.Intake;
-import frc.robot.subsystems.intake.IntakeIOSim;
-import frc.robot.subsystems.intake.IntakeIOTalonFX;
-import frc.robot.subsystems.led.LED;
-import frc.robot.subsystems.led.LEDIOAddressable;
-import frc.robot.subsystems.led.LEDIOSim;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
-import frc.robot.subsystems.vision.LimelightVision;
-import frc.robot.subsystems.vision.VisionSubsystem;
 
 
 public class RobotContainer {
     // Controllers
     private final CommandXboxController driverXbox = new CommandXboxController(0);
-    private final ManualControls m_Controls = new ManualControls(1);
 
      // The robot's subsystems and commands are defined here...
     private final SwerveSubsystem drivebase  = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(),
     "swerve/falcon"));
-    private final VisionSubsystem vision;
-
-    private final Hood hood;
-    private final Shooter shooter;
-    private final Turret turret;
-    private final Feeder feeder;
-    private final Intake intake;
-    private final LED led;
-
-    private final ShotCalculator shotCalculator = new ShotCalculator();
-    private final PassCalculator passCalculator = new PassCalculator();
-    private Command shotCommand;
-
-    private final AutoCommands factory;
-    private final AutoModeChooser autoChooser;
 
     SwerveInputStream driveAngularVelocity = SwerveInputStream.of(drivebase.getSwerveDrive(),
       () -> driverXbox.getLeftY() * -1,
@@ -82,184 +30,24 @@ public class RobotContainer {
 
 
     public RobotContainer() {
-      // Initialize subsystems with appropriate IO implementations
-      if (Robot.isReal()) {
-        hood = new Hood(new HoodIOTalonFX());
-        shooter = new Shooter(new ShooterIOTalonFX());
-        turret = new Turret(new TurretIOTalonFX());
-        feeder = new Feeder(new FeederIOTalonFX());
-        intake = new Intake(new IntakeIOTalonFX());
-        led = new LED(new LEDIOAddressable(3, 65), hood, shooter, turret, shotCalculator);
-      } else {
-          hood = new Hood(new HoodIOSim());
-          shooter = new Shooter(new ShooterIOSim());
-          turret = new Turret(new TurretIOSim());
-          feeder = new Feeder(new FeederIOSim());
-          intake = new Intake(new IntakeIOSim());
-          led = new LED(new LEDIOSim(65), hood, shooter, turret, shotCalculator);
-      }
-
-      factory = new AutoCommands(
-        drivebase,
-        feeder,
-        intake,
-        shooter,
-        hood,
-        turret,
-        shotCalculator
-      );
-      autoChooser = new AutoModeChooser(factory);
-      SmartDashboard.putData("Auto Chooser", autoChooser.getAutoChooser());
-
-      List<LimelightVision> limelights = new ArrayList<LimelightVision>();
-      for(String name : LimelightConstants.LIMELIGHT_NAMES) {
-        Pose3d cameraPose = LimelightConstants.getLimelightPose(name);
-        limelights.add(new LimelightVision(drivebase, name, cameraPose));
-      }
-
-      vision = new VisionSubsystem(limelights);
-
-      SuperstructureCommand superstructureCommand = new SuperstructureCommand(
-        hood,
-        shooter,
-        turret,
-        drivebase::getPose,
-        drivebase::getFieldVelocity,
-        shotCalculator,
-        passCalculator
-      );
-
-      hood.setDefaultCommand(superstructureCommand);
-      led.setDefaultCommand(Commands.run(() -> {}, led));               
-
       configureBindings();
     }
 
-
-    private static final double MAX_SHOOTING_VELOCITY_MPS = 1.2;
-    private static final double MAX_PASSING_VELOCITY_MPS = 3.0;
-
-    private boolean isShotCommandActive() {
-        return driverXbox.rightTrigger().getAsBoolean()
-            || (shotCommand != null
-                && CommandScheduler.getInstance().isScheduled(shotCommand));
-    }
-
-    private void scheduleShotCommand() {
-        cancelShotCommand();
-        shotCommand = new ShotCommand(
-            feeder, turret, hood, shooter, shotCalculator, drivebase::getPose, led);
-        CommandScheduler.getInstance().schedule(shotCommand);
-    }
-
-    private void cancelShotCommand() {
-        if (shotCommand != null) {
-            CommandScheduler.getInstance().cancel(shotCommand);
-        }
-    }
-
-    private void startUngatedDriverShot() {
-        cancelShotCommand();
-        feeder.setShooting(true);
-    }
-
-    private void stopUngatedDriverShot() {
-        cancelShotCommand();
-        feeder.setShooting(false);
-    }
-
-    private boolean isInPassingZone() {
-        double poseX = drivebase.getPose().getX();
-        return poseX > Constants.FieldConstants.BLUE_ZONE_X && poseX < Constants.FieldConstants.RED_ZONE_X;
-    }
-
-    private ChassisSpeeds clampSpeedsForShooting(ChassisSpeeds speeds) {
-        if (!isShotCommandActive()) {
-            return speeds;
-        }
-
-        double maxVelocity = isInPassingZone() ? MAX_PASSING_VELOCITY_MPS : MAX_SHOOTING_VELOCITY_MPS;
-
-        double vx = speeds.vxMetersPerSecond;
-        double vy = speeds.vyMetersPerSecond;
-        double translationSpeed = Math.hypot(vx, vy);
-
-        if (translationSpeed > maxVelocity) {
-            double scale = maxVelocity / translationSpeed;
-            vx *= scale;
-            vy *= scale;
-        }
-
-        return new ChassisSpeeds(vx, vy, speeds.omegaRadiansPerSecond);
-    }
-
     private void configureBindings() {
-        Command driveFieldOrientedAnglularVelocity = drivebase.driveFieldOriented(
-            () -> clampSpeedsForShooting(driveAngularVelocity.get()));
+        Command driveFieldOrientedAnglularVelocity = drivebase.driveFieldOriented(driveAngularVelocity);
         drivebase.setDefaultCommand(driveFieldOrientedAnglularVelocity);
 
-        driverXbox.x()
-          .and(DriverStation::isTeleopEnabled)
-          .onTrue(Commands.runOnce(() -> vision.hardReset("limelight-br"), vision));
         driverXbox.start().
           onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
-
-        // --- SHOTS ---
-        
-        Trigger shootTrigger = new Trigger(m_Controls::getShootTrigger);
-        Trigger shootReleaseTrigger = new Trigger(m_Controls::getShootReleaseTrigger);
-        Trigger ungatedShootTrigger = new Trigger(m_Controls::getUngatedShootTrigger);
-        Trigger driverShootTrigger = driverXbox.rightTrigger().and(DriverStation::isTeleopEnabled);
-
-        driverShootTrigger.onTrue(Commands.runOnce(this::startUngatedDriverShot));
-        driverShootTrigger.onFalse(Commands.runOnce(this::stopUngatedDriverShot));
-
-        shootTrigger.onTrue(Commands.runOnce(this::scheduleShotCommand));
-        shootReleaseTrigger.onTrue(Commands.runOnce(this::cancelShotCommand));
-        ungatedShootTrigger.onTrue(Commands.sequence(
-            Commands.runOnce(this::cancelShotCommand),
-            Commands.runOnce(() -> feeder.setShooting(true))));
-        ungatedShootTrigger.onFalse(Commands.runOnce(() -> feeder.setShooting(false)));
-
-        // --- INTAKE ---
-
-        Trigger intakeTrigger = new Trigger(m_Controls::getRollerTrigger);
-        Trigger intakeReleaseTrigger = new Trigger(m_Controls::getRollerReleaseTrigger);
-
-        intakeTrigger.onTrue(Commands.runOnce(() -> {
-            intake.activate();
-            feeder.setIntaking(true);
-        }));
-        intakeReleaseTrigger.onTrue(Commands.runOnce(() -> {
-            intake.deactivate();
-            feeder.setIntaking(false);
-        }));
-
-        // --- OUTTAKE/DEJAM ---
-        driverXbox.b().onTrue(Commands.runOnce(() -> {
-            intake.activateOuttake();
-            feeder.setOuttaking(true);
-        }));
-        driverXbox.b().onFalse(Commands.runOnce(() -> {
-            intake.deactivate();
-            feeder.setOuttaking(false);
-        }));
-
-        // --- RESETS ---
-        Trigger resetPoseTrigger = new Trigger(m_Controls::getVisionResetTrigger);
-        resetPoseTrigger.onTrue(Commands.runOnce(() -> vision.hardReset("limelight-br"), vision));
+        driverXbox.x().whileTrue(Commands.run(drivebase::lock, drivebase));
     }
 
 
     public Command getAutonomousCommand() {
-      return autoChooser.getAutoChooser().selectedCommand();
+      return Commands.none();
     }
 
     public SwerveSubsystem getDrivebase() {
       return drivebase;
-    }
-
-    public AutoModeChooser getAutoChooser() {
-      return autoChooser;
     }
 }
