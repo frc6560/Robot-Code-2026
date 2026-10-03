@@ -130,7 +130,13 @@ public class RobotContainer {
       );
 
       hood.setDefaultCommand(superstructureCommand);
-      led.setDefaultCommand(Commands.run(() -> {}, led));               
+      led.setDefaultCommand(Commands.run(() -> {}, led));
+
+      // Holding the hood keeps its default (the superstructure, which also needs the shooter)
+      // from rescheduling and cancelling the ramp. Runs until cancelled from the dashboard.
+      SmartDashboard.putData(
+        "Shooter/FF Characterization",
+        shooter.feedforwardCharacterizationCommand().deadlineFor(Commands.idle(hood, turret)));
 
       configureBindings();
     }

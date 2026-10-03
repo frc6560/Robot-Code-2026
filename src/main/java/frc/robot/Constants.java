@@ -11,6 +11,7 @@ import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.math.util.Units;
 import swervelib.math.Matter;
 
@@ -212,7 +213,6 @@ public final class Constants {
     public static final double PASS_RPM = 1600.0; 
     public static final double FLYWHEEL_GEAR_RATIO = 1.25; 
     public static final double FLYWHEEL_IDLE_RPM = 500; //kraken x60 
-    public static final double BANGBANG_TOLERANCE = 200.0;
     public static final double FLYWHEEL_RPM_TOLERANCE = 200.0; 
 
     /** Current Limits */
@@ -223,6 +223,45 @@ public final class Constants {
     public static final boolean RIGHT_FLYWHEEL_OPPOSED = true; 
 
     public static final int FLYWHEEL_STATOR_CURRENT_LIMIT = 50;
+
+    /**
+     * Spin-up controller, ported from 6328's 2026 flywheel. Everything below is mechanism side
+     * (flywheel shaft, rad/s) unless noted. kP/kD above stay on the Talon in V per motor rot/s;
+     * kS/kV/kA here are applied as a Java feedforward.
+     */
+    public static final int FLYWHEEL_MOTOR_COUNT = 2;
+    /** Mechanism speed = motor speed * FLYWHEEL_GEAR_RATIO, so the motor-to-mechanism reduction is the inverse. */
+    public static final DCMotor FLYWHEEL_GEARBOX =
+        DCMotor.getKrakenX60(FLYWHEEL_MOTOR_COUNT).withReduction(1.0 / FLYWHEEL_GEAR_RATIO);
+    /** Rotating inertia of the flywheel; estimate, refine from a coast-down or the shot app. */
+    public static final double FLYWHEEL_MOI = 0.01; // kg*m^2
+
+    public static final double FF_kS = kS; // V
+    public static final double FF_kV = kV / (2.0 * Math.PI * FLYWHEEL_GEAR_RATIO); // V per rad/s
+    /** Model-derived: V = I*R with I = J*alpha/Kt. Re-derive if MOI changes. */
+    public static final double FF_kA =
+        FLYWHEEL_GEARBOX.rOhms * FLYWHEEL_MOI / FLYWHEEL_GEARBOX.KtNMPerAmp; // V per rad/s^2
+
+    /** Power budget the spin-up rate limiter plans against (total across both motors). */
+    public static final double FLYWHEEL_SUPPLY_BUDGET_TELEOP = FLYWHEEL_SUPPLY_CURRENT_LIMIT * FLYWHEEL_MOTOR_COUNT; // A
+    public static final double FLYWHEEL_SUPPLY_BUDGET_AUTO = 60.0; // A
+    public static final double FLYWHEEL_EFFICIENCY = 0.8;
+    public static final double FLYWHEEL_MAX_ACCELERATION = 350.0; // rad/s^2
+    public static final double FLYWHEEL_ACCEL_FILTER_TIME_CONSTANT = 0.05; // s
+
+    /** Bang-bang (feedforward x constant while below setpoint) is used for hub shots past this range. */
+    public static final double BANGBANG_CONSTANT = 2.0;
+    public static final double BANGBANG_MIN_DISTANCE_METERS = 3.25;
+    /** Added to the PID setpoint only (not the feedforward) to offset steady-state droop. */
+    public static final double PID_SETPOINT_OFFSET = 0.0; // rad/s
+    /** atTarget() compares the rate-limited setpoint against the goal, not the encoder. */
+    public static final double AT_GOAL_EPSILON = 2.0; // rad/s
+
+    /** Feedforward characterization ramp and the tolerance the fit is checked against. */
+    public static final double FF_CHARACTERIZATION_START_DELAY = 0.5; // s
+    public static final double FF_CHARACTERIZATION_RAMP_RATE = 0.2; // V/s
+    public static final double FF_kS_TOLERANCE = 0.15; // V
+    public static final double FF_kV_TOLERANCE = 0.002; // V per rad/s
   }
 
   /** Physics and scoring constraints shared by the on-robot hub shot solver. */

@@ -95,7 +95,9 @@ public class AutoCommands {
     public Command shoot(){
         return Commands.run(() -> {
             calculator.calculate(drivetrain.getPose(), drivetrain.getFieldVelocity());
-            shooter.setGoal(calculator.getFlywheelRPM());
+            shooter.setGoal(
+                calculator.getFlywheelRPM(),
+                Shooter.useBangBang(calculator.getDistanceToVirtualTarget()));
             hood.setGoal(calculator.getHoodAzimuth());
             turret.setGoalWithVelocity(
                 Units.radiansToDegrees(calculator.getTurretAngle()),

@@ -147,7 +147,9 @@ public class SuperstructureCommand extends Command {
         }
 
         if(!DriverStation.isAutonomous()){
-            shooter.setGoal(shotCalculator.getFlywheelRPM());
+            shooter.setGoal(
+                shotCalculator.getFlywheelRPM(),
+                Shooter.useBangBang(shotCalculator.getDistanceToVirtualTarget()));
         }
         turret.setGoalWithVelocity(Units.radiansToDegrees(shotCalculator.getTurretAngle()), 
                                     Units.radiansToDegrees(shotCalculator.getTurretVelocityFF()));
