@@ -1,0 +1,149 @@
+> Task :extractReleaseNative UP-TO-DATE
+
+> Task :compileJava
+
+> Task :processResources NO-SOURCE
+> Task :classes
+> Task :downloadDepsPreemptively
+> Task :jar
+
+> Task :simulateJavaRelease
+HAL Extensions: No extensions found
+********** Robot program starting **********
+[AdvantageKit] Logging to "/Users/andrei/Robot-Code-2026/build/bline-tuning-selected-verification/selected-constants-no-overrides/logs/akit_6ffeeb07999fb9c3.wpilog"
+[phoenix] CANbus Connected: sim
+[phoenix] CANbus Network Up: sim
+BLINE_HEADLESS: Enabled selected autonomous on Blue alliance
+********** Robot program startup complete **********
+Resetting odometry to: Pose2d(Translation2d(X: 4.43, Y: 7.41), Rotation2d(Rads: -0.01, Deg: -0.61))
+SuperstructureCommand initialized at 1789337602550
+CommandScheduler loop overrun
+[AdvantageKit] Renaming log to "/Users/andrei/Robot-Code-2026/build/bline-tuning-selected-verification/selected-constants-no-overrides/logs/akit_26-09-13_15-13-22.wpilog"
+[PathPlanner] PathfindingCommand finished warmup
+CommandScheduler loop overrun
+BLINE_HEADLESS: Auto command finished at x=4.455 y=7.405 heading=-2.0deg
+BLINE_HEADLESS_RESULT: PASS postAutoDisplacement=0.0109m initialCoastPeak=0.1189mps finalSpeed=0.0000mps
+
+> Task :simulateJava
+[Incubating] Problems report is available at: file:///Users/andrei/Robot-Code-2026/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 22s
+5 actionable tasks: 4 executed, 1 up-to-date
+/Users/andrei/Robot-Code-2026/src/main/java/frc/robot/subsystems/feeder/FeederIOTalonFX.java:50: warning: [removal] TalonFX(int,String) in TalonFX has been deprecated and marked for removal
+        panMotor = new TalonFX(FeederConstants.PAN_MOTOR_ID, FeederConstants.CAN_BUS);
+                   ^
+/Users/andrei/Robot-Code-2026/src/main/java/frc/robot/subsystems/feeder/FeederIOTalonFX.java:51: warning: [removal] TalonFX(int,String) in TalonFX has been deprecated and marked for removal
+        pusherMotor = new TalonFX(FeederConstants.PUSHER_MOTOR_ID, FeederConstants.CAN_BUS);
+                      ^
+/Users/andrei/Robot-Code-2026/src/main/java/frc/robot/subsystems/feeder/FeederIOTalonFX.java:52: warning: [removal] TalonFX(int,String) in TalonFX has been deprecated and marked for removal
+        floorMotor = new TalonFX(FeederConstants.FLOOR_ID, FeederConstants.CAN_BUS);
+                     ^
+/Users/andrei/Robot-Code-2026/src/main/java/frc/robot/subsystems/turret/TurretIOTalonFX.java:44: warning: [removal] TalonFX(int,String) in TalonFX has been deprecated and marked for removal
+        turretMotor = new TalonFX(TurretConstants.MOTOR_ID, "rio");
+                      ^
+/Users/andrei/Robot-Code-2026/src/main/java/frc/robot/subsystems/turret/TurretIOTalonFX.java:45: warning: [removal] CANcoder(int,String) in CANcoder has been deprecated and marked for removal
+        absoluteEncoder = new CANcoder(TurretConstants.ENCODER_ID, "rio");
+                          ^
+/Users/andrei/Robot-Code-2026/src/main/java/frc/robot/subsystems/intake/IntakeIOTalonFX.java:34: warning: [removal] TalonFX(int,String) in TalonFX has been deprecated and marked for removal
+        leftMotor = new TalonFX(IntakeConstants.LEFT_MOTOR_ID, IntakeConstants.CAN_BUS);
+                    ^
+/Users/andrei/Robot-Code-2026/src/main/java/frc/robot/subsystems/intake/IntakeIOTalonFX.java:35: warning: [removal] TalonFX(int,String) in TalonFX has been deprecated and marked for removal
+        rightMotor = new TalonFX(IntakeConstants.RIGHT_MOTOR_ID, IntakeConstants.CAN_BUS);
+                     ^
+/Users/andrei/Robot-Code-2026/src/main/java/frc/robot/subsystems/shooter/ShooterIOTalonFX.java:44: warning: [removal] TalonFX(int,String) in TalonFX has been deprecated and marked for removal
+        leaderMotor = new TalonFX(ShooterConstants.LEFT_FLYWHEEL_ID, "rio");
+                      ^
+/Users/andrei/Robot-Code-2026/src/main/java/frc/robot/subsystems/shooter/ShooterIOTalonFX.java:45: warning: [removal] TalonFX(int,String) in TalonFX has been deprecated and marked for removal
+        followerMotor = new TalonFX(ShooterConstants.RIGHT_FLYWHEEL_ID, "rio");
+                        ^
+/Users/andrei/Robot-Code-2026/src/main/java/frc/robot/subsystems/hood/HoodIOTalonFX.java:40: warning: [removal] TalonFX(int,String) in TalonFX has been deprecated and marked for removal
+        hoodMotor = new TalonFX(HoodConstants.HOOD_MOTOR_ID, "rio");
+                    ^
+/Users/andrei/Robot-Code-2026/src/main/java/frc/robot/subsystems/hood/HoodIOTalonFX.java:41: warning: [removal] CANcoder(int,String) in CANcoder has been deprecated and marked for removal
+        absoluteEncoder = new CANcoder(HoodConstants.HOOD_ABSOLUTE_ENCODER_ID, "rio");
+                          ^
+Note: /Users/andrei/Robot-Code-2026/src/main/java/frc/robot/utility/LimelightHelpers.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+11 warnings
+NT: Listening on NT3 port 1735, NT4 port 5810
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 5 ("rio") Status Signal MagnetHealth
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 2 ("rio") Status Signal MagnetHealth
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 2 ("rio") Status Signal AbsolutePosition
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 2 ("rio") Status Signal Velocity
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 8 ("rio") Status Signal MagnetHealth
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 8 ("rio") Status Signal AbsolutePosition
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 8 ("rio") Status Signal Velocity
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 11 ("rio") Status Signal MagnetHealth
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 11 ("rio") Status Signal AbsolutePosition
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 11 ("rio") Status Signal Velocity
+[phoenix] Library initialization is complete.
+	
+Warning at edu.wpi.first.wpilibj.DriverStation.reportJoystickUnpluggedWarning(DriverStation.java:1345): Joystick Button 3 on port 0 not available, check if controller is plugged in
+Warning at edu.wpi.first.wpilibj.IterativeRobotBase.printLoopOverrunMessage(IterativeRobotBase.java:436): Loop time of 0.02s overrun
+
+Warning at edu.wpi.first.wpilibj.Tracer.lambda$printEpochs$0(Tracer.java:62): 	Turret.periodic(): 0.000037s
+	SwerveSubsystem.periodic(): 0.001343s
+	FollowPath.execute(): 0.005494s
+	buttons.run(): 0.001189s
+	Intake.periodic(): 0.000032s
+	SuperstructureCommand.initialize(): 0.000496s
+	Hood.periodic(): 0.000066s
+	VisionSubsystem.periodic(): 0.003440s
+	Feeder.periodic(): 0.000056s
+	SequentialCommandGroup.execute(): 0.012226s
+	RunCommand.initialize(): 0.000049s
+	Shooter.periodic(): 0.000042s
+	LED.periodic(): 0.000913s
+
+Warning at edu.wpi.first.wpilibj.Tracer.lambda$printEpochs$0(Tracer.java:62): 	autonomousInit(): 0.010880s
+	SmartDashboard.updateValues(): 0.003044s
+	robotPeriodic(): 0.026287s
+	LiveWindow.updateValues(): 0.000008s
+	Shuffleboard.update(): 0.000007s
+	simulationPeriodic(): 0.005288s
+	autonomousPeriodic(): 0.000496s
+
+[phoenix-diagnostics] Server 2026.1.2 (Mar 11 2026, 19:37:44) running on port: 1250
+	
+Sep 13, 2026 3:13:30 PM frc.robot.lib.BLine.FollowPath processEventTriggers
+WARNING: FollowPath: Unregistered event trigger key: Shoot
+Warning at edu.wpi.first.wpilibj.IterativeRobotBase.printLoopOverrunMessage(IterativeRobotBase.java:436): Loop time of 0.02s overrun
+
+Warning at edu.wpi.first.wpilibj.Tracer.lambda$printEpochs$0(Tracer.java:62): 	Turret.periodic(): 0.000016s
+	SwerveSubsystem.periodic(): 0.000032s
+	FollowPath.execute(): 0.021590s
+	SuperstructureCommand.execute(): 0.000126s
+	RunCommand.execute(): 0.000003s
+	buttons.run(): 0.000040s
+	Intake.periodic(): 0.000007s
+	Hood.periodic(): 0.000017s
+	VisionSubsystem.periodic(): 0.000036s
+	Feeder.periodic(): 0.000014s
+	Shooter.periodic(): 0.000015s
+	LED.periodic(): 0.000023s
+
+Warning at edu.wpi.first.wpilibj.Tracer.lambda$printEpochs$0(Tracer.java:62): 	SmartDashboard.updateValues(): 0.000231s
+	robotPeriodic(): 0.022942s
+	LiveWindow.updateValues(): 0.000000s
+	Shuffleboard.update(): 0.000004s
+	simulationPeriodic(): 0.000179s
+	autonomousPeriodic(): 0.000006s
+
+Warning at edu.wpi.first.wpilibj.RobotBase.runRobot(RobotBase.java:450): The robot program quit unexpectedly. This is usually due to a code error.
+  The above stacktrace can help determine where the error occurred.
+  See https://wpilib.org/stacktrace for more information.
+Error at edu.wpi.first.wpilibj.RobotBase.runRobot(RobotBase.java:462): Unexpected return from startCompetition() method.
+[phoenix-diagnostics] Server shutdown cleanly. (dur:58)
+	
+[phoenix] Library shutdown cleanly
+	

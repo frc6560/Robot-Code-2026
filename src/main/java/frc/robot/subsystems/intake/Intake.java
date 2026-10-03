@@ -16,6 +16,7 @@ public class Intake extends SubsystemBase {
     }
 
     private State state = State.IDLE;
+    private boolean pitCoastMode = false;
 
     public Intake(IntakeIO io) {
         this.io = io;
@@ -41,10 +42,23 @@ public class Intake extends SubsystemBase {
         return state == State.ACTIVE;
     }
 
+    public void setPitCoastMode(boolean enabled) {
+        pitCoastMode = enabled;
+        state = State.IDLE;
+        io.stop();
+        io.setCoastMode(enabled);
+    }
+
     @Override
     public void periodic() {
         io.updateInputs(inputs);
         Logger.processInputs("Intake", inputs);
+
+        Logger.recordOutput("Intake/PitCoastMode", pitCoastMode);
+        if (pitCoastMode) {
+            io.stop();
+            return;
+        }
 
         switch (state) {
             case ACTIVE:

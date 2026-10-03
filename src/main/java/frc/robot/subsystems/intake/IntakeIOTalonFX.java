@@ -105,4 +105,11 @@ public class IntakeIOTalonFX implements IntakeIO {
         leftMotor.set(0);
         rightMotor.set(0);
     }
+
+    @Override
+    public void setCoastMode(boolean coast) {
+        // Intake rollers use coast as their normal neutral mode.
+        leftMotor.setNeutralMode(NeutralModeValue.Coast);
+        rightMotor.setNeutralMode(NeutralModeValue.Coast);
+    }
 }

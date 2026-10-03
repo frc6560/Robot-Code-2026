@@ -1,0 +1,47 @@
+{
+  "source": "/Users/andrei/Documents/Untitled.csv",
+  "source_sha256": "8e6cb68743fc137535a70223f57d74a39b999b1e97cf5961693b08e85b4b6b60",
+  "git_path": "/Users/andrei/Robot-Code-2026/artifacts/sim-log-comparison/updated-gui-6db4c631/phase-1-canvas-draft.json",
+  "path_sha256": "6db4c6319e7eba25192ea2c288d4d59eb48523cfad93657232e24d13d9090df0",
+  "waypoints_match": true,
+  "waypoint_tolerance_visualization_m": 0.3,
+  "history_positions": 144,
+  "robot_polyline_length_m": 19.61436884235207,
+  "gui_polyline_length_m": 17.93412303171582,
+  "distance_sample_spacing_m": 0.02,
+  "distance_uniform_samples": 982,
+  "order_aligned_geometric_deviation": {
+    "rms_cm": 10.05355952482534,
+    "mean_cm": 7.34679089625927,
+    "p95_cm": 17.781654246118126,
+    "max_cm": 45.55945973854746
+  },
+  "unrestricted_nearest_curve_lower_bound": {
+    "rms_cm": 8.937827191564109,
+    "mean_cm": 5.715219160049527,
+    "p95_cm": 16.763498349082447,
+    "max_cm": 45.55945973854746
+  },
+  "endpoint_error_cm": 1.100714720347169,
+  "start_error_cm": 0,
+  "peak": {
+    "x": 4.129277267802777,
+    "y": 6.8857887712131935,
+    "s": 9.379999999999889,
+    "gui_x": 4.2312234437826515,
+    "gui_y": 7.329830902513719,
+    "error": 0.4555945973854746,
+    "gui_segment": 157,
+    "unrestricted_error": 0.4555945973854746
+  },
+  "heading_error": null,
+  "timing_error": null,
+  "method": "Distance-uniform 2 cm robot/GUI sampling, full monotone XY DTW, continuous projection onto local matched GUI preview segments. Approximate order-aligned geometry, not a time-aligned control error. No shifting, rotation, scale, or start/end snapping.",
+  "limitations": [
+    "Position history has no headings or per-position timestamps. No 60 ms timestamps fabricated.",
+    "History is every third FollowPath execution, not an independently measured ground-truth trace.",
+    "Logged waypoints match, but export does not identify historical constraints/config; comparison assumes current checked-in values.",
+    "Linear interpolation between stored robot positions can miss excursions between samples.",
+    "DTW is optimistic about progress/timing; nearest-curve lower bound can hide wrong-lap matches."
+  ]
+}

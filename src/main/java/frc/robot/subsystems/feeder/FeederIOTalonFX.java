@@ -152,5 +152,14 @@ public class FeederIOTalonFX implements FeederIO {
     public void stop() {
         panMotor.set(0);
         pusherMotor.set(0);
+        floorMotor.set(0);
+    }
+
+    @Override
+    public void setCoastMode(boolean coast) {
+        NeutralModeValue neutralMode = coast ? NeutralModeValue.Coast : NeutralModeValue.Brake;
+        panMotor.setNeutralMode(neutralMode);
+        pusherMotor.setNeutralMode(neutralMode);
+        floorMotor.setNeutralMode(neutralMode);
     }
 }

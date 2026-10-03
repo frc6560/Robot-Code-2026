@@ -147,13 +147,14 @@ public class TurretIOTalonFX implements TurretIO {
         usingFF = false;
         double targetMotorRotations = angleDegrees * TurretConstants.MOTOR_GEAR_RATIO / 360.0;
         double targetMotorVelocityRPS = velocityDegreesPerSec * TurretConstants.MOTOR_GEAR_RATIO / 360.0;
+        double currentAngleDegrees = absolutePosition.getValueAsDouble() * 360.0 / TurretConstants.ENCODER_GEAR_RATIO;
 
         // Constant force spring compensation - push away from center at extreme angles
         double springCompensationVolts = 0.0;
-        if (angleDegrees > 180.0) {
+        if (currentAngleDegrees > 180.0) {
             usingFF = true;
             springCompensationVolts = TurretConstants.kG;
-        } else if (angleDegrees < -35.0) {
+        } else if (currentAngleDegrees < -35.0) {
             usingFF = true;
             springCompensationVolts = -TurretConstants.kG;
         }
@@ -167,6 +168,11 @@ public class TurretIOTalonFX implements TurretIO {
     @Override
     public void stop() {
         turretMotor.set(0);
+    }
+
+    @Override
+    public void setCoastMode(boolean coast) {
+        turretMotor.setNeutralMode(coast ? NeutralModeValue.Coast : NeutralModeValue.Brake);
     }
 
     @Override

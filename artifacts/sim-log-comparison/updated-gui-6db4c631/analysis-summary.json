@@ -1,0 +1,49 @@
+{
+  "source": "/Users/andrei/Robot-Code-2026/artifacts/sim-log-comparison/updated-gui-6db4c631/robot-trace.csv",
+  "source_sha256": "f93c7b174b3831669735c47d568d143a2db753ae796835fd09498339956da98e",
+  "git_path": "/Users/andrei/Robot-Code-2026/src/main/deploy/autos/paths/phase-1-canvas-draft.json",
+  "path_sha256": "6db4c6319e7eba25192ea2c288d4d59eb48523cfad93657232e24d13d9090df0",
+  "waypoints_match": null,
+  "history_positions": 440,
+  "robot_polyline_length_m": 18.973104183248815,
+  "gui_polyline_length_m": 17.93412303171582,
+  "distance_sample_spacing_m": 0.02,
+  "distance_uniform_samples": 950,
+  "order_aligned_geometric_deviation": {
+    "rms_cm": 6.6934906171154145,
+    "mean_cm": 4.950279094203077,
+    "p95_cm": 13.581442951732074,
+    "max_cm": 24.8405851587689
+  },
+  "unrestricted_nearest_curve_lower_bound": {
+    "rms_cm": 5.254685262564775,
+    "mean_cm": 3.288212751887345,
+    "p95_cm": 11.459411131594461,
+    "max_cm": 24.8405851587689
+  },
+  "endpoint_error_cm": 2.9711158073944293,
+  "start_error_cm": 0,
+  "peak": {
+    "x": 3.972669275932053,
+    "y": 7.404303937916433,
+    "s": 8.959999999999898,
+    "gui_x": 4.213290961298683,
+    "gui_y": 7.342605707517762,
+    "error": 0.248405851587689,
+    "gui_segment": 153,
+    "unrestricted_error": 0.248405851587689
+  },
+  "heading_error": null,
+  "timing_error": null,
+  "method": "Distance-uniform 2 cm robot/GUI sampling, full monotone XY DTW, continuous projection onto local matched GUI preview segments. Approximate order-aligned geometry, not a time-aligned control error. No shifting, rotation, scale, or start/end snapping.",
+  "limitations": [
+    "One contiguous active command interval plus first post-completion pose; excludes three seconds of coast monitoring.",
+    "Geometry metric removes timing differences; pose headings and timestamps are retained in robot-trace.csv but not scored here.",
+    "YAGSL MapleSim defaults to the 2025 Reefscape arena, not a validated 2026 field.",
+    "Simulation is not independent evidence of real-robot physical accuracy.",
+    "DTW/local continuous projection is approximate and can hide progress/timing differences."
+  ],
+  "source_kind": "Saved WPILOG simulation pose trace",
+  "robot_duration_seconds": 8.895401,
+  "gui_duration_seconds": 6.06
+}

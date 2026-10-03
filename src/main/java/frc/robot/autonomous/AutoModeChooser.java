@@ -1,75 +1,36 @@
 package frc.robot.autonomous;
 
-import choreo.auto.AutoChooser;
-import choreo.auto.AutoRoutine;
-import edu.wpi.first.math.Pair;
-import edu.wpi.first.networktables.NetworkTableInstance;
-import edu.wpi.first.networktables.StringSubscriber;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
+import edu.wpi.first.wpilibj.RobotBase;
+import edu.wpi.first.wpilibj2.command.Command;
 
-
-/** Defines an Auto class, which is a name, an enum ID, and a command. */
+/** Publishes the available BLine autonomous commands. */
 public class AutoModeChooser {
-    private final AutoChooser autoChooser = new AutoChooser();
-    private final StringSubscriber selectedSubscriber;
+    private final SendableChooser<Command> autoChooser = new SendableChooser<>();
 
-    private final AutoCommands m_CommandFactory;
-
-    public AutoModeChooser(AutoCommands factory){
-        this.m_CommandFactory = factory;
-
-        // Subscribe to the auto chooser's selected value from NetworkTables
-        selectedSubscriber = NetworkTableInstance.getDefault()
-            .getStringTopic("/SmartDashboard/Auto Chooser/selected")
-            .subscribe("Idle");
-
-        addRoutines();
-    }
-
-    public void addRoutines(){
-        for(AutoNames autoName : AutoNames.values()){
-            Pair<String, AutoRoutine> routine = getRoutine(autoName);
-            autoChooser.addRoutine(
-                routine.getFirst(),
-                () -> routine.getSecond()
-            );
+    public AutoModeChooser(AutoCommands factory) {
+        if (RobotBase.isSimulation()) {
+            // Make desktop BLine simulation work immediately without requiring a separate
+            // dashboard just to change the chooser selection.
+            if ("1".equals(System.getenv("BLINE_HEADLESS_DIAGNOSTIC"))
+                    && "editor".equals(System.getenv("BLINE_HEADLESS_AUTO"))) {
+                autoChooser.setDefaultOption("BLine Editor Path", factory.getBLineEditorPath());
+                autoChooser.addOption("Zigzag", factory.getZigzagPath());
+            } else {
+                autoChooser.setDefaultOption("Zigzag", factory.getZigzagPath());
+            }
+            autoChooser.addOption("Idle", factory.getNoAuto());
+        } else {
+            autoChooser.setDefaultOption("Idle", factory.getNoAuto());
+            autoChooser.addOption("Zigzag", factory.getZigzagPath());
         }
+        autoChooser.addOption("BLine Editor Path", factory.getBLineEditorPath());
+        autoChooser.addOption("HP Turkish Delight", factory.getRightAuto());
+        autoChooser.addOption("Depot Turkish Delight", factory.getLeftAuto());
+        autoChooser.addOption("Two Swipe Turkish Delight", factory.getRightTwoSwipe());
     }
 
-    /** because we love turkish autos */
-    public Pair<String, AutoRoutine> getRoutine(AutoNames autoName){
-        AutoRoutine routine;
-        String name;
-        switch(autoName){
-            case IDLE:
-                routine = m_CommandFactory.getNoAuto();
-                name = "Idle";
-                break;
-            case RIGHT_TRENCH:
-                routine = m_CommandFactory.getRightAuto();
-                name = "HP Turkish Delight";
-                break;
-            case LEFT_TRENCH:
-                routine = m_CommandFactory.getLeftAuto();
-                name = "Depot Turkish Delight";
-                break;
-            case RIGHT_TWOSWIPE:
-                routine = m_CommandFactory.getRightTwoSwipe();
-                name = "Two Swipe Turkish Delight";
-                break;
-            default:
-                routine = m_CommandFactory.getNoAuto();
-                name = "Idle";
-                break;
-        }
-        return new Pair<>(name, routine);
-    }
-
-    public AutoChooser getAutoChooser(){
+    public SendableChooser<Command> getAutoChooser() {
         return autoChooser;
     }
-
-    public String getSelectedName(){
-        return selectedSubscriber.get();
-    }
 }
-

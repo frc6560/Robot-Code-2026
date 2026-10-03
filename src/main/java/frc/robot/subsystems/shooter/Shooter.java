@@ -44,6 +44,7 @@ public class Shooter extends SubsystemBase {
     private boolean bangBang = false;
     private boolean idle = false;
     private double characterizationVolts = Double.NaN;
+    private boolean pitCoastMode = false;
 
     // Rate limiter state.
     private double setpointRadsPerSec = 0.0;
@@ -88,6 +89,12 @@ public class Shooter extends SubsystemBase {
         goalRadsPerSec = 0.0;
         bangBang = false;
         idle = false;
+    }
+
+    /** Zero output so the wheel can be turned by hand. Flywheels already use coast as their neutral mode. */
+    public void setPitCoastMode(boolean enabled) {
+        pitCoastMode = enabled;
+        stop();
     }
 
     /** Whether the distance to the target calls for bang-bang control on a hub shot. */
@@ -140,7 +147,7 @@ public class Shooter extends SubsystemBase {
         outputs.kP = ShooterConstants.kP;
         outputs.kD = ShooterConstants.kD;
 
-        if (DriverStation.isDisabled() || (goalRadsPerSec <= 0.0 && Double.isNaN(characterizationVolts))) {
+        if (DriverStation.isDisabled() || pitCoastMode || (goalRadsPerSec <= 0.0 && Double.isNaN(characterizationVolts))) {
             stopOutputs();
         } else if (!Double.isNaN(characterizationVolts)) {
             outputs.mode = ShooterIOOutputMode.VOLTAGE;
@@ -163,6 +170,7 @@ public class Shooter extends SubsystemBase {
         Logger.recordOutput("Shooter/BangBang", bangBang);
         Logger.recordOutput("Shooter/Idle", idle);
         Logger.recordOutput("Shooter/Mode", outputs.mode.toString());
+        Logger.recordOutput("Shooter/PitCoastMode", pitCoastMode);
     }
 
     private void runVelocity(double goal, boolean bangBang, boolean idle) {

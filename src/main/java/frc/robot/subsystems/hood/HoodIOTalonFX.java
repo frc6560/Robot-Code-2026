@@ -143,6 +143,11 @@ public class HoodIOTalonFX implements HoodIO {
     }
 
     @Override
+    public void setCoastMode(boolean coast) {
+        hoodMotor.setNeutralMode(coast ? NeutralModeValue.Coast : NeutralModeValue.Brake);
+    }
+
+    @Override
     public void setVoltage(double volts) {
         hoodMotor.setControl(voltageRequest.withOutput(volts));
     }

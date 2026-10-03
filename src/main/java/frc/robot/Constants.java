@@ -14,6 +14,8 @@ import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.math.util.Units;
 import swervelib.math.Matter;
+import frc.robot.lib.BLine.JsonUtils;
+import frc.robot.lib.BLine.Path;
 
 /**
  * The Constants class provides a convenient place for teams to hold robot-wide numerical or boolean constants. This
@@ -28,7 +30,14 @@ public final class Constants {
   public static final double ROBOT_MASS = 62.59; // TODO: replace with true robot mass
   public static final Matter CHASSIS    = new Matter(new Translation3d(0, 0, Units.inchesToMeters(8)), ROBOT_MASS);
   public static final double LOOP_TIME  = 0.13; //s, 20ms + 110ms sprk max velocity lag
-  public static final double MAX_SPEED  = Units.feetToMeters(14.5);
+  // public static final double MAX_SPEED = Units.feetToMeters(14.5); // Previous limit
+  public static final double MAX_SPEED = Units.feetToMeters(19.5);
+  // Shared with the BLine editor/optimizer via deploy/autos/config.json.
+  // These are selected operating limits, not measured physical maxima.
+  public static final double MAX_ANGULAR_VELOCITY_RAD_PER_SEC =
+      Units.degreesToRadians(BLineConstants.GLOBAL_MAX_ANGULAR_VELOCITY_DEG_PER_SEC);
+  public static final double MAX_ANGULAR_ACCELERATION_RAD_PER_SEC_SQ =
+      Units.degreesToRadians(BLineConstants.GLOBAL_MAX_ANGULAR_ACCELERATION_DEG_PER_SEC2);
   // Maximum speed of the robot in meters per second, used to limit acceleration.
 
   // Robot dimensions (in meters, from PathPlanner settings)
@@ -43,19 +52,209 @@ public final class Constants {
     public static final double kV = 2.004;
     public static final double kA = 0.173;
 
-    public static final double kP_translation = 3.0; // originally 3.0
-    public static final double kP_rotation = 3.8; // originally 3.8
+    /**
+     * Proportional gain for the drivetrain's heading-only alignment controller, in
+     * (radians/second) per radian of heading error. This is used by rotateToAngle and
+     * alignToTrench, not by BLine. Increasing it makes alignment turn harder and finish faster but
+     * can cause overshoot or oscillation; decreasing it makes turning gentler but can leave the
+     * robot slow to converge.
+     */
+    public static final double ALIGN_ROTATION_KP = 3.8;
 
-    public static final double kI_translation = 0.0;
-    public static final double kI_rotation = 0.0;
+    /**
+     * Integral gain for heading-only alignment, in (radians/second) per radian-second of
+     * accumulated error. Increasing it can remove a persistent heading offset caused by friction,
+     * but it also creates windup and overshoot; keep it at zero unless a repeatable steady-state
+     * error remains after tuning P and D.
+     */
+    public static final double ALIGN_ROTATION_KI = 0.0;
 
-    public static final double kD_translation = 0.2; // originally 0.2
-    public static final double kD_rotation = 0.2; 
+    /**
+     * Derivative gain for heading-only alignment, in (radians/second) per
+     * (radian/second) of error change. Increasing it adds damping and can reduce overshoot, but too
+     * much amplifies gyro noise and makes output jitter; decreasing it produces a more responsive
+     * but less damped turn.
+     */
+    public static final double ALIGN_ROTATION_KD = 0.2;
+
+    /** Heading controller gains used while the driver holds the aim-at-hub button. */
+    public static final double HUB_AIM_KP = 4.0;
+    public static final double HUB_AIM_KI = 0.0;
+    public static final double HUB_AIM_KD = 0.2;
+
+    /**
+     * Shared maximum velocity for the shooting auto-turn profile. Path-specific overrides do not
+     * affect hub aim; the shared project default sets its operating ceiling.
+     */
+    public static final double HUB_AIM_MAX_ANGULAR_SPEED_RAD_PER_SEC = MAX_ANGULAR_VELOCITY_RAD_PER_SEC;
+
+    /**
+     * Shared maximum acceleration for the shooting auto-turn profile.
+     */
+    public static final double HUB_AIM_MAX_ANGULAR_ACCELERATION_RAD_PER_SEC_SQ =
+        MAX_ANGULAR_ACCELERATION_RAD_PER_SEC_SQ;
+
+    /** Stops small heading corrections once the chassis is pointed at the hub. */
+    public static final double HUB_AIM_TOLERANCE_RADIANS = Units.degreesToRadians(1.5);
+
+    /** Required angular speed before hub alignment reports that it has settled. */
+    public static final double HUB_AIM_VELOCITY_TOLERANCE_RAD_PER_SEC =
+        Units.degreesToRadians(5.0);
 
     // Pure pursuit tuning (meters, meters per second)
     public static final double kPurePursuitMinLookahead = 0.3;
     public static final double kPurePursuitMaxLookahead = 1.5;
     public static final double kPurePursuitLookaheadSpeedFactor = 0.15;
+  }
+
+  /**
+   * BLine path-following tuning.
+   *
+   * <p>Tune in this order: translation, rotation, then cross-track. Keep translation I at zero;
+   * accumulated distance error makes that controller unstable near the end of a path. All default
+   * path limits below are loaded from deploy/autos/config.json, shared with BLine Web. Explicit
+   * path/segment constraints still override these defaults. Hub aim has separate tuning above.
+   */
+  public static final class BLineConstants {
+    private BLineConstants() {}
+
+    private static final Path.DefaultGlobalConstraints CONFIG =
+        JsonUtils.loadGlobalConstraints(JsonUtils.PROJECT_ROOT);
+
+    /**
+     * Proportional gain for translation, in (meters/second) per meter of remaining path distance.
+     * BLine multiplies remaining distance by this gain before applying velocity constraints.
+     * Increasing it commands maximum speed for longer and brakes later, which shortens travel time
+     * but increases overshoot/endpoint oscillation; decreasing it starts decelerating earlier and
+     * is smoother, but can make the robot crawl toward the final target.
+     */
+    public static final double TRANSLATION_KP = 5;
+
+    /**
+     * Integral translation gain, in (meters/second) per meter-second of accumulated distance error.
+     * Increasing it can overcome a persistent friction-induced shortfall, but remaining-distance
+     * error is large for most of a path, so the integral winds up and commonly makes the robot blast
+     * through or oscillate at the endpoint. BLine's recommended value is zero; tune P and possibly D
+     * before considering any nonzero value.
+     */
+    public static final double TRANSLATION_KI = 0.0;
+
+    /**
+     * Derivative translation gain, in (meters/second) per (meter/second) of distance-error change.
+     * Increasing it adds endpoint damping and may reduce overshoot, but excessive D reacts to noisy
+     * odometry/velocity estimates and produces jerky speed commands; decreasing it makes translation
+     * more responsive but leaves P alone to control braking.
+     */
+    public static final double TRANSLATION_KD = 0.5;
+
+    /**
+     * Proportional gain for holonomic rotation, in (radians/second) per radian of heading error.
+     * BLine wraps heading error across -pi to +pi. Increasing it makes the robot acquire the path
+     * heading faster but can overshoot or shake near the target; decreasing it produces slower,
+     * smoother rotation and may leave heading behind during fast translation.
+     */
+    public static final double ROTATION_KP = 3;
+
+    /**
+     * Integral holonomic-rotation gain, in (radians/second) per radian-second of accumulated heading
+     * error. Increasing it can correct a consistent rotational bias, but it introduces windup and
+     * endpoint overshoot; leave it at zero unless the robot settles at a repeatable nonzero error.
+     */
+    public static final double ROTATION_KI = 0;
+
+    /**
+     * Derivative holonomic-rotation gain, in (radians/second) per (radian/second) of heading-error
+     * change. Increasing it damps rotation and can suppress overshoot, while too much causes noisy or
+     * hesitant turning; decreasing it makes rotation sharper but less damped.
+     */
+    public static final double ROTATION_KD = 0.3;
+
+    /**
+     * Proportional gain for cross-track correction, in (meters/second) per meter of perpendicular
+     * displacement from the active line segment. Increasing it pulls the robot back to the drawn
+     * line more aggressively, but too much causes fishtailing and unstable corners; decreasing it
+     * allows wider deviation and smoother turns. Tune only after translation and rotation work.
+     */
+    public static final double CROSS_TRACK_KP = 5;
+
+    /**
+     * Integral cross-track gain, in (meters/second) per meter-second of accumulated lateral error.
+     * Increasing it can remove a persistent sideways bias, but can continue steering after the bias
+     * disappears and destabilize segment handoffs; zero is the safe default.
+     */
+    public static final double CROSS_TRACK_KI = 0.0;
+
+    /**
+     * Derivative cross-track gain, in (meters/second) per (meter/second) of lateral-error change.
+     * Increasing it damps lateral correction and may reduce fishtailing, but noisy pose estimates can
+     * make it twitch; decreasing it makes correction more immediate and potentially more oscillatory.
+     */
+    public static final double CROSS_TRACK_KD = 0.0;
+
+    /**
+     * Default maximum translational speed in meters per second. Increasing it permits faster paths
+     * but lengthens stopping distance, increases wheel slip, and may require larger handoff radii;
+     * decreasing it makes paths slower, easier to track, and safer during initial tuning. A path-level
+     * constraint may override this value.
+     */
+    public static final double GLOBAL_MAX_VELOCITY_MPS = CONFIG.getMaxVelocityMetersPerSec();
+
+    /**
+     * Default maximum translational acceleration in meters per second squared. Increasing it makes
+     * launches and braking more aggressive but raises current draw, slip, and mechanism disturbance;
+     * decreasing it produces gentler motion but increases path time and stopping distance in time.
+     * JSON paths read the matching value from deploy/autos/config.json.
+     */
+    public static final double GLOBAL_MAX_ACCELERATION_MPS2 = CONFIG.getMaxAccelerationMetersPerSec2();
+
+    /**
+     * Default maximum angular velocity in degrees per second. Increasing it allows faster heading
+     * changes but can saturate modules and harm translation tracking; decreasing it makes rotation
+     * slower and may prevent the requested heading from completing before a segment ends.
+     */
+    public static final double GLOBAL_MAX_ANGULAR_VELOCITY_DEG_PER_SEC =
+        CONFIG.getMaxVelocityDegPerSec();
+
+    /**
+     * Default maximum angular acceleration in degrees per second squared. Increasing it makes angular
+     * velocity change more abruptly, improving response while increasing slip/current and mechanical
+     * shock; decreasing it smooths rotation but can make heading lag along short segments.
+     */
+    public static final double GLOBAL_MAX_ANGULAR_ACCELERATION_DEG_PER_SEC2 =
+        CONFIG.getMaxAccelerationDegPerSec2();
+
+    /**
+     * Maximum final-position error in meters for path completion. Increasing it lets commands finish
+     * sooner and avoids endless endpoint hunting, at the cost of positional accuracy; decreasing it
+     * demands greater precision but can prevent completion when odometry noise or wheel slip exceeds
+     * the tolerance. Both translation and rotation tolerances must be satisfied.
+     */
+    public static final double END_TRANSLATION_TOLERANCE_METERS = CONFIG.getEndTranslationToleranceMeters();
+
+    /**
+     * Maximum final-heading error in degrees for path completion. Increasing it finishes sooner with
+     * looser orientation; decreasing it improves final heading accuracy but can cause prolonged
+     * rotation or jitter near the endpoint. Both endpoint tolerances must be satisfied.
+     */
+    public static final double END_ROTATION_TOLERANCE_DEGREES = CONFIG.getEndRotationToleranceDeg();
+
+    /**
+     * Default intermediate handoff radius in meters. With radius-based handoffs, BLine advances to
+     * the next target once the robot enters this circle. Increasing it cuts corners earlier and makes
+     * paths smoother/faster but follows waypoints less precisely; decreasing it hugs waypoints more
+     * closely but can make the robot overshoot, reverse, and oscillate if the radius is smaller than
+     * its stopping distance. This does not control final-point tolerance.
+     */
+    public static final double INTERMEDIATE_HANDOFF_RADIUS_METERS = CONFIG.getIntermediateHandoffRadiusMeters();
+
+    /**
+     * Selects the translation-target handoff algorithm; this is dimensionless. False uses distance
+     * to the target and INTERMEDIATE_HANDOFF_RADIUS_METERS. True switches when the robot's projected
+     * progress passes the segment endpoint, which can be more robust at high speed but is less
+     * forgiving of a badly positioned first segment. Change this only after radius-based paths are
+     * working, then retest every multi-segment route.
+     */
+    public static final boolean USE_T_RATIO_BASED_TRANSLATION_HANDOFFS = false;
   }
 
   public static final class FieldConstants{

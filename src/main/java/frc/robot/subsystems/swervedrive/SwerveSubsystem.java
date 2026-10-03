@@ -5,7 +5,6 @@
 package frc.robot.subsystems.swervedrive;
 
 import static edu.wpi.first.units.Units.Meter;
-import choreo.trajectory.SwerveSample;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
@@ -24,6 +23,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.FunctionalCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import org.littletonrobotics.junction.Logger;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Config;
 import frc.robot.Constants;
 import frc.robot.Constants.DrivebaseConstants;
@@ -56,21 +56,16 @@ public class SwerveSubsystem extends SubsystemBase {
   private final SwerveDrive swerveDrive;
   private final StringSubscriber autoChooserSubscriber;
   private boolean initialPoseSet = false;
+  private boolean pitCoastMode = false;
 
   private final SimpleMotorFeedforward driveFF = new SimpleMotorFeedforward(DrivebaseConstants.kS, 
                                                                             DrivebaseConstants.kV, 
                                                                             DrivebaseConstants.kA);
 
 
-  PIDController m_pidControllerX = new PIDController(DrivebaseConstants.kP_translation, 
-                                                          DrivebaseConstants.kI_translation, 
-                                                          DrivebaseConstants.kD_translation);
-  PIDController m_pidControllerY = new PIDController(DrivebaseConstants.kP_translation,
-                                                          DrivebaseConstants.kI_translation, 
-                                                          DrivebaseConstants.kD_translation);
-  PIDController m_pidControllerTheta = new PIDController(DrivebaseConstants.kP_rotation,
-                                                          DrivebaseConstants.kI_rotation,
-                                                          DrivebaseConstants.kD_rotation); // tune values
+  PIDController m_pidControllerTheta = new PIDController(DrivebaseConstants.ALIGN_ROTATION_KP,
+                                                          DrivebaseConstants.ALIGN_ROTATION_KI,
+                                                          DrivebaseConstants.ALIGN_ROTATION_KD);
 
   /**
    * Initialize {@link SwerveDrive} with the directory provided.
@@ -84,7 +79,7 @@ public class SwerveSubsystem extends SubsystemBase {
         .subscribe("Idle");
 
     Pose2d startingPose = FieldConstants.BLUE_TESTING_START;
-    SwerveDriveTelemetry.verbosity = TelemetryVerbosity.LOW;
+    SwerveDriveTelemetry.verbosity = TelemetryVerbosity.HIGH;
     try
     {
       swerveDrive = new SwerveParser(directory).createSwerveDrive(Constants.MAX_SPEED, startingPose);
@@ -126,6 +121,13 @@ public class SwerveSubsystem extends SubsystemBase {
 
   @Override
   public void periodic() {
+    // Pose2d is published as structured AdvantageKit data. In AdvantageScope, add
+    // Swerve/Pose to a 2D Field tab and BLine/FollowPath/pathTranslations as the path.
+    Logger.recordOutput("Swerve/Pose", getPose());
+    Logger.recordOutput("Swerve/RobotVelocity", getRobotVelocity());
+    Logger.recordOutput("Swerve/FieldVelocity", getFieldVelocity());
+    Logger.recordOutput("Swerve/PitCoastMode", pitCoastMode);
+
     // Set initial pose once based on auto selection (only while disabled)
     if (!initialPoseSet && DriverStation.isDisabled()) {
       System.out.println("Resetting pose!");
@@ -150,44 +152,31 @@ public class SwerveSubsystem extends SubsystemBase {
       robotRelativeTurret.getTranslation().getDistance(FieldConstants.BLUE_HUB_CENTER));
   }
 
-  /**
-   * Path following command using SwerveSample from Choreo
-   * @param setpoint SwerveSample setpoint to follow, representing the robot state.
-   */
-  public void followSegment(SwerveSample setpoint) {
-    m_pidControllerTheta.enableContinuousInput(-Math.PI, Math.PI);
-
-    // Log some basic data to see if path following is accurate.
-    swerveDrive.field.getObject("TargetPose").setPose(setpoint.getPose());
-    SmartDashboard.getEntry("X Error").setDouble(m_pidControllerX.getError());
-    SmartDashboard.getEntry("Y Error").setDouble(m_pidControllerY.getError());
-    SmartDashboard.getEntry("Theta Error").setDouble(m_pidControllerTheta.getError());
-    SmartDashboard.getEntry("VX Error").setDouble(Math.abs(setpoint.vx - swerveDrive.getRobotVelocity().vxMetersPerSecond));
-    SmartDashboard.getEntry("VY Error").setDouble(Math.abs(setpoint.vy - swerveDrive.getRobotVelocity().vyMetersPerSecond));
-
-    Pose2d pose = getPose();
-
-    ChassisSpeeds targetSpeeds = new ChassisSpeeds(
-      setpoint.vx + m_pidControllerX.calculate(pose.getX(), setpoint.x),
-      setpoint.vy + m_pidControllerY.calculate(pose.getY(), setpoint.y),
-      setpoint.omega + m_pidControllerTheta.calculate(pose.getRotation().getRadians(), setpoint.heading)
-    );
-
-    swerveDrive.driveFieldOriented(targetSpeeds);
-  }
-
-
   /** Rotates to a specified angle while inheriting the chassis's original translational velocity */
   public void rotateToAngle(double targetInRadians){
+    if (pitCoastMode) {
+      stopAllMotors();
+      return;
+    }
     m_pidControllerTheta.enableContinuousInput(-Math.PI, Math.PI);
 
-    SmartDashboard.getEntry("Yaw error").setDouble(m_pidControllerTheta.getError());
-    SmartDashboard.getEntry("Pose in radians").setDouble(getPose().getRotation().getRadians());
+    double currentHeading = getPose().getRotation().getRadians();
+    double headingError = MathUtil.angleModulus(targetInRadians - currentHeading);
+    double commandedOmega = m_pidControllerTheta.calculate(currentHeading, targetInRadians);
+
+    SmartDashboard.getEntry("Yaw error").setDouble(headingError);
+    SmartDashboard.getEntry("Pose in radians").setDouble(currentHeading);
+    Logger.recordOutput("HeadingAlign/TargetHeadingDeg", Math.toDegrees(targetInRadians));
+    Logger.recordOutput("HeadingAlign/CurrentHeadingDeg", Math.toDegrees(currentHeading));
+    Logger.recordOutput("HeadingAlign/HeadingErrorDeg", Math.toDegrees(headingError));
+    Logger.recordOutput("HeadingAlign/CommandedOmegaRadPerSec", commandedOmega);
+    Logger.recordOutput(
+        "HeadingAlign/MeasuredOmegaRadPerSec", getRobotVelocity().omegaRadiansPerSecond);
 
     ChassisSpeeds targetSpeeds = new ChassisSpeeds(
       getFieldVelocity().vxMetersPerSecond,
       getFieldVelocity().vyMetersPerSecond,
-      m_pidControllerTheta.calculate(getPose().getRotation().getRadians(), targetInRadians)
+      commandedOmega
     );
 
     swerveDrive.driveFieldOriented(targetSpeeds);
@@ -350,12 +339,12 @@ public class SwerveSubsystem extends SubsystemBase {
   {
     return run(() -> {
       // Make the robot move
-      swerveDrive.drive(SwerveMath.scaleTranslation(new Translation2d(
-                            translationX.getAsDouble() * swerveDrive.getMaximumChassisVelocity(),
-                            translationY.getAsDouble() * swerveDrive.getMaximumChassisVelocity()), 0.8),
-                        Math.pow(angularRotationX.getAsDouble(), 3) * -swerveDrive.getMaximumChassisAngularVelocity(),
-                        true,
-                        false);
+      drive(SwerveMath.scaleTranslation(new Translation2d(
+                translationX.getAsDouble() * swerveDrive.getMaximumChassisVelocity(),
+                translationY.getAsDouble() * swerveDrive.getMaximumChassisVelocity()), 0.8),
+            Math.pow(angularRotationX.getAsDouble(), 3)
+                * -swerveDrive.getMaximumChassisAngularVelocity(),
+            true);
     });
   }
 
@@ -402,6 +391,10 @@ public class SwerveSubsystem extends SubsystemBase {
    */
   public void drive(Translation2d translation, double rotation, boolean fieldRelative)
   {
+    if (pitCoastMode) {
+      stopAllMotors();
+      return;
+    }
     swerveDrive.drive(translation,
                       rotation,
                       fieldRelative,
@@ -415,6 +408,10 @@ public class SwerveSubsystem extends SubsystemBase {
    */
   public void driveFieldOriented(ChassisSpeeds velocity)
   {
+    if (pitCoastMode) {
+      stopAllMotors();
+      return;
+    }
     swerveDrive.driveFieldOriented(velocity);
   }
 
@@ -425,9 +422,7 @@ public class SwerveSubsystem extends SubsystemBase {
    */
   public Command driveFieldOriented(Supplier<ChassisSpeeds> velocity)
   {
-    return run(() -> {
-      swerveDrive.driveFieldOriented(velocity.get());
-    });
+    return run(() -> driveFieldOriented(velocity.get()));
   }
 
   /**
@@ -437,6 +432,10 @@ public class SwerveSubsystem extends SubsystemBase {
    */
   public void drive(ChassisSpeeds velocity)
   {
+    if (pitCoastMode) {
+      stopAllMotors();
+      return;
+    }
     swerveDrive.drive(velocity);
   }
 
@@ -462,11 +461,6 @@ public class SwerveSubsystem extends SubsystemBase {
   {
     swerveDrive.resetOdometry(initialHolonomicPose);
     System.out.println("Resetting odometry to: " + initialHolonomicPose);
-    try {
-      throw new Exception();
-    } catch (Exception e) {
-      e.printStackTrace();
-  }
   }
 
 
@@ -487,6 +481,10 @@ public class SwerveSubsystem extends SubsystemBase {
    */
   public void setChassisSpeeds(ChassisSpeeds chassisSpeeds)
   {
+    if (pitCoastMode) {
+      stopAllMotors();
+      return;
+    }
     swerveDrive.setChassisSpeeds(chassisSpeeds);
   }
 
@@ -527,6 +525,29 @@ public class SwerveSubsystem extends SubsystemBase {
   public void setMotorBrake(boolean brake)
   {
     swerveDrive.setMotorIdleMode(brake);
+  }
+
+  /**
+   * Stops all drive and steering outputs and toggles every swerve motor between coast and its
+   * normal brake mode. Unlike disabling the robot, this mode can be toggled while teleop remains
+   * enabled so the modules and wheels can be moved by hand.
+   */
+  public void setPitCoastMode(boolean enabled)
+  {
+    pitCoastMode = enabled;
+    stopAllMotors();
+    Arrays.asList(swerveDrive.getModules()).forEach(module -> {
+      module.getDriveMotor().setMotorBrake(!enabled);
+      module.getAngleMotor().setMotorBrake(!enabled);
+    });
+  }
+
+  private void stopAllMotors()
+  {
+    Arrays.asList(swerveDrive.getModules()).forEach(module -> {
+      module.getDriveMotor().set(0.0);
+      module.getAngleMotor().set(0.0);
+    });
   }
 
   /**

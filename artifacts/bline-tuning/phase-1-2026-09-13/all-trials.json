@@ -1,0 +1,873 @@
+[
+  {
+    "name": "baseline-repeat",
+    "gains": {
+      "TRANSLATION_KP": 5,
+      "TRANSLATION_KD": 0.5,
+      "ROTATION_KP": 3,
+      "ROTATION_KD": 0.3,
+      "CROSS_TRACK_KP": 5,
+      "CROSS_TRACK_KD": 0
+    },
+    "score": 2.899099446076979,
+    "summary": {
+      "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+      "gui": {
+        "samples": 340,
+        "duration_seconds": 6.78,
+        "length_meters": 17.632055528018494
+      },
+      "robot": {
+        "samples": 487,
+        "duration_seconds": 9.752608,
+        "length_meters": 18.60583105889383
+      },
+      "aligned_position_error_meters": {
+        "mean": 0.05057800306872893,
+        "rms": 0.06633927040969023,
+        "p95": 0.15037276003965613,
+        "max": 0.19204419934985187
+      },
+      "aligned_absolute_heading_error_degrees": {
+        "mean": 11.135551348791964,
+        "rms": 17.50429819946878,
+        "p95": 39.33860442615941,
+        "max": 60.9703210607976
+      },
+      "same_elapsed_time_position_error_meters": {
+        "mean": 1.8325336849934397,
+        "rms": 2.1799801282655094,
+        "p95": 4.212258916664652,
+        "max": 4.344480853668431
+      },
+      "endpoint_position_difference_meters": 0.029860630755436282,
+      "endpoint_heading_difference_degrees": -1.937343911549238,
+      "caveats": [
+        "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+        "Simulation is not real-hardware accuracy or PID validation.",
+        "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+      ]
+    },
+    "source": "/Users/andrei/Robot-Code-2026/build/bline-tuning-round1/baseline-repeat",
+    "diagnostic": "PASS postAutoDisplacement=0.0152m initialCoastPeak=0.1142mps finalSpeed=0.0000mps"
+  },
+  {
+    "name": "responsive-low-cross",
+    "gains": {
+      "TRANSLATION_KP": 8,
+      "TRANSLATION_KD": 0.1,
+      "ROTATION_KP": 10,
+      "ROTATION_KD": 0.1,
+      "CROSS_TRACK_KP": 0,
+      "CROSS_TRACK_KD": 0
+    },
+    "failed": true,
+    "source": "/Users/andrei/Robot-Code-2026/build/bline-tuning-round1/responsive-low-cross",
+    "diagnostic": "FAIL postAutoDisplacement=0.2484m initialCoastPeak=1.8410mps finalSpeed=0.0000mps"
+  },
+  {
+    "name": "high-p-no-d",
+    "gains": {
+      "TRANSLATION_KP": 12,
+      "TRANSLATION_KD": 0,
+      "ROTATION_KP": 16,
+      "ROTATION_KD": 0,
+      "CROSS_TRACK_KP": 0,
+      "CROSS_TRACK_KD": 0
+    },
+    "score": 6.1113799859420315,
+    "summary": {
+      "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+      "gui": {
+        "samples": 340,
+        "duration_seconds": 6.78,
+        "length_meters": 17.632055528018494
+      },
+      "robot": {
+        "samples": 568,
+        "duration_seconds": 11.380801,
+        "length_meters": 19.65713519948718
+      },
+      "aligned_position_error_meters": {
+        "mean": 0.07978947382861494,
+        "rms": 0.11633808018656257,
+        "p95": 0.22097770106842354,
+        "max": 0.4127380243397304
+      },
+      "aligned_absolute_heading_error_degrees": {
+        "mean": 31.676107449206107,
+        "rms": 52.959937035248586,
+        "p95": 119.14802912768172,
+        "max": 179.74440524393341
+      },
+      "same_elapsed_time_position_error_meters": {
+        "mean": 1.8355671790636232,
+        "rms": 2.1815704887140726,
+        "p95": 4.264275049141195,
+        "max": 4.436198378905183
+      },
+      "endpoint_position_difference_meters": 0.016159946433793745,
+      "endpoint_heading_difference_degrees": -1.052984872567741,
+      "caveats": [
+        "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+        "Simulation is not real-hardware accuracy or PID validation.",
+        "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+      ]
+    },
+    "source": "/Users/andrei/Robot-Code-2026/build/bline-tuning-round1/high-p-no-d",
+    "diagnostic": "PASS postAutoDisplacement=0.0106m initialCoastPeak=0.0949mps finalSpeed=0.0000mps"
+  },
+  {
+    "name": "moderate-p",
+    "gains": {
+      "TRANSLATION_KP": 8,
+      "TRANSLATION_KD": 0,
+      "ROTATION_KP": 8,
+      "ROTATION_KD": 0,
+      "CROSS_TRACK_KP": 1,
+      "CROSS_TRACK_KD": 0
+    },
+    "failed": true,
+    "source": "/Users/andrei/Robot-Code-2026/build/bline-tuning-round1/moderate-p",
+    "diagnostic": "FAIL postAutoDisplacement=0.2690m initialCoastPeak=1.9305mps finalSpeed=0.0000mps"
+  },
+  {
+    "name": "baseline-translation-no-d",
+    "gains": {
+      "TRANSLATION_KP": 5,
+      "TRANSLATION_KD": 0,
+      "ROTATION_KP": 10,
+      "ROTATION_KD": 0,
+      "CROSS_TRACK_KP": 0,
+      "CROSS_TRACK_KD": 0
+    },
+    "failed": true,
+    "source": "/Users/andrei/Robot-Code-2026/build/bline-tuning-round1/baseline-translation-no-d",
+    "diagnostic": "FAIL postAutoDisplacement=0.1376m initialCoastPeak=1.2338mps finalSpeed=0.0000mps"
+  },
+  {
+    "name": "damped-moderate",
+    "gains": {
+      "TRANSLATION_KP": 10,
+      "TRANSLATION_KD": 0.1,
+      "ROTATION_KP": 6,
+      "ROTATION_KD": 0.1,
+      "CROSS_TRACK_KP": 1,
+      "CROSS_TRACK_KD": 0
+    },
+    "failed": true,
+    "source": "/Users/andrei/Robot-Code-2026/build/bline-tuning-round1/damped-moderate",
+    "diagnostic": "FAIL postAutoDisplacement=0.2788m initialCoastPeak=1.9953mps finalSpeed=0.0000mps"
+  },
+  {
+    "name": "cross-only",
+    "gains": {
+      "TRANSLATION_KP": 5,
+      "TRANSLATION_KD": 0.5,
+      "ROTATION_KP": 3,
+      "ROTATION_KD": 0.3,
+      "CROSS_TRACK_KP": 1,
+      "CROSS_TRACK_KD": 0
+    },
+    "score": 2.9696173792511917,
+    "summary": {
+      "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+      "gui": {
+        "samples": 340,
+        "duration_seconds": 6.78,
+        "length_meters": 17.632055528018494
+      },
+      "robot": {
+        "samples": 488,
+        "duration_seconds": 9.809750000000001,
+        "length_meters": 18.552199576498776
+      },
+      "aligned_position_error_meters": {
+        "mean": 0.04846880208976222,
+        "rms": 0.06552891479808257,
+        "p95": 0.1426646822487252,
+        "max": 0.23178474703690222
+      },
+      "aligned_absolute_heading_error_degrees": {
+        "mean": 11.587694745484834,
+        "rms": 18.647734021907354,
+        "p95": 45.10724072483622,
+        "max": 66.18730457624712
+      },
+      "same_elapsed_time_position_error_meters": {
+        "mean": 1.8254757705272886,
+        "rms": 2.181855248703649,
+        "p95": 4.273974948525787,
+        "max": 4.435179941032517
+      },
+      "endpoint_position_difference_meters": 0.029182408790237393,
+      "endpoint_heading_difference_degrees": -1.738486762043829,
+      "caveats": [
+        "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+        "Simulation is not real-hardware accuracy or PID validation.",
+        "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+      ]
+    },
+    "source": "/Users/andrei/Robot-Code-2026/build/bline-tuning-round2/cross-only",
+    "diagnostic": "PASS postAutoDisplacement=0.0116m initialCoastPeak=0.1267mps finalSpeed=0.0000mps"
+  },
+  {
+    "name": "gentle-rotation",
+    "gains": {
+      "TRANSLATION_KP": 5,
+      "TRANSLATION_KD": 0.5,
+      "ROTATION_KP": 2,
+      "ROTATION_KD": 0.3,
+      "CROSS_TRACK_KP": 1,
+      "CROSS_TRACK_KD": 0
+    },
+    "failed": true,
+    "source": "/Users/andrei/Robot-Code-2026/build/bline-tuning-round2/gentle-rotation",
+    "diagnostic": "TIMEOUT pose=(4.426, 7.408, -3.2deg)"
+  },
+  {
+    "name": "faster-damped-translation",
+    "gains": {
+      "TRANSLATION_KP": 6,
+      "TRANSLATION_KD": 0.5,
+      "ROTATION_KP": 3,
+      "ROTATION_KD": 0.3,
+      "CROSS_TRACK_KP": 1,
+      "CROSS_TRACK_KD": 0
+    },
+    "failed": true,
+    "source": "/Users/andrei/Robot-Code-2026/build/bline-tuning-round2/faster-damped-translation",
+    "diagnostic": "FAIL postAutoDisplacement=0.0926m initialCoastPeak=0.6861mps finalSpeed=0.0000mps"
+  },
+  {
+    "name": "rotation-anticipation",
+    "gains": {
+      "TRANSLATION_KP": 5,
+      "TRANSLATION_KD": 0.5,
+      "ROTATION_KP": 4,
+      "ROTATION_KD": 0.5,
+      "CROSS_TRACK_KP": 1,
+      "CROSS_TRACK_KD": 0
+    },
+    "score": 2.850448580302477,
+    "summary": {
+      "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+      "gui": {
+        "samples": 340,
+        "duration_seconds": 6.78,
+        "length_meters": 17.632055528018494
+      },
+      "robot": {
+        "samples": 489,
+        "duration_seconds": 9.789347000000001,
+        "length_meters": 18.523790204689867
+      },
+      "aligned_position_error_meters": {
+        "mean": 0.046950521040939434,
+        "rms": 0.06325771766988678,
+        "p95": 0.11361297922097725,
+        "max": 0.23309393517426902
+      },
+      "aligned_absolute_heading_error_degrees": {
+        "mean": 9.79565227483188,
+        "rms": 17.20032832773523,
+        "p95": 44.97530819706996,
+        "max": 67.49367409342567
+      },
+      "same_elapsed_time_position_error_meters": {
+        "mean": 1.8247217189344813,
+        "rms": 2.1825609315061087,
+        "p95": 4.293088022272299,
+        "max": 4.435987450407071
+      },
+      "endpoint_position_difference_meters": 0.02779088541037834,
+      "endpoint_heading_difference_degrees": -1.452331069970651,
+      "caveats": [
+        "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+        "Simulation is not real-hardware accuracy or PID validation.",
+        "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+      ]
+    },
+    "source": "/Users/andrei/Robot-Code-2026/build/bline-tuning-round2/rotation-anticipation",
+    "diagnostic": "PASS postAutoDisplacement=0.0100m initialCoastPeak=0.1101mps finalSpeed=0.0000mps"
+  },
+  {
+    "name": "balanced-damping",
+    "gains": {
+      "TRANSLATION_KP": 6,
+      "TRANSLATION_KD": 0.5,
+      "ROTATION_KP": 2,
+      "ROTATION_KD": 0.5,
+      "CROSS_TRACK_KP": 3,
+      "CROSS_TRACK_KD": 0
+    },
+    "failed": true,
+    "source": "/Users/andrei/Robot-Code-2026/build/bline-tuning-round2/balanced-damping",
+    "diagnostic": "TIMEOUT pose=(4.426, 7.407, -3.9deg)"
+  },
+  {
+    "name": "less-translation-damping",
+    "gains": {
+      "TRANSLATION_KP": 5,
+      "TRANSLATION_KD": 0.3,
+      "ROTATION_KP": 3,
+      "ROTATION_KD": 0.3,
+      "CROSS_TRACK_KP": 1,
+      "CROSS_TRACK_KD": 0
+    },
+    "score": 2.8845969602337025,
+    "summary": {
+      "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+      "gui": {
+        "samples": 340,
+        "duration_seconds": 6.78,
+        "length_meters": 17.632055528018494
+      },
+      "robot": {
+        "samples": 477,
+        "duration_seconds": 9.553588,
+        "length_meters": 18.43085511976962
+      },
+      "aligned_position_error_meters": {
+        "mean": 0.04584399194868818,
+        "rms": 0.06312714957366189,
+        "p95": 0.15410630543568696,
+        "max": 0.20051116762488694
+      },
+      "aligned_absolute_heading_error_degrees": {
+        "mean": 12.033659653554526,
+        "rms": 19.265167865776352,
+        "p95": 48.4089863372559,
+        "max": 67.58721516458345
+      },
+      "same_elapsed_time_position_error_meters": {
+        "mean": 1.8151174833368995,
+        "rms": 2.170553117281417,
+        "p95": 4.231703035775635,
+        "max": 4.390145888660325
+      },
+      "endpoint_position_difference_meters": 0.025236273544850477,
+      "endpoint_heading_difference_degrees": -1.6933294371952703,
+      "caveats": [
+        "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+        "Simulation is not real-hardware accuracy or PID validation.",
+        "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+      ]
+    },
+    "source": "/Users/andrei/Robot-Code-2026/build/bline-tuning-round2/less-translation-damping",
+    "diagnostic": "PASS postAutoDisplacement=0.0226m initialCoastPeak=0.2348mps finalSpeed=0.0000mps"
+  },
+  {
+    "name": "more-rotation-damping",
+    "gains": {
+      "TRANSLATION_KP": 5,
+      "TRANSLATION_KD": 0.5,
+      "ROTATION_KP": 4,
+      "ROTATION_KD": 0.8,
+      "CROSS_TRACK_KP": 1,
+      "CROSS_TRACK_KD": 0
+    },
+    "score": 2.8508234933835213,
+    "summary": {
+      "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+      "gui": {
+        "samples": 340,
+        "duration_seconds": 6.78,
+        "length_meters": 17.632055528018494
+      },
+      "robot": {
+        "samples": 489,
+        "duration_seconds": 9.79169,
+        "length_meters": 18.52616446130034
+      },
+      "aligned_position_error_meters": {
+        "mean": 0.04791283447681648,
+        "rms": 0.06338702529121745,
+        "p95": 0.12188542070073911,
+        "max": 0.22672120189496775
+      },
+      "aligned_absolute_heading_error_degrees": {
+        "mean": 10.355909455738843,
+        "rms": 17.159636514685793,
+        "p95": 43.62610964481441,
+        "max": 64.01297441341399
+      },
+      "same_elapsed_time_position_error_meters": {
+        "mean": 1.825959427479157,
+        "rms": 2.1828269364872606,
+        "p95": 4.2806266127812735,
+        "max": 4.427521344401621
+      },
+      "endpoint_position_difference_meters": 0.029847297414476375,
+      "endpoint_heading_difference_degrees": -1.9679921115601395,
+      "caveats": [
+        "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+        "Simulation is not real-hardware accuracy or PID validation.",
+        "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+      ]
+    },
+    "source": "/Users/andrei/Robot-Code-2026/build/bline-tuning-round3/more-rotation-damping",
+    "diagnostic": "PASS postAutoDisplacement=0.0084m initialCoastPeak=0.0957mps finalSpeed=0.0000mps"
+  },
+  {
+    "name": "stronger-damped-rotation",
+    "gains": {
+      "TRANSLATION_KP": 5,
+      "TRANSLATION_KD": 0.5,
+      "ROTATION_KP": 5,
+      "ROTATION_KD": 0.8,
+      "CROSS_TRACK_KP": 1,
+      "CROSS_TRACK_KD": 0
+    },
+    "score": 2.9138328520534,
+    "summary": {
+      "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+      "gui": {
+        "samples": 340,
+        "duration_seconds": 6.78,
+        "length_meters": 17.632055528018494
+      },
+      "robot": {
+        "samples": 493,
+        "duration_seconds": 9.882415,
+        "length_meters": 18.592510193775947
+      },
+      "aligned_position_error_meters": {
+        "mean": 0.05044960133922839,
+        "rms": 0.06710177930658644,
+        "p95": 0.13853553997369875,
+        "max": 0.23438904344832215
+      },
+      "aligned_absolute_heading_error_degrees": {
+        "mean": 9.095787969210779,
+        "rms": 16.79582748187975,
+        "p95": 46.26025434544706,
+        "max": 68.88598932404662
+      },
+      "same_elapsed_time_position_error_meters": {
+        "mean": 1.8286684459666112,
+        "rms": 2.186841793044803,
+        "p95": 4.289483718734027,
+        "max": 4.444388728470628
+      },
+      "endpoint_position_difference_meters": 0.028488889445944396,
+      "endpoint_heading_difference_degrees": -1.4304034021931993,
+      "caveats": [
+        "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+        "Simulation is not real-hardware accuracy or PID validation.",
+        "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+      ]
+    },
+    "source": "/Users/andrei/Robot-Code-2026/build/bline-tuning-round3/stronger-damped-rotation",
+    "diagnostic": "PASS postAutoDisplacement=0.0094m initialCoastPeak=0.0938mps finalSpeed=0.0000mps"
+  },
+  {
+    "name": "no-cross-anticipation",
+    "gains": {
+      "TRANSLATION_KP": 5,
+      "TRANSLATION_KD": 0.5,
+      "ROTATION_KP": 4,
+      "ROTATION_KD": 0.5,
+      "CROSS_TRACK_KP": 0,
+      "CROSS_TRACK_KD": 0
+    },
+    "score": 2.8559580935245794,
+    "summary": {
+      "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+      "gui": {
+        "samples": 340,
+        "duration_seconds": 6.78,
+        "length_meters": 17.632055528018494
+      },
+      "robot": {
+        "samples": 488,
+        "duration_seconds": 9.798151,
+        "length_meters": 18.391826688295666
+      },
+      "aligned_position_error_meters": {
+        "mean": 0.04714587964012375,
+        "rms": 0.06044119530398651,
+        "p95": 0.11035694448864429,
+        "max": 0.19616327621222587
+      },
+      "aligned_absolute_heading_error_degrees": {
+        "mean": 10.161759563049358,
+        "rms": 17.975557033445266,
+        "p95": 46.956352757951024,
+        "max": 70.01055087340004
+      },
+      "same_elapsed_time_position_error_meters": {
+        "mean": 1.8304293388290702,
+        "rms": 2.1842620891593802,
+        "p95": 4.255885472163955,
+        "max": 4.415108945642828
+      },
+      "endpoint_position_difference_meters": 0.029395412240871152,
+      "endpoint_heading_difference_degrees": -1.4628226147488506,
+      "caveats": [
+        "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+        "Simulation is not real-hardware accuracy or PID validation.",
+        "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+      ]
+    },
+    "source": "/Users/andrei/Robot-Code-2026/build/bline-tuning-round3/no-cross-anticipation",
+    "diagnostic": "PASS postAutoDisplacement=0.0107m initialCoastPeak=0.1198mps finalSpeed=0.0000mps"
+  },
+  {
+    "name": "medium-cross-anticipation",
+    "gains": {
+      "TRANSLATION_KP": 5,
+      "TRANSLATION_KD": 0.5,
+      "ROTATION_KP": 4,
+      "ROTATION_KD": 0.5,
+      "CROSS_TRACK_KP": 3,
+      "CROSS_TRACK_KD": 0
+    },
+    "score": 2.838019292344293,
+    "summary": {
+      "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+      "gui": {
+        "samples": 340,
+        "duration_seconds": 6.78,
+        "length_meters": 17.632055528018494
+      },
+      "robot": {
+        "samples": 486,
+        "duration_seconds": 9.771338,
+        "length_meters": 18.507890959009682
+      },
+      "aligned_position_error_meters": {
+        "mean": 0.04773783635713586,
+        "rms": 0.06192336732560777,
+        "p95": 0.131830300652802,
+        "max": 0.20695938308643994
+      },
+      "aligned_absolute_heading_error_degrees": {
+        "mean": 9.977860503895984,
+        "rms": 17.42831782552644,
+        "p95": 45.58452672726705,
+        "max": 67.3089343763339
+      },
+      "same_elapsed_time_position_error_meters": {
+        "mean": 1.843634017414673,
+        "rms": 2.189602406864199,
+        "p95": 4.233280628884946,
+        "max": 4.3980093514684135
+      },
+      "endpoint_position_difference_meters": 0.028117535535555804,
+      "endpoint_heading_difference_degrees": -1.4340974329857463,
+      "caveats": [
+        "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+        "Simulation is not real-hardware accuracy or PID validation.",
+        "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+      ]
+    },
+    "source": "/Users/andrei/Robot-Code-2026/build/bline-tuning-round3/medium-cross-anticipation",
+    "diagnostic": "PASS postAutoDisplacement=0.0123m initialCoastPeak=0.1120mps finalSpeed=0.0000mps"
+  },
+  {
+    "name": "gentler-translation",
+    "gains": {
+      "TRANSLATION_KP": 4,
+      "TRANSLATION_KD": 0.5,
+      "ROTATION_KP": 4,
+      "ROTATION_KD": 0.5,
+      "CROSS_TRACK_KP": 1,
+      "CROSS_TRACK_KD": 0
+    },
+    "score": 2.97909468118898,
+    "summary": {
+      "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+      "gui": {
+        "samples": 340,
+        "duration_seconds": 6.78,
+        "length_meters": 17.632055528018494
+      },
+      "robot": {
+        "samples": 505,
+        "duration_seconds": 10.139669999999999,
+        "length_meters": 18.48801213565327
+      },
+      "aligned_position_error_meters": {
+        "mean": 0.04570177434671294,
+        "rms": 0.06253383645006087,
+        "p95": 0.13432790399962705,
+        "max": 0.22660945409055389
+      },
+      "aligned_absolute_heading_error_degrees": {
+        "mean": 9.847839124211257,
+        "rms": 17.61637977477491,
+        "p95": 46.26883302571204,
+        "max": 69.58597138551644
+      },
+      "same_elapsed_time_position_error_meters": {
+        "mean": 1.8330274564586666,
+        "rms": 2.1863039131056223,
+        "p95": 4.283220427735426,
+        "max": 4.433786081485604
+      },
+      "endpoint_position_difference_meters": 0.029192496298569525,
+      "endpoint_heading_difference_degrees": -1.4680416300089176,
+      "caveats": [
+        "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+        "Simulation is not real-hardware accuracy or PID validation.",
+        "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+      ]
+    },
+    "source": "/Users/andrei/Robot-Code-2026/build/bline-tuning-round3/gentler-translation",
+    "diagnostic": "PASS postAutoDisplacement=0.0090m initialCoastPeak=0.0670mps finalSpeed=0.0000mps"
+  },
+  {
+    "name": "original-rotation-more-d",
+    "gains": {
+      "TRANSLATION_KP": 5,
+      "TRANSLATION_KD": 0.5,
+      "ROTATION_KP": 3,
+      "ROTATION_KD": 0.5,
+      "CROSS_TRACK_KP": 1,
+      "CROSS_TRACK_KD": 0
+    },
+    "failed": true,
+    "source": "/Users/andrei/Robot-Code-2026/build/bline-tuning-round3/original-rotation-more-d",
+    "diagnostic": "TIMEOUT pose=(4.426, 7.407, -3.0deg)"
+  },
+  {
+    "name": "final-constants-run1",
+    "gains": {},
+    "score": 2.9345292824682723,
+    "summary": {
+      "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+      "gui": {
+        "samples": 340,
+        "duration_seconds": 6.78,
+        "length_meters": 17.632055528018494
+      },
+      "robot": {
+        "samples": 487,
+        "duration_seconds": 9.776615,
+        "length_meters": 18.60813710361425
+      },
+      "aligned_position_error_meters": {
+        "mean": 0.05075896305028957,
+        "rms": 0.06788426756372994,
+        "p95": 0.1563226977768431,
+        "max": 0.23229027808577996
+      },
+      "aligned_absolute_heading_error_degrees": {
+        "mean": 9.978385387061957,
+        "rms": 17.60220310364732,
+        "p95": 46.396683503285274,
+        "max": 67.94417487951031
+      },
+      "same_elapsed_time_position_error_meters": {
+        "mean": 1.8414816376755063,
+        "rms": 2.190151977628595,
+        "p95": 4.254685499575833,
+        "max": 4.399751228238391
+      },
+      "endpoint_position_difference_meters": 0.027819514268770825,
+      "endpoint_heading_difference_degrees": -1.3667012096854203,
+      "caveats": [
+        "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+        "Simulation is not real-hardware accuracy or PID validation.",
+        "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+      ]
+    },
+    "source": "/Users/andrei/Robot-Code-2026/build/bline-tuning-verification/final-constants-run1",
+    "diagnostic": "PASS postAutoDisplacement=0.0124m initialCoastPeak=0.1127mps finalSpeed=0.0000mps"
+  },
+  {
+    "name": "final-constants-run2",
+    "gains": {},
+    "score": 2.901833052011411,
+    "summary": {
+      "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+      "gui": {
+        "samples": 340,
+        "duration_seconds": 6.78,
+        "length_meters": 17.632055528018494
+      },
+      "robot": {
+        "samples": 487,
+        "duration_seconds": 9.757744,
+        "length_meters": 18.571408557973424
+      },
+      "aligned_position_error_meters": {
+        "mean": 0.049825330720245815,
+        "rms": 0.06560477845187089,
+        "p95": 0.14563530822521226,
+        "max": 0.22384253894416908
+      },
+      "aligned_absolute_heading_error_degrees": {
+        "mean": 9.899173895797336,
+        "rms": 17.712913114934604,
+        "p95": 46.59249457996866,
+        "max": 69.08176113464576
+      },
+      "same_elapsed_time_position_error_meters": {
+        "mean": 1.8307149945679022,
+        "rms": 2.18387168828195,
+        "p95": 4.247302072223423,
+        "max": 4.390128938993021
+      },
+      "endpoint_position_difference_meters": 0.02786176078153446,
+      "endpoint_heading_difference_degrees": -1.3880216567915924,
+      "caveats": [
+        "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+        "Simulation is not real-hardware accuracy or PID validation.",
+        "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+      ]
+    },
+    "source": "/Users/andrei/Robot-Code-2026/build/bline-tuning-verification/final-constants-run2",
+    "diagnostic": "PASS postAutoDisplacement=0.0101m initialCoastPeak=0.1149mps finalSpeed=0.0000mps"
+  },
+  {
+    "name": "zero-cross-repeat1",
+    "gains": {
+      "TRANSLATION_KP": 5,
+      "TRANSLATION_KD": 0.5,
+      "ROTATION_KP": 4,
+      "ROTATION_KD": 0.5,
+      "CROSS_TRACK_KP": 0,
+      "CROSS_TRACK_KD": 0
+    },
+    "score": 2.9251236752546577,
+    "summary": {
+      "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+      "gui": {
+        "samples": 340,
+        "duration_seconds": 6.78,
+        "length_meters": 17.632055528018494
+      },
+      "robot": {
+        "samples": 485,
+        "duration_seconds": 9.8342,
+        "length_meters": 18.418355778341752
+      },
+      "aligned_position_error_meters": {
+        "mean": 0.04981847944068723,
+        "rms": 0.06377817688884643,
+        "p95": 0.1219358172296529,
+        "max": 0.20309396488881576
+      },
+      "aligned_absolute_heading_error_degrees": {
+        "mean": 10.28839887883711,
+        "rms": 18.14855070234525,
+        "p95": 48.47861883375953,
+        "max": 70.17046736590511
+      },
+      "same_elapsed_time_position_error_meters": {
+        "mean": 1.8633714194621278,
+        "rms": 2.2068462421078463,
+        "p95": 4.28593996660926,
+        "max": 4.432018496943863
+      },
+      "endpoint_position_difference_meters": 0.027366560818861223,
+      "endpoint_heading_difference_degrees": -1.4719720631877358,
+      "caveats": [
+        "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+        "Simulation is not real-hardware accuracy or PID validation.",
+        "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+      ]
+    },
+    "source": "/Users/andrei/Robot-Code-2026/build/bline-tuning-cross-verification/zero-cross-repeat1",
+    "diagnostic": "PASS postAutoDisplacement=0.0093m initialCoastPeak=0.1080mps finalSpeed=0.0000mps"
+  },
+  {
+    "name": "zero-cross-repeat2",
+    "gains": {
+      "TRANSLATION_KP": 5,
+      "TRANSLATION_KD": 0.5,
+      "ROTATION_KP": 4,
+      "ROTATION_KD": 0.5,
+      "CROSS_TRACK_KP": 0,
+      "CROSS_TRACK_KD": 0
+    },
+    "score": 2.940552239557765,
+    "summary": {
+      "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+      "gui": {
+        "samples": 340,
+        "duration_seconds": 6.78,
+        "length_meters": 17.632055528018494
+      },
+      "robot": {
+        "samples": 490,
+        "duration_seconds": 9.831948,
+        "length_meters": 18.445738341402816
+      },
+      "aligned_position_error_meters": {
+        "mean": 0.049635477887799484,
+        "rms": 0.06524973489497121,
+        "p95": 0.12230187373368814,
+        "max": 0.22049988244118282
+      },
+      "aligned_absolute_heading_error_degrees": {
+        "mean": 10.245964843624717,
+        "rms": 18.060801946454788,
+        "p95": 48.415465133749024,
+        "max": 69.97974025832947
+      },
+      "same_elapsed_time_position_error_meters": {
+        "mean": 1.8316873651284493,
+        "rms": 2.187926938397212,
+        "p95": 4.292658366535363,
+        "max": 4.446023357742504
+      },
+      "endpoint_position_difference_meters": 0.02888302524243756,
+      "endpoint_heading_difference_degrees": -1.4810078368000665,
+      "caveats": [
+        "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+        "Simulation is not real-hardware accuracy or PID validation.",
+        "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+      ]
+    },
+    "source": "/Users/andrei/Robot-Code-2026/build/bline-tuning-cross-verification/zero-cross-repeat2",
+    "diagnostic": "PASS postAutoDisplacement=0.0125m initialCoastPeak=0.1153mps finalSpeed=0.0000mps"
+  },
+  {
+    "name": "selected-constants-no-overrides",
+    "gains": {},
+    "score": 2.926524378275194,
+    "summary": {
+      "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+      "gui": {
+        "samples": 340,
+        "duration_seconds": 6.78,
+        "length_meters": 17.632055528018494
+      },
+      "robot": {
+        "samples": 489,
+        "duration_seconds": 9.815479,
+        "length_meters": 18.448066799383696
+      },
+      "aligned_position_error_meters": {
+        "mean": 0.05110951496017756,
+        "rms": 0.0656488597750708,
+        "p95": 0.1307404106870894,
+        "max": 0.19599630548242644
+      },
+      "aligned_absolute_heading_error_degrees": {
+        "mean": 10.106967412335777,
+        "rms": 17.802400300589348,
+        "p95": 45.86341593939925,
+        "max": 69.11341963113682
+      },
+      "same_elapsed_time_position_error_meters": {
+        "mean": 1.8277186351326664,
+        "rms": 2.1830003987285203,
+        "p95": 4.25705211330601,
+        "max": 4.418623114581073
+      },
+      "endpoint_position_difference_meters": 0.02908769394566597,
+      "endpoint_heading_difference_degrees": -1.4301794329910822,
+      "caveats": [
+        "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+        "Simulation is not real-hardware accuracy or PID validation.",
+        "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+      ]
+    },
+    "source": "/Users/andrei/Robot-Code-2026/build/bline-tuning-selected-verification/selected-constants-no-overrides",
+    "diagnostic": "PASS postAutoDisplacement=0.0109m initialCoastPeak=0.1189mps finalSpeed=0.0000mps"
+  }
+]

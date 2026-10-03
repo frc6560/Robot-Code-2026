@@ -12,6 +12,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import swervelib.SwerveInputStream;
 import edu.wpi.first.math.geometry.Pose3d;
@@ -22,6 +23,7 @@ import frc.robot.autonomous.AutoModeChooser;
 import frc.robot.commands.scoring.ShotCommand;
 import frc.robot.autonomous.AutoCommands;
 import frc.robot.commands.periodic.SuperstructureCommand;
+import frc.robot.commands.swervedrive.drivebase.AimAtHub;
 import frc.robot.utility.Shooter.PassCalculator;
 import frc.robot.utility.Shooter.ShotCalculator;
 
@@ -46,6 +48,7 @@ import frc.robot.subsystems.led.LEDIOSim;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import frc.robot.subsystems.vision.LimelightVision;
 import frc.robot.subsystems.vision.VisionSubsystem;
+import org.littletonrobotics.junction.Logger;
 
 
 public class RobotContainer {
@@ -68,6 +71,7 @@ public class RobotContainer {
     private final ShotCalculator shotCalculator = new ShotCalculator();
     private final PassCalculator passCalculator = new PassCalculator();
     private Command shotCommand;
+    private boolean pitCoastMode = false;
 
     private final AutoCommands factory;
     private final AutoModeChooser autoChooser;
@@ -110,6 +114,7 @@ public class RobotContainer {
       );
       autoChooser = new AutoModeChooser(factory);
       SmartDashboard.putData("Auto Chooser", autoChooser.getAutoChooser());
+      SmartDashboard.putBoolean("Pit Coast Mode", false);
 
       List<LimelightVision> limelights = new ArrayList<LimelightVision>();
       for(String name : LimelightConstants.LIMELIGHT_NAMES) {
@@ -158,6 +163,17 @@ public class RobotContainer {
         CommandScheduler.getInstance().schedule(shotCommand);
     }
 
+    /** Gated shot plus BLine's AimAtHub, which turns the chassis to the hub while the driver translates. */
+    private void scheduleAimedShotCommand() {
+        cancelShotCommand();
+        shotCommand = new ShotCommand(
+            feeder, turret, hood, shooter, shotCalculator, drivebase::getPose, led)
+            .alongWith(new AimAtHub(
+                drivebase,
+                () -> clampSpeedsForShooting(driveAngularVelocity.get())));
+        CommandScheduler.getInstance().schedule(shotCommand);
+    }
+
     private void cancelShotCommand() {
         if (shotCommand != null) {
             CommandScheduler.getInstance().cancel(shotCommand);
@@ -201,7 +217,9 @@ public class RobotContainer {
 
     private void configureBindings() {
         Command driveFieldOrientedAnglularVelocity = drivebase.driveFieldOriented(
-            () -> clampSpeedsForShooting(driveAngularVelocity.get()));
+            () -> DriverStation.isTeleopEnabled()
+                ? clampSpeedsForShooting(driveAngularVelocity.get())
+                : new ChassisSpeeds());
         drivebase.setDefaultCommand(driveFieldOrientedAnglularVelocity);
 
         driverXbox.x()
@@ -209,6 +227,15 @@ public class RobotContainer {
           .onTrue(Commands.runOnce(() -> vision.hardReset("limelight-br"), vision));
         driverXbox.start().
           onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
+        driverXbox.a()
+          .onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
+
+        // Driver Back/View toggles a zero-output coast mode so every mechanism can be moved by hand.
+        driverXbox.back()
+          .and(DriverStation::isTeleopEnabled)
+          .onTrue(Commands.runOnce(
+              this::togglePitCoastMode,
+              drivebase, hood, shooter, turret, feeder, intake));
 
         // --- SHOTS ---
         
@@ -216,9 +243,14 @@ public class RobotContainer {
         Trigger shootReleaseTrigger = new Trigger(m_Controls::getShootReleaseTrigger);
         Trigger ungatedShootTrigger = new Trigger(m_Controls::getUngatedShootTrigger);
         Trigger driverShootTrigger = driverXbox.rightTrigger().and(DriverStation::isTeleopEnabled);
+        Trigger driverAimedShootTrigger = driverXbox.y().and(DriverStation::isTeleopEnabled);
 
         driverShootTrigger.onTrue(Commands.runOnce(this::startUngatedDriverShot));
         driverShootTrigger.onFalse(Commands.runOnce(this::stopUngatedDriverShot));
+
+        // Hold driver Y to run the gated shot while the chassis aims at the hub.
+        driverAimedShootTrigger.onTrue(Commands.runOnce(this::scheduleAimedShotCommand));
+        driverAimedShootTrigger.onFalse(Commands.runOnce(this::cancelShotCommand));
 
         shootTrigger.onTrue(Commands.runOnce(this::scheduleShotCommand));
         shootReleaseTrigger.onTrue(Commands.runOnce(this::cancelShotCommand));
@@ -256,9 +288,33 @@ public class RobotContainer {
         resetPoseTrigger.onTrue(Commands.runOnce(() -> vision.hardReset("limelight-br"), vision));
     }
 
+    private void togglePitCoastMode() {
+        setPitCoastMode(!pitCoastMode);
+    }
+
+    private void setPitCoastMode(boolean enabled) {
+        pitCoastMode = enabled;
+        drivebase.setPitCoastMode(enabled);
+        hood.setPitCoastMode(enabled);
+        shooter.setPitCoastMode(enabled);
+        turret.setPitCoastMode(enabled);
+        feeder.setPitCoastMode(enabled);
+        intake.setPitCoastMode(enabled);
+
+        SmartDashboard.putBoolean("Pit Coast Mode", enabled);
+        Logger.recordOutput("Robot/PitCoastMode", enabled);
+    }
+
+    /** Always restore normal motor control before an autonomous period begins. */
+    public void disablePitCoastMode() {
+        if (pitCoastMode) {
+            setPitCoastMode(false);
+        }
+    }
+
 
     public Command getAutonomousCommand() {
-      return autoChooser.getAutoChooser().selectedCommand();
+      return autoChooser.getAutoChooser().getSelected();
     }
 
     public SwerveSubsystem getDrivebase() {

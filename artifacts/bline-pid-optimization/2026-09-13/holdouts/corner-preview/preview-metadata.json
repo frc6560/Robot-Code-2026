@@ -1,0 +1,22 @@
+{
+  "source_revision": "e7bad71d071e2a485f0170bf2ced32e3c370ad45",
+  "path": "/Users/andrei/Robot-Code-2026/artifacts/bline-pid-optimization/2026-09-13/holdouts/paths/profiled-corner.json",
+  "config": "/Users/andrei/Robot-Code-2026/artifacts/bline-pid-optimization/2026-09-13/holdouts/config.json",
+  "path_sha256": "2bd00a4d0b51623cccc90d0f3a1112289cec1bafe465ca10dd61c1cb176b0b94",
+  "config_sha256": "f31e2ec5d1216a48ffb1ff1415dd1ab13da1a1661fa9a1b72eb4ed9f3f6301db",
+  "dt_seconds": 0.02,
+  "samples": 227,
+  "duration_seconds": 4.52,
+  "start": [
+    0,
+    4.0012,
+    7,
+    0
+  ],
+  "end": [
+    4.52,
+    8,
+    6,
+    0
+  ]
+}
