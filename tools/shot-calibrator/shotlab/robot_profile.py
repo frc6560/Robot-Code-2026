@@ -43,7 +43,7 @@ HUB_DEFAULT_RIM_MARGIN_M = 1.0 * INCH_TO_METER
 # Robot-code limits and conventions.
 FLYWHEEL_IDLE_RPM = 500.0
 FLYWHEEL_MAX_RPM = 5000.0
-FLYWHEEL_GEAR_RATIO = 1.25
+FLYWHEEL_GEAR_RATIO = 15.0 / 18.0
 FOLLOWER_TO_LEADER_RPM_RATIO = 1.0
 HOOD_MIN_DEG = 25.1
 HOOD_MAX_DEG = 45.0
@@ -82,7 +82,7 @@ PROFILE_ROWS = (
     ("Drive module X offset", "10.875 in / 0.2762 m", "Swerve config", "Code"),
     ("Form shooter type", FORM_SHOOTER_CONFIGURATION, "Robot form", "Conflicts with code"),
     ("Flywheel command", "Leader + opposed follower", "ShooterIOTalonFX.java", "Current code"),
-    ("Flywheel gearing", "1.25 mechanism / motor", "Constants.java", "Code"),
+    ("Flywheel gearing", "15:18 (0.833 mechanism / motor)", "Constants.java", "Code"),
     ("Flywheel range", "500-5000 RPM", "Constants.java", "Code"),
     ("Hood command range", "25.1-45.0 deg from back (64.9-45.0 deg launch)", "Constants.java", "Code + convention"),
     ("Shot distance range", "1.628-6.050 m", "ShotCalculator.java", "Code"),

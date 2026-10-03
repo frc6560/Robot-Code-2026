@@ -410,7 +410,7 @@ public final class Constants {
     public static final double MAX_RPM = 5000; 
     public static final double FLYWHEEL_ACCELERATION = 2000.0;
     public static final double PASS_RPM = 1600.0; 
-    public static final double FLYWHEEL_GEAR_RATIO = 1.25; 
+    public static final double FLYWHEEL_GEAR_RATIO = 15.0 / 18.0; // 15T motor gear drives 18T flywheel gear (flywheel = motor * ratio)
     public static final double FLYWHEEL_IDLE_RPM = 500; //kraken x60 
     public static final double FLYWHEEL_RPM_TOLERANCE = 200.0; 
 
