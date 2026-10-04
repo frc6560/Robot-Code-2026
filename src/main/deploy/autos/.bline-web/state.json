@@ -140,8 +140,8 @@
           {
             "key": "max_velocity_meters_per_sec",
             "value": 4.05,
-            "start_ordinal": 8,
-            "end_ordinal": 9,
+            "start_ordinal": 7,
+            "end_ordinal": 8,
             "source": "auto_velocity",
             "auto_velocity": {
               "velocity_safety_factor": 0.9,
@@ -166,10 +166,6 @@
           },
           {
             "element_index": 6.0,
-            "target_id": "target-7361da80"
-          },
-          {
-            "element_index": 7.0,
             "target_id": "target-b0e1e26e"
           }
         ]
