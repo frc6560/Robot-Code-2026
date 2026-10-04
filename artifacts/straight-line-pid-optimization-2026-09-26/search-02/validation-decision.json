@@ -1,0 +1,78 @@
+{
+  "validation": [
+    {
+      "name": "baseline",
+      "vector": [
+        5,
+        0.5,
+        5,
+        0
+      ],
+      "records": [
+        1,
+        15,
+        16
+      ],
+      "failed": false,
+      "mean_score": 0.5232648242112587,
+      "standard_deviation": 0.011034576517236548,
+      "mean_rms_m": 0.22543348778966824
+    },
+    {
+      "name": "finalist0",
+      "vector": [
+        5.75,
+        0.5,
+        5,
+        0
+      ],
+      "records": [
+        3,
+        17,
+        18
+      ],
+      "failed": false,
+      "mean_score": 0.5351552707206128,
+      "standard_deviation": 0.031357128043523134,
+      "mean_rms_m": 0.2301107259051497
+    },
+    {
+      "name": "finalist1",
+      "vector": [
+        5.75,
+        0.5,
+        6.5,
+        0
+      ],
+      "records": [
+        13,
+        19,
+        20
+      ],
+      "failed": false,
+      "mean_score": 0.5234150748360638,
+      "standard_deviation": 0.016659982665784293,
+      "mean_rms_m": 0.22564190226666178
+    }
+  ],
+  "accepted": false,
+  "improvement_fraction": -0.0002871406940672606,
+  "recommended_vector": [
+    5,
+    0.5,
+    5,
+    0
+  ],
+  "recommended_gains": {
+    "TRANSLATION_KP": 5,
+    "TRANSLATION_KD": 0.5,
+    "CROSS_TRACK_KP": 5,
+    "CROSS_TRACK_KD": 0
+  },
+  "fixed_rotation_gains": {
+    "ROTATION_KP": 3,
+    "ROTATION_KD": 0.3
+  },
+  "rule": "Three completed/stopped runs each; >=3% lower mean geometry score; advantage exceeds one combined standard error.",
+  "caveat": "WPILib simulation optimization only; not physical-robot validation."
+}

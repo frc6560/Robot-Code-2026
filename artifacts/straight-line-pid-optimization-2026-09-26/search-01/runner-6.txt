@@ -1,0 +1,7 @@
+Running run {
+  TRANSLATION_KP: 3.5,
+  TRANSLATION_KD: 0.5,
+  CROSS_TRACK_KP: 10,
+  CROSS_TRACK_KD: 0.35
+}
+run score 5.076 XY rms 0.2190 heading rms 16.98 duration 10.06

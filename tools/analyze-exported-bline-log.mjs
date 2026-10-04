@@ -15,6 +15,7 @@ assert(rows.every(r=>r.length===headers.length),'Nonrectangular CSV');
 const prefix='NT:/AdvantageKit/RealOutputs/BLine/FollowPath/';
 function latest(name){const i=headers.indexOf(name);assert(i>=0,'Missing '+name);return rows.findLast(r=>r[i]&&r[i]!=='null')?.[i];}
 const simulationTrace=headers[0]==='time_seconds'&&headers.includes('auto_active');
+const syntheticTrace=simulationTrace&&headers.includes('synthetic_mock');
 let raw;
 if(simulationTrace){
   const activeColumn=headers.indexOf('auto_active');
@@ -45,6 +46,7 @@ if(!simulationTrace){
 const referenceText=fs.readFileSync(previewFile,'utf8');
 const referenceRows=csv(referenceText),referenceHeaders=referenceRows.shift();
 const referenceIsSimulation=referenceHeaders.includes('auto_active');
+const referenceIsStraight=referenceHeaders.includes('straight_reference');
 let selectedReferenceRows=referenceRows;
 if(referenceIsSimulation){
   const k=referenceHeaders.indexOf('auto_active');
@@ -99,6 +101,20 @@ if(referenceIsSimulation){
     'Order-aligned DTW/local continuous projection is approximate and hides timing/progress differences.',
     'Simulation uses current checked-in PID gains and defaults to a 2025 MapleSim arena; historical real-robot gains are unverified.'];
 }
+if(referenceIsStraight){
+  summary.reference_kind='Ordered straight waypoint polyline';
+  summary.reference_path=path.resolve(previewFile);
+  summary.reference_sha256=createHash('sha256').update(referenceText).digest('hex');
+  summary.reference_positions=preview.length;
+  summary.straight_reference_length_m=summary.gui_polyline_length_m;
+  delete summary.gui_polyline_length_m;
+  summary.method=summary.method.replaceAll('GUI','straight waypoint reference');
+  summary.limitations.unshift('The straight reference is a geometric ideal with instantaneous corners, not a dynamically feasible time parameterization.');
+}
+if(syntheticTrace){
+  summary.source_kind='Synthetic mock pose trace (not robot data)';
+  summary.limitations.unshift('This input is explicitly synthetic demonstration data and must not be represented as a physical robot run.');
+}
 fs.writeFileSync(path.join(output,'analysis-summary.json'),JSON.stringify(summary,null,2)+'\n');
 fs.writeFileSync(path.join(output,'reconstructed-positions.csv'),'history_index,x_meters,y_meters\n'+raw.map((p,i)=>[i,p.x,p.y].join(',')).join('\n')+'\n');
 fs.writeFileSync(path.join(output,'deviation-by-distance.csv'),'robot_distance_meters,robot_x_meters,robot_y_meters,matched_gui_x_meters,matched_gui_y_meters,deviation_cm,nearest_curve_lower_bound_cm,gui_segment_index\n'+comparison.map(p=>[p.s,p.x,p.y,p.gui_x,p.gui_y,100*p.error,100*p.unrestricted_error,p.gui_segment].join(',')).join('\n')+'\n');
@@ -118,5 +134,10 @@ if(simulationTrace)svg=svg.replace('Logged robot path vs BLine GUI prediction','
   .replace('stored positions','saved simulation poses').replace('Orange: logged robot history','Orange: simulated robot path');
 if(referenceIsSimulation&&!simulationTrace)svg=svg.replace('Logged robot path vs BLine GUI prediction','Recorded robot path vs simulation')
   .replace('Blue: GUI preview','Blue: simulation').replace('Orange: logged robot history','Orange: recorded robot history');
+if(syntheticTrace&&referenceIsSimulation)svg=svg.replace('Simulated robot path vs BLine GUI prediction','Path vs new simulation')
+  .replace('saved simulation poses','path points').replace('Blue: GUI preview','Blue: new simulation')
+  .replace('Orange: simulated robot path','Orange: path');
+if(simulationTrace&&referenceIsStraight)svg=svg.replace('Simulated robot path vs BLine GUI prediction','Simulation vs straight waypoint segments')
+  .replace('Blue: GUI preview','Blue: straight segments');
 fs.writeFileSync(path.join(output,'path-comparison.svg'),svg);
 console.log(JSON.stringify(summary,null,2));

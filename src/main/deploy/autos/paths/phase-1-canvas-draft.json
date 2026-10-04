@@ -9,7 +9,7 @@
       },
       "rotation_target": {
         "rotation_radians": -0.0106,
-        "profiled_rotation": false
+        "profiled_rotation": true
       }
     },
     {
@@ -21,7 +21,7 @@
       },
       "rotation_target": {
         "rotation_radians": -0.0106,
-        "profiled_rotation": false
+        "profiled_rotation": true
       }
     },
     {
@@ -33,7 +33,7 @@
       },
       "rotation_target": {
         "rotation_radians": -1.46657,
-        "profiled_rotation": false
+        "profiled_rotation": true
       }
     },
     {
@@ -45,7 +45,7 @@
       },
       "rotation_target": {
         "rotation_radians": -1.58113,
-        "profiled_rotation": false
+        "profiled_rotation": true
       }
     },
     {
@@ -57,7 +57,7 @@
       },
       "rotation_target": {
         "rotation_radians": -0.0106,
-        "profiled_rotation": false
+        "profiled_rotation": true
       }
     },
     {
@@ -69,7 +69,7 @@
       },
       "rotation_target": {
         "rotation_radians": -0.0106,
-        "profiled_rotation": false
+        "profiled_rotation": true
       }
     },
     {
@@ -81,7 +81,7 @@
       },
       "rotation_target": {
         "rotation_radians": -0.0106,
-        "profiled_rotation": false
+        "profiled_rotation": true
       }
     },
     {
@@ -153,27 +153,32 @@
         "end_ordinal": 1
       },
       {
-        "value": 2.0,
+        "value": 2.42,
         "start_ordinal": 2,
         "end_ordinal": 3
       },
       {
-        "value": 2.0,
+        "value": 4.1,
         "start_ordinal": 4,
         "end_ordinal": 4
       },
       {
-        "value": 3.0,
+        "value": 4.05,
         "start_ordinal": 5,
-        "end_ordinal": 7
+        "end_ordinal": 5
       },
       {
-        "value": 2.0,
-        "start_ordinal": 8,
+        "value": 3.64,
+        "start_ordinal": 6,
+        "end_ordinal": 6
+      },
+      {
+        "value": 4.05,
+        "start_ordinal": 7,
         "end_ordinal": 8
       },
       {
-        "value": 2.0,
+        "value": 4.1,
         "start_ordinal": 9,
         "end_ordinal": 9
       },

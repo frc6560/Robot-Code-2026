@@ -1,0 +1,93 @@
+{
+  "kind": "ordered_straight_waypoint_polyline",
+  "source_path": "/Users/andrei/Robot-Code-2026/src/main/deploy/autos/paths/phase-1-canvas-draft.json",
+  "source_path_sha256": "1e3a975e4ef7d0226bc624f560111a990f370ab28efd06d45df6dbe827125ca4",
+  "spacing_m": 0.02,
+  "reference_speed_mps": 2.5,
+  "waypoint_occurrences": 11,
+  "segments": [
+    {
+      "segment": 0,
+      "start_waypoint": 0,
+      "end_waypoint": 1,
+      "length_m": 2.1592777793743916,
+      "start_row": 0,
+      "end_row": 108
+    },
+    {
+      "segment": 1,
+      "start_waypoint": 1,
+      "end_waypoint": 2,
+      "length_m": 1.4212933062883257,
+      "start_row": 108,
+      "end_row": 180
+    },
+    {
+      "segment": 2,
+      "start_waypoint": 2,
+      "end_waypoint": 3,
+      "length_m": 0.9673768040427675,
+      "start_row": 180,
+      "end_row": 229
+    },
+    {
+      "segment": 3,
+      "start_waypoint": 3,
+      "end_waypoint": 4,
+      "length_m": 2.062084742317832,
+      "start_row": 229,
+      "end_row": 333
+    },
+    {
+      "segment": 4,
+      "start_waypoint": 4,
+      "end_waypoint": 5,
+      "length_m": 2.1592777793743916,
+      "start_row": 333,
+      "end_row": 441
+    },
+    {
+      "segment": 5,
+      "start_waypoint": 5,
+      "end_waypoint": 6,
+      "length_m": 2.1592777793743916,
+      "start_row": 441,
+      "end_row": 549
+    },
+    {
+      "segment": 6,
+      "start_waypoint": 6,
+      "end_waypoint": 7,
+      "length_m": 1.4212933062883257,
+      "start_row": 549,
+      "end_row": 621
+    },
+    {
+      "segment": 7,
+      "start_waypoint": 7,
+      "end_waypoint": 8,
+      "length_m": 0.9673768040427675,
+      "start_row": 621,
+      "end_row": 670
+    },
+    {
+      "segment": 8,
+      "start_waypoint": 8,
+      "end_waypoint": 9,
+      "length_m": 2.062084742317832,
+      "start_row": 670,
+      "end_row": 774
+    },
+    {
+      "segment": 9,
+      "start_waypoint": 9,
+      "end_waypoint": 10,
+      "length_m": 2.1592777793743916,
+      "start_row": 774,
+      "end_row": 882
+    }
+  ],
+  "samples": 883,
+  "total_length_m": 17.538620822795462,
+  "duration_s": 7.015448329118184
+}

@@ -1,0 +1,55 @@
+{
+  "source": "/Users/andrei/Robot-Code-2026/artifacts/straight-line-pid-optimization-2026-09-26/search-02/016-baseline-repeat2/run/robot-trace.csv",
+  "source_sha256": "48592ded60afd793e9463842a458e558e043e2a95fc737d87701f648342f1727",
+  "git_path": "/Users/andrei/Robot-Code-2026/src/main/deploy/autos/paths/phase-1-canvas-draft.json",
+  "path_sha256": "1e3a975e4ef7d0226bc624f560111a990f370ab28efd06d45df6dbe827125ca4",
+  "waypoints_match": null,
+  "waypoint_tolerance_visualization_m": 0.2,
+  "history_positions": 502,
+  "robot_polyline_length_m": 20.22963177934741,
+  "distance_sample_spacing_m": 0.02,
+  "distance_uniform_samples": 1013,
+  "order_aligned_geometric_deviation": {
+    "rms_cm": 17.60009562376137,
+    "mean_cm": 10.53861431523886,
+    "p95_cm": 44.29316638981244,
+    "max_cm": 63.21751180454738
+  },
+  "unrestricted_nearest_curve_lower_bound": {
+    "rms_cm": 17.59836246145315,
+    "mean_cm": 10.526864848524541,
+    "p95_cm": 44.29316638981244,
+    "max_cm": 63.21751180454738
+  },
+  "endpoint_error_cm": 2.9548422018867395,
+  "start_error_cm": 0,
+  "peak": {
+    "x": 3.797526824039565,
+    "y": 7.341297034431438,
+    "s": 9.919999999999877,
+    "gui_x": 4.42627,
+    "gui_y": 7.40708,
+    "error": 0.6321751180454738,
+    "gui_segment": 440,
+    "unrestricted_error": 0.6321751180454738
+  },
+  "heading_error": null,
+  "timing_error": null,
+  "method": "Distance-uniform 2 cm robot/straight waypoint reference sampling, full monotone XY DTW, continuous projection onto local matched straight waypoint reference preview segments. Approximate order-aligned geometry, not a time-aligned control error. No shifting, rotation, scale, or start/end snapping.",
+  "limitations": [
+    "The straight reference is a geometric ideal with instantaneous corners, not a dynamically feasible time parameterization.",
+    "One contiguous active command interval plus first post-completion pose; excludes three seconds of coast monitoring.",
+    "Geometry metric removes timing differences; pose headings and timestamps are retained in robot-trace.csv but not scored here.",
+    "YAGSL MapleSim defaults to the 2025 Reefscape arena, not a validated 2026 field.",
+    "Simulation is not independent evidence of real-robot physical accuracy.",
+    "DTW/local continuous projection is approximate and can hide progress/timing differences."
+  ],
+  "source_kind": "Saved WPILOG simulation pose trace",
+  "robot_duration_seconds": 10.097029,
+  "gui_duration_seconds": 7.015448329118184,
+  "reference_kind": "Ordered straight waypoint polyline",
+  "reference_path": "/Users/andrei/Robot-Code-2026/artifacts/straight-line-pid-optimization-2026-09-26/reference/straight-waypoint-reference.csv",
+  "reference_sha256": "1f8f00c9e596468dbaff049c8d7d8a5a5e824f2c7838d11d01d4288120eac0ab",
+  "reference_positions": 883,
+  "straight_reference_length_m": 17.538620822795465
+}

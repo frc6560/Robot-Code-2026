@@ -1,0 +1,38 @@
+{
+  "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+  "gui": {
+    "samples": 883,
+    "duration_seconds": 7.015448329118184,
+    "length_meters": 17.538620822795465
+  },
+  "robot": {
+    "samples": 511,
+    "duration_seconds": 10.269731,
+    "length_meters": 20.317557901238832
+  },
+  "aligned_position_error_meters": {
+    "mean": 0.14643026884532798,
+    "rms": 0.23219926288648174,
+    "p95": 0.5921714003154074,
+    "max": 0.6513765642881227
+  },
+  "aligned_absolute_heading_error_degrees": {
+    "mean": 12.148033134717764,
+    "rms": 17.09493770681508,
+    "p95": 35.969327236259474,
+    "max": 44.69267274977949
+  },
+  "same_elapsed_time_position_error_meters": {
+    "mean": 1.6887033058958592,
+    "rms": 2.024042650164293,
+    "p95": 4.068812022756346,
+    "max": 4.305454459487187
+  },
+  "endpoint_position_difference_meters": 0.027769226537491174,
+  "endpoint_heading_difference_degrees": -1.2881408464511914,
+  "caveats": [
+    "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+    "Simulation is not real-hardware accuracy or PID validation.",
+    "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+  ]
+}

@@ -1,0 +1,163 @@
+> Task :extractReleaseNative UP-TO-DATE
+> Task :compileJava UP-TO-DATE
+> Task :processResources NO-SOURCE
+> Task :classes UP-TO-DATE
+> Task :downloadDepsPreemptively
+> Task :jar UP-TO-DATE
+
+> Task :simulateJavaRelease
+HAL Extensions: No extensions found
+********** Robot program starting **********
+[AdvantageKit] Logging to "/Users/andrei/Robot-Code-2026/artifacts/straight-line-pid-optimization-2026-09-26/search-01/012-poll0-CROSS_TRACK_KD-minus/run/logs/akit_9017326eea5d3850.wpilog"
+[phoenix] CANbus Connected: sim
+[phoenix] CANbus Network Up: sim
+BLINE_HEADLESS: Enabled BLine Editor Path autonomous on Blue alliance
+********** Robot program startup complete **********
+Resetting odometry to: Pose2d(Translation2d(X: 4.43, Y: 7.41), Rotation2d(Rads: -0.01, Deg: -0.61))
+SuperstructureCommand initialized at 1790475041047
+CommandScheduler loop overrun
+[AdvantageKit] Renaming log to "/Users/andrei/Robot-Code-2026/artifacts/straight-line-pid-optimization-2026-09-26/search-01/012-poll0-CROSS_TRACK_KD-minus/run/logs/akit_26-09-26_19-10-41.wpilog"
+CommandScheduler loop overrun
+CommandScheduler loop overrun
+CommandScheduler loop overrun
+[PathPlanner] PathfindingCommand finished warmup
+CommandScheduler loop overrun
+CommandScheduler loop overrun
+BLINE_HEADLESS: Auto command finished at x=4.453 y=7.405 heading=-2.3deg
+BLINE_HEADLESS_RESULT: PASS postAutoDisplacement=0.0126m initialCoastPeak=0.1229mps finalSpeed=0.0000mps
+
+> Task :simulateJava
+
+BUILD SUCCESSFUL in 20s
+5 actionable tasks: 2 executed, 3 up-to-date
+NT: Listening on NT3 port 1735, NT4 port 5810
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 5 ("rio") Status Signal MagnetHealth
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 2 ("rio") Status Signal MagnetHealth
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 2 ("rio") Status Signal AbsolutePosition
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 2 ("rio") Status Signal Velocity
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 8 ("rio") Status Signal MagnetHealth
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 8 ("rio") Status Signal AbsolutePosition
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 8 ("rio") Status Signal Velocity
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 11 ("rio") Status Signal MagnetHealth
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 11 ("rio") Status Signal AbsolutePosition
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 11 ("rio") Status Signal Velocity
+[phoenix] Library initialization is complete.
+	
+Warning at edu.wpi.first.wpilibj.DriverStation.reportJoystickUnpluggedWarning(DriverStation.java:1345): Joystick Button 3 on port 0 not available, check if controller is plugged in
+Warning at edu.wpi.first.wpilibj.IterativeRobotBase.printLoopOverrunMessage(IterativeRobotBase.java:436): Loop time of 0.02s overrun
+
+Warning at edu.wpi.first.wpilibj.Tracer.lambda$printEpochs$0(Tracer.java:62): 	Turret.periodic(): 0.000001s
+	SwerveSubsystem.periodic(): 0.001746s
+	FollowPath.execute(): 0.005265s
+	buttons.run(): 0.000833s
+	Intake.periodic(): 0.000021s
+	SuperstructureCommand.initialize(): 0.001688s
+	Hood.periodic(): 0.000045s
+	VisionSubsystem.periodic(): 0.002229s
+	Feeder.periodic(): 0.000048s
+	SequentialCommandGroup.execute(): 0.013663s
+	RunCommand.initialize(): 0.000029s
+	Shooter.periodic(): 0.000027s
+	LED.periodic(): 0.000743s
+
+Warning at edu.wpi.first.wpilibj.Tracer.lambda$printEpochs$0(Tracer.java:62): 	autonomousInit(): 0.010330s
+	SmartDashboard.updateValues(): 0.002594s
+	robotPeriodic(): 0.027927s
+	LiveWindow.updateValues(): 0.000006s
+	Shuffleboard.update(): 0.000003s
+	simulationPeriodic(): 0.003092s
+	autonomousPeriodic(): 0.000558s
+
+Warning at edu.wpi.first.wpilibj.IterativeRobotBase.printLoopOverrunMessage(IterativeRobotBase.java:436): Loop time of 0.02s overrun
+
+Warning at edu.wpi.first.wpilibj.Tracer.lambda$printEpochs$0(Tracer.java:62): 	Turret.periodic(): 0.000004s
+	SwerveSubsystem.periodic(): 0.000168s
+	FollowPath.execute(): 0.011818s
+	SuperstructureCommand.execute(): 0.007793s
+	RunCommand.execute(): 0.000005s
+	buttons.run(): 0.000178s
+	Intake.periodic(): 0.000016s
+	Hood.periodic(): 0.072445s
+	VisionSubsystem.periodic(): 0.094794s
+	Feeder.periodic(): 0.000082s
+	SequentialCommandGroup.execute(): 0.000642s
+	Shooter.periodic(): 0.000861s
+	LED.periodic(): 0.000057s
+
+Warning at edu.wpi.first.wpilibj.Tracer.lambda$printEpochs$0(Tracer.java:62): 	SmartDashboard.updateValues(): 0.000126s
+	robotPeriodic(): 0.197460s
+	LiveWindow.updateValues(): 0.000001s
+	Shuffleboard.update(): 0.000005s
+	simulationPeriodic(): 0.000230s
+	autonomousPeriodic(): 0.000016s
+
+[phoenix-diagnostics] Server 2026.1.2 (Mar 11 2026, 19:37:44) running on port: 1250
+	
+Warning at edu.wpi.first.wpilibj.IterativeRobotBase.printLoopOverrunMessage(IterativeRobotBase.java:436): Loop time of 0.02s overrun
+
+CAN message is stale, data is valid but old. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 5 ("rio") Status Signal MagnetHealth
+Warning at edu.wpi.first.wpilibj.Tracer.lambda$printEpochs$0(Tracer.java:62): 	SmartDashboard.updateValues(): 0.000052s
+	robotPeriodic(): 0.003324s
+	LiveWindow.updateValues(): 0.000000s
+	Shuffleboard.update(): 0.000003s
+	simulationPeriodic(): 0.441665s
+	autonomousPeriodic(): 0.000526s
+
+CAN message is stale, data is valid but old. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 5 ("rio") Status Signal AbsolutePosition
+Warning at edu.wpi.first.wpilibj.Tracer.lambda$printEpochs$0(Tracer.java:62): 	Turret.periodic(): 0.000002s
+	SwerveSubsystem.periodic(): 0.052081s
+	FollowPath.execute(): 0.011028s
+	SuperstructureCommand.execute(): 0.007154s
+	RunCommand.execute(): 0.000004s
+	buttons.run(): 0.000081s
+	Intake.periodic(): 0.000010s
+	Hood.periodic(): 0.000204s
+	VisionSubsystem.periodic(): 0.013017s
+	Feeder.periodic(): 0.000020s
+	Shooter.periodic(): 0.000028s
+	LED.periodic(): 0.000037s
+
+Warning at edu.wpi.first.wpilibj.IterativeRobotBase.printLoopOverrunMessage(IterativeRobotBase.java:436): Loop time of 0.02s overrun
+
+Sep 26, 2026 7:10:50 PM frc.robot.lib.BLine.FollowPath processEventTriggers
+WARNING: FollowPath: Unregistered event trigger key: Shoot
+Warning at edu.wpi.first.wpilibj.Tracer.lambda$printEpochs$0(Tracer.java:62): 	Turret.periodic(): 0.000001s
+	SwerveSubsystem.periodic(): 0.000039s
+	FollowPath.execute(): 0.029392s
+	SuperstructureCommand.execute(): 0.000079s
+	RunCommand.execute(): 0.000002s
+	buttons.run(): 0.000047s
+	Intake.periodic(): 0.000007s
+	Hood.periodic(): 0.000017s
+	VisionSubsystem.periodic(): 0.000040s
+	Feeder.periodic(): 0.000018s
+	Shooter.periodic(): 0.000023s
+	LED.periodic(): 0.000032s
+
+Warning at edu.wpi.first.wpilibj.Tracer.lambda$printEpochs$0(Tracer.java:62): 	SmartDashboard.updateValues(): 0.000301s
+	robotPeriodic(): 0.030213s
+	LiveWindow.updateValues(): 0.000000s
+	Shuffleboard.update(): 0.000005s
+	simulationPeriodic(): 0.000224s
+	autonomousPeriodic(): 0.000011s
+
+Warning at edu.wpi.first.wpilibj.RobotBase.runRobot(RobotBase.java:450): The robot program quit unexpectedly. This is usually due to a code error.
+  The above stacktrace can help determine where the error occurred.
+  See https://wpilib.org/stacktrace for more information.
+Error at edu.wpi.first.wpilibj.RobotBase.runRobot(RobotBase.java:462): Unexpected return from startCompetition() method.
+[phoenix-diagnostics] Server shutdown cleanly. (dur:46)
+	
+[phoenix] Library shutdown cleanly
+	

@@ -1,0 +1,56 @@
+{
+  "source": "/Users/andrei/Robot-Code-2026/artifacts/mock-good-run-2026-09-26/synthetic-good-run.csv",
+  "source_sha256": "5c2a9c42f10c10cd67d0322eed0d80dc5b6ffb0a8793b9f518c4db3d6020802b",
+  "git_path": "/Users/andrei/Robot-Code-2026/src/main/deploy/autos/paths/phase-1-canvas-draft.json",
+  "path_sha256": "1e3a975e4ef7d0226bc624f560111a990f370ab28efd06d45df6dbe827125ca4",
+  "waypoints_match": null,
+  "waypoint_tolerance_visualization_m": 0.2,
+  "history_positions": 144,
+  "robot_polyline_length_m": 20.930083713130124,
+  "distance_sample_spacing_m": 0.02,
+  "distance_uniform_samples": 1048,
+  "order_aligned_geometric_deviation": {
+    "rms_cm": 6.740621725279561,
+    "mean_cm": 5.311319059310221,
+    "p95_cm": 14.050513542183884,
+    "max_cm": 18.97363657710889
+  },
+  "unrestricted_nearest_curve_lower_bound": {
+    "rms_cm": 5.69129303459857,
+    "mean_cm": 4.2433709722559865,
+    "p95_cm": 12.181263157251893,
+    "max_cm": 18.65980948873097
+  },
+  "endpoint_error_cm": 3.083559747007009,
+  "start_error_cm": 0,
+  "peak": {
+    "x": 7.533175399261999,
+    "y": 6.042205935026386,
+    "s": 16.979999999999727,
+    "gui_x": 7.436227944361196,
+    "gui_y": 5.8791075613855766,
+    "error": 0.1897363657710889,
+    "gui_segment": 404,
+    "unrestricted_error": 0.16388090136228817
+  },
+  "heading_error": null,
+  "timing_error": null,
+  "method": "Distance-uniform 2 cm robot/simulation reference sampling, full monotone XY DTW, continuous projection onto local matched simulation reference preview segments. Approximate order-aligned geometry, not a time-aligned control error. No shifting, rotation, scale, or start/end snapping.",
+  "limitations": [
+    "This input is explicitly synthetic demonstration data and must not be represented as a physical robot run.",
+    "Recorded robot history has no headings or per-position timestamps; timing and heading differences cannot be calculated.",
+    "Simulation reference is one contiguous active command interval plus its first post-completion pose; excludes coast monitoring.",
+    "Real robot positions are estimated, not independently measured ground truth. Latest physical run and historical configuration are unverified.",
+    "Sparse recorded robot samples and denser simulation samples are linearly interpolated; excursions between recorded samples may be missed.",
+    "Order-aligned DTW/local continuous projection is approximate and hides timing/progress differences.",
+    "Simulation uses current checked-in PID gains and defaults to a 2025 MapleSim arena; historical real-robot gains are unverified."
+  ],
+  "source_kind": "Synthetic mock pose trace (not robot data)",
+  "robot_duration_seconds": 10.201352,
+  "gui_duration_seconds": 10.22289,
+  "reference_kind": "Saved simulation autonomous pose trace",
+  "reference_path": "/Users/andrei/Robot-Code-2026/artifacts/mock-good-run-2026-09-26/new-simulation/robot-trace.csv",
+  "reference_sha256": "f760904ff8352909f8f878bbae01c523bfb07bc54ba4c2b1f283dcd27ffc4f26",
+  "reference_positions": 507,
+  "simulation_polyline_length_m": 20.248533392668634
+}

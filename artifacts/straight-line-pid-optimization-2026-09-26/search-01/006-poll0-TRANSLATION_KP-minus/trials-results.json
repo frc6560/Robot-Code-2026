@@ -1,0 +1,50 @@
+[
+  {
+    "name": "run",
+    "gains": {
+      "TRANSLATION_KP": 3.5,
+      "TRANSLATION_KD": 0.5,
+      "CROSS_TRACK_KP": 10,
+      "CROSS_TRACK_KD": 0.35
+    },
+    "score": 5.0757422697822765,
+    "summary": {
+      "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+      "gui": {
+        "samples": 883,
+        "duration_seconds": 7.015448329118184,
+        "length_meters": 17.538620822795465
+      },
+      "robot": {
+        "samples": 502,
+        "duration_seconds": 10.063863000000001,
+        "length_meters": 20.21761771392594
+      },
+      "aligned_position_error_meters": {
+        "mean": 0.1376314985145839,
+        "rms": 0.21896616972683422,
+        "p95": 0.5604175739516205,
+        "max": 0.6062293327110183
+      },
+      "aligned_absolute_heading_error_degrees": {
+        "mean": 12.081814973249323,
+        "rms": 16.982239919315234,
+        "p95": 35.65117895600489,
+        "max": 44.86122518747217
+      },
+      "same_elapsed_time_position_error_meters": {
+        "mean": 1.7002793836707668,
+        "rms": 2.03520712710551,
+        "p95": 4.065461246829441,
+        "max": 4.259076445021484
+      },
+      "endpoint_position_difference_meters": 0.028735552233466553,
+      "endpoint_heading_difference_degrees": -1.2905709323476797,
+      "caveats": [
+        "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+        "Simulation is not real-hardware accuracy or PID validation.",
+        "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+      ]
+    }
+  }
+]

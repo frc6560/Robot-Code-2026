@@ -143,23 +143,11 @@ public class AutoCommands {
     public Command getBLineEditorPath() {
         return firstPathBuilder.build(new Path("phase-1-canvas-draft"));
     }
+    public Command getZigzagPath() {
+        return firstPathBuilder.build(new Path("zigzag"));
+    }
 
     /** Runs the zigzag path exported from the BLine editor and resets odometry at its start. */
-    public Command getZigzagPath() {
-        Path zigzagPath = new Path("zigzag");
-        List<Translation2d> translations = zigzagPath.getTranslations();
-        if (translations.size() < 2) {
-            throw new IllegalArgumentException("Zigzag path must contain at least two translation targets");
-        }
-
-        Translation2d finalSegmentStart = translations.get(translations.size() - 2);
-        Translation2d finalWaypoint = translations.get(translations.size() - 1);
-        return firstPathBuilder.build(zigzagPath)
-            // If momentum carries the robot through the final waypoint, finish immediately
-            // instead of allowing the endpoint PID to reverse back toward it.
-            .until(() -> hasPassedFinishPlane(finalSegmentStart, finalWaypoint))
-            .finallyDo(interrupted -> drivetrain.setChassisSpeeds(new ChassisSpeeds()));
-    }
 
     private boolean hasPassedFinishPlane(
             Translation2d blueSegmentStart, Translation2d blueSegmentEnd) {

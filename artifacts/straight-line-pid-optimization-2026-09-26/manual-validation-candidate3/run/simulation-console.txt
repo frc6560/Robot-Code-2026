@@ -1,0 +1,110 @@
+> Task :extractReleaseNative UP-TO-DATE
+> Task :compileJava UP-TO-DATE
+> Task :processResources NO-SOURCE
+> Task :classes UP-TO-DATE
+> Task :downloadDepsPreemptively
+> Task :jar UP-TO-DATE
+
+> Task :simulateJavaRelease
+HAL Extensions: No extensions found
+********** Robot program starting **********
+[AdvantageKit] Logging to "/Users/andrei/Robot-Code-2026/artifacts/straight-line-pid-optimization-2026-09-26/manual-validation-candidate3/run/logs/akit_9c52aa25b46ae23c.wpilog"
+[phoenix] CANbus Connected: sim
+[phoenix] CANbus Network Up: sim
+BLINE_HEADLESS: Enabled BLine Editor Path autonomous on Blue alliance
+********** Robot program startup complete **********
+Resetting odometry to: Pose2d(Translation2d(X: 4.43, Y: 7.41), Rotation2d(Rads: -0.01, Deg: -0.61))
+SuperstructureCommand initialized at 1790477553146
+CommandScheduler loop overrun
+[AdvantageKit] Renaming log to "/Users/andrei/Robot-Code-2026/artifacts/straight-line-pid-optimization-2026-09-26/manual-validation-candidate3/run/logs/akit_26-09-26_19-52-33.wpilog"
+[PathPlanner] PathfindingCommand finished warmup
+CommandScheduler loop overrun
+BLINE_HEADLESS: Auto command finished at x=4.453 y=7.406 heading=-1.9deg
+BLINE_HEADLESS_RESULT: PASS postAutoDisplacement=0.0170m initialCoastPeak=0.1292mps finalSpeed=0.0000mps
+
+> Task :simulateJava
+
+BUILD SUCCESSFUL in 18s
+5 actionable tasks: 2 executed, 3 up-to-date
+NT: Listening on NT3 port 1735, NT4 port 5810
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 5 ("rio") Status Signal MagnetHealth
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 2 ("rio") Status Signal MagnetHealth
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 2 ("rio") Status Signal AbsolutePosition
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 2 ("rio") Status Signal Velocity
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 8 ("rio") Status Signal MagnetHealth
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 8 ("rio") Status Signal AbsolutePosition
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 8 ("rio") Status Signal Velocity
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 11 ("rio") Status Signal MagnetHealth
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 11 ("rio") Status Signal AbsolutePosition
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 11 ("rio") Status Signal Velocity
+[phoenix] Library initialization is complete.
+	
+Warning at edu.wpi.first.wpilibj.DriverStation.reportJoystickUnpluggedWarning(DriverStation.java:1345): Joystick Button 3 on port 0 not available, check if controller is plugged in
+Warning at edu.wpi.first.wpilibj.IterativeRobotBase.printLoopOverrunMessage(IterativeRobotBase.java:436): Loop time of 0.02s overrun
+
+Warning at edu.wpi.first.wpilibj.Tracer.lambda$printEpochs$0(Tracer.java:62): 	Turret.periodic(): 0.000001s
+	SwerveSubsystem.periodic(): 0.003163s
+	FollowPath.execute(): 0.006646s
+	buttons.run(): 0.000698s
+	Intake.periodic(): 0.000020s
+	SuperstructureCommand.initialize(): 0.001456s
+	Hood.periodic(): 0.000045s
+	VisionSubsystem.periodic(): 0.002155s
+	Feeder.periodic(): 0.000048s
+	SequentialCommandGroup.execute(): 0.009678s
+	RunCommand.initialize(): 0.000024s
+	Shooter.periodic(): 0.000031s
+	LED.periodic(): 0.000857s
+
+Warning at edu.wpi.first.wpilibj.Tracer.lambda$printEpochs$0(Tracer.java:62): 	autonomousInit(): 0.018937s
+	SmartDashboard.updateValues(): 0.002102s
+	robotPeriodic(): 0.025625s
+	LiveWindow.updateValues(): 0.000005s
+	Shuffleboard.update(): 0.000005s
+	simulationPeriodic(): 0.003103s
+	autonomousPeriodic(): 0.000507s
+
+[phoenix-diagnostics] Server 2026.1.2 (Mar 11 2026, 19:37:44) running on port: 1250
+	
+Sep 26, 2026 7:52:41 PM frc.robot.lib.BLine.FollowPath processEventTriggers
+WARNING: FollowPath: Unregistered event trigger key: Shoot
+Warning at edu.wpi.first.wpilibj.IterativeRobotBase.printLoopOverrunMessage(IterativeRobotBase.java:436): Loop time of 0.02s overrun
+
+Warning at edu.wpi.first.wpilibj.Tracer.lambda$printEpochs$0(Tracer.java:62): 	SmartDashboard.updateValues(): 0.000241s
+	robotPeriodic(): 0.022337s
+	LiveWindow.updateValues(): 0.000000s
+	Shuffleboard.update(): 0.000002s
+	simulationPeriodic(): 0.000151s
+	autonomousPeriodic(): 0.000008s
+
+Warning at edu.wpi.first.wpilibj.Tracer.lambda$printEpochs$0(Tracer.java:62): 	Turret.periodic(): 0.000001s
+	SwerveSubsystem.periodic(): 0.000014s
+	FollowPath.execute(): 0.003589s
+	SuperstructureCommand.execute(): 0.001049s
+	RunCommand.execute(): 0.000012s
+	buttons.run(): 0.001002s
+	Intake.periodic(): 0.000002s
+	Hood.periodic(): 0.000005s
+	VisionSubsystem.periodic(): 0.002661s
+	Feeder.periodic(): 0.000010s
+	Shooter.periodic(): 0.000008s
+	LED.periodic(): 0.015614s
+
+Warning at edu.wpi.first.wpilibj.RobotBase.runRobot(RobotBase.java:450): The robot program quit unexpectedly. This is usually due to a code error.
+  The above stacktrace can help determine where the error occurred.
+  See https://wpilib.org/stacktrace for more information.
+Error at edu.wpi.first.wpilibj.RobotBase.runRobot(RobotBase.java:462): Unexpected return from startCompetition() method.
+[phoenix-diagnostics] Server shutdown cleanly. (dur:0)
+	
+[phoenix] Library shutdown cleanly
+	

@@ -1,0 +1,1292 @@
+{
+  "algorithm": "seeded bounded coordinate polling with pattern extrapolation and mesh reduction",
+  "target": "ordered straight-line segments connecting every waypoint occurrence",
+  "score": "XY RMS + 0.35*P95 + 0.15*max + 0.10*endpoint; completion/stopping is mandatory",
+  "budget": 14,
+  "bounds": [
+    [
+      1.5,
+      10
+    ],
+    [
+      0,
+      1.5
+    ],
+    [
+      0,
+      15
+    ],
+    [
+      0,
+      2
+    ]
+  ],
+  "names": [
+    "TRANSLATION_KP",
+    "TRANSLATION_KD",
+    "CROSS_TRACK_KP",
+    "CROSS_TRACK_KD"
+  ],
+  "observations": [
+    {
+      "number": 1,
+      "label": "baseline",
+      "vector": [
+        5,
+        0.5,
+        5,
+        0
+      ],
+      "gains": {
+        "TRANSLATION_KP": 5,
+        "TRANSLATION_KD": 0.5,
+        "CROSS_TRACK_KP": 5,
+        "CROSS_TRACK_KD": 0
+      },
+      "directory": "/Users/andrei/Robot-Code-2026/artifacts/straight-line-pid-optimization-2026-09-26/search-02/001-baseline/run",
+      "failed": false,
+      "score": 0.5143957890935311,
+      "parts": {
+        "rms": 0.22285339905530901,
+        "p95_weighted": 0.19370205951416464,
+        "peak_weighted": 0.0951869102415397,
+        "endpoint_weighted": 0.0026534202825178135
+      },
+      "summary": {
+        "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+        "gui": {
+          "samples": 883,
+          "duration_seconds": 7.015448329118184,
+          "length_meters": 17.538620822795465
+        },
+        "robot": {
+          "samples": 502,
+          "duration_seconds": 10.08842,
+          "length_meters": 20.222086889754653
+        },
+        "aligned_position_error_meters": {
+          "mean": 0.14214113955994906,
+          "rms": 0.22285339905530901,
+          "p95": 0.5534344557547561,
+          "max": 0.6345794016102647
+        },
+        "aligned_absolute_heading_error_degrees": {
+          "mean": 12.039216396359286,
+          "rms": 16.993179142714446,
+          "p95": 35.646156694451676,
+          "max": 45.083794023441754
+        },
+        "same_elapsed_time_position_error_meters": {
+          "mean": 1.690413136809416,
+          "rms": 2.0203362497103563,
+          "p95": 4.053578212997636,
+          "max": 4.23781019974157
+        },
+        "endpoint_position_difference_meters": 0.026534202825178134,
+        "endpoint_heading_difference_degrees": -1.1613520472907224,
+        "caveats": [
+          "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+          "Simulation is not real-hardware accuracy or PID validation.",
+          "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+        ]
+      }
+    },
+    {
+      "number": 2,
+      "label": "search-start",
+      "vector": [
+        3.5,
+        0.25,
+        10,
+        0.35
+      ],
+      "gains": {
+        "TRANSLATION_KP": 3.5,
+        "TRANSLATION_KD": 0.25,
+        "CROSS_TRACK_KP": 10,
+        "CROSS_TRACK_KD": 0.35
+      },
+      "directory": "/Users/andrei/Robot-Code-2026/artifacts/straight-line-pid-optimization-2026-09-26/search-02/002-search-start/run",
+      "failed": false,
+      "score": 0.5483830769046684,
+      "parts": {
+        "rms": 0.23513978359198778,
+        "p95_weighted": 0.2106954764284774,
+        "peak_weighted": 0.09986720212978319,
+        "endpoint_weighted": 0.00268061475441996
+      },
+      "summary": {
+        "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+        "gui": {
+          "samples": 883,
+          "duration_seconds": 7.015448329118184,
+          "length_meters": 17.538620822795465
+        },
+        "robot": {
+          "samples": 507,
+          "duration_seconds": 10.172663,
+          "length_meters": 20.337546900512
+        },
+        "aligned_position_error_meters": {
+          "mean": 0.1469822888078985,
+          "rms": 0.23513978359198778,
+          "p95": 0.6019870755099355,
+          "max": 0.6657813475318879
+        },
+        "aligned_absolute_heading_error_degrees": {
+          "mean": 12.071951507089302,
+          "rms": 17.051058689134955,
+          "p95": 36.013365230759455,
+          "max": 45.2710939839658
+        },
+        "same_elapsed_time_position_error_meters": {
+          "mean": 1.6951568735050704,
+          "rms": 2.035043521023951,
+          "p95": 4.104763088283331,
+          "max": 4.332938345803827
+        },
+        "endpoint_position_difference_meters": 0.026806147544199597,
+        "endpoint_heading_difference_degrees": -1.1484829568458481,
+        "caveats": [
+          "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+          "Simulation is not real-hardware accuracy or PID validation.",
+          "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+        ]
+      }
+    },
+    {
+      "number": 3,
+      "label": "poll0-TRANSLATION_KP-plus",
+      "vector": [
+        5.75,
+        0.5,
+        5,
+        0
+      ],
+      "gains": {
+        "TRANSLATION_KP": 5.75,
+        "TRANSLATION_KD": 0.5,
+        "CROSS_TRACK_KP": 5,
+        "CROSS_TRACK_KD": 0
+      },
+      "directory": "/Users/andrei/Robot-Code-2026/artifacts/straight-line-pid-optimization-2026-09-26/search-02/003-poll0-TRANSLATION_KP-plus/run",
+      "failed": false,
+      "score": 0.49919212142222347,
+      "parts": {
+        "rms": 0.2155433730061767,
+        "p95_weighted": 0.1893590299995625,
+        "peak_weighted": 0.0914187668407089,
+        "endpoint_weighted": 0.002870951575775337
+      },
+      "summary": {
+        "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+        "gui": {
+          "samples": 883,
+          "duration_seconds": 7.015448329118184,
+          "length_meters": 17.538620822795465
+        },
+        "robot": {
+          "samples": 501,
+          "duration_seconds": 10.090403000000002,
+          "length_meters": 20.199439294737576
+        },
+        "aligned_position_error_meters": {
+          "mean": 0.13557160481498673,
+          "rms": 0.2155433730061767,
+          "p95": 0.54102579999875,
+          "max": 0.6094584456047261
+        },
+        "aligned_absolute_heading_error_degrees": {
+          "mean": 12.434025533516449,
+          "rms": 17.178488816021797,
+          "p95": 35.77938078367972,
+          "max": 45.498335462642
+        },
+        "same_elapsed_time_position_error_meters": {
+          "mean": 1.698903557964787,
+          "rms": 2.0322932655788652,
+          "p95": 4.072696992495355,
+          "max": 4.2657859189912655
+        },
+        "endpoint_position_difference_meters": 0.02870951575775337,
+        "endpoint_heading_difference_degrees": -1.1120325851309951,
+        "caveats": [
+          "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+          "Simulation is not real-hardware accuracy or PID validation.",
+          "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+        ]
+      }
+    },
+    {
+      "number": 4,
+      "label": "poll0-TRANSLATION_KP-minus",
+      "vector": [
+        4.25,
+        0.5,
+        5,
+        0
+      ],
+      "gains": {
+        "TRANSLATION_KP": 4.25,
+        "TRANSLATION_KD": 0.5,
+        "CROSS_TRACK_KP": 5,
+        "CROSS_TRACK_KD": 0
+      },
+      "directory": "/Users/andrei/Robot-Code-2026/artifacts/straight-line-pid-optimization-2026-09-26/search-02/004-poll0-TRANSLATION_KP-minus/run",
+      "failed": false,
+      "score": 0.5114353833691095,
+      "parts": {
+        "rms": 0.21949157208977504,
+        "p95_weighted": 0.1966967751665808,
+        "peak_weighted": 0.09226721940423781,
+        "endpoint_weighted": 0.0029798167085158408
+      },
+      "summary": {
+        "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+        "gui": {
+          "samples": 883,
+          "duration_seconds": 7.015448329118184,
+          "length_meters": 17.538620822795465
+        },
+        "robot": {
+          "samples": 486,
+          "duration_seconds": 9.926169,
+          "length_meters": 20.136712177534402
+        },
+        "aligned_position_error_meters": {
+          "mean": 0.13818689149129892,
+          "rms": 0.21949157208977504,
+          "p95": 0.5619907861902309,
+          "max": 0.615114796028252
+        },
+        "aligned_absolute_heading_error_degrees": {
+          "mean": 12.181974431189401,
+          "rms": 17.211282125854726,
+          "p95": 35.92154318639913,
+          "max": 45.07951357034589
+        },
+        "same_elapsed_time_position_error_meters": {
+          "mean": 1.7094170027399078,
+          "rms": 2.043619484156686,
+          "p95": 4.094503726683349,
+          "max": 4.253820982449365
+        },
+        "endpoint_position_difference_meters": 0.029798167085158405,
+        "endpoint_heading_difference_degrees": -1.239955726134264,
+        "caveats": [
+          "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+          "Simulation is not real-hardware accuracy or PID validation.",
+          "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+        ]
+      }
+    },
+    {
+      "number": 5,
+      "label": "poll0-TRANSLATION_KD-plus",
+      "vector": [
+        5,
+        0.625,
+        5,
+        0
+      ],
+      "gains": {
+        "TRANSLATION_KP": 5,
+        "TRANSLATION_KD": 0.625,
+        "CROSS_TRACK_KP": 5,
+        "CROSS_TRACK_KD": 0
+      },
+      "directory": "/Users/andrei/Robot-Code-2026/artifacts/straight-line-pid-optimization-2026-09-26/search-02/005-poll0-TRANSLATION_KD-plus/run",
+      "failed": false,
+      "score": 0.5250503263977612,
+      "parts": {
+        "rms": 0.22607186458779344,
+        "p95_weighted": 0.20087359801461635,
+        "peak_weighted": 0.09522266872250161,
+        "endpoint_weighted": 0.002882195072849798
+      },
+      "summary": {
+        "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+        "gui": {
+          "samples": 883,
+          "duration_seconds": 7.015448329118184,
+          "length_meters": 17.538620822795465
+        },
+        "robot": {
+          "samples": 502,
+          "duration_seconds": 10.065577000000001,
+          "length_meters": 20.30337437618097
+        },
+        "aligned_position_error_meters": {
+          "mean": 0.14213171265210017,
+          "rms": 0.22607186458779344,
+          "p95": 0.5739245657560468,
+          "max": 0.634817791483344
+        },
+        "aligned_absolute_heading_error_degrees": {
+          "mean": 12.267113307927087,
+          "rms": 17.286323987715527,
+          "p95": 35.7973781328699,
+          "max": 45.10399857794611
+        },
+        "same_elapsed_time_position_error_meters": {
+          "mean": 1.6844286960557806,
+          "rms": 2.017581608816772,
+          "p95": 4.029679289188087,
+          "max": 4.296880087395635
+        },
+        "endpoint_position_difference_meters": 0.02882195072849798,
+        "endpoint_heading_difference_degrees": -1.0751125026156936,
+        "caveats": [
+          "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+          "Simulation is not real-hardware accuracy or PID validation.",
+          "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+        ]
+      }
+    },
+    {
+      "number": 6,
+      "label": "poll0-TRANSLATION_KD-minus",
+      "vector": [
+        5,
+        0.375,
+        5,
+        0
+      ],
+      "gains": {
+        "TRANSLATION_KP": 5,
+        "TRANSLATION_KD": 0.375,
+        "CROSS_TRACK_KP": 5,
+        "CROSS_TRACK_KD": 0
+      },
+      "directory": "/Users/andrei/Robot-Code-2026/artifacts/straight-line-pid-optimization-2026-09-26/search-02/006-poll0-TRANSLATION_KD-minus/run",
+      "failed": false,
+      "score": 0.530005290219293,
+      "parts": {
+        "rms": 0.2288551389797584,
+        "p95_weighted": 0.20211363155002648,
+        "peak_weighted": 0.0962541608029152,
+        "endpoint_weighted": 0.0027823588865929882
+      },
+      "summary": {
+        "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+        "gui": {
+          "samples": 883,
+          "duration_seconds": 7.015448329118184,
+          "length_meters": 17.538620822795465
+        },
+        "robot": {
+          "samples": 507,
+          "duration_seconds": 10.203036999999998,
+          "length_meters": 20.30441758640764
+        },
+        "aligned_position_error_meters": {
+          "mean": 0.14382704865572843,
+          "rms": 0.2288551389797584,
+          "p95": 0.5774675187143614,
+          "max": 0.641694405352768
+        },
+        "aligned_absolute_heading_error_degrees": {
+          "mean": 12.1989552675786,
+          "rms": 17.147153788845984,
+          "p95": 35.718018550807244,
+          "max": 44.90046763981849
+        },
+        "same_elapsed_time_position_error_meters": {
+          "mean": 1.6877375481628778,
+          "rms": 2.021050560208057,
+          "p95": 4.041374520207754,
+          "max": 4.308747212576982
+        },
+        "endpoint_position_difference_meters": 0.02782358886592988,
+        "endpoint_heading_difference_degrees": -1.2114828176883552,
+        "caveats": [
+          "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+          "Simulation is not real-hardware accuracy or PID validation.",
+          "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+        ]
+      }
+    },
+    {
+      "number": 7,
+      "label": "poll0-CROSS_TRACK_KP-plus",
+      "vector": [
+        5,
+        0.5,
+        6.5,
+        0
+      ],
+      "gains": {
+        "TRANSLATION_KP": 5,
+        "TRANSLATION_KD": 0.5,
+        "CROSS_TRACK_KP": 6.5,
+        "CROSS_TRACK_KD": 0
+      },
+      "directory": "/Users/andrei/Robot-Code-2026/artifacts/straight-line-pid-optimization-2026-09-26/search-02/007-poll0-CROSS_TRACK_KP-plus/run",
+      "failed": false,
+      "score": 0.5254988210852327,
+      "parts": {
+        "rms": 0.22546724863781778,
+        "p95_weighted": 0.20150599587143053,
+        "peak_weighted": 0.09576489486356439,
+        "endpoint_weighted": 0.0027606817124199738
+      },
+      "summary": {
+        "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+        "gui": {
+          "samples": 883,
+          "duration_seconds": 7.015448329118184,
+          "length_meters": 17.538620822795465
+        },
+        "robot": {
+          "samples": 502,
+          "duration_seconds": 10.076728,
+          "length_meters": 20.218495973792713
+        },
+        "aligned_position_error_meters": {
+          "mean": 0.1404826243797265,
+          "rms": 0.22546724863781778,
+          "p95": 0.5757314167755159,
+          "max": 0.6384326324237626
+        },
+        "aligned_absolute_heading_error_degrees": {
+          "mean": 12.354373524724675,
+          "rms": 17.240919798563816,
+          "p95": 35.72157363933447,
+          "max": 44.82051258271935
+        },
+        "same_elapsed_time_position_error_meters": {
+          "mean": 1.6869467437725534,
+          "rms": 2.0186005348610676,
+          "p95": 4.054291154708284,
+          "max": 4.306746483850475
+        },
+        "endpoint_position_difference_meters": 0.027606817124199736,
+        "endpoint_heading_difference_degrees": -1.206374898944764,
+        "caveats": [
+          "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+          "Simulation is not real-hardware accuracy or PID validation.",
+          "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+        ]
+      }
+    },
+    {
+      "number": 8,
+      "label": "poll0-CROSS_TRACK_KP-minus",
+      "vector": [
+        5,
+        0.5,
+        3.5,
+        0
+      ],
+      "gains": {
+        "TRANSLATION_KP": 5,
+        "TRANSLATION_KD": 0.5,
+        "CROSS_TRACK_KP": 3.5,
+        "CROSS_TRACK_KD": 0
+      },
+      "directory": "/Users/andrei/Robot-Code-2026/artifacts/straight-line-pid-optimization-2026-09-26/search-02/008-poll0-CROSS_TRACK_KP-minus/run",
+      "failed": false,
+      "score": 0.5434049246421772,
+      "parts": {
+        "rms": 0.23436141412086384,
+        "p95_weighted": 0.2042559554326337,
+        "peak_weighted": 0.10193993750716061,
+        "endpoint_weighted": 0.0028476175815190293
+      },
+      "summary": {
+        "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+        "gui": {
+          "samples": 883,
+          "duration_seconds": 7.015448329118184,
+          "length_meters": 17.538620822795465
+        },
+        "robot": {
+          "samples": 508,
+          "duration_seconds": 10.19798,
+          "length_meters": 20.29707236897098
+        },
+        "aligned_position_error_meters": {
+          "mean": 0.1459843997619096,
+          "rms": 0.23436141412086384,
+          "p95": 0.5835884440932392,
+          "max": 0.6795995833810707
+        },
+        "aligned_absolute_heading_error_degrees": {
+          "mean": 12.362053056518059,
+          "rms": 17.232495067886774,
+          "p95": 35.93794530649612,
+          "max": 44.869488384793556
+        },
+        "same_elapsed_time_position_error_meters": {
+          "mean": 1.6855240084417824,
+          "rms": 2.023820761571206,
+          "p95": 4.097221465457004,
+          "max": 4.3398076146762765
+        },
+        "endpoint_position_difference_meters": 0.028476175815190293,
+        "endpoint_heading_difference_degrees": -1.1833602729341697,
+        "caveats": [
+          "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+          "Simulation is not real-hardware accuracy or PID validation.",
+          "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+        ]
+      }
+    },
+    {
+      "number": 9,
+      "label": "poll0-CROSS_TRACK_KD-plus",
+      "vector": [
+        5,
+        0.5,
+        5,
+        0.175
+      ],
+      "gains": {
+        "TRANSLATION_KP": 5,
+        "TRANSLATION_KD": 0.5,
+        "CROSS_TRACK_KP": 5,
+        "CROSS_TRACK_KD": 0.175
+      },
+      "directory": "/Users/andrei/Robot-Code-2026/artifacts/straight-line-pid-optimization-2026-09-26/search-02/009-poll0-CROSS_TRACK_KD-plus/run",
+      "failed": false,
+      "score": 0.5102614461062548,
+      "parts": {
+        "rms": 0.21966276442272367,
+        "p95_weighted": 0.19627412443131453,
+        "peak_weighted": 0.0915551803239423,
+        "endpoint_weighted": 0.00276937692827425
+      },
+      "summary": {
+        "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+        "gui": {
+          "samples": 883,
+          "duration_seconds": 7.015448329118184,
+          "length_meters": 17.538620822795465
+        },
+        "robot": {
+          "samples": 500,
+          "duration_seconds": 10.036099,
+          "length_meters": 20.177171991084624
+        },
+        "aligned_position_error_meters": {
+          "mean": 0.1376330622804354,
+          "rms": 0.21966276442272367,
+          "p95": 0.5607832126608987,
+          "max": 0.610367868826282
+        },
+        "aligned_absolute_heading_error_degrees": {
+          "mean": 12.107142609792513,
+          "rms": 17.03922696825403,
+          "p95": 35.69715658452874,
+          "max": 45.09722942537133
+        },
+        "same_elapsed_time_position_error_meters": {
+          "mean": 1.6986364314728855,
+          "rms": 2.0315742204613203,
+          "p95": 4.0762698304131915,
+          "max": 4.274904925359186
+        },
+        "endpoint_position_difference_meters": 0.0276937692827425,
+        "endpoint_heading_difference_degrees": -1.2134929828167926,
+        "caveats": [
+          "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+          "Simulation is not real-hardware accuracy or PID validation.",
+          "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+        ]
+      }
+    },
+    {
+      "number": 10,
+      "label": "pattern0",
+      "vector": [
+        6.5,
+        0.5,
+        5,
+        0
+      ],
+      "gains": {
+        "TRANSLATION_KP": 6.5,
+        "TRANSLATION_KD": 0.5,
+        "CROSS_TRACK_KP": 5,
+        "CROSS_TRACK_KD": 0
+      },
+      "directory": "/Users/andrei/Robot-Code-2026/artifacts/straight-line-pid-optimization-2026-09-26/search-02/010-pattern0/run",
+      "failed": false,
+      "score": 0.5469528447580048,
+      "parts": {
+        "rms": 0.2347809778012717,
+        "p95_weighted": 0.2096823714636118,
+        "peak_weighted": 0.09972097838853179,
+        "endpoint_weighted": 0.002768517104589529
+      },
+      "summary": {
+        "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+        "gui": {
+          "samples": 883,
+          "duration_seconds": 7.015448329118184,
+          "length_meters": 17.538620822795465
+        },
+        "robot": {
+          "samples": 512,
+          "duration_seconds": 10.274541,
+          "length_meters": 20.401562979695466
+        },
+        "aligned_position_error_meters": {
+          "mean": 0.14801734639285077,
+          "rms": 0.2347809778012717,
+          "p95": 0.5990924898960337,
+          "max": 0.664806522590212
+        },
+        "aligned_absolute_heading_error_degrees": {
+          "mean": 12.34273028768748,
+          "rms": 17.392124643841363,
+          "p95": 36.371180696973866,
+          "max": 44.761924095828896
+        },
+        "same_elapsed_time_position_error_meters": {
+          "mean": 1.6735280476702121,
+          "rms": 2.0064242717327616,
+          "p95": 4.006681053178116,
+          "max": 4.321985248919016
+        },
+        "endpoint_position_difference_meters": 0.02768517104589529,
+        "endpoint_heading_difference_degrees": -1.1986307440899964,
+        "caveats": [
+          "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+          "Simulation is not real-hardware accuracy or PID validation.",
+          "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+        ]
+      }
+    },
+    {
+      "number": 11,
+      "label": "poll1-TRANSLATION_KD-plus",
+      "vector": [
+        5.75,
+        0.625,
+        5,
+        0
+      ],
+      "gains": {
+        "TRANSLATION_KP": 5.75,
+        "TRANSLATION_KD": 0.625,
+        "CROSS_TRACK_KP": 5,
+        "CROSS_TRACK_KD": 0
+      },
+      "directory": "/Users/andrei/Robot-Code-2026/artifacts/straight-line-pid-optimization-2026-09-26/search-02/011-poll1-TRANSLATION_KD-plus/run",
+      "failed": false,
+      "score": 0.5462336155357589,
+      "parts": {
+        "rms": 0.23405698075754808,
+        "p95_weighted": 0.20722172622887752,
+        "peak_weighted": 0.10214842588904535,
+        "endpoint_weighted": 0.002806482660287895
+      },
+      "summary": {
+        "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+        "gui": {
+          "samples": 883,
+          "duration_seconds": 7.015448329118184,
+          "length_meters": 17.538620822795465
+        },
+        "robot": {
+          "samples": 512,
+          "duration_seconds": 10.288571,
+          "length_meters": 20.339089968005563
+        },
+        "aligned_position_error_meters": {
+          "mean": 0.1446812626331048,
+          "rms": 0.23405698075754808,
+          "p95": 0.5920620749396501,
+          "max": 0.680989505926969
+        },
+        "aligned_absolute_heading_error_degrees": {
+          "mean": 12.294293860970138,
+          "rms": 17.17711730537548,
+          "p95": 36.03782766382257,
+          "max": 45.08957980855275
+        },
+        "same_elapsed_time_position_error_meters": {
+          "mean": 1.6896627574268277,
+          "rms": 2.0307564469494648,
+          "p95": 4.08635832921263,
+          "max": 4.350679759692441
+        },
+        "endpoint_position_difference_meters": 0.02806482660287895,
+        "endpoint_heading_difference_degrees": -1.2903595109212764,
+        "caveats": [
+          "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+          "Simulation is not real-hardware accuracy or PID validation.",
+          "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+        ]
+      }
+    },
+    {
+      "number": 12,
+      "label": "poll1-TRANSLATION_KD-minus",
+      "vector": [
+        5.75,
+        0.375,
+        5,
+        0
+      ],
+      "gains": {
+        "TRANSLATION_KP": 5.75,
+        "TRANSLATION_KD": 0.375,
+        "CROSS_TRACK_KP": 5,
+        "CROSS_TRACK_KD": 0
+      },
+      "directory": "/Users/andrei/Robot-Code-2026/artifacts/straight-line-pid-optimization-2026-09-26/search-02/012-poll1-TRANSLATION_KD-minus/run",
+      "failed": false,
+      "score": 0.5258218780810265,
+      "parts": {
+        "rms": 0.22746503166477566,
+        "p95_weighted": 0.20093434385842582,
+        "peak_weighted": 0.09473730326079143,
+        "endpoint_weighted": 0.002685199297033619
+      },
+      "summary": {
+        "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+        "gui": {
+          "samples": 883,
+          "duration_seconds": 7.015448329118184,
+          "length_meters": 17.538620822795465
+        },
+        "robot": {
+          "samples": 505,
+          "duration_seconds": 10.122917999999999,
+          "length_meters": 20.33235371741112
+        },
+        "aligned_position_error_meters": {
+          "mean": 0.14527530566289684,
+          "rms": 0.22746503166477566,
+          "p95": 0.5740981253097881,
+          "max": 0.6315820217386096
+        },
+        "aligned_absolute_heading_error_degrees": {
+          "mean": 12.133963746541719,
+          "rms": 17.072051584548586,
+          "p95": 35.81407337817488,
+          "max": 44.80726127212935
+        },
+        "same_elapsed_time_position_error_meters": {
+          "mean": 1.6955789095785216,
+          "rms": 2.0309466744567612,
+          "p95": 4.067329569665186,
+          "max": 4.275287001141413
+        },
+        "endpoint_position_difference_meters": 0.02685199297033619,
+        "endpoint_heading_difference_degrees": -1.2645383657427922,
+        "caveats": [
+          "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+          "Simulation is not real-hardware accuracy or PID validation.",
+          "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+        ]
+      }
+    },
+    {
+      "number": 13,
+      "label": "poll1-CROSS_TRACK_KP-plus",
+      "vector": [
+        5.75,
+        0.5,
+        6.5,
+        0
+      ],
+      "gains": {
+        "TRANSLATION_KP": 5.75,
+        "TRANSLATION_KD": 0.5,
+        "CROSS_TRACK_KP": 6.5,
+        "CROSS_TRACK_KD": 0
+      },
+      "directory": "/Users/andrei/Robot-Code-2026/artifacts/straight-line-pid-optimization-2026-09-26/search-02/013-poll1-CROSS_TRACK_KP-plus/run",
+      "failed": false,
+      "score": 0.5066257785076144,
+      "parts": {
+        "rms": 0.2182140757630502,
+        "p95_weighted": 0.19436728659170818,
+        "peak_weighted": 0.09126086264128891,
+        "endpoint_weighted": 0.0027835535115670815
+      },
+      "summary": {
+        "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+        "gui": {
+          "samples": 883,
+          "duration_seconds": 7.015448329118184,
+          "length_meters": 17.538620822795465
+        },
+        "robot": {
+          "samples": 512,
+          "duration_seconds": 10.252057999999998,
+          "length_meters": 20.216054911384013
+        },
+        "aligned_position_error_meters": {
+          "mean": 0.13751405587181253,
+          "rms": 0.2182140757630502,
+          "p95": 0.5553351045477377,
+          "max": 0.6084057509419261
+        },
+        "aligned_absolute_heading_error_degrees": {
+          "mean": 12.352082029374534,
+          "rms": 17.302965669434066,
+          "p95": 36.11823203442464,
+          "max": 45.16859269385358
+        },
+        "same_elapsed_time_position_error_meters": {
+          "mean": 1.669708866107489,
+          "rms": 2.000470851498627,
+          "p95": 3.991447087781683,
+          "max": 4.257861145804087
+        },
+        "endpoint_position_difference_meters": 0.02783553511567081,
+        "endpoint_heading_difference_degrees": -1.26132739566732,
+        "caveats": [
+          "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+          "Simulation is not real-hardware accuracy or PID validation.",
+          "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+        ]
+      }
+    },
+    {
+      "number": 14,
+      "label": "poll1-CROSS_TRACK_KP-minus",
+      "vector": [
+        5.75,
+        0.5,
+        3.5,
+        0
+      ],
+      "gains": {
+        "TRANSLATION_KP": 5.75,
+        "TRANSLATION_KD": 0.5,
+        "CROSS_TRACK_KP": 3.5,
+        "CROSS_TRACK_KD": 0
+      },
+      "directory": "/Users/andrei/Robot-Code-2026/artifacts/straight-line-pid-optimization-2026-09-26/search-02/014-poll1-CROSS_TRACK_KP-minus/run",
+      "failed": false,
+      "score": 0.5439701869460916,
+      "parts": {
+        "rms": 0.2335510492665704,
+        "p95_weighted": 0.20600046041654915,
+        "peak_weighted": 0.10151190016815902,
+        "endpoint_weighted": 0.002906777094813023
+      },
+      "summary": {
+        "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+        "gui": {
+          "samples": 883,
+          "duration_seconds": 7.015448329118184,
+          "length_meters": 17.538620822795465
+        },
+        "robot": {
+          "samples": 514,
+          "duration_seconds": 10.299567,
+          "length_meters": 20.352609116617973
+        },
+        "aligned_position_error_meters": {
+          "mean": 0.14540574537967554,
+          "rms": 0.2335510492665704,
+          "p95": 0.5885727440472833,
+          "max": 0.6767460011210601
+        },
+        "aligned_absolute_heading_error_degrees": {
+          "mean": 12.295066369753249,
+          "rms": 17.11150197502302,
+          "p95": 35.659072480956844,
+          "max": 44.736541206067905
+        },
+        "same_elapsed_time_position_error_meters": {
+          "mean": 1.6816026301072442,
+          "rms": 2.021905368682322,
+          "p95": 4.06579545432375,
+          "max": 4.3378649680183585
+        },
+        "endpoint_position_difference_meters": 0.029067770948130227,
+        "endpoint_heading_difference_degrees": -1.2846694670578322,
+        "caveats": [
+          "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+          "Simulation is not real-hardware accuracy or PID validation.",
+          "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+        ]
+      }
+    },
+    {
+      "number": 15,
+      "label": "baseline-repeat1",
+      "vector": [
+        5,
+        0.5,
+        5,
+        0
+      ],
+      "gains": {
+        "TRANSLATION_KP": 5,
+        "TRANSLATION_KD": 0.5,
+        "CROSS_TRACK_KP": 5,
+        "CROSS_TRACK_KD": 0
+      },
+      "directory": "/Users/andrei/Robot-Code-2026/artifacts/straight-line-pid-optimization-2026-09-26/search-02/015-baseline-repeat1/run",
+      "failed": false,
+      "score": 0.5356219070727966,
+      "parts": {
+        "rms": 0.22951822701919328,
+        "p95_weighted": 0.2043655058359536,
+        "peak_weighted": 0.09862380410564002,
+        "endpoint_weighted": 0.003114370112009623
+      },
+      "summary": {
+        "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+        "gui": {
+          "samples": 883,
+          "duration_seconds": 7.015448329118184,
+          "length_meters": 17.538620822795465
+        },
+        "robot": {
+          "samples": 513,
+          "duration_seconds": 10.290515,
+          "length_meters": 20.332122211869176
+        },
+        "aligned_position_error_meters": {
+          "mean": 0.14307311081281535,
+          "rms": 0.22951822701919328,
+          "p95": 0.5839014452455817,
+          "max": 0.6574920273709335
+        },
+        "aligned_absolute_heading_error_degrees": {
+          "mean": 12.31696086182962,
+          "rms": 17.259675696663784,
+          "p95": 35.78841403627774,
+          "max": 45.175403786939
+        },
+        "same_elapsed_time_position_error_meters": {
+          "mean": 1.6802648155988358,
+          "rms": 2.013889334173937,
+          "p95": 4.022318791497947,
+          "max": 4.312047873409413
+        },
+        "endpoint_position_difference_meters": 0.031143701120096227,
+        "endpoint_heading_difference_degrees": -1.2770499305235055,
+        "caveats": [
+          "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+          "Simulation is not real-hardware accuracy or PID validation.",
+          "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+        ]
+      }
+    },
+    {
+      "number": 16,
+      "label": "baseline-repeat2",
+      "vector": [
+        5,
+        0.5,
+        5,
+        0
+      ],
+      "gains": {
+        "TRANSLATION_KP": 5,
+        "TRANSLATION_KD": 0.5,
+        "CROSS_TRACK_KP": 5,
+        "CROSS_TRACK_KD": 0
+      },
+      "directory": "/Users/andrei/Robot-Code-2026/artifacts/straight-line-pid-optimization-2026-09-26/search-02/016-baseline-repeat2/run",
+      "failed": false,
+      "score": 0.5197767764674486,
+      "parts": {
+        "rms": 0.2239288372945024,
+        "p95_weighted": 0.19698415329193486,
+        "peak_weighted": 0.09590894367912457,
+        "endpoint_weighted": 0.0029548422018867396
+      },
+      "summary": {
+        "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+        "gui": {
+          "samples": 883,
+          "duration_seconds": 7.015448329118184,
+          "length_meters": 17.538620822795465
+        },
+        "robot": {
+          "samples": 502,
+          "duration_seconds": 10.097029,
+          "length_meters": 20.22963177934741
+        },
+        "aligned_position_error_meters": {
+          "mean": 0.13904831974291318,
+          "rms": 0.2239288372945024,
+          "p95": 0.5628118665483853,
+          "max": 0.6393929578608305
+        },
+        "aligned_absolute_heading_error_degrees": {
+          "mean": 12.289433407591604,
+          "rms": 17.184769309908624,
+          "p95": 35.550483743454485,
+          "max": 45.61752873219973
+        },
+        "same_elapsed_time_position_error_meters": {
+          "mean": 1.7066717941710878,
+          "rms": 2.0402784000804757,
+          "p95": 4.09028472875404,
+          "max": 4.295247645520476
+        },
+        "endpoint_position_difference_meters": 0.029548422018867395,
+        "endpoint_heading_difference_degrees": -1.2161771754954211,
+        "caveats": [
+          "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+          "Simulation is not real-hardware accuracy or PID validation.",
+          "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+        ]
+      }
+    },
+    {
+      "number": 17,
+      "label": "finalist0-repeat1",
+      "vector": [
+        5.75,
+        0.5,
+        5,
+        0
+      ],
+      "gains": {
+        "TRANSLATION_KP": 5.75,
+        "TRANSLATION_KD": 0.5,
+        "CROSS_TRACK_KP": 5,
+        "CROSS_TRACK_KD": 0
+      },
+      "directory": "/Users/andrei/Robot-Code-2026/artifacts/straight-line-pid-optimization-2026-09-26/search-02/017-finalist0-repeat1/run",
+      "failed": false,
+      "score": 0.5494956369791465,
+      "parts": {
+        "rms": 0.23537249574937674,
+        "p95_weighted": 0.2113074750125765,
+        "peak_weighted": 0.09988188245873111,
+        "endpoint_weighted": 0.0029337837584622294
+      },
+      "summary": {
+        "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+        "gui": {
+          "samples": 883,
+          "duration_seconds": 7.015448329118184,
+          "length_meters": 17.538620822795465
+        },
+        "robot": {
+          "samples": 512,
+          "duration_seconds": 10.27581,
+          "length_meters": 20.417144873430868
+        },
+        "aligned_position_error_meters": {
+          "mean": 0.14800429490479675,
+          "rms": 0.23537249574937674,
+          "p95": 0.6037356428930757,
+          "max": 0.6658792163915408
+        },
+        "aligned_absolute_heading_error_degrees": {
+          "mean": 12.292098298078324,
+          "rms": 17.272153751256113,
+          "p95": 35.90134650688134,
+          "max": 44.65085914932753
+        },
+        "same_elapsed_time_position_error_meters": {
+          "mean": 1.6998241489908297,
+          "rms": 2.0297841660820377,
+          "p95": 4.033535720743078,
+          "max": 4.321582654781477
+        },
+        "endpoint_position_difference_meters": 0.029337837584622294,
+        "endpoint_heading_difference_degrees": -1.1884416637318465,
+        "caveats": [
+          "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+          "Simulation is not real-hardware accuracy or PID validation.",
+          "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+        ]
+      }
+    },
+    {
+      "number": 18,
+      "label": "finalist0-repeat2",
+      "vector": [
+        5.75,
+        0.5,
+        5,
+        0
+      ],
+      "gains": {
+        "TRANSLATION_KP": 5.75,
+        "TRANSLATION_KD": 0.5,
+        "CROSS_TRACK_KP": 5,
+        "CROSS_TRACK_KD": 0
+      },
+      "directory": "/Users/andrei/Robot-Code-2026/artifacts/straight-line-pid-optimization-2026-09-26/search-02/018-finalist0-repeat2/run",
+      "failed": false,
+      "score": 0.5567780537604686,
+      "parts": {
+        "rms": 0.2394163089598956,
+        "p95_weighted": 0.21313579673767483,
+        "peak_weighted": 0.10124013911188436,
+        "endpoint_weighted": 0.0029858089510138627
+      },
+      "summary": {
+        "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+        "gui": {
+          "samples": 883,
+          "duration_seconds": 7.015448329118184,
+          "length_meters": 17.538620822795465
+        },
+        "robot": {
+          "samples": 509,
+          "duration_seconds": 10.236714,
+          "length_meters": 20.401889545232923
+        },
+        "aligned_position_error_meters": {
+          "mean": 0.14986351827816902,
+          "rms": 0.2394163089598956,
+          "p95": 0.6089594192504996,
+          "max": 0.6749342607458957
+        },
+        "aligned_absolute_heading_error_degrees": {
+          "mean": 12.031332552554197,
+          "rms": 17.001942884284013,
+          "p95": 35.89458142841325,
+          "max": 45.1166724616702
+        },
+        "same_elapsed_time_position_error_meters": {
+          "mean": 1.7074021175903866,
+          "rms": 2.0450175672318576,
+          "p95": 4.1198319461796435,
+          "max": 4.341216161163248
+        },
+        "endpoint_position_difference_meters": 0.029858089510138627,
+        "endpoint_heading_difference_degrees": -1.274944367922179,
+        "caveats": [
+          "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+          "Simulation is not real-hardware accuracy or PID validation.",
+          "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+        ]
+      }
+    },
+    {
+      "number": 19,
+      "label": "finalist1-repeat1",
+      "vector": [
+        5.75,
+        0.5,
+        6.5,
+        0
+      ],
+      "gains": {
+        "TRANSLATION_KP": 5.75,
+        "TRANSLATION_KD": 0.5,
+        "CROSS_TRACK_KP": 6.5,
+        "CROSS_TRACK_KD": 0
+      },
+      "directory": "/Users/andrei/Robot-Code-2026/artifacts/straight-line-pid-optimization-2026-09-26/search-02/019-finalist1-repeat1/run",
+      "failed": false,
+      "score": 0.5399426602938417,
+      "parts": {
+        "rms": 0.23219926288648174,
+        "p95_weighted": 0.20725999011039256,
+        "peak_weighted": 0.0977064846432184,
+        "endpoint_weighted": 0.0027769226537491176
+      },
+      "summary": {
+        "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+        "gui": {
+          "samples": 883,
+          "duration_seconds": 7.015448329118184,
+          "length_meters": 17.538620822795465
+        },
+        "robot": {
+          "samples": 511,
+          "duration_seconds": 10.269731,
+          "length_meters": 20.317557901238832
+        },
+        "aligned_position_error_meters": {
+          "mean": 0.14643026884532798,
+          "rms": 0.23219926288648174,
+          "p95": 0.5921714003154074,
+          "max": 0.6513765642881227
+        },
+        "aligned_absolute_heading_error_degrees": {
+          "mean": 12.148033134717764,
+          "rms": 17.09493770681508,
+          "p95": 35.969327236259474,
+          "max": 44.69267274977949
+        },
+        "same_elapsed_time_position_error_meters": {
+          "mean": 1.6887033058958592,
+          "rms": 2.024042650164293,
+          "p95": 4.068812022756346,
+          "max": 4.305454459487187
+        },
+        "endpoint_position_difference_meters": 0.027769226537491174,
+        "endpoint_heading_difference_degrees": -1.2881408464511914,
+        "caveats": [
+          "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+          "Simulation is not real-hardware accuracy or PID validation.",
+          "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+        ]
+      }
+    },
+    {
+      "number": 20,
+      "label": "finalist1-repeat2",
+      "vector": [
+        5.75,
+        0.5,
+        6.5,
+        0
+      ],
+      "gains": {
+        "TRANSLATION_KP": 5.75,
+        "TRANSLATION_KD": 0.5,
+        "CROSS_TRACK_KP": 6.5,
+        "CROSS_TRACK_KD": 0
+      },
+      "directory": "/Users/andrei/Robot-Code-2026/artifacts/straight-line-pid-optimization-2026-09-26/search-02/020-finalist1-repeat2/run",
+      "failed": false,
+      "score": 0.523676785706735,
+      "parts": {
+        "rms": 0.22651236815045336,
+        "p95_weighted": 0.20116285643986914,
+        "peak_weighted": 0.09312836545155402,
+        "endpoint_weighted": 0.0028731956648585123
+      },
+      "summary": {
+        "method": "XY-cost order-preserving dynamic time warping; one lowest-distance matched GUI sample per robot sample. Heading is evaluated after XY alignment. Includes first post-completion pose. Timing comparison uses common elapsed-time interval only.",
+        "gui": {
+          "samples": 883,
+          "duration_seconds": 7.015448329118184,
+          "length_meters": 17.538620822795465
+        },
+        "robot": {
+          "samples": 505,
+          "duration_seconds": 10.106743999999999,
+          "length_meters": 20.29325236937541
+        },
+        "aligned_position_error_meters": {
+          "mean": 0.14351665924140375,
+          "rms": 0.22651236815045336,
+          "p95": 0.5747510183996262,
+          "max": 0.6208557696770268
+        },
+        "aligned_absolute_heading_error_degrees": {
+          "mean": 12.148928336252212,
+          "rms": 17.116364219060134,
+          "p95": 35.875949897964254,
+          "max": 44.93164788843796
+        },
+        "same_elapsed_time_position_error_meters": {
+          "mean": 1.692795341532614,
+          "rms": 2.028252371596331,
+          "p95": 4.056995672711055,
+          "max": 4.287532581272295
+        },
+        "endpoint_position_difference_meters": 0.028731956648585123,
+        "endpoint_heading_difference_degrees": -1.2035873446798937,
+        "caveats": [
+          "Current upstream GUI simulator revision, not verified against the team desktop GUI version.",
+          "Simulation is not real-hardware accuracy or PID validation.",
+          "Dynamic time warping removes timing differences and is an optimistic geometric alignment, not proof of identical segment/event behavior."
+        ]
+      }
+    }
+  ]
+}

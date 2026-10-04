@@ -1,0 +1,11 @@
+[
+  {
+    "name": "run",
+    "gains": {
+      "TRANSLATION_KP": 6,
+      "TRANSLATION_KD": 0.25,
+      "CROSS_TRACK_KP": 9,
+      "CROSS_TRACK_KD": 0.15
+    }
+  }
+]
