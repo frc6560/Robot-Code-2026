@@ -1,0 +1,79 @@
+> Task :extractReleaseNative UP-TO-DATE
+> Task :compileJava UP-TO-DATE
+> Task :processResources NO-SOURCE
+> Task :classes UP-TO-DATE
+> Task :downloadDepsPreemptively
+> Task :jar UP-TO-DATE
+
+> Task :simulateJavaRelease
+HAL Extensions: No extensions found
+********** Robot program starting **********
+NT: Listening on NT3 port 1735, NT4 port 5810
+[AdvantageKit] Logging to "/Users/andrei/Robot-Code-2026/artifacts/zigzag-field-safety-2026-10-04/run-02/logs/akit_07ec55eb7f0d020f.wpilog"
+[phoenix] CANbus Connected: sim
+[phoenix] CANbus Network Up: sim
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 2 ("rio") Status Signal MagnetHealth
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 8 ("rio") Status Signal MagnetHealth
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 8 ("rio") Status Signal AbsolutePosition
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 8 ("rio") Status Signal Velocity
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 11 ("rio") Status Signal MagnetHealth
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 11 ("rio") Status Signal AbsolutePosition
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 11 ("rio") Status Signal Velocity
+[phoenix] Library initialization is complete.
+	
+Warning at edu.wpi.first.wpilibj.DriverStation.reportJoystickUnpluggedWarning(DriverStation.java:1345): Joystick Button 3 on port 0 not available, check if controller is plugged in
+BLINE_HEADLESS: Enabled Zigzag autonomous on Blue alliance
+********** Robot program startup complete **********
+Resetting odometry to: Pose2d(Translation2d(X: 4.43, Y: 7.41), Rotation2d(Rads: -0.01, Deg: -0.61))
+Warning at edu.wpi.first.wpilibj.IterativeRobotBase.printLoopOverrunMessage(IterativeRobotBase.java:436): Loop time of 0.02s overrun
+
+SuperstructureCommand initialized at 1791152836316
+CommandScheduler loop overrun
+Warning at edu.wpi.first.wpilibj.Tracer.lambda$printEpochs$0(Tracer.java:62): 	Turret.periodic(): 0.000001s
+	SwerveSubsystem.periodic(): 0.001588s
+	FollowPath.execute(): 0.006529s
+	buttons.run(): 0.001245s
+	Intake.periodic(): 0.000019s
+	SuperstructureCommand.initialize(): 0.001782s
+	Hood.periodic(): 0.000047s
+	VisionSubsystem.periodic(): 0.004304s
+	Feeder.periodic(): 0.000057s
+	SequentialCommandGroup.execute(): 0.012855s
+	RunCommand.initialize(): 0.000036s
+	Shooter.periodic(): 0.000028s
+	LED.periodic(): 0.000598s
+
+Warning at edu.wpi.first.wpilibj.Tracer.lambda$printEpochs$0(Tracer.java:62): 	autonomousInit(): 0.011872s
+	SmartDashboard.updateValues(): 0.002576s
+	robotPeriodic(): 0.032375s
+	LiveWindow.updateValues(): 0.000007s
+	Shuffleboard.update(): 0.000006s
+	simulationPeriodic(): 0.004728s
+	autonomousPeriodic(): 0.000518s
+
+[AdvantageKit] Renaming log to "/Users/andrei/Robot-Code-2026/artifacts/zigzag-field-safety-2026-10-04/run-02/logs/akit_26-10-04_15-27-16.wpilog"
+[phoenix-diagnostics] Server 2026.1.2 (Mar 11 2026, 19:37:44) running on port: 1250
+	
+[PathPlanner] PathfindingCommand finished warmup
+BLINE_HEADLESS: Auto command finished at x=4.454 y=7.406 heading=-1.9deg
+BLINE_HEADLESS_RESULT: PASS postAutoDisplacement=0.0178m initialCoastPeak=0.1332mps finalSpeed=0.0000mps
+Warning at edu.wpi.first.wpilibj.RobotBase.runRobot(RobotBase.java:450): The robot program quit unexpectedly. This is usually due to a code error.
+  The above stacktrace can help determine where the error occurred.
+  See https://wpilib.org/stacktrace for more information.
+Error at edu.wpi.first.wpilibj.RobotBase.runRobot(RobotBase.java:462): Unexpected return from startCompetition() method.
+[phoenix-diagnostics] Server shutdown cleanly. (dur:9)
+	
+[phoenix] Library shutdown cleanly
+	
+
+> Task :simulateJava
+
+BUILD SUCCESSFUL in 16s
+5 actionable tasks: 2 executed, 3 up-to-date

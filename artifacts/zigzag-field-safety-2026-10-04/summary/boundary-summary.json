@@ -1,0 +1,66 @@
+{
+  "path": "/Users/andrei/Robot-Code-2026/src/main/deploy/autos/paths/zigzag.json",
+  "requirement": "Robot center Y must never exceed its starting Y.",
+  "field_top_y_m": 8.07,
+  "footprint_assumption_m": {
+    "length": 0.812,
+    "width": 0.812
+  },
+  "start_y_m": 7.40708,
+  "waypoint_max_y_m": 7.40708,
+  "runs": [
+    {
+      "run": 1,
+      "active_samples": 325,
+      "duration_s": 6.5547889999999995,
+      "path_length_m": 9.612596422504613,
+      "start_y_m": 7.40708,
+      "max_active_center_y_m": 7.40708,
+      "active_center_overshoot_cm": 0,
+      "max_all_center_y_m": 7.40708,
+      "all_center_overshoot_cm": 0,
+      "max_bumper_top_y_m": 7.844986950552997,
+      "field_border_margin_cm": 22.50130494470035,
+      "endpoint_error_cm": 3.2195593079889626,
+      "pass_center_y": true,
+      "pass_field_border": true
+    },
+    {
+      "run": 2,
+      "active_samples": 323,
+      "duration_s": 6.483197,
+      "path_length_m": 9.541213386557914,
+      "start_y_m": 7.40708,
+      "max_active_center_y_m": 7.40708,
+      "active_center_overshoot_cm": 0,
+      "max_all_center_y_m": 7.40708,
+      "all_center_overshoot_cm": 0,
+      "max_bumper_top_y_m": 7.845274401422193,
+      "field_border_margin_cm": 22.472559857780716,
+      "endpoint_error_cm": 3.119178452739526,
+      "pass_center_y": true,
+      "pass_field_border": true
+    },
+    {
+      "run": 3,
+      "active_samples": 325,
+      "duration_s": 6.51843,
+      "path_length_m": 9.62514260068713,
+      "start_y_m": 7.40708,
+      "max_active_center_y_m": 7.40708,
+      "active_center_overshoot_cm": 0,
+      "max_all_center_y_m": 7.40708,
+      "all_center_overshoot_cm": 0,
+      "max_bumper_top_y_m": 7.845172159489458,
+      "field_border_margin_cm": 22.48278405105424,
+      "endpoint_error_cm": 3.1704353666874434,
+      "pass_center_y": true,
+      "pass_field_border": true
+    }
+  ],
+  "worst_center_overshoot_cm": 0,
+  "minimum_field_border_margin_cm": 22.472559857780716,
+  "all_runs_pass_center_y": true,
+  "all_runs_pass_field_border": true,
+  "caveat": "Simulation evidence only. The 0.812 m footprint comes from RobotProfile.DEFAULT and must be replaced with measured bumper dimensions if different."
+}

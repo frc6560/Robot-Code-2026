@@ -1,0 +1,87 @@
+> Task :extractReleaseNative UP-TO-DATE
+> Task :compileJava UP-TO-DATE
+> Task :processResources NO-SOURCE
+> Task :classes UP-TO-DATE
+> Task :downloadDepsPreemptively
+> Task :jar UP-TO-DATE
+
+> Task :simulateJavaRelease
+HAL Extensions: No extensions found
+********** Robot program starting **********
+NT: Listening on NT3 port 1735, NT4 port 5810
+[AdvantageKit] Logging to "/Users/andrei/Robot-Code-2026/artifacts/zigzag-field-safety-2026-10-04/run-03/logs/akit_c6d1f044f5baba72.wpilog"
+[phoenix] CANbus Connected: sim
+[phoenix] CANbus Network Up: sim
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 5 ("rio") Status Signal MagnetHealth
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 2 ("rio") Status Signal MagnetHealth
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 2 ("rio") Status Signal AbsolutePosition
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 2 ("rio") Status Signal Velocity
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 8 ("rio") Status Signal MagnetHealth
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 8 ("rio") Status Signal AbsolutePosition
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 8 ("rio") Status Signal Velocity
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 11 ("rio") Status Signal MagnetHealth
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 11 ("rio") Status Signal AbsolutePosition
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 11 ("rio") Status Signal Velocity
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	pigeon 2 13 ("") Status Signal Yaw
+[phoenix] Library initialization is complete.
+	
+Warning at edu.wpi.first.wpilibj.DriverStation.reportJoystickUnpluggedWarning(DriverStation.java:1345): Joystick Button 3 on port 0 not available, check if controller is plugged in
+BLINE_HEADLESS: Enabled Zigzag autonomous on Blue alliance
+********** Robot program startup complete **********
+Resetting odometry to: Pose2d(Translation2d(X: 4.43, Y: 7.41), Rotation2d(Rads: -0.01, Deg: -0.61))
+Warning at edu.wpi.first.wpilibj.IterativeRobotBase.printLoopOverrunMessage(IterativeRobotBase.java:436): Loop time of 0.02s overrun
+
+SuperstructureCommand initialized at 1791152852712
+CommandScheduler loop overrun
+Warning at edu.wpi.first.wpilibj.Tracer.lambda$printEpochs$0(Tracer.java:62): 	Turret.periodic(): 0.000001s
+	SwerveSubsystem.periodic(): 0.003159s
+	FollowPath.execute(): 0.007313s
+	buttons.run(): 0.001082s
+	Intake.periodic(): 0.000019s
+	SuperstructureCommand.initialize(): 0.001707s
+	Hood.periodic(): 0.000044s
+	VisionSubsystem.periodic(): 0.003007s
+	Feeder.periodic(): 0.000049s
+	SequentialCommandGroup.execute(): 0.011879s
+	RunCommand.initialize(): 0.000150s
+	Shooter.periodic(): 0.000028s
+	LED.periodic(): 0.000498s
+
+Warning at edu.wpi.first.wpilibj.Tracer.lambda$printEpochs$0(Tracer.java:62): 	autonomousInit(): 0.013593s
+	SmartDashboard.updateValues(): 0.002693s
+	robotPeriodic(): 0.031828s
+	LiveWindow.updateValues(): 0.000008s
+	Shuffleboard.update(): 0.000005s
+	simulationPeriodic(): 0.004686s
+	autonomousPeriodic(): 0.000508s
+
+[AdvantageKit] Renaming log to "/Users/andrei/Robot-Code-2026/artifacts/zigzag-field-safety-2026-10-04/run-03/logs/akit_26-10-04_15-27-32.wpilog"
+[phoenix-diagnostics] Server 2026.1.2 (Mar 11 2026, 19:37:44) running on port: 1250
+	
+[PathPlanner] PathfindingCommand finished warmup
+BLINE_HEADLESS: Auto command finished at x=4.454 y=7.406 heading=-1.9deg
+BLINE_HEADLESS_RESULT: PASS postAutoDisplacement=0.0186m initialCoastPeak=0.1361mps finalSpeed=0.0000mps
+Warning at edu.wpi.first.wpilibj.RobotBase.runRobot(RobotBase.java:450): The robot program quit unexpectedly. This is usually due to a code error.
+  The above stacktrace can help determine where the error occurred.
+  See https://wpilib.org/stacktrace for more information.
+Error at edu.wpi.first.wpilibj.RobotBase.runRobot(RobotBase.java:462): Unexpected return from startCompetition() method.
+[phoenix-diagnostics] Server shutdown cleanly. (dur:1)
+	
+[phoenix] Library shutdown cleanly
+	
+
+> Task :simulateJava
+
+BUILD SUCCESSFUL in 16s
+5 actionable tasks: 2 executed, 3 up-to-date
