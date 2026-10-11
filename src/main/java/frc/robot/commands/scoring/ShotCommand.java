@@ -11,6 +11,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants.FieldConstants;
 import frc.robot.subsystems.feeder.Feeder;
 import frc.robot.subsystems.hood.Hood;
+import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.led.LED;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.turret.Turret;
@@ -28,6 +29,7 @@ public class ShotCommand extends Command {
     private final ShotCalculator shotCalculator;
     private final PoseSupplier supplier;
     private final LED led;
+    private final Intake intake;
 
     private boolean isReady = false;
 
@@ -40,7 +42,8 @@ public class ShotCommand extends Command {
             Shooter shooter,
             ShotCalculator shotCalculator,
             PoseSupplier supplier,
-            LED led) {
+            LED led,
+            Intake intake) {
         this.feeder = feeder;
         this.turret = turret;
         this.hood = hood;
@@ -48,12 +51,14 @@ public class ShotCommand extends Command {
         this.shotCalculator = shotCalculator;
         this.supplier = supplier;
         this.led = led;
-        addRequirements(feeder);
+        this.intake = intake;
+        addRequirements(feeder, intake);
     }
 
     @Override
     public void initialize() {
         led.setShootIntent(true);
+        intake.startShootingOscillation();
     }
 
     private static final double PASSING_TURRET_TOLERANCE_DEG = 15.0;
@@ -99,6 +104,7 @@ public class ShotCommand extends Command {
     public void end(boolean interrupted) {
         feeder.setShooting(false);
         led.setShootIntent(false);
+        intake.stopShootingOscillation();
     }
 
     @Override

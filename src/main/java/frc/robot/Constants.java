@@ -467,27 +467,53 @@ public final class Constants {
   }
 
   public static final class IntakeConstants {
-    // CAN IDs
-    public static final int LEFT_MOTOR_ID = 24;
-    public static final int RIGHT_MOTOR_ID = 25;
+    private IntakeConstants() {}
+
+    // CAN IDs. The rack is a Kraken X44 and the roller is a Kraken X60.
+    public static final int DEPLOY_MOTOR_ID = 24;
+    public static final int ROLLER_MOTOR_ID = 25;
     public static final String CAN_BUS = "rio";
 
-
-    // Motor Inversions (opposed motors)
-    public static final boolean LEFT_MOTOR_INVERTED = false;
-    public static final boolean RIGHT_MOTOR_INVERTED = true;
+    public static final boolean DEPLOY_MOTOR_INVERTED = false;
+    public static final boolean ROLLER_MOTOR_INVERTED = false;
 
     // Current Limits
-    public static final double SUPPLY_CURRENT_LIMIT = 30;
-    public static final double STATOR_CURRENT_LIMIT = 40;
+    public static final double DEPLOY_SUPPLY_CURRENT_LIMIT = 30.0;
+    public static final double DEPLOY_STATOR_CURRENT_LIMIT = 40.0;
+    public static final double ROLLER_SUPPLY_CURRENT_LIMIT = 40.0;
+    public static final double ROLLER_STATOR_CURRENT_LIMIT = 60.0;
 
-    // Roller Speed
+    // Roller speed. One X60 is used; a future second roller motor can follow this one in IO.
     public static final double ROLLER_RPM = 2100.0;
     public static final double ROLLER_GEARING = 1.5;
 
-    // Velocity PID Gains
-    public static final double kP = 0.5;
-    public static final double kV = 0.12;
+    public static final double ROLLER_kP = 0.5;
+    public static final double ROLLER_kV = 0.12;
+
+    // Rack geometry inherited from the original intake design.
+    public static final double DEPLOY_GEAR_RATIO = 64.0 / 14.0;
+    public static final double PINION_DIAMETER_INCHES = 1.751;
+    public static final double INCHES_PER_PINION_ROTATION = Math.PI * PINION_DIAMETER_INCHES;
+    public static final double MAX_EXTENSION_INCHES = 11.0;
+
+    // Rack positions are X44 motor rotations.
+    public static final double RETRACTED_POSITION_ROTATIONS = 0.0;
+    public static final double EXTENDED_POSITION_ROTATIONS =
+        MAX_EXTENSION_INCHES / INCHES_PER_PINION_ROTATION * DEPLOY_GEAR_RATIO;
+    public static final double DEPLOY_POSITION_TOLERANCE_ROTATIONS = 0.25;
+
+    // Motion Magic values are motor rotations/sec and motor rotations/sec^2.
+    public static final double DEPLOY_CRUISE_VELOCITY_RPS = 5.5;
+    public static final double DEPLOY_ACCELERATION_RPS_SQ = 50.0;
+    public static final double DEPLOY_kP = 0.5;
+    public static final double DEPLOY_kV = 0.12;
+
+    // During a shot the rack alternates between these two positions.
+    public static final double SHOOT_OSCILLATION_REAR_POSITION_ROTATIONS =
+        9.0 / INCHES_PER_PINION_ROTATION * DEPLOY_GEAR_RATIO;
+    public static final double SHOOT_OSCILLATION_FORWARD_POSITION_ROTATIONS =
+        EXTENDED_POSITION_ROTATIONS;
+    public static final double SHOOT_OSCILLATION_HALF_PERIOD_SECONDS = 0.25;
   }
 
   public static final class FeederConstants {

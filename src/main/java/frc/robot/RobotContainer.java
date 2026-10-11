@@ -40,8 +40,8 @@ import frc.robot.subsystems.feeder.Feeder;
 import frc.robot.subsystems.feeder.FeederIO;
 import frc.robot.subsystems.feeder.FeederIOTalonFX;
 import frc.robot.subsystems.intake.Intake;
-import frc.robot.subsystems.intake.IntakeIO;
 import frc.robot.subsystems.intake.IntakeIOTalonFX;
+import frc.robot.subsystems.intake.IntakeIOSim;
 import frc.robot.subsystems.led.LED;
 import frc.robot.subsystems.led.LEDIO;
 import frc.robot.subsystems.led.LEDIOAddressable;
@@ -99,7 +99,7 @@ public class RobotContainer {
           shooter = new Shooter(new ShooterIO() {});
           turret = new Turret(new TurretIO() {});
           feeder = new Feeder(new FeederIO() {});
-          intake = new Intake(new IntakeIO() {});
+          intake = new Intake(new IntakeIOSim());
           led = new LED(new LEDIO() {}, hood, shooter, turret, shotCalculator);
       }
 
@@ -193,7 +193,7 @@ public class RobotContainer {
         Trigger driverShootTrigger = driverXbox.b().and(DriverStation::isTeleopEnabled);
         driverShootTrigger.onTrue(Commands.runOnce(() -> {
           shotCommand = new ShotCommand(
-              feeder, turret, hood, shooter, shotCalculator, drivebase::getPose, led)
+              feeder, turret, hood, shooter, shotCalculator, drivebase::getPose, led, intake)
               .alongWith(new AimAtHub(
                   drivebase,
                   () -> clampSpeedsForShooting(driveAngularVelocity.get())));
@@ -208,20 +208,31 @@ public class RobotContainer {
           if (shotCommand != null) {
             shotCommand.cancel();
           }
-        }), Commands.runOnce(() -> feeder.setShooting(true))));
-        ungatedShootTrigger.onFalse(Commands.runOnce(() -> feeder.setShooting(false)));
+        }), Commands.runOnce(() -> {
+          feeder.setShooting(true);
+          intake.startShootingOscillation();
+        }, feeder, intake)));
+        ungatedShootTrigger.onFalse(Commands.runOnce(() -> {
+          feeder.setShooting(false);
+          intake.stopShootingOscillation();
+        }, feeder, intake));
 
         // --- INTAKE ---
 
         Trigger intakeTrigger = new Trigger(m_Controls::getRollerTrigger);
         Trigger intakeReleaseTrigger = new Trigger(m_Controls::getRollerReleaseTrigger);
+        Trigger intakeRetractTrigger = new Trigger(m_Controls::getIntakeResetTrigger);
 
         intakeTrigger.onTrue(Commands.runOnce(() -> {
             intake.activate();
             feeder.setIntaking(true);
         }));
         intakeReleaseTrigger.onTrue(Commands.runOnce(() -> {
-            intake.deactivate();
+            intake.setExtendedStopped();
+            feeder.setIntaking(false);
+        }));
+        intakeRetractTrigger.onTrue(Commands.runOnce(() -> {
+            intake.setRetracted();
             feeder.setIntaking(false);
         }));
 

@@ -179,11 +179,12 @@ public class AutoCommands {
             if (shooter.atTarget()) {
                 feeder.setShooting(true);
                 feeder.setIntaking(true);
-                intake.activate();
+                intake.startShootingOscillation();
             }
         }, shooter, feeder, intake).withTimeout(3.0).finallyDo(interrupted -> {
             feeder.setShooting(false);
             feeder.setIntaking(false);
+            intake.stopShootingOscillation();
             intake.deactivate();
             shooter.setGoal(0);
         });

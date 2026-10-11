@@ -1,65 +1,56 @@
 package frc.robot.subsystems.intake;
 
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.math.system.plant.LinearSystemId;
 import edu.wpi.first.wpilibj.simulation.DCMotorSim;
+import frc.robot.Constants.IntakeConstants;
 
 public class IntakeIOSim implements IntakeIO {
-    private final DCMotorSim leftSim;
-    private final DCMotorSim rightSim;
-
-    private double appliedVolts = 0.0;
-
-    private static final double GEARING = 1.0;
-    private static final double MOI = 0.001;
-
-    public IntakeIOSim() {
-        leftSim = new DCMotorSim(
-            LinearSystemId.createDCMotorSystem(
-                DCMotor.getKrakenX60(1),
-                MOI,
-                GEARING
-            ),
-            DCMotor.getKrakenX60(1)
-        );
-        rightSim = new DCMotorSim(
-            LinearSystemId.createDCMotorSystem(
-                DCMotor.getKrakenX60(1),
-                MOI,
-                GEARING
-            ),
-            DCMotor.getKrakenX60(1)
-        );
-    }
+    private final DCMotorSim deploySim = new DCMotorSim(
+        LinearSystemId.createDCMotorSystem(DCMotor.getKrakenX44(1), 0.01, 1.0), DCMotor.getKrakenX44(1));
+    private final DCMotorSim rollerSim = new DCMotorSim(
+        LinearSystemId.createDCMotorSystem(DCMotor.getKrakenX60(1), 0.001, 1.0), DCMotor.getKrakenX60(1));
+    private double deployTargetRotations = IntakeConstants.RETRACTED_POSITION_ROTATIONS;
+    private double deployAppliedVolts;
+    private double rollerAppliedVolts;
 
     @Override
     public void updateInputs(IntakeIOInputs inputs) {
-        leftSim.setInputVoltage(appliedVolts);
-        rightSim.setInputVoltage(appliedVolts);
-
-        leftSim.update(0.02);
-        rightSim.update(0.02);
-
-        inputs.leftVelocityRPS = leftSim.getAngularVelocityRPM() / 60.0;
-        inputs.leftAppliedVolts = appliedVolts;
-        inputs.leftCurrentAmps = Math.abs(leftSim.getCurrentDrawAmps());
-        inputs.leftTempCelsius = 25.0;
-
-        inputs.rightVelocityRPS = rightSim.getAngularVelocityRPM() / 60.0;
-        inputs.rightAppliedVolts = appliedVolts;
-        inputs.rightCurrentAmps = Math.abs(rightSim.getCurrentDrawAmps());
-        inputs.rightTempCelsius = 25.0;
+        double positionError = deployTargetRotations - deploySim.getAngularPositionRotations();
+        deployAppliedVolts = MathUtil.clamp(positionError * 4.0, -12.0, 12.0);
+        deploySim.setInputVoltage(deployAppliedVolts);
+        rollerSim.setInputVoltage(rollerAppliedVolts);
+        deploySim.update(0.02);
+        rollerSim.update(0.02);
+        inputs.deployPositionRotations = deploySim.getAngularPositionRotations();
+        inputs.deployVelocityRPS = deploySim.getAngularVelocityRPM() / 60.0;
+        inputs.deployAppliedVolts = deployAppliedVolts;
+        inputs.deployCurrentAmps = Math.abs(deploySim.getCurrentDrawAmps());
+        inputs.deployTempCelsius = 25.0;
+        inputs.rollerVelocityRPS = rollerSim.getAngularVelocityRPM() / 60.0;
+        inputs.rollerAppliedVolts = rollerAppliedVolts;
+        inputs.rollerCurrentAmps = Math.abs(rollerSim.getCurrentDrawAmps());
+        inputs.rollerTempCelsius = 25.0;
     }
 
     @Override
     public void setRollerRPM(double rpm) {
-        // Simple feedforward approximation for sim: target velocity -> voltage
-        double targetRPS = rpm / 60.0;
-        appliedVolts = targetRPS * 0.12 * 12.0; // kV * nominal voltage
+        rollerAppliedVolts = MathUtil.clamp(
+            rpm * IntakeConstants.ROLLER_GEARING / 6000.0 * 12.0, -12.0, 12.0);
+    }
+
+    @Override
+    public void setDeployPosition(double motorRotations) {
+        deployTargetRotations = MathUtil.clamp(motorRotations,
+            IntakeConstants.RETRACTED_POSITION_ROTATIONS, IntakeConstants.EXTENDED_POSITION_ROTATIONS);
     }
 
     @Override
     public void stop() {
-        appliedVolts = 0.0;
+        deployAppliedVolts = 0.0;
+        rollerAppliedVolts = 0.0;
+        deploySim.setInputVoltage(0.0);
+        rollerSim.setInputVoltage(0.0);
     }
 }
