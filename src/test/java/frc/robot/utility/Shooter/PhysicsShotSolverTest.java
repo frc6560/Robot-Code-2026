@@ -25,11 +25,11 @@ class PhysicsShotSolverTest {
         Solution solution = new PhysicsShotSolver().solve(FIFTEEN_FEET_METERS);
 
         assertTrue(solution.valid());
-        assertEquals(2637.5, solution.flywheelRPM(), 1e-9);
-        assertEquals(30.075000000000003, solution.hoodCommandDegrees(), 1e-9);
-        assertEquals(71.31941692022977, solution.launchElevationDegrees(), 1e-9);
-        assertEquals(1.6961832488944215, solution.timeOfFlightSeconds(), 2e-4);
-        assertEquals(70.45924947629163, solution.entryAngleDegrees(), 0.03);
+        assertEquals(2187.5, solution.flywheelRPM(), 1e-9);
+        assertEquals(27.942857142857143, solution.hoodCommandDegrees(), 1e-9);
+        assertEquals(73.45155977737262, solution.launchElevationDegrees(), 1e-9);
+        assertEquals(1.8287901083857165, solution.timeOfFlightSeconds(), 2e-4);
+        assertEquals(73.24177597351337, solution.entryAngleDegrees(), 0.03);
         assertTrue(solution.openingClearanceMeters() > 0.0);
         assertTrue(solution.nearRimClearanceMeters() >= ShotModelConstants.HUB_RIM_MARGIN_METERS);
     }
@@ -51,6 +51,15 @@ class PhysicsShotSolverTest {
             assertTrue(solution.hoodCommandDegrees() <= HoodConstants.HOOD_MAX_ANGLE);
             assertTrue(solution.entryAngleDegrees() >= ShotModelConstants.MIN_ENTRY_ANGLE_DEGREES);
         }
+    }
+
+    @Test
+    void appliesObservedTwoMeterOvershootCalibration() {
+        Solution solution = new PhysicsShotSolver().solveRuntime(2.0);
+
+        assertTrue(solution.valid());
+        assertEquals(1433.9899755557112, solution.flywheelRPM(), 1e-6);
+        assertEquals(27.710084933518777, solution.hoodCommandDegrees(), 1e-6);
     }
 
     @Test

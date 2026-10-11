@@ -494,10 +494,11 @@ public final class Constants {
     public static final double WIND_X_METERS_PER_SECOND = 0.0;
 
     /**
-     * Empirical calibration values. Update these from the shot-calibrator fit rather than
-     * changing the numerical solver.
+     * Estimated from the observed 2.0 m shot crossing roughly 2.0 m above the HUB. The previous
+     * 0.8819 empirical calibration under-predicted the real launch speed and commanded about 22%
+     * too much RPM. Update this from a shot-calibrator fit when tracked video is available.
      */
-    public static final double VELOCITY_TRANSFER = 0.8819447990122069;
+    public static final double VELOCITY_TRANSFER = 1.13;
     public static final double SPIN_TRANSFER = 0.70;
     public static final double HOOD_OFFSET_DEGREES = 11.394416920229768;
     public static final double DRAG_SCALE = 1.0;
@@ -515,12 +516,12 @@ public final class Constants {
      * distance range. Coefficients are ordered as {@code a*d^2 + b*d + c}, with distance in meters.
      * Regenerate these whenever an empirical model value above changes.
      */
-    public static final double RPM_POLICY_DISTANCE_SQUARED = 8.493066861497663;
-    public static final double RPM_POLICY_DISTANCE = 224.07415012861622;
-    public static final double RPM_POLICY_CONSTANT = 1334.584356423225;
-    public static final double HOOD_POLICY_DISTANCE_SQUARED = -0.43127959127565657;
-    public static final double HOOD_POLICY_DISTANCE = 3.9674971917554624;
-    public static final double HOOD_POLICY_CONSTANT = 23.34501229268793;
+    public static final double RPM_POLICY_DISTANCE_SQUARED = -8.074880320601526;
+    public static final double RPM_POLICY_DISTANCE = 369.56477908332414;
+    public static final double RPM_POLICY_CONSTANT = 727.1599386714691;
+    public static final double HOOD_POLICY_DISTANCE_SQUARED = 0.070795037422750;
+    public static final double HOOD_POLICY_DISTANCE = -0.850321285289592;
+    public static final double HOOD_POLICY_CONSTANT = 29.127547354406961;
   }
 
   public static final class TurretConstants{ 

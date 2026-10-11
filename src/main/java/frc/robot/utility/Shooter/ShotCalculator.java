@@ -45,7 +45,7 @@ public class ShotCalculator {
     private static final double TIME_PARAMETER = 0.051; 
     private static final double MOVING_VELOCITY_THRESHOLD_METERS_PER_SECOND = 0.3;
     private static final double TIME_OF_FLIGHT_EPSILON_SECONDS = 0.005;
-    private static final int MAX_VIRTUAL_TARGET_ITERATIONS = 4;
+    private static final int MAX_VIRTUAL_TARGET_ITERATIONS = 20;
 
     private final PhysicsShotSolver physicsSolver = new PhysicsShotSolver();
 
