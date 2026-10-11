@@ -2480,7 +2480,7 @@ with stage_model:
             shooter_mode_label = st.segmented_control(
                 "Shooter configuration",
                 ["Coupled dual wheel", "Powered wheel + fixed hood"],
-                default="Coupled dual wheel",
+                default="Powered wheel + fixed hood",
             )
             c1, c2 = st.columns(2)
             top_wheel_diameter = c1.number_input("Top wheel diameter (m)", 0.02, 0.40, step=0.0005, format="%.4f", key="model_top_wheel_diameter")

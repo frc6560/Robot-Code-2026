@@ -10,7 +10,6 @@ import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants.FieldConstants;
 import frc.robot.subsystems.feeder.Feeder;
-import frc.robot.subsystems.hood.Hood;
 import frc.robot.subsystems.led.LED;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.turret.Turret;
@@ -23,7 +22,6 @@ public class ShotCommand extends Command {
 
     private final Feeder feeder;
     private final Turret turret;
-    private final Hood hood;
     private final Shooter shooter;
     private final ShotCalculator shotCalculator;
     private final PoseSupplier supplier;
@@ -36,14 +34,12 @@ public class ShotCommand extends Command {
     public ShotCommand(
             Feeder feeder,
             Turret turret,
-            Hood hood,
             Shooter shooter,
             ShotCalculator shotCalculator,
             PoseSupplier supplier,
             LED led) {
         this.feeder = feeder;
         this.turret = turret;
-        this.hood = hood;
         this.shooter = shooter;
         this.shotCalculator = shotCalculator;
         this.supplier = supplier;
@@ -76,18 +72,14 @@ public class ShotCommand extends Command {
             ? poseX > FieldConstants.RED_ZONE_X : poseX < FieldConstants.BLUE_ZONE_X;
 
         double turretTolerance = inPassingZone ? PASSING_TURRET_TOLERANCE_DEG : shotCalculator.getTurretTolerance();
-        boolean hoodAtTolerance = inPassingZone ? true : hood.atTarget();
         boolean shooterAtTolerance = inPassingZone ? true : shooter.atTarget();
 
         boolean calculatorReady = inPassingZone || shotCalculator.isShotValid();
-        boolean measuredControlsScore = inPassingZone || shotCalculator.measuredControlsScore(
-            shooter.getCurrentRPM(),
-            hood.getHoodCommandAngle()
-        );
+        boolean measuredControlsScore = inPassingZone
+            || shotCalculator.measuredControlsScore(shooter.getCurrentRPM());
         boolean raw = calculatorReady
             && measuredControlsScore
             && turret.getAtTarget(turretTolerance)
-            && hoodAtTolerance
             && shooterAtTolerance;
 
         boolean allAtTarget = debouncer.calculate(raw);

@@ -11,59 +11,47 @@ import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import frc.robot.Constants.FieldConstants;
+import frc.robot.Constants.ShooterConstants;
+import frc.robot.Constants.ShotModelConstants;
 import frc.robot.Constants.TurretConstants;
+import frc.robot.utility.Shooter.PhysicsShotSolver.PassSolution;
 
 public class PassCalculator {
 
     public record TurretState(double positionRadians, double velocityRadiansPerSecond) {}
 
-    private double hoodAzimuth;
     private double flywheelRPM;
     private double turretAngle;
     private double turretVelocityFF; // feedforward velocity in rad/s 
 
     public Translation2d virtualTargetPose;
 
-    private static final InterpolatingDoubleTreeMap hoodAzimuthMap = new InterpolatingDoubleTreeMap();
-    private static final InterpolatingDoubleTreeMap flywheelRPMMap = new InterpolatingDoubleTreeMap();
-    private static final InterpolatingDoubleTreeMap timeOfFlightMap = new InterpolatingDoubleTreeMap();
+    private static final double PASS_TABLE_STEP_METERS = 0.25;
+
+    /**
+     * RPM and flight time to land a ball on the carpet at each distance, solved from the same
+     * physics model as hub shots. Distances past the flywheel's reach clamp to the farthest pass.
+     */
+    private final InterpolatingDoubleTreeMap flywheelRPMMap = new InterpolatingDoubleTreeMap();
+    private final InterpolatingDoubleTreeMap timeOfFlightMap = new InterpolatingDoubleTreeMap();
 
     public PassCalculator() {
-        hoodAzimuth = 0.0;
+        flywheelRPM = ShooterConstants.FLYWHEEL_IDLE_RPM;
         turretAngle = 0.0;
         turretVelocityFF = 0.0;
         virtualTargetPose = new Translation2d();
 
-        hoodAzimuthMap.put(4.077, 30.0);
-        hoodAzimuthMap.put(4.980, 36.0);
-        hoodAzimuthMap.put(5.955, 40.0);
-        hoodAzimuthMap.put(6.927, 44.0);
-        hoodAzimuthMap.put(7.777, 44.0);
-        hoodAzimuthMap.put(8.766, 44.0);
-        hoodAzimuthMap.put(10.000, 44.0);
-        hoodAzimuthMap.put(11.000, 44.0);
-        hoodAzimuthMap.put(12.000, 44.0);
-
-
-        flywheelRPMMap.put(4.077, 1900.0);
-        flywheelRPMMap.put(4.980, 2100.0);
-        flywheelRPMMap.put(5.955, 2200.0);
-        flywheelRPMMap.put(6.927, 2400.0);
-        flywheelRPMMap.put(7.777, 2500.0);
-        flywheelRPMMap.put(8.766, 2600.0);
-        flywheelRPMMap.put(10.000, 2918.0);
-        flywheelRPMMap.put(11.000, 3668.0);
-        flywheelRPMMap.put(12.000, 3917.0);
-
-        timeOfFlightMap.put(4.077, 1.25);
-        timeOfFlightMap.put(4.980, 1.26);
-        timeOfFlightMap.put(5.955, 1.33);
-        timeOfFlightMap.put(6.927, 1.33);
-        timeOfFlightMap.put(7.777, 1.39);
-        timeOfFlightMap.put(8.766, 1.47);
-        timeOfFlightMap.put(10.000, 1.501);
-        timeOfFlightMap.put(11.000, 1.547);
-        timeOfFlightMap.put(12.000, 1.592);
+        PhysicsShotSolver solver = new PhysicsShotSolver();
+        for (double distance = ShotModelConstants.PASS_MIN_DISTANCE_METERS;
+                distance <= ShotModelConstants.PASS_MAX_DISTANCE_METERS + 1e-9;
+                distance += PASS_TABLE_STEP_METERS) {
+            PassSolution pass = solver.solvePass(distance);
+            if (!pass.valid()) {
+                break; // out of reach; the map clamps to the last reachable distance
+            }
+            flywheelRPMMap.put(distance, pass.flywheelRPM());
+            timeOfFlightMap.put(distance, pass.timeOfFlightSeconds());
+        }
     }
 
     public double getTurretAngle() {
@@ -74,15 +62,11 @@ public class PassCalculator {
         return turretVelocityFF;
     }
 
-    public double getHoodAzimuth(){
-        return hoodAzimuth;
-    }
-
     public double getFlywheelRPM(){
         return flywheelRPM;
     }
 
-    /** Calculates the hood and turret angles based on the robot's pose */
+    /** Calculates the flywheel speed and turret angle based on the robot's pose */
     public void calculate(Pose2d robotPose, ChassisSpeeds fieldVelocity) {
         Optional<Alliance> alliance = DriverStation.getAlliance();
         if (alliance.isEmpty()) {
@@ -154,7 +138,6 @@ public class PassCalculator {
         }
         
         double distanceToVirtualTarget = distanceToTarget;
-        hoodAzimuth = hoodAzimuthMap.get(distanceToVirtualTarget);
         flywheelRPM = flywheelRPMMap.get(distanceToVirtualTarget);
         
         turretAngle = Math.atan2(virtualTargetPose.getY() - turretPose.getY(), virtualTargetPose.getX() - turretPose.getX())

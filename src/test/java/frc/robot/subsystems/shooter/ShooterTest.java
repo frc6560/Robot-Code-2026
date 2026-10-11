@@ -14,7 +14,8 @@ import edu.wpi.first.wpilibj.simulation.DriverStationSim;
 import frc.robot.Constants.ShooterConstants;
 
 class ShooterTest {
-    private static final double SHOT_RPM = 3500.0;
+    /** About a 15 ft hub shot. */
+    private static final double SHOT_RPM = 3000.0;
 
     @BeforeAll
     static void initializeHal() {

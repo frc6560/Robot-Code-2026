@@ -938,17 +938,15 @@ def tube_shooter_model(
     speeds, so a lone powered wheel needs ``velocity_transfer = 2 * ratio`` to
     land on the intended fraction of surface speed.
 
-    ``spin_transfer`` is negative on purpose. The dual-wheel sign convention
-    treats backspin as the bottom wheel outrunning the top, which assumes the
-    idle surface sits opposite ours. Here the ball rolls along a static hood on
-    the far side of the tube, so it leaves with backspin of ``v / r`` and the
-    sign has to be flipped to say so.
+    In ``fixed_hood`` mode ``release_state`` treats positive ``spin_transfer``
+    as backspin from rolling along the static hood, so ``2 * ratio`` gives the
+    ball backspin of ``v / r``.
     """
     return ShooterModel(
         mode="fixed_hood",
         top_wheel_diameter_m=flywheel.outer_diameter_m,
         velocity_transfer=2.0 * energy.exit_speed_ratio,
-        spin_transfer=-2.0 * energy.exit_speed_ratio,
+        spin_transfer=2.0 * energy.exit_speed_ratio,
         release_height_m=release_height_m,
         robot_velocity_x_m_s=robot_velocity_x_m_s,
         hood_offset_deg=hood_offset_deg,

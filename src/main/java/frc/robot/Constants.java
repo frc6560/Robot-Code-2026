@@ -353,47 +353,6 @@ public final class Constants {
     public static final double JUMP_TOLERANCE = 2.0;
   }
 
-  public static final class HoodConstants{
-    /** CAN IDs */
-    public static final int HOOD_MOTOR_ID = 21;
-
-    /** Feedforward Gains (for TalonFX Slot0) */
-    public static final double kS = 0.14;   // Static friction voltage
-    public static final double kV = 0.11;  // Velocity feedforward
-    public static final double kA = 0.0;   // Acceleration feedforward
-    public static final double kG = 0.168;   // Gravity feedforward (arm/wrist style - uses cosine)
-
-    /** PID Gains */
-    public static final double kP = 5.0;   // Proportional gain
-    public static final double kI = 0.0;   // Integral gain
-    public static final double kD = 0.0;   // Derivative gain
-
-    /** Motion Profile Constraints */
-    public static final double kMaxV = 360.0;  // Max velocity (degrees/second)
-    public static final double kMaxA = 720.0;  // Max acceleration (degrees/second²)
-
-    /** Hood Geometry */
-    public static final double HOOD_GEAR_RATIO = 40.0; 
-    public static final double ABSOLUTE_HOOD_ENCODER_GEAR_RATIO = 90.0 / 11.0;
-  
-    /** Motor Inversion */
-    public static final boolean HOOD_MOTOR_INVERTED = true; // TODO: Test and adjust
-
-    /** Current Limits */
-    public static final double HOOD_CURRENT_LIMIT = 40.0; // Amps
-
-    /** Hood Angle Limits */
-    public static final double HOOD_MIN_ANGLE = 25.1;   // degrees
-    public static final double HOOD_MAX_ANGLE = 45.0;  // degrees
-
-    /** Angle at which hood is horizontal (for gravity feedforward calculation) */
-    public static final double HOOD_HORIZONTAL_OFFSET = 25.0;  // degrees - adjust based on mechanism geometry
-
-    public static final int HOOD_ABSOLUTE_ENCODER_ID = 22;
-
-    public static final double HOOD_ABSOLUTE_ENCODER_OFFSET = -0.472; // tune frequently.
-  }
-
   public static final class ShooterConstants{
     /** CAN IDs */
     public static final int LEFT_FLYWHEEL_ID = 19;
@@ -407,10 +366,12 @@ public final class Constants {
     public static final double kS = 0.15;
 
     /** Flywheel Geometry */
-    public static final double MAX_RPM = 5000; 
+    /** Kraken free speed (6000 RPM) through the 12:18 reduction is 4000; leave headroom to hold speed. */
+    public static final double MAX_RPM = 3800;
     public static final double FLYWHEEL_ACCELERATION = 2000.0;
     public static final double PASS_RPM = 1600.0; 
-    public static final double FLYWHEEL_GEAR_RATIO = 1.25; 
+    /** 12T motor gear drives the 18T flywheel gear, so flywheel speed = motor speed * 12/18. */
+    public static final double FLYWHEEL_GEAR_RATIO = 12.0 / 18.0;
     public static final double FLYWHEEL_IDLE_RPM = 500; //kraken x60 
     public static final double FLYWHEEL_RPM_TOLERANCE = 200.0; 
 
@@ -432,8 +393,11 @@ public final class Constants {
     /** Mechanism speed = motor speed * FLYWHEEL_GEAR_RATIO, so the motor-to-mechanism reduction is the inverse. */
     public static final DCMotor FLYWHEEL_GEARBOX =
         DCMotor.getKrakenX60(FLYWHEEL_MOTOR_COUNT).withReduction(1.0 / FLYWHEEL_GEAR_RATIO);
-    /** Rotating inertia of the flywheel; estimate, refine from a coast-down or the shot app. */
-    public static final double FLYWHEEL_MOI = 0.01; // kg*m^2
+    /**
+     * 6 lb steel tube, 4 in OD, 0.065 in wall: I = m(ro^2 + ri^2)/2. Gears and rotors add a little;
+     * refine from a coast-down if spin-up doesn't match.
+     */
+    public static final double FLYWHEEL_MOI = 0.0068; // kg*m^2
 
     public static final double FF_kS = kS; // V
     public static final double FF_kV = kV / (2.0 * Math.PI * FLYWHEEL_GEAR_RATIO); // V per rad/s
@@ -463,21 +427,29 @@ public final class Constants {
     public static final double FF_kV_TOLERANCE = 0.002; // V per rad/s
   }
 
-  /** Physics and scoring constraints shared by the on-robot hub shot solver. */
+  /**
+   * Physics and scoring constraints for the single-flywheel, fixed-hood shooter. The ball rolls
+   * between the 4 in flywheel and the static hood, so it leaves at about half the wheel's surface
+   * speed with backspin. Names and meanings match the shot-calibrator's "Powered wheel + fixed hood"
+   * model so its fits can be copied straight in.
+   */
   public static final class ShotModelConstants {
     private ShotModelConstants() {}
 
-    /** Distance bounds retained from the validated hub-shot operating envelope. */
-    public static final double MIN_DISTANCE_METERS = 1.628;
+    /**
+     * Hub-shot range. Closer than 2.9 m a 48.36 deg launch can't drop into the funnel steeply enough
+     * to clear the near rim (the scoring band is under 100 RPM wide at 2.9 m and gone by 2.87 m).
+     */
+    public static final double MIN_DISTANCE_METERS = 2.9;
     public static final double MAX_DISTANCE_METERS = 6.050;
 
     /** Measured game-piece and shooter geometry. */
     public static final double BALL_MASS_KG = 0.215;
     public static final double BALL_DIAMETER_METERS = 0.150;
-    public static final double TOP_WHEEL_DIAMETER_METERS = Units.inchesToMeters(2.5);
-    public static final double BOTTOM_WHEEL_DIAMETER_METERS = Units.inchesToMeters(4.0);
-    public static final double BOTTOM_TO_TOP_RPM_RATIO = 1.0;
-    public static final double RELEASE_HEIGHT_METERS = Units.inchesToMeters(21.0);
+    public static final double FLYWHEEL_DIAMETER_METERS = Units.inchesToMeters(4.0);
+    /** Angle from horizontal to the top of the fixed hood, which the ball leaves along. */
+    public static final double LAUNCH_ELEVATION_DEGREES = 48.36;
+    public static final double RELEASE_HEIGHT_METERS = Units.inchesToMeters(27.875);
 
     /** 2026 HUB upper funnel dimensions and ball-center scoring plane. */
     public static final double HUB_OPENING_SPAN_METERS = Units.inchesToMeters(41.7);
@@ -494,34 +466,32 @@ public final class Constants {
     public static final double WIND_X_METERS_PER_SECOND = 0.0;
 
     /**
-     * Estimated from the observed 2.0 m shot crossing roughly 2.0 m above the HUB. The previous
-     * 0.8819 empirical calibration under-predicted the real launch speed and commanded about 22%
-     * too much RPM. Update this from a shot-calibrator fit when tracked video is available.
+     * Empirical model. These are the no-slip ideal, not a fit: exit speed = VELOCITY_TRANSFER *
+     * surface speed / 2, backspin = SPIN_TRANSFER * surface speed / ball diameter, launch elevation =
+     * LAUNCH_ELEVATION_DEGREES + HOOD_OFFSET_DEGREES. Real slip makes the ball slower than this, so
+     * replace them with a shot-calibrator fit from tracked shots, then regenerate the policy below.
      */
-    public static final double VELOCITY_TRANSFER = 1.13;
-    public static final double SPIN_TRANSFER = 0.70;
-    public static final double HOOD_OFFSET_DEGREES = 11.394416920229768;
+    public static final double VELOCITY_TRANSFER = 1.0;
+    public static final double SPIN_TRANSFER = 1.0;
+    public static final double HOOD_OFFSET_DEGREES = 0.0;
     public static final double DRAG_SCALE = 1.0;
     public static final double LIFT_SLOPE = 0.75;
     public static final double MAX_LIFT_COEFFICIENT = 0.35;
     public static final double SPIN_DECAY_PER_SECOND = 0.10;
 
-    /** Objective weights used to break ties between equally robust scoring shots. */
-    public static final double FLIGHT_TIME_WEIGHT = 0.25;
-    public static final double ENTRY_ANGLE_WEIGHT = 0.50;
-    public static final double MECHANISM_EFFORT_WEIGHT = 0.15;
-
     /**
-     * Quadratic runtime policy generated from 89 full robust-map solutions across the configured
-     * distance range. Coefficients are ordered as {@code a*d^2 + b*d + c}, with distance in meters.
-     * Regenerate these whenever an empirical model value above changes.
+     * Runtime RPM policy: a quadratic through the middle of each distance's scoring RPM band over
+     * the hub range, {@code a*d^2 + b*d + c} with distance in meters. It stays at least 27 RPM inside
+     * the band everywhere (tightest at 2.9 m). Regenerate with
+     * {@code tools/shot-calibrator/fit_runtime_policy.py} whenever a value above changes.
      */
-    public static final double RPM_POLICY_DISTANCE_SQUARED = -8.074880320601526;
-    public static final double RPM_POLICY_DISTANCE = 369.56477908332414;
-    public static final double RPM_POLICY_CONSTANT = 727.1599386714691;
-    public static final double HOOD_POLICY_DISTANCE_SQUARED = 0.070795037422750;
-    public static final double HOOD_POLICY_DISTANCE = -0.850321285289592;
-    public static final double HOOD_POLICY_CONSTANT = 29.127547354406961;
+    public static final double RPM_POLICY_DISTANCE_SQUARED = 9.657936094980364;
+    public static final double RPM_POLICY_DISTANCE = 158.6483569325706;
+    public static final double RPM_POLICY_CONSTANT = 2043.043454014593;
+
+    /** Passes land the ball on the carpet; the pass table is built from this model at startup. */
+    public static final double PASS_MIN_DISTANCE_METERS = 2.0;
+    public static final double PASS_MAX_DISTANCE_METERS = 12.0;
   }
 
   public static final class TurretConstants{ 

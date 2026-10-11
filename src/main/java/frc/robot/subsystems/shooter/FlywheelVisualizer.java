@@ -29,14 +29,15 @@ public class FlywheelVisualizer {
   // --- Mechanism as tuned by the wall-thickness optimiser -------------------
   private static final double WHEEL_DIAMETER_M = 4.0 * 0.0254;
   private static final double TUBE_LENGTH_M = 26.0 * 0.0254;
-  private static final double WALL_THICKNESS_M = 0.100 * 0.0254;
+  /** 0.065 in wall makes the 26 in tube weigh the measured 6 lb. */
+  private static final double WALL_THICKNESS_M = 0.065 * 0.0254;
   private static final double STEEL_DENSITY = 7850.0;
 
   private static final int MOTOR_COUNT = 2;
-  /** Motor turns per flywheel turn: a 15 T pinion driving an 18 T gear. */
-  private static final double GEAR_RATIO = 18.0 / 15.0;
+  /** Motor turns per flywheel turn: a 12 T pinion driving an 18 T gear. */
+  private static final double GEAR_RATIO = 18.0 / 12.0;
   private static final double GEAR_EFFICIENCY = 0.97;
-  private static final double STATOR_CURRENT_LIMIT = 40.0;
+  private static final double STATOR_CURRENT_LIMIT = 50.0;
 
   private static final double OPEN_CIRCUIT_VOLTS = 12.0;
   private static final double BATTERY_RESISTANCE = 0.015;

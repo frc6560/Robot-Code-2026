@@ -13,7 +13,6 @@ import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants.FieldConstants;
-import frc.robot.subsystems.hood.Hood;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.turret.Turret;
 import frc.robot.utility.Shooter.PassCalculator;
@@ -35,7 +34,6 @@ public class SuperstructureCommand extends Command {
         ChassisSpeeds getFieldVelocity();
     }
 
-    private final Hood hood;
     private final Shooter shooter;
     private final Turret turret;
     private final PoseSupplier poseSupplier;
@@ -56,21 +54,19 @@ public class SuperstructureCommand extends Command {
     private final Pose2d[] trajectoryPoses = new Pose2d[10]; // Pre-allocate for trajectory visualization
 
     public SuperstructureCommand(
-            Hood hood,
             Shooter shooter,
             Turret turret,
             PoseSupplier poseSupplier,
             VelocitySupplier velocitySupplier,
             ShotCalculator shotCalculator,
             PassCalculator passCalculator) {
-        this.hood = hood;
         this.shooter = shooter;
         this.turret = turret;
         this.poseSupplier = poseSupplier;
         this.velocitySupplier = velocitySupplier;
         this.passCalculator = passCalculator;
         this.shotCalculator = shotCalculator;
-        addRequirements(hood, shooter, turret);
+        addRequirements(shooter, turret);
     }
 
     @Override
@@ -153,7 +149,6 @@ public class SuperstructureCommand extends Command {
         }
         turret.setGoalWithVelocity(Units.radiansToDegrees(shotCalculator.getTurretAngle()), 
                                     Units.radiansToDegrees(shotCalculator.getTurretVelocityFF()));
-        hood.setGoal(shotCalculator.getHoodAzimuth());
     }
 
 
@@ -181,7 +176,6 @@ public class SuperstructureCommand extends Command {
 
         turret.setGoalWithVelocity(Units.radiansToDegrees(passCalculator.getTurretAngle()), 
                                     Units.radiansToDegrees(passCalculator.getTurretVelocityFF()));
-        hood.setGoal(passCalculator.getHoodAzimuth());
         if(!DriverStation.isAutonomous()){
             shooter.setGoal(passCalculator.getFlywheelRPM());
         }
@@ -298,13 +292,11 @@ public class SuperstructureCommand extends Command {
             6.75 - TRENCH_TOLERANCE, 9.42 + TRENCH_TOLERANCE
         );
 
-        // Stop hood if trajectory intersects ANY trench
+        // Idle the shooter if the trajectory crosses ANY trench
         boolean intersectsAnyTrench = intersectsBlueLeft || intersectsBlueRight ||
                                        intersectsRedLeft || intersectsRedRight;
 
-        // Control hood based on trench intersection
         if (intersectsAnyTrench) {
-            hood.setGoal(15); // Full rumble
             state = SuperstructureState.IDLE; // forces idle state
         }
 
@@ -374,7 +366,6 @@ public class SuperstructureCommand extends Command {
     public void end(boolean interrupted) {
         shooter.stop();
         turret.stopMotor();
-        hood.stop();
         SmartDashboard.putBoolean("SuperstructureCommand/Running", false);
         SmartDashboard.putString("SuperstructureCommand/Status", interrupted ? "INTERRUPTED" : "ENDED");
     }

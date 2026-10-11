@@ -15,7 +15,6 @@ import frc.robot.lib.BLine.FollowPath;
 import frc.robot.lib.BLine.Path;
 import frc.robot.Constants.BLineConstants;
 import frc.robot.subsystems.feeder.Feeder;
-import frc.robot.subsystems.hood.Hood;
 import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
@@ -25,7 +24,7 @@ import java.util.List;
 
 import edu.wpi.first.math.util.Units;
 
-/** Creates autonomous commands: BLine for pathing, the shot-app superstructure for shooting. */
+/** Creates autonomous commands: BLine for pathing, the physics shot calculator for shooting. */
 public class AutoCommands {
     private static final double BLINE_WAIT_EVENT_SECONDS = 5.0;
 
@@ -33,7 +32,6 @@ public class AutoCommands {
     private final Feeder feeder;
     private final Intake intake;
     private final Shooter shooter;
-    private final Hood hood;
     private final Turret turret;
     private final ShotCalculator calculator;
     private final FollowPath.Builder pathBuilder;
@@ -44,7 +42,6 @@ public class AutoCommands {
         Feeder feeder,
         Intake intake,
         Shooter shooter,
-        Hood hood,
         Turret turret,
         ShotCalculator calculator
     ) {
@@ -52,7 +49,6 @@ public class AutoCommands {
         this.feeder = feeder;
         this.intake = intake;
         this.shooter = shooter;
-        this.hood = hood;
         this.turret = turret;
         this.calculator = calculator;
 
@@ -207,7 +203,6 @@ public class AutoCommands {
             shooter.setGoal(
                 calculator.getFlywheelRPM(),
                 Shooter.useBangBang(calculator.getDistanceToVirtualTarget()));
-            hood.setGoal(calculator.getHoodAzimuth());
             turret.setGoalWithVelocity(
                 Units.radiansToDegrees(calculator.getTurretAngle()),
                 Units.radiansToDegrees(calculator.getTurretVelocityFF())
@@ -215,12 +210,8 @@ public class AutoCommands {
 
             boolean ready = calculator.isShotValid()
                 && shooter.atTarget()
-                && hood.atTarget()
                 && turret.getAtTarget(calculator.getTurretTolerance())
-                && calculator.measuredControlsScore(
-                    shooter.getCurrentRPM(),
-                    hood.getHoodCommandAngle()
-                );
+                && calculator.measuredControlsScore(shooter.getCurrentRPM());
             if(ready){
                 feeder.setShooting(true);
                 feeder.setIntaking(true);
@@ -228,7 +219,7 @@ public class AutoCommands {
             } else {
                 feeder.setShooting(false);
             }
-        }, shooter, hood, turret, feeder, intake).withTimeout(3.0)
+        }, shooter, turret, feeder, intake).withTimeout(3.0)
         .finallyDo((interrupted) -> {
             feeder.setShooting(false);
             feeder.setIntaking(false);

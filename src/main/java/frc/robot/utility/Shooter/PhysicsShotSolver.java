@@ -1,56 +1,47 @@
 package frc.robot.utility.Shooter;
 
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
-import frc.robot.Constants.HoodConstants;
 import frc.robot.Constants.ShooterConstants;
 import frc.robot.Constants.ShotModelConstants;
 
 /**
- * Solves a hub shot from the calibrated drag and Magnus model used by the shot-calibrator app.
- * All angles returned to robot code use the hood's rear-referenced command convention.
+ * Solves shots for the single-flywheel, fixed-hood shooter with the drag and Magnus model used by
+ * the shot-calibrator app. The launch angle is fixed, so flywheel RPM is the only control: each
+ * distance has a band of RPMs that score, and the solver commands the middle of it.
  */
 public final class PhysicsShotSolver {
     public record Solution(
         double targetDistanceMeters,
         double flywheelRPM,
-        double hoodCommandDegrees,
         double launchElevationDegrees,
         double timeOfFlightSeconds,
         double entryAngleDegrees,
         double crossingXMeters,
         double openingClearanceMeters,
         double nearRimClearanceMeters,
-        double robustnessRadius,
         double rpmToleranceLower,
         double rpmToleranceUpper,
-        double hoodToleranceLowerDegrees,
-        double hoodToleranceUpperDegrees,
         boolean valid
     ) {}
 
-    private record EntryMetrics(
+    /** A pass: the RPM that lands the ball on the carpet at the given distance, and when. */
+    public record PassSolution(double distanceMeters, double flywheelRPM, double timeOfFlightSeconds, boolean valid) {}
+
+    /** Where the ball first falls through a given height, and what it looked like there. */
+    private record Crossing(
         double timeSeconds,
-        double entryAngleDegrees,
-        double crossingXMeters,
-        double centerOffsetMeters,
-        double openingClearanceMeters,
-        double nearRimClearanceMeters,
-        boolean inside,
-        boolean scoring
+        double xMeters,
+        double vxMetersPerSecond,
+        double vzMetersPerSecond,
+        double probeHeightMeters
     ) {}
 
-    private record Candidate(int hoodIndex, int rpmIndex, double robustness, double objective) {}
-
-    private static final int HOOD_STEPS = 29;
-    private static final int RPM_STEPS = 41;
-    private static final double GRID_DT_SECONDS = 0.012;
+    private static final int BISECTION_STEPS = 18;
+    private static final double SEARCH_DT_SECONDS = 0.006;
     private static final double REFINEMENT_DT_SECONDS = 0.004;
-    private static final double MAX_TIME_SECONDS = 3.0;
+    private static final double MAX_TIME_SECONDS = 4.0;
     private static final double CACHE_RESOLUTION_METERS = 0.025;
     private static final int MAX_CACHE_ENTRIES = 192;
 
@@ -70,8 +61,9 @@ public final class PhysicsShotSolver {
     };
 
     /**
-     * Returns the robust scoring command nearest this range. The expensive command-space scan is
-     * cached in 2.5 cm range bins, then the selected command is validated at the exact range.
+     * Searches for the middle of the scoring RPM band at this range. Too slow for every loop; the
+     * robot uses {@link #solveRuntime(double)}, and this is what that policy is checked against.
+     * The band search is cached in 2.5 cm range bins and the result re-checked at the exact range.
      */
     public synchronized Solution solve(double distanceMeters) {
         if (!isDistanceInRange(distanceMeters)) {
@@ -79,397 +71,271 @@ public final class PhysicsShotSolver {
         }
 
         long cacheKey = Math.round(distanceMeters / CACHE_RESOLUTION_METERS);
-        double cachedDistanceMeters = cacheKey * CACHE_RESOLUTION_METERS;
-        Solution cached = solutionCache.computeIfAbsent(cacheKey, ignored -> solveGrid(cachedDistanceMeters));
+        // Clamp: a bin center can land a hair outside the range in floating point (242 * 0.025).
+        double binDistance = clamp(
+            cacheKey * CACHE_RESOLUTION_METERS,
+            ShotModelConstants.MIN_DISTANCE_METERS,
+            ShotModelConstants.MAX_DISTANCE_METERS);
+        Solution cached = solutionCache.computeIfAbsent(cacheKey, ignored -> solveBand(binDistance));
         if (!cached.valid()) {
             return cached;
         }
-
-        EntryMetrics exactMetrics = simulate(
-            cached.flywheelRPM(),
-            cached.hoodCommandDegrees(),
-            distanceMeters,
-            REFINEMENT_DT_SECONDS
-        );
-        if (exactMetrics != null && exactMetrics.scoring()) {
-            return solutionWithMetrics(cached, distanceMeters, exactMetrics);
+        Solution exact = evaluate(distanceMeters, cached.flywheelRPM());
+        if (exact.valid()) {
+            return withTolerances(exact, cached);
         }
-
-        // A range-bin boundary can place a robust command just outside the exact scoring region.
-        // Resolve that uncommon case at the requested distance instead of returning a false hit.
-        return solveGrid(distanceMeters);
+        // A range-bin boundary can put the cached command just outside the band; solve exactly.
+        return solveBand(distanceMeters);
     }
 
     /**
-     * Constant-time robot-loop policy generated by {@link #solve(double)} over the full range.
-     * The returned command is re-simulated here, so flight time and validity still come directly
-     * from the drag/Magnus equation rather than from another fitted curve.
+     * Constant-time robot-loop policy fitted to {@link #solve(double)} over the full range. The
+     * command is re-simulated here, so flight time and validity still come from the equation.
      */
     public Solution solveRuntime(double distanceMeters) {
         if (!isDistanceInRange(distanceMeters)) {
             return invalidSolution(distanceMeters);
         }
-        double rpm = evaluateQuadratic(
-            ShotModelConstants.RPM_POLICY_DISTANCE_SQUARED,
-            ShotModelConstants.RPM_POLICY_DISTANCE,
-            ShotModelConstants.RPM_POLICY_CONSTANT,
-            distanceMeters
-        );
-        double hoodCommand = evaluateQuadratic(
-            ShotModelConstants.HOOD_POLICY_DISTANCE_SQUARED,
-            ShotModelConstants.HOOD_POLICY_DISTANCE,
-            ShotModelConstants.HOOD_POLICY_CONSTANT,
-            distanceMeters
-        );
+        double rpm = (ShotModelConstants.RPM_POLICY_DISTANCE_SQUARED * distanceMeters
+                + ShotModelConstants.RPM_POLICY_DISTANCE) * distanceMeters
+            + ShotModelConstants.RPM_POLICY_CONSTANT;
         rpm = clamp(rpm, ShooterConstants.FLYWHEEL_IDLE_RPM, ShooterConstants.MAX_RPM);
-        hoodCommand = clamp(hoodCommand, HoodConstants.HOOD_MIN_ANGLE, HoodConstants.HOOD_MAX_ANGLE);
-        return evaluate(distanceMeters, rpm, hoodCommand);
+        return evaluate(distanceMeters, rpm);
     }
 
-    public static double launchElevationDegrees(double hoodCommandDegrees) {
-        return 90.0 - hoodCommandDegrees + ShotModelConstants.HOOD_OFFSET_DEGREES;
+    public static double launchElevationDegrees() {
+        return ShotModelConstants.LAUNCH_ELEVATION_DEGREES + ShotModelConstants.HOOD_OFFSET_DEGREES;
     }
 
-    /** Evaluates one command with the full equation without scanning the command space. */
-    public Solution evaluate(double distanceMeters, double flywheelRPM, double hoodCommandDegrees) {
-        boolean controlsInRange = flywheelRPM >= ShooterConstants.FLYWHEEL_IDLE_RPM
-            && flywheelRPM <= ShooterConstants.MAX_RPM
-            && hoodCommandDegrees >= HoodConstants.HOOD_MIN_ANGLE
-            && hoodCommandDegrees <= HoodConstants.HOOD_MAX_ANGLE;
+    /** Evaluates one RPM with the full equation without searching. */
+    public Solution evaluate(double distanceMeters, double flywheelRPM) {
         if (!isDistanceInRange(distanceMeters)
                 || !Double.isFinite(flywheelRPM)
-                || !Double.isFinite(hoodCommandDegrees)
-                || !controlsInRange) {
+                || flywheelRPM < ShooterConstants.FLYWHEEL_IDLE_RPM
+                || flywheelRPM > ShooterConstants.MAX_RPM) {
             return invalidSolution(distanceMeters);
         }
 
-        EntryMetrics metrics = simulate(
+        double usableHalfSpan = usableHalfSpanMeters();
+        double nearRimX = distanceMeters - ShotModelConstants.HUB_OPENING_SPAN_METERS / 2.0;
+        Crossing crossing = fallThrough(
             flywheelRPM,
-            hoodCommandDegrees,
-            distanceMeters,
+            ShotModelConstants.HUB_BALL_CENTER_HEIGHT_METERS,
+            nearRimX,
+            maxRangeMeters(distanceMeters),
             REFINEMENT_DT_SECONDS
         );
-        if (metrics == null) {
-            return commandSolutionWithoutEntry(distanceMeters, flywheelRPM, hoodCommandDegrees);
+        if (crossing == null) {
+            return commandWithoutEntry(distanceMeters, flywheelRPM);
         }
+
+        double centerOffset = Math.abs(crossing.xMeters() - distanceMeters);
+        // Falling through the plane before reaching the near rim means the ball hit the HUB's side.
+        double nearRimClearance = Double.isNaN(crossing.probeHeightMeters())
+            ? Double.NEGATIVE_INFINITY
+            : crossing.probeHeightMeters() - ShotModelConstants.HUB_BALL_CENTER_HEIGHT_METERS;
+        double entryAngle = Math.toDegrees(
+            Math.atan2(-crossing.vzMetersPerSecond(), Math.max(Math.abs(crossing.vxMetersPerSecond()), 1e-9)));
+        boolean scoring = usableHalfSpan > 0.0
+            && crossing.vxMetersPerSecond() > 0.0
+            && centerOffset <= usableHalfSpan
+            && nearRimClearance >= ShotModelConstants.HUB_RIM_MARGIN_METERS
+            && entryAngle >= ShotModelConstants.MIN_ENTRY_ANGLE_DEGREES;
+
         return new Solution(
             distanceMeters,
             flywheelRPM,
-            hoodCommandDegrees,
-            launchElevationDegrees(hoodCommandDegrees),
-            metrics.timeSeconds(),
-            metrics.entryAngleDegrees(),
-            metrics.crossingXMeters(),
-            metrics.openingClearanceMeters(),
-            metrics.nearRimClearanceMeters(),
+            launchElevationDegrees(),
+            crossing.timeSeconds(),
+            entryAngle,
+            crossing.xMeters(),
+            usableHalfSpan - centerOffset,
+            nearRimClearance,
             0.0,
             0.0,
-            0.0,
-            0.0,
-            0.0,
-            metrics.scoring()
+            scoring
         );
     }
 
-    private Solution solveGrid(double distanceMeters) {
-        double hoodStep = (HoodConstants.HOOD_MAX_ANGLE - HoodConstants.HOOD_MIN_ANGLE) / (HOOD_STEPS - 1);
-        double rpmStep = (ShooterConstants.MAX_RPM - ShooterConstants.FLYWHEEL_IDLE_RPM) / (RPM_STEPS - 1);
-        boolean[][] feasible = new boolean[HOOD_STEPS][RPM_STEPS];
-        double[][] objectives = new double[HOOD_STEPS][RPM_STEPS];
-
-        for (int hoodIndex = 0; hoodIndex < HOOD_STEPS; hoodIndex++) {
-            double hoodCommand = HoodConstants.HOOD_MIN_ANGLE + hoodIndex * hoodStep;
-            for (int rpmIndex = 0; rpmIndex < RPM_STEPS; rpmIndex++) {
-                double rpm = ShooterConstants.FLYWHEEL_IDLE_RPM + rpmIndex * rpmStep;
-                EntryMetrics metrics = simulate(rpm, hoodCommand, distanceMeters, GRID_DT_SECONDS);
-                if (metrics != null && metrics.scoring()) {
-                    feasible[hoodIndex][rpmIndex] = true;
-                    objectives[hoodIndex][rpmIndex] = objective(rpm, metrics);
-                } else {
-                    objectives[hoodIndex][rpmIndex] = Double.POSITIVE_INFINITY;
-                }
+    /** RPM that lands the ball on the carpet at this distance; invalid past the flywheel's reach. */
+    public PassSolution solvePass(double distanceMeters) {
+        if (!Double.isFinite(distanceMeters) || distanceMeters <= 0.0) {
+            return new PassSolution(distanceMeters, ShooterConstants.FLYWHEEL_IDLE_RPM, Double.NaN, false);
+        }
+        double maxRange = Math.max(20.0, 1.5 * distanceMeters);
+        double low = ShooterConstants.FLYWHEEL_IDLE_RPM;
+        double high = ShooterConstants.MAX_RPM;
+        if (landingDistance(high, maxRange) < distanceMeters || landingDistance(low, maxRange) > distanceMeters) {
+            return new PassSolution(distanceMeters, ShooterConstants.FLYWHEEL_IDLE_RPM, Double.NaN, false);
+        }
+        for (int i = 0; i < BISECTION_STEPS; i++) {
+            double middle = 0.5 * (low + high);
+            if (landingDistance(middle, maxRange) < distanceMeters) {
+                low = middle;
+            } else {
+                high = middle;
             }
         }
-
-        List<Candidate> candidates = new ArrayList<>();
-        for (int hoodIndex = 0; hoodIndex < HOOD_STEPS; hoodIndex++) {
-            for (int rpmIndex = 0; rpmIndex < RPM_STEPS; rpmIndex++) {
-                if (!feasible[hoodIndex][rpmIndex]) {
-                    continue;
-                }
-                candidates.add(new Candidate(
-                    hoodIndex,
-                    rpmIndex,
-                    robustnessRadius(feasible, hoodIndex, rpmIndex, hoodStep, rpmStep),
-                    objectives[hoodIndex][rpmIndex]
-                ));
-            }
+        double rpm = 0.5 * (low + high);
+        Crossing landing = fallThrough(rpm, BALL_RADIUS_METERS, Double.NaN, maxRange, REFINEMENT_DT_SECONDS);
+        if (landing == null) {
+            return new PassSolution(distanceMeters, ShooterConstants.FLYWHEEL_IDLE_RPM, Double.NaN, false);
         }
-
-        candidates.sort(
-            Comparator.comparingDouble(Candidate::robustness)
-                .reversed()
-                .thenComparingDouble(Candidate::objective)
-        );
-
-        for (Candidate candidate : candidates) {
-            double hoodCommand = HoodConstants.HOOD_MIN_ANGLE + candidate.hoodIndex() * hoodStep;
-            double rpm = ShooterConstants.FLYWHEEL_IDLE_RPM + candidate.rpmIndex() * rpmStep;
-            EntryMetrics metrics = simulate(rpm, hoodCommand, distanceMeters, REFINEMENT_DT_SECONDS);
-            if (metrics == null || !metrics.scoring()) {
-                continue;
-            }
-
-            int lowerRpmIndex = candidate.rpmIndex();
-            int upperRpmIndex = candidate.rpmIndex();
-            while (lowerRpmIndex > 0 && feasible[candidate.hoodIndex()][lowerRpmIndex - 1]) {
-                lowerRpmIndex--;
-            }
-            while (upperRpmIndex + 1 < RPM_STEPS && feasible[candidate.hoodIndex()][upperRpmIndex + 1]) {
-                upperRpmIndex++;
-            }
-
-            int lowerHoodIndex = candidate.hoodIndex();
-            int upperHoodIndex = candidate.hoodIndex();
-            while (lowerHoodIndex > 0 && feasible[lowerHoodIndex - 1][candidate.rpmIndex()]) {
-                lowerHoodIndex--;
-            }
-            while (upperHoodIndex + 1 < HOOD_STEPS && feasible[upperHoodIndex + 1][candidate.rpmIndex()]) {
-                upperHoodIndex++;
-            }
-
-            return new Solution(
-                distanceMeters,
-                rpm,
-                hoodCommand,
-                launchElevationDegrees(hoodCommand),
-                metrics.timeSeconds(),
-                metrics.entryAngleDegrees(),
-                metrics.crossingXMeters(),
-                metrics.openingClearanceMeters(),
-                metrics.nearRimClearanceMeters(),
-                candidate.robustness(),
-                (candidate.rpmIndex() - lowerRpmIndex) * rpmStep,
-                (upperRpmIndex - candidate.rpmIndex()) * rpmStep,
-                (candidate.hoodIndex() - lowerHoodIndex) * hoodStep,
-                (upperHoodIndex - candidate.hoodIndex()) * hoodStep,
-                true
-            );
-        }
-
-        return invalidSolution(distanceMeters);
+        return new PassSolution(distanceMeters, rpm, landing.timeSeconds(), true);
     }
 
-    private static Solution solutionWithMetrics(
-        Solution source,
-        double distanceMeters,
-        EntryMetrics metrics
-    ) {
+    private Solution solveBand(double distanceMeters) {
+        double low = ShooterConstants.FLYWHEEL_IDLE_RPM;
+        double high = ShooterConstants.MAX_RPM;
+        double maxRange = maxRangeMeters(distanceMeters);
+        double planeHeight = ShotModelConstants.HUB_BALL_CENTER_HEIGHT_METERS;
+
+        // Where the falling ball crosses the scoring plane moves out monotonically with speed,
+        // which is what makes the speed that lands on the HUB center bisectable.
+        if (planeCrossingX(high, planeHeight, maxRange) < distanceMeters) {
+            return invalidSolution(distanceMeters);
+        }
+        double lower = low;
+        double upper = high;
+        for (int i = 0; i < BISECTION_STEPS; i++) {
+            double middle = 0.5 * (lower + upper);
+            if (planeCrossingX(middle, planeHeight, maxRange) < distanceMeters) {
+                lower = middle;
+            } else {
+                upper = middle;
+            }
+        }
+        double nominal = 0.5 * (lower + upper);
+        if (!scores(distanceMeters, nominal)) {
+            return invalidSolution(distanceMeters);
+        }
+
+        double bandLow = bisectEdge(distanceMeters, nominal, low);
+        double bandHigh = bisectEdge(distanceMeters, nominal, high);
+        double rpm = 0.5 * (bandLow + bandHigh);
+        Solution solution = evaluate(distanceMeters, rpm);
+        if (!solution.valid()) {
+            solution = evaluate(distanceMeters, nominal);
+            rpm = nominal;
+        }
+        if (!solution.valid()) {
+            return invalidSolution(distanceMeters);
+        }
         return new Solution(
-            distanceMeters,
-            source.flywheelRPM(),
-            source.hoodCommandDegrees(),
-            source.launchElevationDegrees(),
-            metrics.timeSeconds(),
-            metrics.entryAngleDegrees(),
-            metrics.crossingXMeters(),
-            metrics.openingClearanceMeters(),
-            metrics.nearRimClearanceMeters(),
-            source.robustnessRadius(),
-            source.rpmToleranceLower(),
-            source.rpmToleranceUpper(),
-            source.hoodToleranceLowerDegrees(),
-            source.hoodToleranceUpperDegrees(),
+            solution.targetDistanceMeters(),
+            solution.flywheelRPM(),
+            solution.launchElevationDegrees(),
+            solution.timeOfFlightSeconds(),
+            solution.entryAngleDegrees(),
+            solution.crossingXMeters(),
+            solution.openingClearanceMeters(),
+            solution.nearRimClearanceMeters(),
+            rpm - bandLow,
+            bandHigh - rpm,
             true
         );
     }
 
-    private static Solution invalidSolution(double distanceMeters) {
-        return new Solution(
-            distanceMeters,
-            ShooterConstants.FLYWHEEL_IDLE_RPM,
-            HoodConstants.HOOD_MIN_ANGLE,
-            launchElevationDegrees(HoodConstants.HOOD_MIN_ANGLE),
-            Double.NaN,
-            Double.NaN,
-            Double.NaN,
-            Double.NEGATIVE_INFINITY,
-            Double.NEGATIVE_INFINITY,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            false
-        );
-    }
-
-    private static Solution commandSolutionWithoutEntry(
-        double distanceMeters,
-        double flywheelRPM,
-        double hoodCommandDegrees
-    ) {
-        return new Solution(
-            distanceMeters,
-            flywheelRPM,
-            hoodCommandDegrees,
-            launchElevationDegrees(hoodCommandDegrees),
-            Double.NaN,
-            Double.NaN,
-            Double.NaN,
-            Double.NEGATIVE_INFINITY,
-            Double.NEGATIVE_INFINITY,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            false
-        );
-    }
-
-    private static double objective(double rpm, EntryMetrics metrics) {
-        double usableHalfSpan = usableHalfSpanMeters();
-        double centerFraction = metrics.centerOffsetMeters() / Math.max(usableHalfSpan, 1e-6);
-        double rpmFraction =
-            (rpm - ShooterConstants.FLYWHEEL_IDLE_RPM)
-                / Math.max(ShooterConstants.MAX_RPM - ShooterConstants.FLYWHEEL_IDLE_RPM, 1.0);
-        return 0.20 * centerFraction * centerFraction
-            + ShotModelConstants.FLIGHT_TIME_WEIGHT * metrics.timeSeconds() / 1.5
-            + ShotModelConstants.ENTRY_ANGLE_WEIGHT
-                * (1.0 - Math.min(metrics.entryAngleDegrees(), 60.0) / 60.0)
-            + ShotModelConstants.MECHANISM_EFFORT_WEIGHT * rpmFraction * rpmFraction;
-    }
-
-    private static double usableHalfSpanMeters() {
-        return Math.max(
-            ShotModelConstants.HUB_OPENING_SPAN_METERS / 2.0
-                - BALL_RADIUS_METERS
-                - ShotModelConstants.HUB_RIM_MARGIN_METERS,
-            0.0
-        );
-    }
-
-    private static double robustnessRadius(
-        boolean[][] feasible,
-        int candidateHood,
-        int candidateRpm,
-        double hoodStep,
-        double rpmStep
-    ) {
-        double minimumSquaredDistance = Double.POSITIVE_INFINITY;
-        for (int hoodIndex = -1; hoodIndex <= HOOD_STEPS; hoodIndex++) {
-            for (int rpmIndex = -1; rpmIndex <= RPM_STEPS; rpmIndex++) {
-                boolean outside = hoodIndex < 0
-                    || hoodIndex >= HOOD_STEPS
-                    || rpmIndex < 0
-                    || rpmIndex >= RPM_STEPS;
-                if (!outside && feasible[hoodIndex][rpmIndex]) {
-                    continue;
-                }
-
-                double hoodDistance = (candidateHood - hoodIndex) * hoodStep / 0.5;
-                double rpmDistance = (candidateRpm - rpmIndex) * rpmStep / 100.0;
-                minimumSquaredDistance = Math.min(
-                    minimumSquaredDistance,
-                    hoodDistance * hoodDistance + rpmDistance * rpmDistance
-                );
+    /** Walks the boundary between a scoring RPM and a missing one. */
+    private double bisectEdge(double distanceMeters, double inside, double outside) {
+        for (int i = 0; i < BISECTION_STEPS; i++) {
+            double middle = 0.5 * (inside + outside);
+            if (scores(distanceMeters, middle)) {
+                inside = middle;
+            } else {
+                outside = middle;
             }
         }
-        return Math.sqrt(minimumSquaredDistance);
+        return inside;
     }
 
-    private static EntryMetrics simulate(
-        double topRpm,
-        double hoodCommandDegrees,
-        double targetDistanceMeters,
-        double dtSeconds
-    ) {
-        double bottomRpm = topRpm * ShotModelConstants.BOTTOM_TO_TOP_RPM_RATIO;
-        double topSurfaceSpeed =
-            Math.PI * ShotModelConstants.TOP_WHEEL_DIAMETER_METERS * topRpm / 60.0;
-        double bottomSurfaceSpeed =
-            Math.PI * ShotModelConstants.BOTTOM_WHEEL_DIAMETER_METERS * bottomRpm / 60.0;
-        double exitSpeed =
-            ShotModelConstants.VELOCITY_TRANSFER * (topSurfaceSpeed + bottomSurfaceSpeed) / 2.0;
-        double launchAngleRadians = Math.toRadians(launchElevationDegrees(hoodCommandDegrees));
-        double spinRadiansPerSecond =
-            ShotModelConstants.SPIN_TRANSFER
-                * (bottomSurfaceSpeed - topSurfaceSpeed)
-                / (2.0 * BALL_RADIUS_METERS);
+    private boolean scores(double distanceMeters, double rpm) {
+        return evaluate(distanceMeters, rpm).valid();
+    }
 
-        double[] state = {
+    /** Range at which the falling ball crosses this height; -inf if it never gets that high. */
+    private static double planeCrossingX(double rpm, double heightMeters, double maxRange) {
+        Crossing crossing = fallThrough(rpm, heightMeters, Double.NaN, maxRange, SEARCH_DT_SECONDS);
+        if (crossing != null) {
+            return crossing.xMeters();
+        }
+        return reachesHeight(rpm, heightMeters) ? Double.POSITIVE_INFINITY : Double.NEGATIVE_INFINITY;
+    }
+
+    private static double landingDistance(double rpm, double maxRange) {
+        return planeCrossingX(rpm, BALL_RADIUS_METERS, maxRange);
+    }
+
+    private static boolean reachesHeight(double rpm, double heightMeters) {
+        double[] release = releaseState(rpm);
+        double vz = release[3];
+        double apex = ShotModelConstants.RELEASE_HEIGHT_METERS
+            + vz * vz / (2.0 * ShotModelConstants.GRAVITY_METERS_PER_SECOND_SQUARED);
+        // Drag only lowers the apex and lift only raises it a little; this just separates a ball
+        // that flew past maxRange still climbing from one that never got close.
+        return apex >= heightMeters;
+    }
+
+    /** Initial state [x, z, vx, vz, spin] for this flywheel speed. */
+    private static double[] releaseState(double flywheelRPM) {
+        double surfaceSpeed = Math.PI * ShotModelConstants.FLYWHEEL_DIAMETER_METERS * flywheelRPM / 60.0;
+        double exitSpeed = ShotModelConstants.VELOCITY_TRANSFER * surfaceSpeed / 2.0;
+        // Rolling between the wheel and the static hood leaves the ball with backspin (positive).
+        double spin = ShotModelConstants.SPIN_TRANSFER * surfaceSpeed / (2.0 * BALL_RADIUS_METERS);
+        double launch = Math.toRadians(launchElevationDegrees());
+        return new double[] {
             0.0,
             ShotModelConstants.RELEASE_HEIGHT_METERS,
-            exitSpeed * Math.cos(launchAngleRadians),
-            exitSpeed * Math.sin(launchAngleRadians),
-            spinRadiansPerSecond
+            exitSpeed * Math.cos(launch),
+            exitSpeed * Math.sin(launch),
+            spin
         };
+    }
+
+    /**
+     * Integrates until the ball falls through {@code heightMeters}. If {@code probeX} is a number,
+     * also records the ball's height when it passed that x (NaN if it never got there first).
+     * Returns null if the ball never falls through that height within {@code maxRange}.
+     */
+    private static Crossing fallThrough(
+        double flywheelRPM,
+        double heightMeters,
+        double probeX,
+        double maxRange,
+        double dtSeconds
+    ) {
+        double[] state = releaseState(flywheelRPM);
         double[] previous = state.clone();
         double[] k1 = new double[5];
         double[] k2 = new double[5];
         double[] k3 = new double[5];
         double[] k4 = new double[5];
         double[] temporary = new double[5];
-
-        double planeHeight = ShotModelConstants.HUB_BALL_CENTER_HEIGHT_METERS;
-        double nearRimX = targetDistanceMeters - ShotModelConstants.HUB_OPENING_SPAN_METERS / 2.0;
-        double nearRimHeight = Double.NaN;
-        double crossingTime = Double.NaN;
-        double crossingX = Double.NaN;
-        double crossingVx = Double.NaN;
-        double crossingVz = Double.NaN;
-        double maxX = Math.max(10.0, targetDistanceMeters * 1.25);
+        double probeHeight = Double.NaN;
         int steps = (int) Math.ceil(MAX_TIME_SECONDS / dtSeconds);
 
         for (int step = 0; step < steps; step++) {
             System.arraycopy(state, 0, previous, 0, state.length);
             rk4Step(state, dtSeconds, k1, k2, k3, k4, temporary);
 
-            if (Double.isNaN(nearRimHeight)
-                && previous[0] <= nearRimX
-                && state[0] >= nearRimX
-                && state[0] > previous[0]) {
-                double fraction = (nearRimX - previous[0]) / (state[0] - previous[0]);
-                nearRimHeight = lerp(previous[1], state[1], fraction);
+            if (Double.isNaN(probeHeight) && !Double.isNaN(probeX)
+                    && previous[0] <= probeX && state[0] >= probeX && state[0] > previous[0]) {
+                double fraction = (probeX - previous[0]) / (state[0] - previous[0]);
+                probeHeight = lerp(previous[1], state[1], fraction);
             }
 
-            if (Double.isNaN(crossingTime) && previous[1] >= planeHeight && state[1] < planeHeight) {
-                double fraction = (planeHeight - previous[1]) / (state[1] - previous[1]);
-                crossingTime = (step + fraction) * dtSeconds;
-                crossingX = lerp(previous[0], state[0], fraction);
-                crossingVx = lerp(previous[2], state[2], fraction);
-                crossingVz = lerp(previous[3], state[3], fraction);
-            }
-
-            if (!Double.isNaN(crossingTime) && !Double.isNaN(nearRimHeight)) {
-                double usableHalfSpan = usableHalfSpanMeters();
-                double centerOffset = Math.abs(crossingX - targetDistanceMeters);
-                double openingClearance = usableHalfSpan - centerOffset;
-                double nearRimClearance = nearRimHeight - planeHeight;
-                double entryAngle = Math.toDegrees(
-                    Math.atan2(-crossingVz, Math.max(Math.abs(crossingVx), 1e-9))
-                );
-                boolean inside = centerOffset <= usableHalfSpan;
-                boolean scoring = usableHalfSpan > 0.0
-                    && crossingVx > 0.0
-                    && crossingVz < 0.0
-                    && inside
-                    && nearRimClearance >= ShotModelConstants.HUB_RIM_MARGIN_METERS
-                    && entryAngle >= ShotModelConstants.MIN_ENTRY_ANGLE_DEGREES;
-                return new EntryMetrics(
-                    crossingTime,
-                    entryAngle,
-                    crossingX,
-                    centerOffset,
-                    openingClearance,
-                    nearRimClearance,
-                    inside,
-                    scoring
+            if (previous[1] >= heightMeters && state[1] < heightMeters && state[3] < 0.0) {
+                double fraction = (heightMeters - previous[1]) / (state[1] - previous[1]);
+                return new Crossing(
+                    (step + fraction) * dtSeconds,
+                    lerp(previous[0], state[0], fraction),
+                    lerp(previous[2], state[2], fraction),
+                    lerp(previous[3], state[3], fraction),
+                    probeHeight
                 );
             }
 
-            if (state[1] < 0.0 || state[0] > maxX) {
+            if (state[1] < 0.0 || state[0] > maxRange) {
                 break;
             }
         }
@@ -544,17 +410,57 @@ public final class PhysicsShotSolver {
         }
     }
 
-    private static double lerp(double start, double end, double fraction) {
-        return start + fraction * (end - start);
+    private static Solution withTolerances(Solution exact, Solution band) {
+        return new Solution(
+            exact.targetDistanceMeters(),
+            exact.flywheelRPM(),
+            exact.launchElevationDegrees(),
+            exact.timeOfFlightSeconds(),
+            exact.entryAngleDegrees(),
+            exact.crossingXMeters(),
+            exact.openingClearanceMeters(),
+            exact.nearRimClearanceMeters(),
+            band.rpmToleranceLower(),
+            band.rpmToleranceUpper(),
+            true
+        );
     }
 
-    private static double evaluateQuadratic(
-        double distanceSquaredCoefficient,
-        double distanceCoefficient,
-        double constant,
-        double value
-    ) {
-        return (distanceSquaredCoefficient * value + distanceCoefficient) * value + constant;
+    private static Solution invalidSolution(double distanceMeters) {
+        return commandWithoutEntry(distanceMeters, ShooterConstants.FLYWHEEL_IDLE_RPM);
+    }
+
+    private static Solution commandWithoutEntry(double distanceMeters, double flywheelRPM) {
+        return new Solution(
+            distanceMeters,
+            flywheelRPM,
+            launchElevationDegrees(),
+            Double.NaN,
+            Double.NaN,
+            Double.NaN,
+            Double.NEGATIVE_INFINITY,
+            Double.NEGATIVE_INFINITY,
+            0.0,
+            0.0,
+            false
+        );
+    }
+
+    private static double usableHalfSpanMeters() {
+        return Math.max(
+            ShotModelConstants.HUB_OPENING_SPAN_METERS / 2.0
+                - BALL_RADIUS_METERS
+                - ShotModelConstants.HUB_RIM_MARGIN_METERS,
+            0.0
+        );
+    }
+
+    private static double maxRangeMeters(double distanceMeters) {
+        return Math.max(10.0, distanceMeters * 1.25);
+    }
+
+    private static double lerp(double start, double end, double fraction) {
+        return start + fraction * (end - start);
     }
 
     private static boolean isDistanceInRange(double distanceMeters) {

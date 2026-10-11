@@ -5,16 +5,23 @@ INCH_TO_METER = 0.0254
 TEAM_NUMBER = 6560
 TEAM_NAME = "Charging Champions"
 
-# Values transcribed from the supplied robot information form.
 BALL_MASS_KG = 0.215
 BALL_DIAMETER_M = 0.150
-FORM_SHOOTER_CONFIGURATION = "Two independently powered wheels"
-TOP_WHEEL_DIAMETER_M = 2.5 * INCH_TO_METER
-BOTTOM_WHEEL_DIAMETER_M = 4.0 * INCH_TO_METER
-WHEEL_MATERIAL = "Neoprene rubber"
-FORM_TOP_MOTOR_TO_WHEEL_RATIO = 1.0
-FORM_BOTTOM_MOTOR_TO_WHEEL_RATIO = 30.0 / 24.0
-RELEASE_HEIGHT_M = 21.0 * INCH_TO_METER
+
+# Current shooter: one powered 4 in steel-tube flywheel (6 lb) and a fixed hood. The app's model
+# has a "top" and "bottom" wheel; the flywheel fills the top slot and nothing powers the bottom.
+SHOOTER_CONFIGURATION = "Single powered flywheel + fixed hood"
+FLYWHEEL_DIAMETER_M = 4.0 * INCH_TO_METER
+FLYWHEEL_MASS_KG = 6.0 * 0.45359237
+FLYWHEEL_MOTOR_TEETH = 12
+FLYWHEEL_GEAR_TEETH = 18
+LAUNCH_ELEVATION_DEG = 48.36
+TOP_WHEEL_DIAMETER_M = FLYWHEEL_DIAMETER_M
+BOTTOM_WHEEL_DIAMETER_M = FLYWHEEL_DIAMETER_M  # unused in fixed-hood mode
+WHEEL_MATERIAL = "Steel tube"
+RELEASE_HEIGHT_M = 27.875 * INCH_TO_METER
+# Carried over from the previous two-wheel shooter for the release-geometry drawing; not measured
+# on the current mechanism.
 CONTACT_PATH_LENGTH_M = 7.0 * INCH_TO_METER
 BALL_COMPRESSION_M = 0.9 * INCH_TO_METER
 
@@ -42,25 +49,15 @@ HUB_DEFAULT_RIM_MARGIN_M = 1.0 * INCH_TO_METER
 
 # Robot-code limits and conventions.
 FLYWHEEL_IDLE_RPM = 500.0
-FLYWHEEL_MAX_RPM = 5000.0
-FLYWHEEL_GEAR_RATIO = 1.25
+FLYWHEEL_MAX_RPM = 3800.0
+FLYWHEEL_GEAR_RATIO = FLYWHEEL_MOTOR_TEETH / FLYWHEEL_GEAR_TEETH  # flywheel speed / motor speed
 FOLLOWER_TO_LEADER_RPM_RATIO = 1.0
-HOOD_MIN_DEG = 25.1
-HOOD_MAX_DEG = 45.0
-SHOT_DISTANCE_MIN_M = 1.628
+# The fixed hood as a rear-referenced command (90 - launch), +/-0.5 deg of measurement error so the
+# app's shot map has a hood axis to work with.
+HOOD_MIN_DEG = 90.0 - LAUNCH_ELEVATION_DEG - 0.5
+HOOD_MAX_DEG = 90.0 - LAUNCH_ELEVATION_DEG + 0.5
+SHOT_DISTANCE_MIN_M = 2.9
 SHOT_DISTANCE_MAX_M = 6.050
-
-SHOT_LUT = (
-    (1.628, 1500.0, 25.9, 0.801),
-    (1.942, 1500.0, 25.9, 0.931),
-    (2.573, 1700.0, 25.9, 1.071),
-    (3.219, 2000.0, 27.0, 1.125),
-    (3.742, 2100.0, 31.0, 1.127),
-    (4.357, 2200.0, 33.0, 1.161),
-    (4.943, 2400.0, 36.0, 1.222),
-    (5.590, 2700.0, 38.0, 1.250),
-    (6.050, 2800.0, 40.0, 1.250),
-)
 
 # Legacy target fields retained for saved calibration compatibility.
 ASSUMED_TARGET_CENTER_HEIGHT_M = HUB_BALL_CENTER_HEIGHT_M
@@ -69,23 +66,17 @@ ASSUMED_TARGET_OPENING_HEIGHT_M = BALL_DIAMETER_M
 PROFILE_ROWS = (
     ("Ball mass", f"{BALL_MASS_KG:.3f} kg", "Form default", "Unconfirmed"),
     ("Ball diameter", f"{BALL_DIAMETER_M:.3f} m", "Form default", "Unconfirmed"),
-    ("Top wheel", "2.5 in / 0.0635 m", "Robot form", "Measured"),
-    ("Bottom wheel", "4.0 in / 0.1016 m", "Robot form", "Measured"),
-    ("Wheel tread", WHEEL_MATERIAL, "Robot form", "Specified"),
-    ("Top gearing", "1:1 motor / wheel", "Robot form", "Specified"),
-    ("Bottom gearing", "30:24 (1.25x wheel speed)", "Robot form", "Specified"),
-    ("Ball contact path", "7 in / 0.1778 m", "Robot form", "Measured"),
-    ("Nominal compression", "0.9 in / 0.0229 m", "Robot form", "Measured"),
-    ("Release height", "21 in / 0.5334 m", "Robot form", "Measured"),
+    ("Shooter type", SHOOTER_CONFIGURATION, "Team", "Specified"),
+    ("Flywheel", "4 in steel tube, 6 lb", "Team", "Measured"),
+    ("Flywheel gearing", "12T motor drives 18T flywheel (0.667 flywheel / motor)", "Constants.java", "Code"),
+    ("Hood", "Fixed, 48.36 deg from horizontal to the top of the hood", "Team", "Measured"),
+    ("Release height", "27.875 in / 0.708 m", "Team", "Measured"),
     ("Robot footprint length", "0.812 m", "Constants.java", "Code"),
     ("Drive wheel", "3.91 in / 0.0993 m", "Swerve config", "Code"),
     ("Drive module X offset", "10.875 in / 0.2762 m", "Swerve config", "Code"),
-    ("Form shooter type", FORM_SHOOTER_CONFIGURATION, "Robot form", "Conflicts with code"),
     ("Flywheel command", "Leader + opposed follower", "ShooterIOTalonFX.java", "Current code"),
-    ("Flywheel gearing", "1.25 mechanism / motor", "Constants.java", "Code"),
-    ("Flywheel range", "500-5000 RPM", "Constants.java", "Code"),
-    ("Hood command range", "25.1-45.0 deg from back (64.9-45.0 deg launch)", "Constants.java", "Code + convention"),
-    ("Shot distance range", "1.628-6.050 m", "ShotCalculator.java", "Code"),
+    ("Flywheel range", "500-3800 RPM (4000 free speed)", "Constants.java", "Code"),
+    ("Shot distance range", "2.9-6.05 m (no scoring band inside 2.87 m)", "Constants.java", "Code"),
     ("HUB body footprint", "47 in / 1.1938 m", "2026 Manual 5.4", "Manual"),
     ("Funnel upper opening", "41.7 in / 1.0592 m hexagon", "2026 Manual 5.4", "Manual"),
     ("Funnel upper rim", "72 in / 1.8288 m", "2026 Manual 5.4", "Manual"),

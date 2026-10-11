@@ -18,7 +18,6 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.simulation.DriverStationSim;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
-import frc.robot.subsystems.hood.Hood;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.feeder.Feeder;
 import frc.robot.subsystems.turret.Turret;
@@ -50,15 +49,13 @@ class RobotContainerDriverControlsTest {
 
         RobotContainer container = new RobotContainer();
         // The default field origin is just outside the calibrated HUB range. An ungated driver
-        // shot must use the nearest setpoint instead of retracting the hood and idling the wheel.
+        // shot must use the nearest setpoint instead of idling the wheel.
         container.getDrivebase().resetOdometry(new Pose2d(0.0, 0.0, new Rotation2d()));
         CommandScheduler scheduler = CommandScheduler.getInstance();
         scheduler.run();
 
         Shooter shooter = getField(container, "shooter", Shooter.class);
-        Hood hood = getField(container, "hood", Hood.class);
         Turret turret = getField(container, "turret", Turret.class);
-        double initialHoodAngle = hood.getHoodAngle();
         scheduler.run();
         double turretGoalBeforeTrigger = turret.getGoalDegrees();
 
@@ -73,13 +70,7 @@ class RobotContainerDriverControlsTest {
         assertTrue(feeder.isShooting());
         assertTrue(shooter.getGoalRPM() > Constants.ShooterConstants.FLYWHEEL_IDLE_RPM);
         assertTrue(shooter.getCurrentRPM() > 0.0);
-        assertTrue(hood.getTargetAngle() > Constants.HoodConstants.HOOD_MIN_ANGLE);
         assertEquals(turretGoalBeforeTrigger, turret.getGoalDegrees(), 0.01);
-        assertTrue(
-            hood.getHoodAngle() > initialHoodAngle,
-            "hood did not move: initial=" + initialHoodAngle
-                + ", current=" + hood.getHoodAngle()
-                + ", target=" + hood.getTargetAngle());
 
         DriverStationSim.setJoystickAxis(0, XboxController.Axis.kRightTrigger.value, 0.0);
         DriverStationSim.notifyNewData();

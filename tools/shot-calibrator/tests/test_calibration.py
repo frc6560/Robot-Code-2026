@@ -77,7 +77,9 @@ def test_control_correction_matches_reference_path_with_fitted_model():
     ball = BallSpec()
     environment = Environment()
     target = Target(distance_m=4.0)
-    original_model = ShooterModel()
+    # An adjustable hood, so a launch-angle error can be corrected with the hood. The robot's own
+    # hood is fixed, which leaves nothing to correct with.
+    original_model = ShooterModel(min_hood_deg=25.1, max_hood_deg=45.0)
     reference = optimize_shot(ball, original_model, environment, target, OptimizationWeights(), seed=42)
     fitted_model = original_model.updated(velocity_transfer=0.67, hood_offset_deg=5.0)
 

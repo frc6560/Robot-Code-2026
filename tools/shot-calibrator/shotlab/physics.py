@@ -83,7 +83,13 @@ def release_state(
     exit_speed_m_s = shooter.velocity_transfer * (top_surface_m_s + bottom_surface_m_s) / 2.0
     launch_angle_rad = np.radians(launch_elevation_deg(controls, shooter))
     # Positive spin is defined as backspin, which produces upward Magnus lift.
-    spin_rad_s = shooter.spin_transfer * (bottom_surface_m_s - top_surface_m_s) / (2.0 * ball.radius_m)
+    if shooter.mode == "fixed_hood":
+        # The ball rolls between the powered wheel and the static hood, so the wheel side of the
+        # ball outruns the hood side: backspin that grows with wheel speed. spin_transfer 1.0 is
+        # pure rolling (spin = exit speed / ball radius when velocity_transfer is 1.0).
+        spin_rad_s = shooter.spin_transfer * top_surface_m_s / (2.0 * ball.radius_m)
+    else:
+        spin_rad_s = shooter.spin_transfer * (bottom_surface_m_s - top_surface_m_s) / (2.0 * ball.radius_m)
     return float(exit_speed_m_s), float(launch_angle_rad), float(spin_rad_s)
 
 

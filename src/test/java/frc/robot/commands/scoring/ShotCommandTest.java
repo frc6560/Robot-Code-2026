@@ -12,8 +12,6 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.wpilibj.simulation.DriverStationSim;
 import frc.robot.subsystems.feeder.Feeder;
 import frc.robot.subsystems.feeder.FeederIO;
-import frc.robot.subsystems.hood.Hood;
-import frc.robot.subsystems.hood.HoodIO;
 import frc.robot.subsystems.led.LED;
 import frc.robot.subsystems.led.LEDIO;
 import frc.robot.subsystems.shooter.Shooter;
@@ -36,15 +34,13 @@ class ShotCommandTest {
     @Test
     void missingAllianceImmediatelyClosesTheFeederGate() {
         Feeder feeder = new Feeder(new FeederIO() {});
-        Hood hood = new Hood(new HoodIO() {});
         Shooter shooter = new Shooter(new ShooterIO() {});
         Turret turret = new Turret(new TurretIO() {});
         ShotCalculator calculator = new ShotCalculator();
-        LED led = new LED(new LEDIO() {}, hood, shooter, turret, calculator);
+        LED led = new LED(new LEDIO() {}, shooter, turret, calculator);
         ShotCommand command = new ShotCommand(
             feeder,
             turret,
-            hood,
             shooter,
             calculator,
             Pose2d::new,

@@ -29,9 +29,6 @@ import frc.robot.commands.swervedrive.drivebase.AimAtHub;
 import frc.robot.utility.Shooter.PassCalculator;
 import frc.robot.utility.Shooter.ShotCalculator;
 
-import frc.robot.subsystems.hood.Hood;
-import frc.robot.subsystems.hood.HoodIOSim;
-import frc.robot.subsystems.hood.HoodIOTalonFX;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.shooter.ShooterIOSim;
 import frc.robot.subsystems.shooter.ShooterIOTalonFX;
@@ -73,7 +70,6 @@ public class RobotContainer {
     "swerve/falcon"));
     private final VisionSubsystem vision;
 
-    private final Hood hood;
     private final Shooter shooter;
     private final Turret turret;
     private final Feeder feeder;
@@ -117,19 +113,17 @@ public class RobotContainer {
       };
 
       if (Robot.isReal()) {
-        hood = new Hood(new HoodIOTalonFX());
         shooter = new Shooter(new ShooterIOTalonFX());
         turret = new Turret(new TurretIOTalonFX());
         feeder = new Feeder(new FeederIOTalonFX());
         intake = new Intake(new IntakeIOTalonFX());
-        led = new LED(new LEDIOAddressable(3, 65), hood, shooter, turret, shotCalculator);
+        led = new LED(new LEDIOAddressable(3, 65), shooter, turret, shotCalculator);
       } else {
-          hood = new Hood(new HoodIOSim());
           shooter = new Shooter(new ShooterIOSim());
           turret = new Turret(new TurretIOSim());
           feeder = new Feeder(new FeederIOSim());
           intake = new Intake(new IntakeIOSim());
-          led = new LED(new LEDIOSim(65), hood, shooter, turret, shotCalculator);
+          led = new LED(new LEDIOSim(65), shooter, turret, shotCalculator);
       }
 
       factory = new AutoCommands(
@@ -137,7 +131,6 @@ public class RobotContainer {
         feeder,
         intake,
         shooter,
-        hood,
         turret,
         shotCalculator
       );
@@ -154,7 +147,6 @@ public class RobotContainer {
       vision = new VisionSubsystem(limelights);
 
       SuperstructureCommand superstructureCommand = new SuperstructureCommand(
-        hood,
         shooter,
         turret,
         drivebase::getPose,
@@ -163,14 +155,11 @@ public class RobotContainer {
         passCalculator
       );
 
-      hood.setDefaultCommand(superstructureCommand);
+      shooter.setDefaultCommand(superstructureCommand);
       led.setDefaultCommand(Commands.run(() -> {}, led));
 
-      // Holding the hood keeps its default (the superstructure, which also needs the shooter)
-      // from rescheduling and cancelling the ramp. Runs until cancelled from the dashboard.
-      SmartDashboard.putData(
-        "Shooter/FF Characterization",
-        shooter.feedforwardCharacterizationCommand().deadlineFor(Commands.idle(hood, turret)));
+      // Takes the shooter from its default (the superstructure) until cancelled from the dashboard.
+      SmartDashboard.putData("Shooter/FF Characterization", shooter.feedforwardCharacterizationCommand());
 
       configureBindings();
     }
@@ -188,7 +177,7 @@ public class RobotContainer {
     private void scheduleShotCommand() {
         cancelShotCommand();
         shotCommand = new ShotCommand(
-            feeder, turret, hood, shooter, shotCalculator, drivebase::getPose, led);
+            feeder, turret, shooter, shotCalculator, drivebase::getPose, led);
         CommandScheduler.getInstance().schedule(shotCommand);
     }
 
@@ -196,7 +185,7 @@ public class RobotContainer {
     private void scheduleAimedShotCommand() {
         cancelShotCommand();
         shotCommand = new ShotCommand(
-            feeder, turret, hood, shooter, shotCalculator, drivebase::getPose, led)
+            feeder, turret, shooter, shotCalculator, drivebase::getPose, led)
             .alongWith(new AimAtHub(
                 drivebase,
                 () -> clampSpeedsForShooting(driveAngularVelocity.get())));
@@ -269,7 +258,7 @@ public class RobotContainer {
           .and(DriverStation::isTeleopEnabled)
           .onTrue(Commands.runOnce(
               this::togglePitCoastMode,
-              drivebase, hood, shooter, turret, feeder, intake));
+              drivebase, shooter, turret, feeder, intake));
 
         // --- SHOTS ---
         
@@ -329,7 +318,6 @@ public class RobotContainer {
     private void setPitCoastMode(boolean enabled) {
         pitCoastMode = enabled;
         drivebase.setPitCoastMode(enabled);
-        hood.setPitCoastMode(enabled);
         shooter.setPitCoastMode(enabled);
         turret.setPitCoastMode(enabled);
         feeder.setPitCoastMode(enabled);

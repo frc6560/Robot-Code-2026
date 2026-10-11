@@ -42,21 +42,12 @@ class ShotCalculatorTest {
         PhysicsShotSolver.Solution expected = new PhysicsShotSolver().solveRuntime(FIFTEEN_FEET_METERS);
         assertTrue(calculator.isShotValid());
         assertEquals(expected.flywheelRPM(), calculator.getFlywheelRPM(), 1e-6);
-        assertEquals(expected.hoodCommandDegrees(), calculator.getHoodAzimuth(), 1e-6);
         assertEquals(expected.timeOfFlightSeconds(), calculator.getTimeOfFlightSeconds(), 1e-5);
         assertEquals(FIFTEEN_FEET_METERS, calculator.getDistanceToVirtualTarget(), 1e-9);
-        assertTrue(calculator.measuredControlsScore(
-            calculator.getFlywheelRPM(),
-            calculator.getHoodAzimuth()
-        ));
-        assertFalse(calculator.measuredControlsScore(
-            calculator.getFlywheelRPM() - 200.0,
-            calculator.getHoodAzimuth()
-        ));
-        assertFalse(calculator.measuredControlsScore(
-            calculator.getFlywheelRPM() + 200.0,
-            calculator.getHoodAzimuth()
-        ));
+        assertTrue(calculator.measuredControlsScore(calculator.getFlywheelRPM()));
+        // The scoring band at 15 ft is about +/-110 RPM wide.
+        assertFalse(calculator.measuredControlsScore(calculator.getFlywheelRPM() - 200.0));
+        assertFalse(calculator.measuredControlsScore(calculator.getFlywheelRPM() + 200.0));
     }
 
     @Test
@@ -87,8 +78,7 @@ class ShotCalculatorTest {
 
         assertFalse(calculator.isShotValid());
         assertEquals(500.0, calculator.getFlywheelRPM(), 1e-9);
-        assertEquals(25.1, calculator.getHoodAzimuth(), 1e-9);
-        assertFalse(calculator.measuredControlsScore(2500.0, 30.0));
+        assertFalse(calculator.measuredControlsScore(3000.0));
     }
 
     @Test
@@ -103,11 +93,8 @@ class ShotCalculatorTest {
             new PhysicsShotSolver().solveRuntime(Constants.ShotModelConstants.MAX_DISTANCE_METERS);
         assertFalse(calculator.isShotValid());
         assertEquals(expected.flywheelRPM(), calculator.getFlywheelRPM(), 1e-6);
-        assertEquals(expected.hoodCommandDegrees(), calculator.getHoodAzimuth(), 1e-6);
         assertTrue(calculator.getFlywheelRPM() > Constants.ShooterConstants.FLYWHEEL_IDLE_RPM);
-        assertTrue(calculator.getHoodAzimuth() > Constants.HoodConstants.HOOD_MIN_ANGLE);
-        assertFalse(calculator.measuredControlsScore(
-            calculator.getFlywheelRPM(), calculator.getHoodAzimuth()));
+        assertFalse(calculator.measuredControlsScore(calculator.getFlywheelRPM()));
     }
 
     @Test
@@ -132,7 +119,6 @@ class ShotCalculatorTest {
 
             assertFalse(calculator.isShotValid());
             assertEquals(500.0, calculator.getFlywheelRPM(), 1e-9);
-            assertEquals(25.1, calculator.getHoodAzimuth(), 1e-9);
             assertTrue(Double.isFinite(calculator.getTurretAngle()));
             assertTrue(Double.isFinite(calculator.getTurretVelocityFF()));
             assertTrue(Double.isFinite(calculator.getDistanceToVirtualTarget()));
@@ -156,7 +142,6 @@ class ShotCalculatorTest {
 
         assertFalse(calculator.isShotValid());
         assertEquals(500.0, calculator.getFlywheelRPM(), 1e-9);
-        assertEquals(25.1, calculator.getHoodAzimuth(), 1e-9);
         assertEquals(0.0, calculator.getDistanceToVirtualTarget(), 1e-9);
     }
 

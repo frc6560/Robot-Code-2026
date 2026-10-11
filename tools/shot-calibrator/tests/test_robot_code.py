@@ -3,13 +3,20 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from shotlab.models import BallSpec, Environment, ShooterModel, ShotControls, Target
-from shotlab.physics import _is_scoring_entry, hub_entry_metrics, simulate_shot
+from shotlab.physics import (
+    _is_scoring_entry,
+    controls_from_top_rpm,
+    hub_entry_metrics,
+    release_state,
+    simulate_shot,
+)
 from shotlab.robot_code import (
     RobotCodeParseError,
     _evaluate_java_numeric_expression,
     _parse_constant_class,
+    app_models,
     default_robot_constants_path,
+    hub_target,
     load_robot_shot_config,
 )
 
@@ -19,14 +26,25 @@ def test_loads_current_robot_shot_configuration():
 
     assert config.source_path == default_robot_constants_path()
     assert config.values["DRAG_COEFFICIENT"] == 0.47
-    assert config.values["TOP_WHEEL_DIAMETER_METERS"] == pytest.approx(0.0635)
+    assert config.values["FLYWHEEL_DIAMETER_METERS"] == pytest.approx(0.1016)
+    assert config.values["LAUNCH_ELEVATION_DEGREES"] == pytest.approx(48.36)
+    assert config.values["RELEASE_HEIGHT_METERS"] == pytest.approx(27.875 * 0.0254)
     assert config.values["HUB_BALL_CENTER_HEIGHT_METERS"] == pytest.approx(1.9038)
     assert config.values["FLYWHEEL_IDLE_RPM"] == 500.0
-    assert config.values["MAX_RPM"] == 5000.0
-    assert config.empirical_parameters["velocity_transfer"] == pytest.approx(1.13)
-    assert config.empirical_parameters["hood_offset_deg"] == pytest.approx(11.394416920229768)
+    assert config.values["MAX_RPM"] == 3800.0
+    assert config.empirical_parameters["velocity_transfer"] == pytest.approx(1.0)
+    assert config.empirical_parameters["hood_offset_deg"] == pytest.approx(0.0)
     assert config.app_state_values["model_rim_margin_in"] == pytest.approx(1.0)
     assert len(config.source_hash) == 64
+
+
+def test_fixed_hood_robot_maps_onto_app_wheel_and_hood_terms():
+    values = load_robot_shot_config().values
+
+    assert values["TOP_WHEEL_DIAMETER_METERS"] == values["FLYWHEEL_DIAMETER_METERS"]
+    assert values["BOTTOM_TO_TOP_RPM_RATIO"] == 0.0
+    assert values["FIXED_HOOD_COMMAND_DEGREES"] == pytest.approx(90.0 - 48.36)
+    assert values["HOOD_MIN_ANGLE"] < values["FIXED_HOOD_COMMAND_DEGREES"] < values["HOOD_MAX_ANGLE"]
 
 
 def test_numeric_parser_supports_units_references_and_arithmetic():
@@ -55,44 +73,11 @@ def test_missing_robot_classes_raise_clear_error(tmp_path: Path):
 
 
 def test_java_runtime_policy_scores_in_python_equation_across_range():
-    values = load_robot_shot_config().values
-    ball = BallSpec(
-        mass_kg=values["BALL_MASS_KG"],
-        diameter_m=values["BALL_DIAMETER_METERS"],
-        drag_coefficient=values["DRAG_COEFFICIENT"],
-    )
-    environment = Environment(
-        air_density_kg_m3=values["AIR_DENSITY_KG_PER_CUBIC_METER"],
-        gravity_m_s2=values["GRAVITY_METERS_PER_SECOND_SQUARED"],
-        wind_x_m_s=values["WIND_X_METERS_PER_SECOND"],
-    )
-    shooter = ShooterModel(
-        top_wheel_diameter_m=values["TOP_WHEEL_DIAMETER_METERS"],
-        bottom_wheel_diameter_m=values["BOTTOM_WHEEL_DIAMETER_METERS"],
-        min_rpm=values["FLYWHEEL_IDLE_RPM"],
-        max_rpm=values["MAX_RPM"],
-        min_hood_deg=values["HOOD_MIN_ANGLE"],
-        max_hood_deg=values["HOOD_MAX_ANGLE"],
-        bottom_to_top_rpm_ratio=values["BOTTOM_TO_TOP_RPM_RATIO"],
-        release_height_m=values["RELEASE_HEIGHT_METERS"],
-        velocity_transfer=values["VELOCITY_TRANSFER"],
-        spin_transfer=values["SPIN_TRANSFER"],
-        hood_offset_deg=values["HOOD_OFFSET_DEGREES"],
-        drag_scale=values["DRAG_SCALE"],
-        lift_slope=values["LIFT_SLOPE"],
-        max_lift_coefficient=values["MAX_LIFT_COEFFICIENT"],
-        spin_decay_per_s=values["SPIN_DECAY_PER_SECOND"],
-    )
-    rpm_policy = (
-        values["RPM_POLICY_DISTANCE_SQUARED"],
-        values["RPM_POLICY_DISTANCE"],
-        values["RPM_POLICY_CONSTANT"],
-    )
-    hood_policy = (
-        values["HOOD_POLICY_DISTANCE_SQUARED"],
-        values["HOOD_POLICY_DISTANCE"],
-        values["HOOD_POLICY_CONSTANT"],
-    )
+    config = load_robot_shot_config()
+    values = config.values
+    ball, environment, shooter = app_models(config)
+    rpm_policy = config.runtime_policy["rpm"]
+    hood_command_deg = values["FIXED_HOOD_COMMAND_DEGREES"]
 
     for distance_m in np.linspace(
         values["MIN_DISTANCE_METERS"],
@@ -100,23 +85,20 @@ def test_java_runtime_policy_scores_in_python_equation_across_range():
         101,
     ):
         top_rpm = float(np.clip(np.polyval(rpm_policy, distance_m), shooter.min_rpm, shooter.max_rpm))
-        hood_command_deg = float(
-            np.clip(np.polyval(hood_policy, distance_m), shooter.min_hood_deg, shooter.max_hood_deg)
-        )
-        controls = ShotControls(
-            top_rpm=top_rpm,
-            bottom_rpm=top_rpm * shooter.bottom_to_top_rpm_ratio,
-            hood_angle_deg=hood_command_deg,
-        )
-        target = Target(
-            distance_m=float(distance_m),
-            center_height_m=values["HUB_BALL_CENTER_HEIGHT_METERS"],
-            opening_height_m=values["BALL_DIAMETER_METERS"],
-            opening_span_m=values["HUB_OPENING_SPAN_METERS"],
-            min_entry_angle_deg=values["MIN_ENTRY_ANGLE_DEGREES"],
-            rim_margin_m=values["HUB_RIM_MARGIN_METERS"],
-        )
+        controls = controls_from_top_rpm(top_rpm, hood_command_deg, shooter)
+        target = hub_target(config, distance_m)
         trajectory = simulate_shot(controls, ball, shooter, environment, target, dt_s=0.004)
         metrics = hub_entry_metrics(trajectory, target, ball)
 
         assert _is_scoring_entry(metrics, target), f"Java runtime policy missed at {distance_m:.4f} m"
+
+
+def test_fixed_hood_ball_leaves_with_backspin():
+    config = load_robot_shot_config()
+    ball, _, shooter = app_models(config)
+    controls = controls_from_top_rpm(3000.0, config.values["FIXED_HOOD_COMMAND_DEGREES"], shooter)
+
+    speed, _, spin = release_state(controls, ball, shooter)
+
+    assert spin > 0.0
+    assert spin == pytest.approx(speed / ball.radius_m)

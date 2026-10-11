@@ -13,7 +13,6 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.FieldConstants;
-import frc.robot.Constants.HoodConstants;
 import frc.robot.Constants.ShooterConstants;
 import frc.robot.Constants.ShotModelConstants;
 import frc.robot.Constants.TurretConstants;
@@ -23,19 +22,14 @@ public class ShotCalculator {
     /** State container for turret position and velocity. */
     public record TurretState(double positionRadians, double velocityRadiansPerSecond) {}
 
-    /** State container for hood position and velocity. */
-    public record HoodState(double positionDegrees) {}
-
     /** Combined state for the entire shooter system. */
     public record ShooterState(
         TurretState turret,
-        HoodState hood,
         double flywheelRPM,
         Translation2d virtualTargetPose
     ) {}
 
     private double flywheelRPM;
-    private double hoodAzimuth; // in degrees
     private double turretAngle;
     private double turretVelocityFF; // feedforward velocity in rad/s 
     private double timeOfFlightSeconds;
@@ -55,11 +49,6 @@ public class ShotCalculator {
     /** A util class for outputting shooter state values, even while the robot is moving! */
     public ShotCalculator() {
         resetToSafeState();
-    }
-
-    /** Returns the current hood azimuth in degrees. */
-    public double getHoodAzimuth() {
-        return hoodAzimuth;
     }
 
     public double getTurretTolerance (){
@@ -106,14 +95,13 @@ public class ShotCalculator {
      * constraint at the current virtual-target range. This closes the release gate around the
      * physics-valid command window instead of relying only on broad subsystem tolerances.
      */
-    public boolean measuredControlsScore(double measuredFlywheelRPM, double measuredHoodCommandDegrees) {
+    public boolean measuredControlsScore(double measuredFlywheelRPM) {
         if (!calculationValid) {
             return false;
         }
         return physicsSolver.evaluate(
             distanceToVirtualTarget,
-            measuredFlywheelRPM,
-            measuredHoodCommandDegrees
+            measuredFlywheelRPM
         ).valid();
     }
 
@@ -126,7 +114,6 @@ public class ShotCalculator {
     public ShooterState getState() {
         return new ShooterState(
             new TurretState(turretAngle, turretVelocityFF),
-            new HoodState(hoodAzimuth),
             flywheelRPM,
             virtualTargetPose
         );
@@ -140,8 +127,7 @@ public class ShotCalculator {
 
     /**
      * Calculates an ungated driver shot. A finite pose outside the calibrated range uses the
-     * nearest calibrated mechanism setpoint instead of retracting the hood and idling the
-     * flywheel. {@link #isShotValid()} remains false outside the validated scoring range.
+     * nearest calibrated flywheel setpoint instead of idling the flywheel. {@link #isShotValid()} remains false outside the validated scoring range.
      */
     public void calculateUngated(Pose2d currentRobotPose, ChassisSpeeds fieldVelocity) {
         calculate(currentRobotPose, fieldVelocity, true);
@@ -221,7 +207,7 @@ public class ShotCalculator {
         SmartDashboard.putNumber("SOTM/TurretVel/magnitude", Math.hypot(turretVx, turretVy));
 
         // Calculates a virtual target from the flight time returned by the same physics
-        // solution that supplies the final hood and RPM commands.
+        // solution that supplies the final RPM command.
         virtualTargetPose = targetPose; 
         double distanceToTarget = turretPose.getTranslation().getDistance(targetPose);
         double staticDistance = distanceToTarget; // save for logging
@@ -260,7 +246,6 @@ public class ShotCalculator {
             && distanceToTarget <= ShotModelConstants.MAX_DISTANCE_METERS;
         calculationValid = distanceInRange && solution.valid();
 
-        hoodAzimuth = solution.hoodCommandDegrees();
         flywheelRPM = solution.flywheelRPM();
 
         SmartDashboard.putNumber("SOTM/Iterations", iterationsUsed);
@@ -295,7 +280,6 @@ public class ShotCalculator {
 
         // Log final output values
         SmartDashboard.putNumber("SOTM/Output/TurretAngleDeg", Math.toDegrees(turretAngle));
-        SmartDashboard.putNumber("SOTM/Output/HoodAngleDeg", hoodAzimuth);
         SmartDashboard.putNumber("SOTM/Output/LaunchElevationDeg", solution.launchElevationDegrees());
         SmartDashboard.putNumber("SOTM/Output/FlywheelRPM", flywheelRPM);
         SmartDashboard.putNumber("SOTM/Output/TurretVelocityFF", Math.toDegrees(turretVelocityFF));
@@ -328,7 +312,6 @@ public class ShotCalculator {
 
     private void resetToSafeState() {
         flywheelRPM = ShooterConstants.FLYWHEEL_IDLE_RPM;
-        hoodAzimuth = HoodConstants.HOOD_MIN_ANGLE;
         turretAngle = 0.0;
         turretVelocityFF = 0.0;
         timeOfFlightSeconds = 0.0;

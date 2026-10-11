@@ -526,10 +526,13 @@ def test_hopper_depth_turns_spin_up_into_recovery():
 def test_deep_hopper_makes_time_per_volley_nearly_flat_in_wall_thickness():
     """Recovery is set by energy against available power, not by inertia, which
     is why the in-band constraint has to pick the wall rather than the clock."""
-    tube, energy, shooter, ball, environment, target = shot_context()
+    # Pinned to the scenario this claim was checked in (21 in release, 1.628-6.05 m), so it keeps
+    # testing the sizing model rather than whatever the robot profile currently says.
+    tube, energy, _, ball, environment, target = shot_context()
+    shooter = tube_shooter_model(tube, energy, 21.0 * 0.0254)
     schedules = shot_schedule_candidates(
         shooter, ball, environment, target,
-        distances_m=np.linspace(SHOT_DISTANCE_MIN_M, SHOT_DISTANCE_MAX_M, 4),
+        distances_m=np.linspace(1.628, 6.050, 4),
         hood_candidates_deg=np.array([24.0]),
         rpm_bounds=(500.0, 4985.0),
     )

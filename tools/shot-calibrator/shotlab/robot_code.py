@@ -24,9 +24,8 @@ REQUIRED_CONSTANTS = {
         "MAX_DISTANCE_METERS",
         "BALL_MASS_KG",
         "BALL_DIAMETER_METERS",
-        "TOP_WHEEL_DIAMETER_METERS",
-        "BOTTOM_WHEEL_DIAMETER_METERS",
-        "BOTTOM_TO_TOP_RPM_RATIO",
+        "FLYWHEEL_DIAMETER_METERS",
+        "LAUNCH_ELEVATION_DEGREES",
         "RELEASE_HEIGHT_METERS",
         "HUB_OPENING_SPAN_METERS",
         "HUB_RIM_HEIGHT_METERS",
@@ -44,19 +43,19 @@ REQUIRED_CONSTANTS = {
         "LIFT_SLOPE",
         "MAX_LIFT_COEFFICIENT",
         "SPIN_DECAY_PER_SECOND",
-        "FLIGHT_TIME_WEIGHT",
-        "ENTRY_ANGLE_WEIGHT",
-        "MECHANISM_EFFORT_WEIGHT",
         "RPM_POLICY_DISTANCE_SQUARED",
         "RPM_POLICY_DISTANCE",
         "RPM_POLICY_CONSTANT",
-        "HOOD_POLICY_DISTANCE_SQUARED",
-        "HOOD_POLICY_DISTANCE",
-        "HOOD_POLICY_CONSTANT",
     ),
     "ShooterConstants": ("FLYWHEEL_IDLE_RPM", "MAX_RPM"),
-    "HoodConstants": ("HOOD_MIN_ANGLE", "HOOD_MAX_ANGLE"),
 }
+
+# The robot has one powered flywheel and a fixed hood. The app's model still speaks in top/bottom
+# wheels and a hood command measured from the rear, so the import maps onto those: the flywheel is
+# the "top" wheel, nothing powers the bottom, and the hood command is fixed at 90 - launch angle.
+# The app's shot map needs a non-zero hood span, so the hood is allowed this much measurement error.
+FIXED_HOOD_UNCERTAINTY_DEG = 0.5
+SHOOTER_MODE = "fixed_hood"
 
 EMPIRICAL_JAVA_TO_MODEL = {
     "VELOCITY_TRANSFER": "velocity_transfer",
@@ -92,9 +91,6 @@ APP_STATE_CONSTANTS = {
     "model_lift_slope": "LIFT_SLOPE",
     "model_max_lift_coefficient": "MAX_LIFT_COEFFICIENT",
     "model_spin_decay_per_s": "SPIN_DECAY_PER_SECOND",
-    "model_time_weight": "FLIGHT_TIME_WEIGHT",
-    "model_entry_weight": "ENTRY_ANGLE_WEIGHT",
-    "model_effort_weight": "MECHANISM_EFFORT_WEIGHT",
     "model_hub_opening_span": "HUB_OPENING_SPAN_METERS",
     "model_hub_rim_height": "HUB_RIM_HEIGHT_METERS",
     "model_shot_distance_min": "MIN_DISTANCE_METERS",
@@ -136,11 +132,7 @@ class RobotShotConfig:
                 self.values["RPM_POLICY_DISTANCE"],
                 self.values["RPM_POLICY_CONSTANT"],
             ),
-            "hood": (
-                self.values["HOOD_POLICY_DISTANCE_SQUARED"],
-                self.values["HOOD_POLICY_DISTANCE"],
-                self.values["HOOD_POLICY_CONSTANT"],
-            ),
+            "hood": (0.0, 0.0, self.values["FIXED_HOOD_COMMAND_DEGREES"]),
         }
 
 
@@ -170,11 +162,24 @@ def load_robot_shot_config(path: Path | str | None = None) -> RobotShotConfig:
             "Robot shot configuration is incomplete; missing " + ", ".join(missing)
         )
 
+    _add_app_model_values(parsed)
     return RobotShotConfig(
         source_path=source_path.resolve(),
         source_hash=hashlib.sha256(source.encode("utf-8")).hexdigest(),
         values=parsed,
     )
+
+
+def _add_app_model_values(values: dict[str, float]) -> None:
+    """Express the single-flywheel, fixed-hood robot in the app's two-wheel, hood-command terms."""
+    hood_command = 90.0 - values["LAUNCH_ELEVATION_DEGREES"]
+    values["TOP_WHEEL_DIAMETER_METERS"] = values["FLYWHEEL_DIAMETER_METERS"]
+    # Unused in fixed-hood mode; the app's form still needs a valid diameter there.
+    values["BOTTOM_WHEEL_DIAMETER_METERS"] = values["FLYWHEEL_DIAMETER_METERS"]
+    values["BOTTOM_TO_TOP_RPM_RATIO"] = 0.0
+    values["FIXED_HOOD_COMMAND_DEGREES"] = hood_command
+    values["HOOD_MIN_ANGLE"] = hood_command - FIXED_HOOD_UNCERTAINTY_DEG
+    values["HOOD_MAX_ANGLE"] = hood_command + FIXED_HOOD_UNCERTAINTY_DEG
 
 
 def robot_config_rows(config: RobotShotConfig) -> list[dict[str, str | float]]:
@@ -194,13 +199,11 @@ def robot_config_rows(config: RobotShotConfig) -> list[dict[str, str | float]]:
         (
             "Mechanism",
             (
-                "TOP_WHEEL_DIAMETER_METERS",
-                "BOTTOM_WHEEL_DIAMETER_METERS",
+                "FLYWHEEL_DIAMETER_METERS",
+                "LAUNCH_ELEVATION_DEGREES",
                 "RELEASE_HEIGHT_METERS",
                 "FLYWHEEL_IDLE_RPM",
                 "MAX_RPM",
-                "HOOD_MIN_ANGLE",
-                "HOOD_MAX_ANGLE",
             ),
         ),
         (
@@ -209,9 +212,6 @@ def robot_config_rows(config: RobotShotConfig) -> list[dict[str, str | float]]:
                 "RPM_POLICY_DISTANCE_SQUARED",
                 "RPM_POLICY_DISTANCE",
                 "RPM_POLICY_CONSTANT",
-                "HOOD_POLICY_DISTANCE_SQUARED",
-                "HOOD_POLICY_DISTANCE",
-                "HOOD_POLICY_CONSTANT",
             ),
         ),
     )
@@ -288,3 +288,53 @@ def _evaluate_ast(node: ast.AST, names: dict[str, float]) -> float:
     if isinstance(node, ast.UnaryOp) and type(node.op) in unary_operators:
         return unary_operators[type(node.op)](_evaluate_ast(node.operand, names))
     raise RobotCodeParseError("Java constant expression contains unsupported syntax.")
+
+
+def app_models(config: RobotShotConfig):
+    """Ball, environment and fixed-hood shooter model exactly as the robot code describes them."""
+    from .models import BallSpec, Environment, ShooterModel
+
+    values = config.values
+    ball = BallSpec(
+        mass_kg=values["BALL_MASS_KG"],
+        diameter_m=values["BALL_DIAMETER_METERS"],
+        drag_coefficient=values["DRAG_COEFFICIENT"],
+    )
+    environment = Environment(
+        air_density_kg_m3=values["AIR_DENSITY_KG_PER_CUBIC_METER"],
+        gravity_m_s2=values["GRAVITY_METERS_PER_SECOND_SQUARED"],
+        wind_x_m_s=values["WIND_X_METERS_PER_SECOND"],
+    )
+    shooter = ShooterModel(
+        mode=SHOOTER_MODE,
+        top_wheel_diameter_m=values["TOP_WHEEL_DIAMETER_METERS"],
+        bottom_wheel_diameter_m=values["BOTTOM_WHEEL_DIAMETER_METERS"],
+        min_rpm=values["FLYWHEEL_IDLE_RPM"],
+        max_rpm=values["MAX_RPM"],
+        min_hood_deg=values["HOOD_MIN_ANGLE"],
+        max_hood_deg=values["HOOD_MAX_ANGLE"],
+        bottom_to_top_rpm_ratio=values["BOTTOM_TO_TOP_RPM_RATIO"],
+        release_height_m=values["RELEASE_HEIGHT_METERS"],
+        velocity_transfer=values["VELOCITY_TRANSFER"],
+        spin_transfer=values["SPIN_TRANSFER"],
+        hood_offset_deg=values["HOOD_OFFSET_DEGREES"],
+        drag_scale=values["DRAG_SCALE"],
+        lift_slope=values["LIFT_SLOPE"],
+        max_lift_coefficient=values["MAX_LIFT_COEFFICIENT"],
+        spin_decay_per_s=values["SPIN_DECAY_PER_SECOND"],
+    )
+    return ball, environment, shooter
+
+
+def hub_target(config: RobotShotConfig, distance_m: float):
+    from .models import Target
+
+    values = config.values
+    return Target(
+        distance_m=float(distance_m),
+        center_height_m=values["HUB_BALL_CENTER_HEIGHT_METERS"],
+        opening_height_m=values["BALL_DIAMETER_METERS"],
+        opening_span_m=values["HUB_OPENING_SPAN_METERS"],
+        min_entry_angle_deg=values["MIN_ENTRY_ANGLE_DEGREES"],
+        rim_margin_m=values["HUB_RIM_MARGIN_METERS"],
+    )

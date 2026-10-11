@@ -8,7 +8,6 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.subsystems.hood.Hood;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.turret.Turret;
 import frc.robot.utility.Shooter.ShotCalculator;
@@ -55,7 +54,6 @@ public class LED extends SubsystemBase {
     private final Timer animTimer = new Timer();
 
     // Subsystems for tolerance checking
-    private final Hood hood;
     private final Shooter shooter;
     private final Turret turret;
     private final ShotCalculator shotCalculator;
@@ -74,9 +72,8 @@ public class LED extends SubsystemBase {
     // State machine
     private LEDState currentState = LEDState.OFF;
 
-    public LED(LEDIO io, Hood hood, Shooter shooter, Turret turret, ShotCalculator shotCalculator) {
+    public LED(LEDIO io, Shooter shooter, Turret turret, ShotCalculator shotCalculator) {
         this.io = io;
-        this.hood = hood;
         this.shooter = shooter;
         this.turret = turret;
         this.shotCalculator = shotCalculator;
@@ -102,14 +99,12 @@ public class LED extends SubsystemBase {
         boolean shotValid = shotCalculator.isShotValid();
         double turretTolerance = shotCalculator.getTurretTolerance();
         boolean turretReady = turret.getAtTarget(turretTolerance);
-        boolean hoodReady = hood.atTarget();
         boolean shooterReady = shooter.atTarget();
 
-        readyToShoot = shotValid && turretReady && hoodReady && shooterReady;
+        readyToShoot = shotValid && turretReady && shooterReady;
 
         Logger.recordOutput("LED/ShotValid", shotValid);
         Logger.recordOutput("LED/TurretReady", turretReady);
-        Logger.recordOutput("LED/HoodReady", hoodReady);
         Logger.recordOutput("LED/ShooterReady", shooterReady);
 
         LEDState nextState = resolveState();

@@ -12,7 +12,6 @@ import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj.Alert.AlertType;
 import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -177,7 +176,9 @@ public class Shooter extends SubsystemBase {
         // Acceleration ceiling from the power budget. Electrical power in is I*(I*R + backEmf),
         // so a fixed watt budget is a quadratic in stator current; the bus voltage caps it again
         // once back-EMF eats most of the bus. The Talon's stator limit is the last ceiling.
-        double vBus = RobotBase.isSimulation() ? 10.0 : RobotController.getBatteryVoltage();
+        // Hub shots run at up to ~85% of free speed through the 12:18 reduction, so planning against
+        // a pessimistic bus (6328 used 10 V in sim) would stall the ramp short of the goal.
+        double vBus = RobotController.getBatteryVoltage();
         double supplyBudget = DriverStation.isAutonomous()
             ? ShooterConstants.FLYWHEEL_SUPPLY_BUDGET_AUTO
             : ShooterConstants.FLYWHEEL_SUPPLY_BUDGET_TELEOP;
