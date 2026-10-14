@@ -8,6 +8,7 @@ import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.controls.NeutralOut;
 import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.InvertedValue;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
@@ -82,6 +83,7 @@ public class IndexerIOTalonFX implements IndexerIO {
 
     private static StatusCode configureMotor(TalonFX motor, double gearRatio) {
         TalonFXConfiguration config = new TalonFXConfiguration();
+        config.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
         config.Feedback.SensorToMechanismRatio = gearRatio;
         config.Slot0.kP = IndexerConstants.VELOCITY_KP;
         config.Slot0.kV = IndexerConstants.MOTOR_KV * gearRatio;

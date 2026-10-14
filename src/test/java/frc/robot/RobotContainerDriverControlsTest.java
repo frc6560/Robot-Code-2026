@@ -35,7 +35,7 @@ class RobotContainerDriverControlsTest {
     }
 
     @Test
-    void bumperAndTriggerIndependentlyControlFloorShooterAndTunnel() throws Exception {
+    void triggerRunsFloorAndTunnelWithoutOverridingShooterControls() throws Exception {
         DriverStationSim.setDsAttached(true);
         DriverStationSim.setEnabled(true);
         DriverStationSim.setAutonomous(false);
@@ -74,7 +74,7 @@ class RobotContainerDriverControlsTest {
         assertTargets(shooter, indexer, 3000.0, 1000.0, 0.0);
         setControls(true, true);
         setControls(false, true);
-        assertTargets(shooter, indexer, 1000.0, 0.0, 1500.0);
+        assertTargets(shooter, indexer, 1000.0, 1000.0, 1500.0);
         runCycles(150);
         assertEquals(1000.0, shooter.getCurrentRPM(), 150.0);
         // Also verify a bumper-only hold/release settles back to measured idle speed.
@@ -86,9 +86,9 @@ class RobotContainerDriverControlsTest {
         runCycles(150);
         assertEquals(1000.0, shooter.getCurrentRPM(), 150.0);
 
-        // Trigger alone feeds without changing the shooter's idle goal.
+        // Trigger alone runs both indexer stages without changing the shooter's idle goal.
         setControls(false, true);
-        assertTargets(shooter, indexer, 1000.0, 0.0, 1500.0);
+        assertTargets(shooter, indexer, 1000.0, 1000.0, 1500.0);
         assertEquals(turretGoalBeforeTrigger, turret.getGoalDegrees(), 0.01);
 
         setControls(false, false);
@@ -119,7 +119,7 @@ class RobotContainerDriverControlsTest {
         setControls(false, true);
         assertTargets(shooter, indexer, 1000.0, 1000.0, 1500.0);
         setDriver2Controls(false, false);
-        assertTargets(shooter, indexer, 1000.0, 0.0, 1500.0);
+        assertTargets(shooter, indexer, 1000.0, 1000.0, 1500.0);
 
         setControls(true, true);
         DriverStationSim.setEnabled(false);

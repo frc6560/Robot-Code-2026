@@ -35,6 +35,7 @@ import frc.robot.subsystems.feeder.Feeder;
 import frc.robot.subsystems.feeder.FeederIOSim;
 import frc.robot.subsystems.feeder.FeederIOTalonFX;
 import frc.robot.subsystems.intake.Intake;
+import frc.robot.subsystems.intake.IntakeIO;
 import frc.robot.subsystems.intake.IntakeIOSim;
 import frc.robot.subsystems.intake.IntakeIOTalonFX;
 import frc.robot.subsystems.indexer.Indexer;
@@ -52,7 +53,7 @@ import org.littletonrobotics.junction.Logger;
 
 public class RobotContainer {
     private static final int INDEXER_FLOOR_LEADER_ID = 25;
-    private static final int INDEXER_TUNNEL_MOTOR_ID = 16;
+    private static final int INDEXER_TUNNEL_MOTOR_ID = 0;
 
     // Controllers
     private final CommandXboxController driverXbox = new CommandXboxController(0);
@@ -103,17 +104,20 @@ public class RobotContainer {
         case REPLAY -> new Indexer(new IndexerIO() {});
       };
 
+      // Do not construct any intake motor controllers while the broken intake is disabled.
+      intake = new Intake(!Constants.IntakeConstants.ENABLED
+          ? new IntakeIO() {}
+          : Robot.isReal() ? new IntakeIOTalonFX() : new IntakeIOSim());
+
       if (Robot.isReal()) {
         shooter = new Shooter(new ShooterIOTalonFX());
         turret = new Turret(new TurretIOTalonFX());
         feeder = new Feeder(new FeederIOTalonFX());
-        intake = new Intake(new IntakeIOTalonFX());
         led = new LED(new LEDIOAddressable(3, 65), shooter, turret, shotCalculator);
       } else {
           shooter = new Shooter(new ShooterIOSim());
           turret = new Turret(new TurretIOSim());
           feeder = new Feeder(new FeederIOSim());
-          intake = new Intake(new IntakeIOSim());
           led = new LED(new LEDIOSim(65), shooter, turret, shotCalculator);
       }
 
@@ -236,8 +240,8 @@ public class RobotContainer {
         // Driver 2 is the button board on USB port 1; use raw held states, not press edges.
         Trigger spinUp = combinedSpinUp.or(new Trigger(() -> m_Controls.getButtonActivated(11)));
         Trigger driver2Indexer = new Trigger(() -> m_Controls.getButtonActivated(3));
-        Trigger floor = combinedSpinUp.or(driver2Indexer);
         Trigger feed = driverXbox.rightTrigger().or(driver2Indexer);
+        Trigger floor = combinedSpinUp.or(feed);
         spinUp.or(floor).or(feed)
             .and(DriverStation::isTeleopEnabled)
             .and(() -> !pitCoastMode)

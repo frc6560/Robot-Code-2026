@@ -553,12 +553,11 @@ public final class Constants {
   public static final class IntakeConstants {
     private IntakeConstants() {}
 
-    // CAN IDs. The rack is a Kraken X44 and the roller is a Kraken X60.
-    public static final int DEPLOY_MOTOR_ID = 24;
-    public static final int ROLLER_MOTOR_ID = 25;
-    public static final String CAN_BUS = "rio";
+    // The new robot has one intake motor. Temporarily disabled while the intake is broken.
+    public static final boolean ENABLED = false;
+    public static final int ROLLER_MOTOR_ID = 26;
+    public static final String CAN_BUS = "Canivore";
 
-    public static final boolean DEPLOY_MOTOR_INVERTED = false;
     public static final boolean ROLLER_MOTOR_INVERTED = false;
 
     // Current Limits
