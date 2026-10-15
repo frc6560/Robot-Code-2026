@@ -35,7 +35,6 @@ import frc.robot.subsystems.feeder.Feeder;
 import frc.robot.subsystems.feeder.FeederIOSim;
 import frc.robot.subsystems.feeder.FeederIOTalonFX;
 import frc.robot.subsystems.intake.Intake;
-import frc.robot.subsystems.intake.IntakeIO;
 import frc.robot.subsystems.intake.IntakeIOSim;
 import frc.robot.subsystems.intake.IntakeIOTalonFX;
 import frc.robot.subsystems.indexer.Indexer;
@@ -104,10 +103,8 @@ public class RobotContainer {
         case REPLAY -> new Indexer(new IndexerIO() {});
       };
 
-      // Do not construct any intake motor controllers while the broken intake is disabled.
-      intake = new Intake(!Constants.IntakeConstants.ENABLED
-          ? new IntakeIO() {}
-          : Robot.isReal() ? new IntakeIOTalonFX() : new IntakeIOSim());
+      // Read current while disabled; Intake and the hardware IO both interlock motor outputs.
+      intake = new Intake(Robot.isReal() ? new IntakeIOTalonFX() : new IntakeIOSim());
 
       if (Robot.isReal()) {
         shooter = new Shooter(new ShooterIOTalonFX());
@@ -301,6 +298,7 @@ public class RobotContainer {
         new Trigger(m_Controls::getIntakeResetTrigger)
             .and(DriverStation::isTeleopEnabled)
             .onTrue(Commands.runOnce(() -> {
+                intake.clearFault();
                 intake.setRetracted();
                 feeder.setIntaking(false);
             }, intake, feeder));

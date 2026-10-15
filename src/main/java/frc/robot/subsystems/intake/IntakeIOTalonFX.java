@@ -1,71 +1,69 @@
 package frc.robot.subsystems.intake;
 
 import com.ctre.phoenix6.BaseStatusSignal;
+import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
-import com.ctre.phoenix6.controls.VelocityVoltage;
+import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
-
-import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Temperature;
 import edu.wpi.first.units.measure.Voltage;
 import frc.robot.Constants.IntakeConstants;
 
-/** Single-motor intake on the new robot; the legacy rack commands have no hardware output. */
+/** Single reciprocating motor; sensing stays available while the output interlock is disabled. */
 public class IntakeIOTalonFX implements IntakeIO {
-    private final TalonFX rollerMotor = new TalonFX(IntakeConstants.ROLLER_MOTOR_ID, IntakeConstants.CAN_BUS);
-    private final VelocityVoltage rollerRequest = new VelocityVoltage(0).withSlot(0);
-
-    private final StatusSignal<AngularVelocity> rollerVelocity = rollerMotor.getVelocity();
-    private final StatusSignal<Voltage> rollerVoltage = rollerMotor.getMotorVoltage();
-    private final StatusSignal<Current> rollerCurrent = rollerMotor.getSupplyCurrent();
-    private final StatusSignal<Temperature> rollerTemp = rollerMotor.getDeviceTemp();
+    private final TalonFX motor = new TalonFX(IntakeConstants.MOTOR_ID, IntakeConstants.CAN_BUS);
+    private final VoltageOut request = new VoltageOut(0);
+    private final StatusSignal<Current> statorCurrent = motor.getStatorCurrent();
+    private final StatusSignal<Current> supplyCurrent = motor.getSupplyCurrent();
+    private final StatusSignal<Voltage> voltage = motor.getMotorVoltage();
+    private final StatusSignal<Temperature> temperature = motor.getDeviceTemp();
+    private final StatusCode configurationStatus;
 
     public IntakeIOTalonFX() {
-        configureRollerMotor();
-        BaseStatusSignal.setUpdateFrequencyForAll(50.0,
-            rollerVelocity, rollerVoltage, rollerCurrent, rollerTemp);
-        rollerMotor.optimizeBusUtilization();
-    }
-
-    private void configureRollerMotor() {
+        motor.stopMotor();
         TalonFXConfiguration config = new TalonFXConfiguration();
-        config.MotorOutput.NeutralMode = NeutralModeValue.Coast;
-        config.MotorOutput.Inverted = IntakeConstants.ROLLER_MOTOR_INVERTED
+        config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
+        config.MotorOutput.Inverted = IntakeConstants.MOTOR_INVERTED
             ? InvertedValue.Clockwise_Positive : InvertedValue.CounterClockwise_Positive;
         config.CurrentLimits.SupplyCurrentLimitEnable = true;
-        config.CurrentLimits.SupplyCurrentLimit = IntakeConstants.ROLLER_SUPPLY_CURRENT_LIMIT;
+        config.CurrentLimits.SupplyCurrentLimit = IntakeConstants.SUPPLY_CURRENT_LIMIT_AMPS;
         config.CurrentLimits.StatorCurrentLimitEnable = true;
-        config.CurrentLimits.StatorCurrentLimit = IntakeConstants.ROLLER_STATOR_CURRENT_LIMIT;
-        config.Slot0.kP = IntakeConstants.ROLLER_kP;
-        config.Slot0.kV = IntakeConstants.ROLLER_kV;
-        rollerMotor.getConfigurator().apply(config);
+        config.CurrentLimits.StatorCurrentLimit = IntakeConstants.STATOR_CURRENT_LIMIT_AMPS;
+        StatusCode result = motor.getConfigurator().apply(config, .1);
+        for (int attempt = 1; attempt < 3 && !result.isOK(); attempt++) {
+            result = motor.getConfigurator().apply(config, .1);
+        }
+        configurationStatus = result;
+        BaseStatusSignal.setUpdateFrequencyForAll(50, statorCurrent, supplyCurrent, voltage, temperature);
+        motor.optimizeBusUtilization();
     }
 
     @Override
     public void updateInputs(IntakeIOInputs inputs) {
-        BaseStatusSignal.refreshAll(rollerVelocity, rollerVoltage, rollerCurrent, rollerTemp);
-        inputs.rollerVelocityRPS = rollerVelocity.getValueAsDouble();
-        inputs.rollerAppliedVolts = rollerVoltage.getValueAsDouble();
-        inputs.rollerCurrentAmps = rollerCurrent.getValueAsDouble();
-        inputs.rollerTempCelsius = rollerTemp.getValueAsDouble();
+        BaseStatusSignal.refreshAll(statorCurrent, supplyCurrent, voltage, temperature);
+        inputs.motorConnected = motor.isConnected();
+        inputs.motorCurrentValid = configurationStatus.isOK() && statorCurrent.getStatus().isOK()
+            && statorCurrent.getTimestamp().getLatency() <= IntakeConstants.MAX_CURRENT_SAMPLE_AGE_SECONDS;
+        inputs.motorStatorCurrentAmps = Math.abs(statorCurrent.getValueAsDouble());
+        inputs.motorSupplyCurrentAmps = Math.abs(supplyCurrent.getValueAsDouble());
+        inputs.motorAppliedVolts = voltage.getValueAsDouble();
+        inputs.motorTempCelsius = temperature.getValueAsDouble();
+        inputs.motorConfigurationStatus = configurationStatus.toString();
     }
 
     @Override
-    public void setRollerRPM(double rpm) {
-        rollerMotor.setControl(rollerRequest.withVelocity(rpm / 60.0 * IntakeConstants.ROLLER_GEARING));
+    public void setMotorVoltage(double volts) {
+        // A second output interlock protects the broken intake, even if called outside Intake.
+        if (!IntakeConstants.ENABLED || !Double.isFinite(volts) || volts == 0) motor.stopMotor();
+        else motor.setControl(request.withOutput(volts));
     }
 
-    @Override
-    public void stop() {
-        rollerMotor.stopMotor();
-    }
-
-    @Override
-    public void setCoastMode(boolean coast) {
-        rollerMotor.setNeutralMode(NeutralModeValue.Coast);
+    @Override public void stop() { motor.stopMotor(); }
+    @Override public void setCoastMode(boolean coast) {
+        motor.setNeutralMode(coast ? NeutralModeValue.Coast : NeutralModeValue.Brake);
     }
 }

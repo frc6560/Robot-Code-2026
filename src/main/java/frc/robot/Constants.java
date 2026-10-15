@@ -553,50 +553,28 @@ public final class Constants {
   public static final class IntakeConstants {
     private IntakeConstants() {}
 
-    // The new robot has one intake motor. Temporarily disabled while the intake is broken.
+    // Keep the broken intake disabled. Sensing is allowed, but motor outputs remain zero.
     public static final boolean ENABLED = false;
-    public static final int ROLLER_MOTOR_ID = 26;
+    public static final int MOTOR_ID = 26;
     public static final String CAN_BUS = "Canivore";
+    /** Verify that positive output extends the repaired mechanism before enabling cycling. */
+    public static final boolean MOTOR_INVERTED = false;
 
-    public static final boolean ROLLER_MOTOR_INVERTED = false;
+    public static final double SUPPLY_CURRENT_LIMIT_AMPS = 40.0;
+    public static final double STATOR_CURRENT_LIMIT_AMPS = 60.0;
+    /** Initial low-voltage motion settings; must be checked on the repaired mechanism. */
+    public static final double EXTEND_VOLTS = 2.0;
+    public static final double RETRACT_VOLTS = 2.0;
 
-    // Current Limits
-    public static final double DEPLOY_SUPPLY_CURRENT_LIMIT = 30.0;
-    public static final double DEPLOY_STATOR_CURRENT_LIMIT = 40.0;
-    public static final double ROLLER_SUPPLY_CURRENT_LIMIT = 40.0;
-    public static final double ROLLER_STATOR_CURRENT_LIMIT = 60.0;
-
-    // Roller speed. One X60 is used; a future second roller motor can follow this one in IO.
-    public static final double ROLLER_RPM = 2100.0;
-    public static final double ROLLER_GEARING = 1.5;
-
-    public static final double ROLLER_kP = 0.5;
-    public static final double ROLLER_kV = 0.12;
-
-    // Rack geometry inherited from the original intake design.
-    public static final double DEPLOY_GEAR_RATIO = 64.0 / 14.0;
-    public static final double PINION_DIAMETER_INCHES = 1.751;
-    public static final double INCHES_PER_PINION_ROTATION = Math.PI * PINION_DIAMETER_INCHES;
-    public static final double MAX_EXTENSION_INCHES = 11.0;
-
-    // Rack positions are X44 motor rotations.
-    public static final double RETRACTED_POSITION_ROTATIONS = 0.0;
-    public static final double EXTENDED_POSITION_ROTATIONS =
-        MAX_EXTENSION_INCHES / INCHES_PER_PINION_ROTATION * DEPLOY_GEAR_RATIO;
-    public static final double DEPLOY_POSITION_TOLERANCE_ROTATIONS = 0.25;
-
-    // Motion Magic values are motor rotations/sec and motor rotations/sec^2.
-    public static final double DEPLOY_CRUISE_VELOCITY_RPS = 5.5;
-    public static final double DEPLOY_ACCELERATION_RPS_SQ = 50.0;
-    public static final double DEPLOY_kP = 0.5;
-    public static final double DEPLOY_kV = 0.12;
-
-    // During a shot the rack alternates between these two positions.
-    public static final double SHOOT_OSCILLATION_REAR_POSITION_ROTATIONS =
-        9.0 / INCHES_PER_PINION_ROTATION * DEPLOY_GEAR_RATIO;
-    public static final double SHOOT_OSCILLATION_FORWARD_POSITION_ROTATIONS =
-        EXTENDED_POSITION_ROTATIONS;
-    public static final double SHOOT_OSCILLATION_HALF_PERIOD_SECONDS = 0.25;
+    // Unknown until measured. Zero deliberately prevents movement even if ENABLED is changed.
+    // Use stator current, above normal/startup load and below STATOR_CURRENT_LIMIT_AMPS.
+    public static final double EXTEND_END_STOP_CURRENT_AMPS = 0.0;
+    public static final double RETRACT_END_STOP_CURRENT_AMPS = 0.0;
+    public static final double STARTUP_IGNORE_SECONDS = 0.15;
+    public static final double END_STOP_CONFIRM_SECONDS = 0.10;
+    public static final double REVERSAL_PAUSE_SECONDS = 0.15;
+    public static final double TRAVEL_TIMEOUT_SECONDS = 3.0;
+    public static final double MAX_CURRENT_SAMPLE_AGE_SECONDS = 0.10;
   }
 
   public static final class FeederConstants {
