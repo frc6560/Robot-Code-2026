@@ -35,7 +35,7 @@ class RobotContainerDriverControlsTest {
     }
 
     @Test
-    void triggerRunsFloorAndTunnelWithoutOverridingShooterControls() throws Exception {
+    void indexerRunsThroughoutTeleopWithoutOverridingShooterControls() throws Exception {
         DriverStationSim.setDsAttached(true);
         DriverStationSim.setEnabled(true);
         DriverStationSim.setAutonomous(false);
@@ -58,20 +58,20 @@ class RobotContainerDriverControlsTest {
         Intake intake = getField(container, "intake", Intake.class);
         Turret turret = getField(container, "turret", Turret.class);
         runCycles(150);
-        assertTargets(shooter, indexer, 1000.0, 0.0, 0.0);
+        assertTargets(shooter, indexer, 1000.0, 1000.0, 1500.0);
         assertEquals(1000.0, shooter.getCurrentRPM(), 150.0);
         double turretGoalBeforeTrigger = turret.getGoalDegrees();
 
         setControls(true, false);
         runCycles(150);
-        assertTargets(shooter, indexer, 3000.0, 1000.0, 0.0);
+        assertTargets(shooter, indexer, 3000.0, 1000.0, 1500.0);
         assertEquals(3000.0, shooter.getCurrentRPM(), 200.0);
 
         setControls(true, true);
         assertTargets(shooter, indexer, 3000.0, 1000.0, 1500.0);
         // Releasing the trigger must not cancel the bumper's shooter/floor command.
         setControls(true, false);
-        assertTargets(shooter, indexer, 3000.0, 1000.0, 0.0);
+        assertTargets(shooter, indexer, 3000.0, 1000.0, 1500.0);
         setControls(true, true);
         setControls(false, true);
         assertTargets(shooter, indexer, 1000.0, 1000.0, 1500.0);
@@ -82,11 +82,11 @@ class RobotContainerDriverControlsTest {
         runCycles(150);
         assertEquals(3000.0, shooter.getCurrentRPM(), 200.0);
         setControls(false, false);
-        assertTargets(shooter, indexer, 1000.0, 0.0, 0.0);
+        assertTargets(shooter, indexer, 1000.0, 1000.0, 1500.0);
         runCycles(150);
         assertEquals(1000.0, shooter.getCurrentRPM(), 150.0);
 
-        // Trigger alone runs both indexer stages without changing the shooter's idle goal.
+        // Trigger holds do not interrupt the automatic indexer or change the shooter's idle goal.
         setControls(false, true);
         assertTargets(shooter, indexer, 1000.0, 1000.0, 1500.0);
         assertEquals(turretGoalBeforeTrigger, turret.getGoalDegrees(), 0.01);
@@ -94,7 +94,7 @@ class RobotContainerDriverControlsTest {
         setControls(false, false);
         setDriver2Controls(true, false);
         runCycles(150);
-        assertTargets(shooter, indexer, 3000.0, 0.0, 0.0);
+        assertTargets(shooter, indexer, 3000.0, 1000.0, 1500.0);
         assertEquals(3000.0, shooter.getCurrentRPM(), 200.0);
         setDriver2Controls(true, true);
         assertTargets(shooter, indexer, 3000.0, 1000.0, 1500.0);
@@ -104,9 +104,9 @@ class RobotContainerDriverControlsTest {
         assertEquals(1000.0, shooter.getCurrentRPM(), 150.0);
         setDriver2Controls(true, true);
         setDriver2Controls(true, false);
-        assertTargets(shooter, indexer, 3000.0, 0.0, 0.0);
+        assertTargets(shooter, indexer, 3000.0, 1000.0, 1500.0);
         setDriver2Controls(false, false);
-        assertTargets(shooter, indexer, 1000.0, 0.0, 0.0);
+        assertTargets(shooter, indexer, 1000.0, 1000.0, 1500.0);
         setDriver2Button(4, true);
         assertEquals(Intake.State.EXTENDED_SPINNING, intake.getState());
         setDriver2Button(4, false);
@@ -126,6 +126,42 @@ class RobotContainerDriverControlsTest {
         DriverStationSim.notifyNewData();
         runCycles(3);
         assertTargets(shooter, indexer, 1000.0, 0.0, 0.0);
+
+        // Re-enable with every control released: both stages must start automatically.
+        setControls(false, false);
+        DriverStationSim.setEnabled(true);
+        DriverStationSim.notifyNewData();
+        runCycles(3);
+        assertTargets(shooter, indexer, 1000.0, 1000.0, 1500.0);
+
+        // Pit coast stops the indexer until toggled off again.
+        setDriverButton(XboxController.Button.kBack.value, true);
+        assertTargets(shooter, indexer, 1000.0, 0.0, 0.0);
+        setDriverButton(XboxController.Button.kBack.value, false);
+        setDriverButton(XboxController.Button.kBack.value, true);
+        setDriverButton(XboxController.Button.kBack.value, false);
+        assertTargets(shooter, indexer, 1000.0, 1000.0, 1500.0);
+
+        // Leaving teleop also stops both stages even while the robot stays enabled.
+        DriverStationSim.setAutonomous(true);
+        DriverStationSim.notifyNewData();
+        runCycles(3);
+        assertTargets(shooter, indexer, 1000.0, 0.0, 0.0);
+        DriverStationSim.setAutonomous(false);
+        DriverStationSim.setTest(true);
+        DriverStationSim.notifyNewData();
+        runCycles(3);
+        assertTargets(shooter, indexer, 1000.0, 0.0, 0.0);
+        DriverStationSim.setTest(false);
+        DriverStationSim.notifyNewData();
+        runCycles(3);
+        assertTargets(shooter, indexer, 1000.0, 1000.0, 1500.0);
+    }
+
+    private static void setDriverButton(int button, boolean pressed) {
+        DriverStationSim.setJoystickButton(0, button, pressed);
+        DriverStationSim.notifyNewData();
+        runCycles(3);
     }
 
     private static void setControls(boolean bumper, boolean trigger) {

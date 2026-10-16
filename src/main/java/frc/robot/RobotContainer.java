@@ -140,6 +140,15 @@ public class RobotContainer {
 
       // Temporary no-vision behavior: keep the flywheel warm at idle until a command takes it.
       shooter.setDefaultCommand(Commands.run(shooter::setIdle, shooter));
+      // Keep both indexer stages running throughout enabled teleop, without a button hold.
+      indexer.setDefaultCommand(Commands.run(() -> {
+        if (DriverStation.isTeleopEnabled() && !pitCoastMode) {
+          indexer.setFloorRPM(Constants.IndexerConstants.FLOOR_RUNNING_RPM);
+          indexer.setTunnelRPM(Constants.IndexerConstants.TUNNEL_RUNNING_RPM);
+        } else {
+          indexer.stop();
+        }
+      }, indexer).finallyDo(interrupted -> indexer.stop()));
       led.setDefaultCommand(Commands.run(() -> {}, led));
 
       // Takes the shooter from its idle default until cancelled from the dashboard.
@@ -183,19 +192,14 @@ public class RobotContainer {
     }
 
     /** One owner samples the controls so simultaneous holds cannot cancel each other. */
-    private Command manualShotCommand(Trigger spinUp, Trigger floor, Trigger feed) {
+    private Command manualShotCommand(Trigger spinUp) {
         return Commands.run(() -> {
             if (spinUp.getAsBoolean()) {
                 shooter.setGoal(Constants.ShooterConstants.FIXED_SHOT_RPM);
             } else {
                 shooter.setIdle();
             }
-            indexer.setFloorRPM(floor.getAsBoolean()
-                ? Constants.IndexerConstants.FLOOR_RUNNING_RPM : 0.0);
-            indexer.setTunnelRPM(feed.getAsBoolean()
-                ? Constants.IndexerConstants.TUNNEL_RUNNING_RPM : 0.0);
-        }, shooter, indexer).beforeStarting(this::cancelShotCommand).finallyDo(interrupted -> {
-            indexer.stop();
+        }, shooter).beforeStarting(this::cancelShotCommand).finallyDo(interrupted -> {
             shooter.setIdle();
         });
     }
@@ -232,7 +236,7 @@ public class RobotContainer {
                 : new ChassisSpeeds());
         drivebase.setDefaultCommand(driveFieldOrientedAnglularVelocity);
 
-        // Operator A remains an alternate hold-to-run control for the floor/shooter.
+        // Operator A remains an alternate hold-to-run control for shooter spin-up.
         Trigger combinedSpinUp = driverXbox.rightBumper().or(operatorXbox.a());
         // Driver 2 is the button board on USB port 1; use raw held states, not press edges.
         Trigger spinUp = combinedSpinUp.or(new Trigger(() -> m_Controls.getButtonActivated(11)));
@@ -242,7 +246,7 @@ public class RobotContainer {
         spinUp.or(floor).or(feed)
             .and(DriverStation::isTeleopEnabled)
             .and(() -> !pitCoastMode)
-            .whileTrue(manualShotCommand(spinUp, floor, feed));
+            .whileTrue(manualShotCommand(spinUp));
 
         driverXbox.x()
           .and(DriverStation::isTeleopEnabled)
@@ -283,7 +287,7 @@ public class RobotContainer {
             intake.stopShootingOscillation();
         }, feeder, intake));
 
-        // Driver 2 button 3 runs the flat indexer and tunnel together above.
+        // The flat indexer and tunnel run automatically during enabled teleop.
 
         Trigger intakeRoller = new Trigger(() -> m_Controls.getButtonActivated(4))
             .and(DriverStation::isTeleopEnabled);
