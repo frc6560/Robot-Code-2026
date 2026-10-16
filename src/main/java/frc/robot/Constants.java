@@ -373,9 +373,9 @@ public final class Constants {
     public static final double PASS_RPM = 1600.0; 
     /** 12T motor gear drives the 18T flywheel gear, so flywheel speed = motor speed * 12/18. */
     public static final double FLYWHEEL_GEAR_RATIO = 12.0 / 18.0;
-    public static final double FLYWHEEL_IDLE_RPM = 1000;
-    /** Temporary no-vision shot speed commanded while the driver holds right bumper. */
-    public static final double FIXED_SHOT_RPM = 3000.0;
+    public static final double FLYWHEEL_IDLE_RPM = 1500;
+    /** Temporary no-vision shot speed commanded while the driver holds right trigger. */
+    public static final double FIXED_SHOT_RPM = 4000.0;
     public static final double FLYWHEEL_RPM_TOLERANCE = 200.0; 
 
     /** Current Limits */
@@ -540,14 +540,34 @@ public final class Constants {
   }
 
   public static final class IndexerConstants {
-    public static final double FLOOR_RUNNING_RPM = 1000.0;
-    public static final double TUNNEL_RUNNING_RPM = 1500.0;
-    /** Motor rotations per mechanism rotation; retained from the indexer hardware configuration. */
+    private IndexerConstants() {}
+
+    // Hardware
+    public static final int FLOOR_MOTOR_ID = 25;
+    public static final int TUNNEL_MOTOR_ID = 0;
+    public static final String CAN_BUS = "Canivore";
+
+    // Motor directions: false = counterclockwise positive, true = clockwise positive.
+    // Change only the motor whose roller feeds in the wrong direction.
+    public static final boolean FLOOR_MOTOR_INVERTED = false;
+    public static final boolean TUNNEL_MOTOR_INVERTED = false;
+
+    // Mechanism-side speed targets while right bumper is held.
+    public static final double FLOOR_RUNNING_RPM = 200.0;
+    public static final double TUNNEL_RUNNING_RPM = 200.0;
+
+    /** Motor rotations per mechanism rotation. */
     public static final double FLOOR_GEAR_RATIO = 2.5;
     public static final double TUNNEL_GEAR_RATIO = 5.0 / 3.0;
+
     /** Initial velocity gains, in volts per mechanism RPS and volts per motor RPS respectively. */
     public static final double VELOCITY_KP = 0.25;
     public static final double MOTOR_KV = 0.12;
+
+    // Electrical limits and telemetry rate.
+    public static final double SUPPLY_CURRENT_LIMIT_AMPS = 40.0;
+    public static final double STATOR_CURRENT_LIMIT_AMPS = 40.0;
+    public static final double STATUS_FREQUENCY_HZ = 50.0;
   }
 
   public static final class IntakeConstants {

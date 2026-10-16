@@ -35,7 +35,7 @@ class RobotContainerDriverControlsTest {
     }
 
     @Test
-    void indexerRunsThroughoutTeleopWithoutOverridingShooterControls() throws Exception {
+    void triggerControlsFlywheelAndBumperControlsBothIndexerStages() throws Exception {
         DriverStationSim.setDsAttached(true);
         DriverStationSim.setEnabled(true);
         DriverStationSim.setAutonomous(false);
@@ -58,52 +58,34 @@ class RobotContainerDriverControlsTest {
         Intake intake = getField(container, "intake", Intake.class);
         Turret turret = getField(container, "turret", Turret.class);
         runCycles(150);
-        assertTargets(shooter, indexer, 0.0, 1000.0, 1500.0);
-        assertEquals(0.0, shooter.getCurrentRPM(), 150.0);
-        double turretGoalBeforeTrigger = turret.getGoalDegrees();
+        assertTargets(shooter, indexer, 1500.0, 0.0, 0.0);
+        assertEquals(1500.0, shooter.getCurrentRPM(), 150.0);
+        double turretGoal = turret.getGoalDegrees();
 
-        setControls(true, false);
+        // Each control works alone, and either can be released while the other stays held.
+        setControls(false, true);
+        assertTargets(shooter, indexer, 4000.0, 0.0, 0.0);
         runCycles(150);
-        assertTargets(shooter, indexer, 3000.0, 1000.0, 1500.0);
-        assertEquals(3000.0, shooter.getCurrentRPM(), 200.0);
-
+        assertEquals(4000.0, shooter.getCurrentRPM(), 200.0);
         setControls(true, true);
-        assertTargets(shooter, indexer, 3000.0, 1000.0, 1500.0);
-        // Releasing the trigger must not cancel the bumper's shooter/floor command.
+        assertTargets(shooter, indexer, 4000.0, 2000.0, 2000.0);
         setControls(true, false);
-        assertTargets(shooter, indexer, 3000.0, 1000.0, 1500.0);
+        assertTargets(shooter, indexer, 1500.0, 2000.0, 2000.0);
+        runCycles(150);
+        assertEquals(1500.0, shooter.getCurrentRPM(), 150.0);
         setControls(true, true);
         setControls(false, true);
-        assertTargets(shooter, indexer, 0.0, 1000.0, 1500.0);
-        runCycles(150);
-        // Also verify a bumper-only hold/release removes the shooter goal.
-        setControls(true, false);
-        runCycles(150);
-        assertEquals(3000.0, shooter.getCurrentRPM(), 200.0);
+        assertTargets(shooter, indexer, 4000.0, 0.0, 0.0);
         setControls(false, false);
-        assertTargets(shooter, indexer, 0.0, 1000.0, 1500.0);
         runCycles(150);
+        assertTargets(shooter, indexer, 1500.0, 0.0, 0.0);
+        assertEquals(1500.0, shooter.getCurrentRPM(), 150.0);
+        assertEquals(turretGoal, turret.getGoalDegrees(), 0.01);
 
-        // Trigger holds do not interrupt the automatic indexer or change the shooter's stopped goal.
-        setControls(false, true);
-        assertTargets(shooter, indexer, 0.0, 1000.0, 1500.0);
-        assertEquals(turretGoalBeforeTrigger, turret.getGoalDegrees(), 0.01);
-
-        setControls(false, false);
-        setDriver2Controls(true, false);
-        runCycles(150);
-        assertTargets(shooter, indexer, 3000.0, 1000.0, 1500.0);
-        assertEquals(3000.0, shooter.getCurrentRPM(), 200.0);
+        // Old button-board spin-up/feed controls must not override the new driver mapping.
         setDriver2Controls(true, true);
-        assertTargets(shooter, indexer, 3000.0, 1000.0, 1500.0);
-        setDriver2Controls(false, true);
-        runCycles(150);
-        assertTargets(shooter, indexer, 0.0, 1000.0, 1500.0);
-        setDriver2Controls(true, true);
-        setDriver2Controls(true, false);
-        assertTargets(shooter, indexer, 3000.0, 1000.0, 1500.0);
+        assertTargets(shooter, indexer, 1500.0, 0.0, 0.0);
         setDriver2Controls(false, false);
-        assertTargets(shooter, indexer, 0.0, 1000.0, 1500.0);
         setDriver2Button(4, true);
         assertEquals(Intake.State.EXTENDED_SPINNING, intake.getState());
         setDriver2Button(4, false);
@@ -111,35 +93,27 @@ class RobotContainerDriverControlsTest {
         setDriver2Button(6, true);
         assertEquals(Intake.State.RETRACTED_STOPPED, intake.getState());
         setDriver2Button(6, false);
-        setDriver2Controls(false, true);
-        assertTargets(shooter, indexer, 0.0, 1000.0, 1500.0);
-        setControls(false, true);
-        assertTargets(shooter, indexer, 0.0, 1000.0, 1500.0);
-        setDriver2Controls(false, false);
-        assertTargets(shooter, indexer, 0.0, 1000.0, 1500.0);
 
         setControls(true, true);
         DriverStationSim.setEnabled(false);
         DriverStationSim.notifyNewData();
         runCycles(3);
         assertTargets(shooter, indexer, 0.0, 0.0, 0.0);
-
-        // Re-enable with every control released: both stages must start automatically.
         setControls(false, false);
         DriverStationSim.setEnabled(true);
         DriverStationSim.notifyNewData();
         runCycles(3);
-        assertTargets(shooter, indexer, 0.0, 1000.0, 1500.0);
+        assertTargets(shooter, indexer, 1500.0, 0.0, 0.0);
 
-        // Pit coast stops the indexer until toggled off again.
+        setControls(true, false);
         setDriverButton(XboxController.Button.kBack.value, true);
         assertTargets(shooter, indexer, 0.0, 0.0, 0.0);
         setDriverButton(XboxController.Button.kBack.value, false);
         setDriverButton(XboxController.Button.kBack.value, true);
         setDriverButton(XboxController.Button.kBack.value, false);
-        assertTargets(shooter, indexer, 0.0, 1000.0, 1500.0);
+        assertTargets(shooter, indexer, 1500.0, 2000.0, 2000.0);
+        setControls(false, false);
 
-        // Leaving teleop also stops both stages even while the robot stays enabled.
         DriverStationSim.setAutonomous(true);
         DriverStationSim.notifyNewData();
         runCycles(3);
@@ -152,7 +126,7 @@ class RobotContainerDriverControlsTest {
         DriverStationSim.setTest(false);
         DriverStationSim.notifyNewData();
         runCycles(3);
-        assertTargets(shooter, indexer, 0.0, 1000.0, 1500.0);
+        assertTargets(shooter, indexer, 1500.0, 0.0, 0.0);
     }
 
     private static void setDriverButton(int button, boolean pressed) {

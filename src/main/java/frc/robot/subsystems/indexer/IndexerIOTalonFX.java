@@ -17,10 +17,6 @@ import org.littletonrobotics.junction.Logger;
 import frc.robot.Constants.IndexerConstants;
 
 public class IndexerIOTalonFX implements IndexerIO {
-    private static final double CURRENT_LIMIT_AMPS = 40.0;
-    private static final double STATUS_FREQUENCY_HZ = 50.0;
-    private static final String CAN_BUS = "Canivore";
-
     private final TalonFX floorLeader;
     private final TalonFX tunnelMotor;
 
@@ -43,10 +39,14 @@ public class IndexerIOTalonFX implements IndexerIO {
     private final StatusSignal<Voltage> tunnelVoltage;
     private final StatusSignal<Current> tunnelCurrent;
 
+    public IndexerIOTalonFX() {
+        this(IndexerConstants.FLOOR_MOTOR_ID, IndexerConstants.TUNNEL_MOTOR_ID);
+    }
+
     public IndexerIOTalonFX(
             int floorLeaderId,
             int tunnelMotorId) {
-        this(floorLeaderId, tunnelMotorId, new CANBus(CAN_BUS));
+        this(floorLeaderId, tunnelMotorId, new CANBus(IndexerConstants.CAN_BUS));
     }
 
     public IndexerIOTalonFX(
@@ -56,8 +56,10 @@ public class IndexerIOTalonFX implements IndexerIO {
         floorLeader = new TalonFX(floorLeaderId, canBus);
         tunnelMotor = new TalonFX(tunnelMotorId, canBus);
 
-        floorConfigurationStatus = configureMotor(floorLeader, IndexerConstants.FLOOR_GEAR_RATIO);
-        tunnelConfigurationStatus = configureMotor(tunnelMotor, IndexerConstants.TUNNEL_GEAR_RATIO);
+        floorConfigurationStatus = configureMotor(floorLeader, IndexerConstants.FLOOR_GEAR_RATIO,
+            IndexerConstants.FLOOR_MOTOR_INVERTED);
+        tunnelConfigurationStatus = configureMotor(tunnelMotor, IndexerConstants.TUNNEL_GEAR_RATIO,
+            IndexerConstants.TUNNEL_MOTOR_INVERTED);
 
         floorPosition = floorLeader.getPosition();
         floorVelocity = floorLeader.getVelocity();
@@ -70,7 +72,7 @@ public class IndexerIOTalonFX implements IndexerIO {
         tunnelCurrent = tunnelMotor.getStatorCurrent();
 
         BaseStatusSignal.setUpdateFrequencyForAll(
-                STATUS_FREQUENCY_HZ,
+                IndexerConstants.STATUS_FREQUENCY_HZ,
                 floorPosition,
                 floorVelocity,
                 floorVoltage,
@@ -84,15 +86,17 @@ public class IndexerIOTalonFX implements IndexerIO {
         tunnelMotor.optimizeBusUtilization();
     }
 
-    private static StatusCode configureMotor(TalonFX motor, double gearRatio) {
+    private static StatusCode configureMotor(TalonFX motor, double gearRatio, boolean inverted) {
         TalonFXConfiguration config = new TalonFXConfiguration();
-        config.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
+        config.MotorOutput.Inverted = inverted
+            ? InvertedValue.Clockwise_Positive
+            : InvertedValue.CounterClockwise_Positive;
         config.Feedback.SensorToMechanismRatio = gearRatio;
         config.Slot0.kP = IndexerConstants.VELOCITY_KP;
         config.Slot0.kV = IndexerConstants.MOTOR_KV * gearRatio;
-        config.CurrentLimits.StatorCurrentLimit = CURRENT_LIMIT_AMPS;
+        config.CurrentLimits.StatorCurrentLimit = IndexerConstants.STATOR_CURRENT_LIMIT_AMPS;
         config.CurrentLimits.StatorCurrentLimitEnable = true;
-        config.CurrentLimits.SupplyCurrentLimit = CURRENT_LIMIT_AMPS;
+        config.CurrentLimits.SupplyCurrentLimit = IndexerConstants.SUPPLY_CURRENT_LIMIT_AMPS;
         config.CurrentLimits.SupplyCurrentLimitEnable = true;
         StatusCode status = motor.getConfigurator().apply(config, 0.1);
         for (int attempt = 1; attempt < 3 && !status.isOK(); attempt++) {
