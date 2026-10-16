@@ -579,6 +579,8 @@ public final class Constants {
 
   public static final class FeederConstants {
     // CAN IDs
+    public static final int WALL_MOTOR_ID = 16;
+    public static final String WALL_CAN_BUS = "Canivore";
     public static final int PAN_MOTOR_ID = 14;
     public static final int PUSHER_MOTOR_ID = 23;
     public static final int FLOOR_ID = 15; // placeholder. ask derek for actual ids.

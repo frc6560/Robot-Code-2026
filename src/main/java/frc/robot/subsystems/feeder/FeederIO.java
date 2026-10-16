@@ -23,6 +23,10 @@ public interface FeederIO {
         public double floorCurrentAmps = 0.0;
         public double floorTempCelsius = 0.0;
 
+        public boolean wallConnected = false;
+        public String wallConfigurationStatus = "Not configured";
+        public String wallControlStatus = "No request";
+        public String wallTelemetryStatus = "No refresh";
         public double wallPositionRotations = 0.0;
         public double wallVelocityRPS = 0.0;
         public double wallAppliedVolts = 0.0;
@@ -42,7 +46,10 @@ public interface FeederIO {
     /** Sets the floor motor velocity in RPM */
     default void setFloorRPM(double rpm) {}
 
-    /** Stop both motors */
+    /** Set the wall roller speed in mechanism-side RPM. Zero stops the motor. */
+    default void setWallRPM(double rpm) {}
+
+    /** Stop all feeder motors */
     default void stop() {}
 
     /** Select coast mode for manual movement, or restore the normal brake mode. */

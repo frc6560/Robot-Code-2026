@@ -1,12 +1,20 @@
 package frc.robot.subsystems.feeder;
 
 import edu.wpi.first.math.system.plant.DCMotor;
+import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.wpilibj.DriverStation;
+import frc.robot.Constants.FeederConstants;
 import edu.wpi.first.math.system.plant.LinearSystemId;
 import edu.wpi.first.wpilibj.simulation.FlywheelSim;
 
 public class FeederIOSim implements FeederIO {
     private final FlywheelSim panSim;
     private final FlywheelSim pusherSim;
+    private final FlywheelSim wallSim = new FlywheelSim(
+        LinearSystemId.createFlywheelSystem(DCMotor.getKrakenX60(1), 0.001,
+            1.0 / FeederConstants.WALL_GEAR_RATIO), DCMotor.getKrakenX60(1));
+    private double wallTargetRPM = 0.0;
+    private double wallPositionRotations = 0.0;
 
     private static final double PAN_GEAR_RATIO = 1.0 / 33.14;
     private static final double PUSHER_GEAR_RATIO = 1.0 / 2.5;
@@ -61,6 +69,24 @@ public class FeederIOSim implements FeederIO {
         inputs.pusherAppliedVolts = pusherAppliedVolts;
         inputs.pusherCurrentAmps = Math.abs(pusherSim.getCurrentDrawAmps());
         inputs.pusherTempCelsius = 25.0;
+
+        double wallMotorTargetRPS = wallTargetRPM / 60.0 / FeederConstants.WALL_GEAR_RATIO;
+        double wallMotorActualRPS = wallSim.getAngularVelocityRPM() / 60.0 / FeederConstants.WALL_GEAR_RATIO;
+        double wallVolts = DriverStation.isDisabled() || wallTargetRPM == 0.0 ? 0.0
+            : MathUtil.clamp(FeederConstants.kV * wallMotorTargetRPS
+                + FeederConstants.WALL_kP * (wallMotorTargetRPS - wallMotorActualRPS), -12.0, 12.0);
+        wallSim.setInputVoltage(wallVolts);
+        wallSim.update(0.02);
+        inputs.wallVelocityRPS = wallSim.getAngularVelocityRPM() / 60.0 / FeederConstants.WALL_GEAR_RATIO;
+        wallPositionRotations += inputs.wallVelocityRPS * 0.02;
+        inputs.wallPositionRotations = wallPositionRotations;
+        inputs.wallAppliedVolts = wallVolts;
+        inputs.wallCurrentAmps = Math.abs(wallSim.getCurrentDrawAmps());
+        inputs.wallTempCelsius = 25.0;
+        inputs.wallConnected = true;
+        inputs.wallConfigurationStatus = "Simulation";
+        inputs.wallControlStatus = "Simulation";
+        inputs.wallTelemetryStatus = "Simulation";
     }
 
     @Override
@@ -78,8 +104,14 @@ public class FeederIOSim implements FeederIO {
     }
 
     @Override
+    public void setWallRPM(double rpm) {
+        wallTargetRPM = rpm;
+    }
+
+    @Override
     public void stop() {
         panAppliedVolts = 0.0;
         pusherAppliedVolts = 0.0;
+        wallTargetRPM = 0.0;
     }
 }

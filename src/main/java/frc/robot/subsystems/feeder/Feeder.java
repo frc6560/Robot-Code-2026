@@ -3,6 +3,8 @@ package frc.robot.subsystems.feeder;
 import org.littletonrobotics.junction.Logger;
 
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.FeederConstants;
 
 public class Feeder extends SubsystemBase {
@@ -84,13 +86,26 @@ public class Feeder extends SubsystemBase {
         io.updateInputs(inputs);
         Logger.processInputs("Feeder", inputs);
 
+        double wallTargetRPM = DriverStation.isTeleopEnabled() && !pitCoastMode
+            ? FeederConstants.WALL_RPM : 0.0;
+        io.setWallRPM(wallTargetRPM);
+        Logger.recordOutput("Feeder/WallTargetRPM", wallTargetRPM);
+        SmartDashboard.putNumber("Feeder/WallTargetRPM", wallTargetRPM);
+        SmartDashboard.putNumber("Feeder/WallRPM", inputs.wallVelocityRPS * 60.0 * FeederConstants.WALL_GEAR_RATIO);
+        SmartDashboard.putNumber("Feeder/WallVolts", inputs.wallAppliedVolts);
+        SmartDashboard.putNumber("Feeder/WallAmps", inputs.wallCurrentAmps);
+        SmartDashboard.putBoolean("Feeder/WallConnected", inputs.wallConnected);
+        SmartDashboard.putString("Feeder/WallConfigurationStatus", inputs.wallConfigurationStatus);
+        SmartDashboard.putString("Feeder/WallControlStatus", inputs.wallControlStatus);
+        SmartDashboard.putString("Feeder/WallTelemetryStatus", inputs.wallTelemetryStatus);
+
         Logger.recordOutput("Feeder/PitCoastMode", pitCoastMode);
         if (pitCoastMode) {
             io.stop();
             return;
         }
 
-        // Floor and wall run when intaking or shooting, reverse when outtaking
+        // The legacy floor runs when intaking or shooting, and reverses when outtaking.
         if (outtaking) {
             io.setFloorRPM(-FeederConstants.FLOOR_RPM);
         } else if (intaking || shooting) {
