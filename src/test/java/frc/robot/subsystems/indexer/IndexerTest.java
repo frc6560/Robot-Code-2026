@@ -34,6 +34,14 @@ class IndexerTest {
                 inputs.appliedVolts = 0; // Tunnel stopped, floor running.
                 inputs.floorConfigurationStatus = "OK";
                 inputs.floorControlStatus = "OK";
+                inputs.floorTelemetryStatus = "OK";
+                inputs.tunnelConnected = true;
+                inputs.tunnelRPM = 1200;
+                inputs.tunnelAppliedVolts = 4;
+                inputs.tunnelCurrentAmps = 7;
+                inputs.tunnelConfigurationStatus = "Tunnel config status";
+                inputs.tunnelControlStatus = "Tunnel control status";
+                inputs.tunnelTelemetryStatus = "Tunnel refresh status";
             }
         }
         FakeIO io = new FakeIO();
@@ -52,6 +60,15 @@ class IndexerTest {
             assertTrue(SmartDashboard.getBoolean("Indexer/FloorConnected", false));
             assertEquals("OK", SmartDashboard.getString("Indexer/FloorConfigurationStatus", ""));
             assertEquals("OK", SmartDashboard.getString("Indexer/FloorControlStatus", ""));
+            assertEquals("OK", SmartDashboard.getString("Indexer/FloorTelemetryStatus", ""));
+            assertEquals(0, SmartDashboard.getNumber("Indexer/TunnelTargetRPM", -1));
+            assertEquals(1200, SmartDashboard.getNumber("Indexer/TunnelRPM", -1));
+            assertEquals(4, SmartDashboard.getNumber("Indexer/TunnelVolts", -1));
+            assertEquals(7, SmartDashboard.getNumber("Indexer/TunnelAmps", -1));
+            assertTrue(SmartDashboard.getBoolean("Indexer/TunnelConnected", false));
+            assertEquals("Tunnel config status", SmartDashboard.getString("Indexer/TunnelConfigurationStatus", ""));
+            assertEquals("Tunnel control status", SmartDashboard.getString("Indexer/TunnelControlStatus", ""));
+            assertEquals("Tunnel refresh status", SmartDashboard.getString("Indexer/TunnelTelemetryStatus", ""));
             indexer.stop();
             assertEquals(0, io.floorTarget);
             assertEquals(0, io.tunnelTarget);

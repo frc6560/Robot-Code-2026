@@ -138,8 +138,8 @@ public class RobotContainer {
 
       vision = new VisionSubsystem(limelights);
 
-      // Temporary no-vision behavior: keep the flywheel warm at idle until a command takes it.
-      shooter.setDefaultCommand(Commands.run(shooter::setIdle, shooter));
+      // Keep the shooter stopped by default while testing the indexer.
+      shooter.setDefaultCommand(Commands.run(shooter::stop, shooter));
       // Keep both indexer stages running throughout enabled teleop, without a button hold.
       indexer.setDefaultCommand(Commands.run(() -> {
         if (DriverStation.isTeleopEnabled() && !pitCoastMode) {
@@ -151,7 +151,7 @@ public class RobotContainer {
       }, indexer).finallyDo(interrupted -> indexer.stop()));
       led.setDefaultCommand(Commands.run(() -> {}, led));
 
-      // Takes the shooter from its idle default until cancelled from the dashboard.
+      // Takes the shooter from its stopped default until cancelled from the dashboard.
       SmartDashboard.putData("Shooter/FF Characterization", shooter.feedforwardCharacterizationCommand());
 
       configureBindings();
@@ -197,10 +197,10 @@ public class RobotContainer {
             if (spinUp.getAsBoolean()) {
                 shooter.setGoal(Constants.ShooterConstants.FIXED_SHOT_RPM);
             } else {
-                shooter.setIdle();
+                shooter.stop();
             }
         }, shooter).beforeStarting(this::cancelShotCommand).finallyDo(interrupted -> {
-            shooter.setIdle();
+            shooter.stop();
         });
     }
 

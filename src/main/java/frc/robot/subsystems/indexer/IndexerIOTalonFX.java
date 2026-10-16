@@ -27,7 +27,10 @@ public class IndexerIOTalonFX implements IndexerIO {
     private final VelocityVoltage floorRequest = new VelocityVoltage(0.0);
     private final VelocityVoltage tunnelRequest = new VelocityVoltage(0.0);
     private final NeutralOut floorStopRequest = new NeutralOut();
+    private final NeutralOut tunnelStopRequest = new NeutralOut();
     private final StatusCode floorConfigurationStatus;
+    private final StatusCode tunnelConfigurationStatus;
+    private String tunnelControlStatus = "No request";
     private String floorControlStatus = "No request";
 
     private final StatusSignal<Angle> floorPosition;
@@ -54,7 +57,7 @@ public class IndexerIOTalonFX implements IndexerIO {
         tunnelMotor = new TalonFX(tunnelMotorId, canBus);
 
         floorConfigurationStatus = configureMotor(floorLeader, IndexerConstants.FLOOR_GEAR_RATIO);
-        configureMotor(tunnelMotor, IndexerConstants.TUNNEL_GEAR_RATIO);
+        tunnelConfigurationStatus = configureMotor(tunnelMotor, IndexerConstants.TUNNEL_GEAR_RATIO);
 
         floorPosition = floorLeader.getPosition();
         floorVelocity = floorLeader.getVelocity();
@@ -100,15 +103,16 @@ public class IndexerIOTalonFX implements IndexerIO {
 
     @Override
     public void updateInputs(IndexerIOInputs inputs) {
-        BaseStatusSignal.refreshAll(
+        inputs.floorTelemetryStatus = BaseStatusSignal.refreshAll(
                 floorPosition,
                 floorVelocity,
                 floorVoltage,
-                floorLeaderCurrent,
+                floorLeaderCurrent).toString();
+        inputs.tunnelTelemetryStatus = BaseStatusSignal.refreshAll(
                 tunnelPosition,
                 tunnelVelocity,
                 tunnelVoltage,
-                tunnelCurrent);
+                tunnelCurrent).toString();
 
         inputs.appliedVolts = tunnelVoltage.getValueAsDouble();
         inputs.floorRPM = floorVelocity.getValueAsDouble() * 60.0;
@@ -119,6 +123,11 @@ public class IndexerIOTalonFX implements IndexerIO {
         inputs.floorCurrentAmps = floorLeaderCurrent.getValueAsDouble();
         inputs.floorConfigurationStatus = floorConfigurationStatus.toString();
         inputs.floorControlStatus = floorControlStatus;
+        inputs.tunnelConnected = tunnelMotor.isConnected();
+        inputs.tunnelAppliedVolts = tunnelVoltage.getValueAsDouble();
+        inputs.tunnelCurrentAmps = tunnelCurrent.getValueAsDouble();
+        inputs.tunnelConfigurationStatus = tunnelConfigurationStatus.toString();
+        inputs.tunnelControlStatus = tunnelControlStatus;
 
         Logger.recordOutput("Indexer/Connected/FloorLeader", floorLeader.isConnected());
         Logger.recordOutput("Indexer/Connected/TunnelMotor", tunnelMotor.isConnected());
@@ -136,15 +145,15 @@ public class IndexerIOTalonFX implements IndexerIO {
     @Override
     public void setTunnelRPM(double rpm) {
         if (rpm == 0.0) {
-            tunnelMotor.stopMotor();
+            tunnelControlStatus = tunnelMotor.setControl(tunnelStopRequest).toString();
         } else {
-            tunnelMotor.setControl(tunnelRequest.withVelocity(rpm / 60.0));
+            tunnelControlStatus = tunnelMotor.setControl(tunnelRequest.withVelocity(rpm / 60.0)).toString();
         }
     }
 
     @Override
     public void stop() {
         setFloorRPM(0.0);
-        tunnelMotor.stopMotor();
+        setTunnelRPM(0.0);
     }
 }

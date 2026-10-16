@@ -40,6 +40,15 @@ public class Indexer extends SubsystemBase {
         SmartDashboard.putNumber("Indexer/FloorAmps", inputs.floorCurrentAmps);
         SmartDashboard.putString("Indexer/FloorConfigurationStatus", inputs.floorConfigurationStatus);
         SmartDashboard.putString("Indexer/FloorControlStatus", inputs.floorControlStatus);
+        SmartDashboard.putString("Indexer/FloorTelemetryStatus", inputs.floorTelemetryStatus);
+        SmartDashboard.putNumber("Indexer/TunnelTargetRPM", tunnelTargetRPM);
+        SmartDashboard.putNumber("Indexer/TunnelRPM", inputs.tunnelRPM);
+        SmartDashboard.putBoolean("Indexer/TunnelConnected", inputs.tunnelConnected);
+        SmartDashboard.putNumber("Indexer/TunnelVolts", inputs.tunnelAppliedVolts);
+        SmartDashboard.putNumber("Indexer/TunnelAmps", inputs.tunnelCurrentAmps);
+        SmartDashboard.putString("Indexer/TunnelConfigurationStatus", inputs.tunnelConfigurationStatus);
+        SmartDashboard.putString("Indexer/TunnelControlStatus", inputs.tunnelControlStatus);
+        SmartDashboard.putString("Indexer/TunnelTelemetryStatus", inputs.tunnelTelemetryStatus);
 
         rollerAngleDegrees += inputs.appliedVolts / 12.0
                 * MAX_VISUALIZER_SPEED_DEGREES_PER_SECOND

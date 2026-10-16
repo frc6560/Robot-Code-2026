@@ -14,6 +14,13 @@ public interface IndexerIO {
         public double floorCurrentAmps = 0.0;
         public String floorConfigurationStatus = "Not configured";
         public String floorControlStatus = "No request";
+        public String floorTelemetryStatus = "No refresh";
+        public boolean tunnelConnected = false;
+        public double tunnelAppliedVolts = 0.0;
+        public double tunnelCurrentAmps = 0.0;
+        public String tunnelConfigurationStatus = "Not configured";
+        public String tunnelControlStatus = "No request";
+        public String tunnelTelemetryStatus = "No refresh";
     }
 
     default void updateInputs(IndexerIOInputs inputs) {}
