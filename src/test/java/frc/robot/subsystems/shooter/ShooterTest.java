@@ -82,31 +82,30 @@ class ShooterTest {
     }
 
     @Test
-    void idleIsNeverReadyAndSpinsTheWheel() {
+    void teleopIdleIsZeroAndNeverReady() {
         Shooter shooter = new Shooter(new ShooterIOSim());
         shooter.setIdle();
         step(shooter, 150);
 
         assertFalse(shooter.atTarget());
-        assertEquals(ShooterConstants.FLYWHEEL_IDLE_RPM, shooter.getCurrentRPM(), 150.0);
+        assertEquals(0.0, shooter.getGoalRPM(), 1.0);
+        assertEquals(0.0, shooter.getCurrentRPM(), 150.0);
     }
 
     @Test
-    void returnsToIdleAfterShotEvenWhenBatterySags() {
+    void returnsToZeroGoalAfterShotEvenWhenBatterySags() {
         Shooter shooter = new Shooter(new ShooterIOSim());
         shooter.setGoal(SHOT_RPM);
         step(shooter, 150);
         assertEquals(SHOT_RPM, shooter.getSetpointRPM(), 1.0);
 
-        // Below the shot-speed back-EMF: no positive acceleration is available,
-        // but that must not freeze the downward ramp when the bumper is released.
+        // Teleop idle is zero. A stopped flywheel coasts; it is not actively braked.
         RoboRioSim.setVInVoltage(8.0);
         shooter.setIdle();
         step(shooter, 1);
-        assertTrue(shooter.getSetpointRPM() < SHOT_RPM);
+        assertEquals(0.0, shooter.getGoalRPM(), 1.0);
         step(shooter, 150);
-        assertEquals(ShooterConstants.FLYWHEEL_IDLE_RPM, shooter.getSetpointRPM(), 1.0);
-        assertEquals(ShooterConstants.FLYWHEEL_IDLE_RPM, shooter.getCurrentRPM(), 150.0);
+        assertTrue(shooter.getCurrentRPM() < SHOT_RPM);
         assertFalse(shooter.atTarget());
     }
 

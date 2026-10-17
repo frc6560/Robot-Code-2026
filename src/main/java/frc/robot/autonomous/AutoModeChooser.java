@@ -9,6 +9,7 @@ public class AutoModeChooser {
     private final SendableChooser<Command> autoChooser = new SendableChooser<>();
 
     public AutoModeChooser(AutoCommands factory) {
+        autoChooser.addOption("Red Hub Simple (No Vision)", factory.getRedHubSimpleAuto());
         if (RobotBase.isSimulation()) {
             // Make desktop BLine simulation work immediately without requiring a separate
             // dashboard just to change the chooser selection.

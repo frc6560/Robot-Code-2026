@@ -15,6 +15,7 @@ import frc.robot.lib.BLine.FollowPath;
 import frc.robot.lib.BLine.Path;
 import frc.robot.Constants.BLineConstants;
 import frc.robot.subsystems.feeder.Feeder;
+import frc.robot.subsystems.indexer.Indexer;
 import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
@@ -33,6 +34,7 @@ public class AutoCommands {
     private final Intake intake;
     private final Shooter shooter;
     private final Turret turret;
+    private final Indexer indexer;
     private final ShotCalculator calculator;
     private final FollowPath.Builder pathBuilder;
     private final FollowPath.Builder firstPathBuilder;
@@ -43,7 +45,8 @@ public class AutoCommands {
         Intake intake,
         Shooter shooter,
         Turret turret,
-        ShotCalculator calculator
+        ShotCalculator calculator,
+        Indexer indexer
     ) {
         this.drivetrain = drivetrain;
         this.feeder = feeder;
@@ -51,6 +54,7 @@ public class AutoCommands {
         this.shooter = shooter;
         this.turret = turret;
         this.calculator = calculator;
+        this.indexer = indexer;
 
         configureBLineLogging();
 
@@ -150,6 +154,11 @@ public class AutoCommands {
 
     public Command getNoAuto() {
         return Commands.none();
+    }
+
+    /** Red-side command-only auto: reverse, aim, spin up, then run the tunnel. */
+    public Command getRedHubSimpleAuto() {
+        return RedHubSimpleAuto.create(drivetrain, shooter, indexer);
     }
 
     /** Runs the path exported from the BLine editor and resets odometry to its first waypoint. */

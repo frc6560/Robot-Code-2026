@@ -123,7 +123,8 @@ public class RobotContainer {
         intake,
         shooter,
         turret,
-        shotCalculator
+        shotCalculator,
+        indexer
       );
       autoChooser = new AutoModeChooser(factory);
       SmartDashboard.putData("Auto Chooser", autoChooser.getAutoChooser());

@@ -58,8 +58,8 @@ class RobotContainerDriverControlsTest {
         Intake intake = getField(container, "intake", Intake.class);
         Turret turret = getField(container, "turret", Turret.class);
         runCycles(150);
-        assertTargets(shooter, indexer, 1000.0, 0.0, 0.0);
-        assertEquals(1000.0, shooter.getCurrentRPM(), 150.0);
+        assertTargets(shooter, indexer, 0.0, 0.0, 0.0);
+        assertEquals(0.0, shooter.getCurrentRPM(), 150.0);
         double turretGoalBeforeTrigger = turret.getGoalDegrees();
 
         setControls(true, false);
@@ -74,21 +74,18 @@ class RobotContainerDriverControlsTest {
         assertTargets(shooter, indexer, 3000.0, 1000.0, 0.0);
         setControls(true, true);
         setControls(false, true);
-        assertTargets(shooter, indexer, 1000.0, 0.0, 1500.0);
-        runCycles(150);
-        assertEquals(1000.0, shooter.getCurrentRPM(), 150.0);
-        // Also verify a bumper-only hold/release settles back to measured idle speed.
+        assertTargets(shooter, indexer, 0.0, 0.0, 1500.0);
+        // A zero goal coasts the physical flywheel; measured RPM does not drop instantly.
+        // Also verify a bumper-only hold/release returns to the zero goal.
         setControls(true, false);
         runCycles(150);
         assertEquals(3000.0, shooter.getCurrentRPM(), 200.0);
         setControls(false, false);
-        assertTargets(shooter, indexer, 1000.0, 0.0, 0.0);
-        runCycles(150);
-        assertEquals(1000.0, shooter.getCurrentRPM(), 150.0);
+        assertTargets(shooter, indexer, 0.0, 0.0, 0.0);
 
         // Trigger alone feeds without changing the shooter's idle goal.
         setControls(false, true);
-        assertTargets(shooter, indexer, 1000.0, 0.0, 1500.0);
+        assertTargets(shooter, indexer, 0.0, 0.0, 1500.0);
         assertEquals(turretGoalBeforeTrigger, turret.getGoalDegrees(), 0.01);
 
         setControls(false, false);
@@ -100,13 +97,12 @@ class RobotContainerDriverControlsTest {
         assertTargets(shooter, indexer, 3000.0, 1000.0, 1500.0);
         setDriver2Controls(false, true);
         runCycles(150);
-        assertTargets(shooter, indexer, 1000.0, 1000.0, 1500.0);
-        assertEquals(1000.0, shooter.getCurrentRPM(), 150.0);
+        assertTargets(shooter, indexer, 0.0, 1000.0, 1500.0);
         setDriver2Controls(true, true);
         setDriver2Controls(true, false);
         assertTargets(shooter, indexer, 3000.0, 0.0, 0.0);
         setDriver2Controls(false, false);
-        assertTargets(shooter, indexer, 1000.0, 0.0, 0.0);
+        assertTargets(shooter, indexer, 0.0, 0.0, 0.0);
         setDriver2Button(4, true);
         assertEquals(Intake.State.EXTENDED_SPINNING, intake.getState());
         setDriver2Button(4, false);
@@ -115,16 +111,17 @@ class RobotContainerDriverControlsTest {
         assertEquals(Intake.State.RETRACTED_STOPPED, intake.getState());
         setDriver2Button(6, false);
         setDriver2Controls(false, true);
-        assertTargets(shooter, indexer, 1000.0, 1000.0, 1500.0);
+        assertTargets(shooter, indexer, 0.0, 1000.0, 1500.0);
         setControls(false, true);
-        assertTargets(shooter, indexer, 1000.0, 1000.0, 1500.0);
+        assertTargets(shooter, indexer, 0.0, 1000.0, 1500.0);
         setDriver2Controls(false, false);
-        assertTargets(shooter, indexer, 1000.0, 0.0, 1500.0);
+        assertTargets(shooter, indexer, 0.0, 0.0, 1500.0);
 
         setControls(true, true);
         DriverStationSim.setEnabled(false);
         DriverStationSim.notifyNewData();
         runCycles(3);
+        // Outside teleop the configured idle goal remains unchanged (outputs are disabled).
         assertTargets(shooter, indexer, 1000.0, 0.0, 0.0);
     }
 

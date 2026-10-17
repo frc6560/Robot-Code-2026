@@ -77,8 +77,12 @@ public class Shooter extends SubsystemBase {
         idle = false;
     }
 
-    /** Hold idle speed open-loop on feedforward alone. */
+    /** Keep teleop idle at zero; use the configured warm idle only outside teleop. */
     public void setIdle() {
+        if (DriverStation.isTeleopEnabled()) {
+            stop();
+            return;
+        }
         goalRadsPerSec = Units.rotationsPerMinuteToRadiansPerSecond(ShooterConstants.FLYWHEEL_IDLE_RPM);
         bangBang = false;
         idle = true;
