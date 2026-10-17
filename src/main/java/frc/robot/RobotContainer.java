@@ -51,9 +51,6 @@ import org.littletonrobotics.junction.Logger;
 
 
 public class RobotContainer {
-    private static final int INDEXER_FLOOR_LEADER_ID = 25;
-    private static final int INDEXER_TUNNEL_MOTOR_ID = 16;
-
     // Controllers
     private final CommandXboxController driverXbox = new CommandXboxController(0);
     private final CommandXboxController operatorXbox = new CommandXboxController(1);
@@ -96,24 +93,23 @@ public class RobotContainer {
               : Constants.Mode.SIM;
 
       indexer = switch (indexerMode) {
-        case REAL -> new Indexer(new IndexerIOTalonFX(
-            INDEXER_FLOOR_LEADER_ID,
-            INDEXER_TUNNEL_MOTOR_ID));
+        case REAL -> new Indexer(new IndexerIOTalonFX());
         case SIM -> new Indexer(new IndexerIOSim());
         case REPLAY -> new Indexer(new IndexerIO() {});
       };
+
+      // Read current while disabled; Intake and the hardware IO both interlock motor outputs.
+      intake = new Intake(Robot.isReal() ? new IntakeIOTalonFX() : new IntakeIOSim());
 
       if (Robot.isReal()) {
         shooter = new Shooter(new ShooterIOTalonFX());
         turret = new Turret(new TurretIOTalonFX());
         feeder = new Feeder(new FeederIOTalonFX());
-        intake = new Intake(new IntakeIOTalonFX());
         led = new LED(new LEDIOAddressable(3, 65), shooter, turret, shotCalculator);
       } else {
           shooter = new Shooter(new ShooterIOSim());
           turret = new Turret(new TurretIOSim());
           feeder = new Feeder(new FeederIOSim());
-          intake = new Intake(new IntakeIOSim());
           led = new LED(new LEDIOSim(65), shooter, turret, shotCalculator);
       }
 
@@ -138,8 +134,24 @@ public class RobotContainer {
 
       vision = new VisionSubsystem(limelights);
 
-      // Temporary no-vision behavior: keep the flywheel warm at idle until a command takes it.
-      shooter.setDefaultCommand(Commands.run(shooter::setIdle, shooter));
+      // Idle the flywheel during enabled teleop; right trigger takes it to the fixed shot speed.
+      shooter.setDefaultCommand(Commands.run(() -> {
+        if (DriverStation.isTeleopEnabled() && !pitCoastMode) {
+          shooter.setIdle();
+        } else {
+          shooter.stop();
+        }
+      }, shooter).finallyDo(interrupted -> shooter.stop()));
+      // Right bumper owns both indexer stages independently of flywheel spin-up.
+      indexer.setDefaultCommand(Commands.run(() -> {
+        if (DriverStation.isTeleopEnabled() && !pitCoastMode
+            && driverXbox.rightBumper().getAsBoolean()) {
+          indexer.setFloorRPM(Constants.IndexerConstants.FLOOR_RUNNING_RPM);
+          indexer.setTunnelRPM(Constants.IndexerConstants.TUNNEL_RUNNING_RPM);
+        } else {
+          indexer.stop();
+        }
+      }, indexer).finallyDo(interrupted -> indexer.stop()));
       led.setDefaultCommand(Commands.run(() -> {}, led));
 
       // Takes the shooter from its idle default until cancelled from the dashboard.
@@ -183,20 +195,19 @@ public class RobotContainer {
     }
 
     /** One owner samples the controls so simultaneous holds cannot cancel each other. */
-    private Command manualShotCommand(Trigger spinUp, Trigger floor, Trigger feed) {
+    private Command manualShotCommand(Trigger spinUp) {
         return Commands.run(() -> {
             if (spinUp.getAsBoolean()) {
                 shooter.setGoal(Constants.ShooterConstants.FIXED_SHOT_RPM);
             } else {
                 shooter.setIdle();
             }
-            indexer.setFloorRPM(floor.getAsBoolean()
-                ? Constants.IndexerConstants.FLOOR_RUNNING_RPM : 0.0);
-            indexer.setTunnelRPM(feed.getAsBoolean()
-                ? Constants.IndexerConstants.TUNNEL_RUNNING_RPM : 0.0);
-        }, shooter, indexer).beforeStarting(this::cancelShotCommand).finallyDo(interrupted -> {
-            indexer.stop();
-            shooter.setIdle();
+        }, shooter).beforeStarting(this::cancelShotCommand).finallyDo(interrupted -> {
+            if (DriverStation.isTeleopEnabled() && !pitCoastMode) {
+                shooter.setIdle();
+            } else {
+                shooter.stop();
+            }
         });
     }
 
@@ -232,17 +243,10 @@ public class RobotContainer {
                 : new ChassisSpeeds());
         drivebase.setDefaultCommand(driveFieldOrientedAnglularVelocity);
 
-        // Operator A remains an alternate hold-to-run control for the floor/shooter.
-        Trigger combinedSpinUp = driverXbox.rightBumper().or(operatorXbox.a());
-        // Driver 2 is the button board on USB port 1; use raw held states, not press edges.
-        Trigger spinUp = combinedSpinUp.or(new Trigger(() -> m_Controls.getButtonActivated(11)));
-        Trigger driver2Indexer = new Trigger(() -> m_Controls.getButtonActivated(3));
-        Trigger floor = combinedSpinUp.or(driver2Indexer);
-        Trigger feed = driverXbox.rightTrigger().or(driver2Indexer);
-        spinUp.or(floor).or(feed)
-            .and(DriverStation::isTeleopEnabled)
+        Trigger spinUp = driverXbox.rightTrigger();
+        spinUp.and(DriverStation::isTeleopEnabled)
             .and(() -> !pitCoastMode)
-            .whileTrue(manualShotCommand(spinUp, floor, feed));
+            .whileTrue(manualShotCommand(spinUp));
 
         driverXbox.x()
           .and(DriverStation::isTeleopEnabled)
@@ -283,7 +287,7 @@ public class RobotContainer {
             intake.stopShootingOscillation();
         }, feeder, intake));
 
-        // Driver 2 button 3 runs the flat indexer and tunnel together above.
+        // The flat indexer and tunnel run only while the driver holds right bumper.
 
         Trigger intakeRoller = new Trigger(() -> m_Controls.getButtonActivated(4))
             .and(DriverStation::isTeleopEnabled);
@@ -298,6 +302,7 @@ public class RobotContainer {
         new Trigger(m_Controls::getIntakeResetTrigger)
             .and(DriverStation::isTeleopEnabled)
             .onTrue(Commands.runOnce(() -> {
+                intake.clearFault();
                 intake.setRetracted();
                 feeder.setIntaking(false);
             }, intake, feeder));

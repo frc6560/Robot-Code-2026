@@ -4,27 +4,19 @@ import org.littletonrobotics.junction.AutoLog;
 
 public interface IntakeIO {
     @AutoLog
-    public static class IntakeIOInputs {
-        public double deployPositionRotations = 0.0;
-        public double deployVelocityRPS = 0.0;
-        public double deployAppliedVolts = 0.0;
-        public double deployCurrentAmps = 0.0;
-        public double deployTempCelsius = 0.0;
-
-        public double rollerVelocityRPS = 0.0;
-        public double rollerAppliedVolts = 0.0;
-        public double rollerCurrentAmps = 0.0;
-        public double rollerTempCelsius = 0.0;
+    class IntakeIOInputs {
+        public boolean motorConnected = false;
+        public boolean motorCurrentValid = false;
+        public double motorStatorCurrentAmps = 0.0;
+        public double motorSupplyCurrentAmps = 0.0;
+        public double motorAppliedVolts = 0.0;
+        public double motorTempCelsius = 0.0;
+        public String motorConfigurationStatus = "Not configured";
     }
 
     default void updateInputs(IntakeIOInputs inputs) {}
-
-    default void setRollerRPM(double rpm) {}
-
-    default void setDeployPosition(double motorRotations) {}
-
+    /** Positive voltage extends; negative voltage retracts. Zero must stop. */
+    default void setMotorVoltage(double volts) {}
     default void stop() {}
-
-    /** Select pit coast mode; intake rollers normally remain in coast mode as well. */
     default void setCoastMode(boolean coast) {}
 }

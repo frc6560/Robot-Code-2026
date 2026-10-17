@@ -2,6 +2,8 @@ package frc.robot.subsystems.feeder;
 
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusSignal;
+import com.ctre.phoenix6.StatusCode;
+import com.ctre.phoenix6.controls.NeutralOut;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.hardware.TalonFX;
@@ -19,6 +21,10 @@ public class FeederIOTalonFX implements FeederIO {
     private final TalonFX panMotor;
     private final TalonFX pusherMotor;
     private final TalonFX floorMotor;
+    private final TalonFX wallMotor;
+    private final StatusCode wallConfigurationStatus;
+    private String wallControlStatus = "No request";
+    private final NeutralOut wallStopRequest = new NeutralOut();
 
     private final VelocityVoltage panRequest = new VelocityVoltage(0);
     private final VelocityVoltage pusherRequest = new VelocityVoltage(0);
@@ -46,10 +52,19 @@ public class FeederIOTalonFX implements FeederIO {
     private final StatusSignal<Current> floorCurrent;
     private final StatusSignal<Temperature> floorTemp;
 
+    private final StatusSignal<Angle> wallPosition;
+    private final StatusSignal<AngularVelocity> wallVelocity;
+    private final StatusSignal<Voltage> wallVoltage;
+    private final StatusSignal<Current> wallCurrent;
+    private final StatusSignal<Temperature> wallTemp;
+
     public FeederIOTalonFX() {
         panMotor = new TalonFX(FeederConstants.PAN_MOTOR_ID, FeederConstants.CAN_BUS);
         pusherMotor = new TalonFX(FeederConstants.PUSHER_MOTOR_ID, FeederConstants.CAN_BUS);
         floorMotor = new TalonFX(FeederConstants.FLOOR_ID, FeederConstants.CAN_BUS);
+        wallMotor = new TalonFX(FeederConstants.WALL_MOTOR_ID, FeederConstants.WALL_CAN_BUS);
+        wallConfigurationStatus = configureMotor(wallMotor, FeederConstants.WALL_kP,
+            FeederConstants.SUPPLY_CURRENT_LIMIT, FeederConstants.WALL_MOTOR_INVERTED);
 
         configureMotor(panMotor, FeederConstants.PAN_kP, FeederConstants.SUPPLY_CURRENT_LIMIT, FeederConstants.PAN_MOTOR_INVERTED);
         configureMotor(pusherMotor, FeederConstants.PUSHER_kP, FeederConstants.SUPPLY_CURRENT_LIMIT, FeederConstants.PUSHER_MOTOR_INVERTED);
@@ -73,6 +88,14 @@ public class FeederIOTalonFX implements FeederIO {
         floorCurrent = floorMotor.getSupplyCurrent();
         floorTemp = floorMotor.getDeviceTemp();
 
+        wallPosition = wallMotor.getPosition();
+        wallVelocity = wallMotor.getVelocity();
+        wallVoltage = wallMotor.getMotorVoltage();
+        wallCurrent = wallMotor.getSupplyCurrent();
+        wallTemp = wallMotor.getDeviceTemp();
+        BaseStatusSignal.setUpdateFrequencyForAll(50.0,
+            wallPosition, wallVelocity, wallVoltage, wallCurrent, wallTemp);
+
 
         BaseStatusSignal.setUpdateFrequencyForAll(
             50.0,
@@ -84,9 +107,10 @@ public class FeederIOTalonFX implements FeederIO {
         panMotor.optimizeBusUtilization();
         pusherMotor.optimizeBusUtilization();
         floorMotor.optimizeBusUtilization();
+        wallMotor.optimizeBusUtilization();
     }
 
-    private void configureMotor(TalonFX motor, double kP, int currentLimit, boolean inverted) {
+    private StatusCode configureMotor(TalonFX motor, double kP, int currentLimit, boolean inverted) {
         TalonFXConfiguration config = new TalonFXConfiguration();
         config.Slot0.kP = kP;
         config.Slot0.kV = FeederConstants.kV;
@@ -97,8 +121,12 @@ public class FeederIOTalonFX implements FeederIO {
         config.CurrentLimits.SupplyCurrentLimit = currentLimit;
         config.CurrentLimits.StatorCurrentLimitEnable = true;
         config.CurrentLimits.StatorCurrentLimit = FeederConstants.STATOR_CURRENT_LIMIT;
-        motor.getConfigurator().apply(config);
-        motor.setNeutralMode(NeutralModeValue.Brake);
+        config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
+        StatusCode status = motor.getConfigurator().apply(config);
+        for (int attempt = 1; attempt < 3 && !status.isOK(); attempt++) {
+            status = motor.getConfigurator().apply(config);
+        }
+        return status;
     }
 
     private double rpmToRps(double rpm, double gearRatio) {
@@ -130,6 +158,17 @@ public class FeederIOTalonFX implements FeederIO {
         inputs.floorAppliedVolts = floorVoltage.getValueAsDouble();
         inputs.floorCurrentAmps = floorCurrent.getValueAsDouble();
         inputs.floorTempCelsius = floorTemp.getValueAsDouble();
+
+        inputs.wallTelemetryStatus = BaseStatusSignal.refreshAll(
+            wallPosition, wallVelocity, wallVoltage, wallCurrent, wallTemp).toString();
+        inputs.wallConnected = wallMotor.isConnected();
+        inputs.wallPositionRotations = wallPosition.getValueAsDouble();
+        inputs.wallVelocityRPS = wallVelocity.getValueAsDouble();
+        inputs.wallAppliedVolts = wallVoltage.getValueAsDouble();
+        inputs.wallCurrentAmps = wallCurrent.getValueAsDouble();
+        inputs.wallTempCelsius = wallTemp.getValueAsDouble();
+        inputs.wallConfigurationStatus = wallConfigurationStatus.toString();
+        inputs.wallControlStatus = wallControlStatus;
     }
 
     @Override
@@ -149,10 +188,19 @@ public class FeederIOTalonFX implements FeederIO {
     }
 
     @Override
+    public void setWallRPM(double rpm) {
+        wallControlStatus = (rpm == 0.0
+            ? wallMotor.setControl(wallStopRequest)
+            : wallMotor.setControl(wallRequest.withVelocity(rpmToRps(rpm, FeederConstants.WALL_GEAR_RATIO))))
+            .toString();
+    }
+
+    @Override
     public void stop() {
         panMotor.set(0);
         pusherMotor.set(0);
         floorMotor.set(0);
+        setWallRPM(0);
     }
 
     @Override
@@ -161,5 +209,6 @@ public class FeederIOTalonFX implements FeederIO {
         panMotor.setNeutralMode(neutralMode);
         pusherMotor.setNeutralMode(neutralMode);
         floorMotor.setNeutralMode(neutralMode);
+        wallMotor.setNeutralMode(neutralMode);
     }
 }

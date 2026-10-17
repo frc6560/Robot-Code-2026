@@ -8,6 +8,7 @@ import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.controls.NeutralOut;
 import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.InvertedValue;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
@@ -16,17 +17,16 @@ import org.littletonrobotics.junction.Logger;
 import frc.robot.Constants.IndexerConstants;
 
 public class IndexerIOTalonFX implements IndexerIO {
-    private static final double CURRENT_LIMIT_AMPS = 40.0;
-    private static final double STATUS_FREQUENCY_HZ = 50.0;
-    private static final String CAN_BUS = "Canivore";
-
     private final TalonFX floorLeader;
     private final TalonFX tunnelMotor;
 
     private final VelocityVoltage floorRequest = new VelocityVoltage(0.0);
     private final VelocityVoltage tunnelRequest = new VelocityVoltage(0.0);
     private final NeutralOut floorStopRequest = new NeutralOut();
+    private final NeutralOut tunnelStopRequest = new NeutralOut();
     private final StatusCode floorConfigurationStatus;
+    private final StatusCode tunnelConfigurationStatus;
+    private String tunnelControlStatus = "No request";
     private String floorControlStatus = "No request";
 
     private final StatusSignal<Angle> floorPosition;
@@ -39,10 +39,14 @@ public class IndexerIOTalonFX implements IndexerIO {
     private final StatusSignal<Voltage> tunnelVoltage;
     private final StatusSignal<Current> tunnelCurrent;
 
+    public IndexerIOTalonFX() {
+        this(IndexerConstants.FLOOR_MOTOR_ID, IndexerConstants.TUNNEL_MOTOR_ID);
+    }
+
     public IndexerIOTalonFX(
             int floorLeaderId,
             int tunnelMotorId) {
-        this(floorLeaderId, tunnelMotorId, new CANBus(CAN_BUS));
+        this(floorLeaderId, tunnelMotorId, new CANBus(IndexerConstants.CAN_BUS));
     }
 
     public IndexerIOTalonFX(
@@ -52,8 +56,10 @@ public class IndexerIOTalonFX implements IndexerIO {
         floorLeader = new TalonFX(floorLeaderId, canBus);
         tunnelMotor = new TalonFX(tunnelMotorId, canBus);
 
-        floorConfigurationStatus = configureMotor(floorLeader, IndexerConstants.FLOOR_GEAR_RATIO);
-        configureMotor(tunnelMotor, IndexerConstants.TUNNEL_GEAR_RATIO);
+        floorConfigurationStatus = configureMotor(floorLeader, IndexerConstants.FLOOR_GEAR_RATIO,
+            IndexerConstants.FLOOR_MOTOR_INVERTED);
+        tunnelConfigurationStatus = configureMotor(tunnelMotor, IndexerConstants.TUNNEL_GEAR_RATIO,
+            IndexerConstants.TUNNEL_MOTOR_INVERTED);
 
         floorPosition = floorLeader.getPosition();
         floorVelocity = floorLeader.getVelocity();
@@ -66,7 +72,7 @@ public class IndexerIOTalonFX implements IndexerIO {
         tunnelCurrent = tunnelMotor.getStatorCurrent();
 
         BaseStatusSignal.setUpdateFrequencyForAll(
-                STATUS_FREQUENCY_HZ,
+                IndexerConstants.STATUS_FREQUENCY_HZ,
                 floorPosition,
                 floorVelocity,
                 floorVoltage,
@@ -80,14 +86,17 @@ public class IndexerIOTalonFX implements IndexerIO {
         tunnelMotor.optimizeBusUtilization();
     }
 
-    private static StatusCode configureMotor(TalonFX motor, double gearRatio) {
+    private static StatusCode configureMotor(TalonFX motor, double gearRatio, boolean inverted) {
         TalonFXConfiguration config = new TalonFXConfiguration();
+        config.MotorOutput.Inverted = inverted
+            ? InvertedValue.Clockwise_Positive
+            : InvertedValue.CounterClockwise_Positive;
         config.Feedback.SensorToMechanismRatio = gearRatio;
         config.Slot0.kP = IndexerConstants.VELOCITY_KP;
         config.Slot0.kV = IndexerConstants.MOTOR_KV * gearRatio;
-        config.CurrentLimits.StatorCurrentLimit = CURRENT_LIMIT_AMPS;
+        config.CurrentLimits.StatorCurrentLimit = IndexerConstants.STATOR_CURRENT_LIMIT_AMPS;
         config.CurrentLimits.StatorCurrentLimitEnable = true;
-        config.CurrentLimits.SupplyCurrentLimit = CURRENT_LIMIT_AMPS;
+        config.CurrentLimits.SupplyCurrentLimit = IndexerConstants.SUPPLY_CURRENT_LIMIT_AMPS;
         config.CurrentLimits.SupplyCurrentLimitEnable = true;
         StatusCode status = motor.getConfigurator().apply(config, 0.1);
         for (int attempt = 1; attempt < 3 && !status.isOK(); attempt++) {
@@ -98,15 +107,16 @@ public class IndexerIOTalonFX implements IndexerIO {
 
     @Override
     public void updateInputs(IndexerIOInputs inputs) {
-        BaseStatusSignal.refreshAll(
+        inputs.floorTelemetryStatus = BaseStatusSignal.refreshAll(
                 floorPosition,
                 floorVelocity,
                 floorVoltage,
-                floorLeaderCurrent,
+                floorLeaderCurrent).toString();
+        inputs.tunnelTelemetryStatus = BaseStatusSignal.refreshAll(
                 tunnelPosition,
                 tunnelVelocity,
                 tunnelVoltage,
-                tunnelCurrent);
+                tunnelCurrent).toString();
 
         inputs.appliedVolts = tunnelVoltage.getValueAsDouble();
         inputs.floorRPM = floorVelocity.getValueAsDouble() * 60.0;
@@ -117,6 +127,11 @@ public class IndexerIOTalonFX implements IndexerIO {
         inputs.floorCurrentAmps = floorLeaderCurrent.getValueAsDouble();
         inputs.floorConfigurationStatus = floorConfigurationStatus.toString();
         inputs.floorControlStatus = floorControlStatus;
+        inputs.tunnelConnected = tunnelMotor.isConnected();
+        inputs.tunnelAppliedVolts = tunnelVoltage.getValueAsDouble();
+        inputs.tunnelCurrentAmps = tunnelCurrent.getValueAsDouble();
+        inputs.tunnelConfigurationStatus = tunnelConfigurationStatus.toString();
+        inputs.tunnelControlStatus = tunnelControlStatus;
 
         Logger.recordOutput("Indexer/Connected/FloorLeader", floorLeader.isConnected());
         Logger.recordOutput("Indexer/Connected/TunnelMotor", tunnelMotor.isConnected());
@@ -134,15 +149,15 @@ public class IndexerIOTalonFX implements IndexerIO {
     @Override
     public void setTunnelRPM(double rpm) {
         if (rpm == 0.0) {
-            tunnelMotor.stopMotor();
+            tunnelControlStatus = tunnelMotor.setControl(tunnelStopRequest).toString();
         } else {
-            tunnelMotor.setControl(tunnelRequest.withVelocity(rpm / 60.0));
+            tunnelControlStatus = tunnelMotor.setControl(tunnelRequest.withVelocity(rpm / 60.0)).toString();
         }
     }
 
     @Override
     public void stop() {
         setFloorRPM(0.0);
-        tunnelMotor.stopMotor();
+        setTunnelRPM(0.0);
     }
 }

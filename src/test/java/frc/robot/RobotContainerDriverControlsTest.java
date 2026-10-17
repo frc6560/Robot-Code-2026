@@ -35,7 +35,7 @@ class RobotContainerDriverControlsTest {
     }
 
     @Test
-    void bumperAndTriggerIndependentlyControlFloorShooterAndTunnel() throws Exception {
+    void triggerControlsFlywheelAndBumperControlsBothIndexerStages() throws Exception {
         DriverStationSim.setDsAttached(true);
         DriverStationSim.setEnabled(true);
         DriverStationSim.setAutonomous(false);
@@ -60,49 +60,30 @@ class RobotContainerDriverControlsTest {
         runCycles(150);
         assertTargets(shooter, indexer, 0.0, 0.0, 0.0);
         assertEquals(0.0, shooter.getCurrentRPM(), 150.0);
-        double turretGoalBeforeTrigger = turret.getGoalDegrees();
+        double turretGoal = turret.getGoalDegrees();
 
-        setControls(true, false);
+        // Each control works alone, and either can be released while the other stays held.
+        setControls(false, true);
+        assertTargets(shooter, indexer, 4000.0, 0.0, 0.0);
         runCycles(150);
-        assertTargets(shooter, indexer, 3000.0, 1000.0, 0.0);
-        assertEquals(3000.0, shooter.getCurrentRPM(), 200.0);
-
+        assertEquals(4000.0, shooter.getCurrentRPM(), 200.0);
         setControls(true, true);
-        assertTargets(shooter, indexer, 3000.0, 1000.0, 1500.0);
-        // Releasing the trigger must not cancel the bumper's shooter/floor command.
+        assertTargets(shooter, indexer, 4000.0, 200.0, 200.0);
         setControls(true, false);
-        assertTargets(shooter, indexer, 3000.0, 1000.0, 0.0);
+        assertTargets(shooter, indexer, 0.0, 200.0, 200.0);
         setControls(true, true);
         setControls(false, true);
-        assertTargets(shooter, indexer, 0.0, 0.0, 1500.0);
-        // A zero goal coasts the physical flywheel; measured RPM does not drop instantly.
-        // Also verify a bumper-only hold/release returns to the zero goal.
-        setControls(true, false);
-        runCycles(150);
-        assertEquals(3000.0, shooter.getCurrentRPM(), 200.0);
+        assertTargets(shooter, indexer, 4000.0, 0.0, 0.0);
         setControls(false, false);
+        runCycles(150);
+        // Zero RPM is the teleop goal; the physical flywheel coasts down.
         assertTargets(shooter, indexer, 0.0, 0.0, 0.0);
+        assertEquals(turretGoal, turret.getGoalDegrees(), 0.01);
 
-        // Trigger alone feeds without changing the shooter's idle goal.
-        setControls(false, true);
-        assertTargets(shooter, indexer, 0.0, 0.0, 1500.0);
-        assertEquals(turretGoalBeforeTrigger, turret.getGoalDegrees(), 0.01);
-
-        setControls(false, false);
-        setDriver2Controls(true, false);
-        runCycles(150);
-        assertTargets(shooter, indexer, 3000.0, 0.0, 0.0);
-        assertEquals(3000.0, shooter.getCurrentRPM(), 200.0);
+        // Old button-board spin-up/feed controls must not override the new driver mapping.
         setDriver2Controls(true, true);
-        assertTargets(shooter, indexer, 3000.0, 1000.0, 1500.0);
-        setDriver2Controls(false, true);
-        runCycles(150);
-        assertTargets(shooter, indexer, 0.0, 1000.0, 1500.0);
-        setDriver2Controls(true, true);
-        setDriver2Controls(true, false);
-        assertTargets(shooter, indexer, 3000.0, 0.0, 0.0);
+        assertTargets(shooter, indexer, 0.0, 0.0, 0.0);
         setDriver2Controls(false, false);
-        assertTargets(shooter, indexer, 0.0, 0.0, 0.0);
         setDriver2Button(4, true);
         assertEquals(Intake.State.EXTENDED_SPINNING, intake.getState());
         setDriver2Button(4, false);
@@ -110,19 +91,45 @@ class RobotContainerDriverControlsTest {
         setDriver2Button(6, true);
         assertEquals(Intake.State.RETRACTED_STOPPED, intake.getState());
         setDriver2Button(6, false);
-        setDriver2Controls(false, true);
-        assertTargets(shooter, indexer, 0.0, 1000.0, 1500.0);
-        setControls(false, true);
-        assertTargets(shooter, indexer, 0.0, 1000.0, 1500.0);
-        setDriver2Controls(false, false);
-        assertTargets(shooter, indexer, 0.0, 0.0, 1500.0);
-
         setControls(true, true);
         DriverStationSim.setEnabled(false);
         DriverStationSim.notifyNewData();
         runCycles(3);
-        // Outside teleop the configured idle goal remains unchanged (outputs are disabled).
-        assertTargets(shooter, indexer, 1000.0, 0.0, 0.0);
+        assertTargets(shooter, indexer, 0.0, 0.0, 0.0);
+        setControls(false, false);
+        DriverStationSim.setEnabled(true);
+        DriverStationSim.notifyNewData();
+        runCycles(3);
+        assertTargets(shooter, indexer, 0.0, 0.0, 0.0);
+
+        setControls(true, false);
+        setDriverButton(XboxController.Button.kBack.value, true);
+        assertTargets(shooter, indexer, 0.0, 0.0, 0.0);
+        setDriverButton(XboxController.Button.kBack.value, false);
+        setDriverButton(XboxController.Button.kBack.value, true);
+        setDriverButton(XboxController.Button.kBack.value, false);
+        assertTargets(shooter, indexer, 0.0, 200.0, 200.0);
+        setControls(false, false);
+
+        DriverStationSim.setAutonomous(true);
+        DriverStationSim.notifyNewData();
+        runCycles(3);
+        assertTargets(shooter, indexer, 0.0, 0.0, 0.0);
+        DriverStationSim.setAutonomous(false);
+        DriverStationSim.setTest(true);
+        DriverStationSim.notifyNewData();
+        runCycles(3);
+        assertTargets(shooter, indexer, 0.0, 0.0, 0.0);
+        DriverStationSim.setTest(false);
+        DriverStationSim.notifyNewData();
+        runCycles(3);
+        assertTargets(shooter, indexer, 0.0, 0.0, 0.0);
+    }
+
+    private static void setDriverButton(int button, boolean pressed) {
+        DriverStationSim.setJoystickButton(0, button, pressed);
+        DriverStationSim.notifyNewData();
+        runCycles(3);
     }
 
     private static void setControls(boolean bumper, boolean trigger) {

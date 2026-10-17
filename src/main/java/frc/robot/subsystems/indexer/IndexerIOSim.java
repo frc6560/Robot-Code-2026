@@ -40,6 +40,13 @@ public class IndexerIOSim implements IndexerIO {
         inputs.floorConnected = true;
         inputs.floorConfigurationStatus = "Simulation";
         inputs.floorControlStatus = "Simulation";
+        inputs.floorTelemetryStatus = "Simulation";
+        inputs.tunnelConnected = true;
+        inputs.tunnelAppliedVolts = inputs.appliedVolts;
+        inputs.tunnelCurrentAmps = Math.abs(tunnel.getCurrentDrawAmps());
+        inputs.tunnelConfigurationStatus = "Simulation";
+        inputs.tunnelControlStatus = "Simulation";
+        inputs.tunnelTelemetryStatus = "Simulation";
     }
 
     @Override
