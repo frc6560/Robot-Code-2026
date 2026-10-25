@@ -10,7 +10,7 @@ import frc.robot.Constants.IntakeConstants;
 /** Rack-only hardware test: extend once on teleop enable, then retract and hold. */
 public class Intake extends SubsystemBase {
     private final IntakeIO io;
-    private final IntakeIOInputsAutoLogged inputs = new IntakeIOInputsAutoLogged();
+    private final IntakeIO.IntakeIOInputs inputs = new IntakeIO.IntakeIOInputs();
     private boolean testStarted;
     private boolean pitCoastMode;
     private double enableTime;

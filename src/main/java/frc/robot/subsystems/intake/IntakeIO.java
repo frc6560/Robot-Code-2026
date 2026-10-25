@@ -1,10 +1,12 @@
 package frc.robot.subsystems.intake;
 
-import org.littletonrobotics.junction.AutoLog;
+import org.littletonrobotics.junction.LogTable;
+import org.littletonrobotics.junction.inputs.LoggableInputs;
 
 public interface IntakeIO {
-    @AutoLog
-    public static class IntakeIOInputs {
+    // Explicit logging keeps this hardware test usable in VS Code before a Gradle
+    // build generates the other subsystems' AutoLogged classes.
+    public static class IntakeIOInputs implements LoggableInputs {
         public boolean deployConnected = false;
         public boolean rollerConnected = false;
         public boolean configured = false;
@@ -23,6 +25,48 @@ public interface IntakeIO {
         public double rollerAppliedVolts = 0.0;
         public double rollerCurrentAmps = 0.0;
         public double rollerTempCelsius = 0.0;
+
+        @Override
+        public void toLog(LogTable table) {
+            table.put("DeployConnected", deployConnected);
+            table.put("RollerConnected", rollerConnected);
+            table.put("Configured", configured);
+            table.put("DeployHomed", deployHomed);
+            table.put("DeployConfigurationStatus", deployConfigurationStatus);
+            table.put("RollerConfigurationStatus", rollerConfigurationStatus);
+            table.put("ZeroStatus", zeroStatus);
+            table.put("DeployControlStatus", deployControlStatus);
+            table.put("DeployPositionRotations", deployPositionRotations);
+            table.put("DeployVelocityRPS", deployVelocityRPS);
+            table.put("DeployAppliedVolts", deployAppliedVolts);
+            table.put("DeployCurrentAmps", deployCurrentAmps);
+            table.put("DeployTempCelsius", deployTempCelsius);
+            table.put("RollerVelocityRPS", rollerVelocityRPS);
+            table.put("RollerAppliedVolts", rollerAppliedVolts);
+            table.put("RollerCurrentAmps", rollerCurrentAmps);
+            table.put("RollerTempCelsius", rollerTempCelsius);
+        }
+
+        @Override
+        public void fromLog(LogTable table) {
+            deployConnected = table.get("DeployConnected", deployConnected);
+            rollerConnected = table.get("RollerConnected", rollerConnected);
+            configured = table.get("Configured", configured);
+            deployHomed = table.get("DeployHomed", deployHomed);
+            deployConfigurationStatus = table.get("DeployConfigurationStatus", deployConfigurationStatus);
+            rollerConfigurationStatus = table.get("RollerConfigurationStatus", rollerConfigurationStatus);
+            zeroStatus = table.get("ZeroStatus", zeroStatus);
+            deployControlStatus = table.get("DeployControlStatus", deployControlStatus);
+            deployPositionRotations = table.get("DeployPositionRotations", deployPositionRotations);
+            deployVelocityRPS = table.get("DeployVelocityRPS", deployVelocityRPS);
+            deployAppliedVolts = table.get("DeployAppliedVolts", deployAppliedVolts);
+            deployCurrentAmps = table.get("DeployCurrentAmps", deployCurrentAmps);
+            deployTempCelsius = table.get("DeployTempCelsius", deployTempCelsius);
+            rollerVelocityRPS = table.get("RollerVelocityRPS", rollerVelocityRPS);
+            rollerAppliedVolts = table.get("RollerAppliedVolts", rollerAppliedVolts);
+            rollerCurrentAmps = table.get("RollerCurrentAmps", rollerCurrentAmps);
+            rollerTempCelsius = table.get("RollerTempCelsius", rollerTempCelsius);
+        }
     }
 
     default void updateInputs(IntakeIOInputs inputs) {}
