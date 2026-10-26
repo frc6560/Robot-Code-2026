@@ -1,21 +1,29 @@
 INTAKE AUTOMATIC ENABLE CHECK
 
 BEHAVIOR
-While enabled (autonomous, teleop or Test), the rack moves to 80% travel and holds.
+While enabled (autonomous, teleop or Test), the rack moves to 100% travel and holds,
+and both independent intake rollers run at 1000 mechanism RPM in opposite directions.
 There is no timed retraction or oscillation. Existing intake/shot buttons do not
 override this automatic behavior. Disable, pit coast mode, missing rack feedback,
 configuration failure or loss of the zero reference stops motor output.
-Re-enabling resumes the same absolute motor-position target, not another 80% move.
+Re-enabling resumes the same absolute motor-position target, not another full-stroke move.
 Other subsystem controls are unchanged.
 
-ROLLER PLACEHOLDER -- OUTPUT DISABLED
-The requested enable speed is configured as 1000 roller RPM. The roller's current
-placeholder is Canivore ID 25, which is already the installed flat indexer's ID.
-No intake roller controller is constructed and the intake commands zero roller
-output. A unique physical roller CAN address must be confirmed and its IO added
-before spinning the roller. Do not send intake commands to the indexer's device.
-Dashboard Intake/RollerRequestedRPM shows 1000 while enabled, but
-Intake/RollerCommandedRPM remains zero and Intake/RollerBlockedReason explains why.
+ROLLER CONTROL
+Left roller: Kraken X60 Canivore ID 17, positive counterclockwise.
+Right roller: Kraken X60 Canivore ID 18, positive clockwise.
+Directions are viewed from each motor's shaft end; verify they pull balls inward.
+Both use separate VelocityVoltage requests, not a follower. The retained roller
+gearing is 1.5 motor rotations per roller rotation; confirm this on the hardware.
+SensorToMechanismRatio handles that gearing, so the command is 1000/60 roller RPS.
+Both roller configurations and feedback connections must be good to run either.
+Rack homing/readiness does not gate the separate rollers. Disabled or pit coast
+stops all intake outputs. CAN/configuration failure stops the roller pair.
+ID 25 remains the flat indexer and is not addressed by intake code.
+Dashboard: Intake/RollerRequestedRPM, RollerCommandedRPM, RollerConnected,
+RollerBlockedReason, RollerConfigurationStatus, RollerControlStatus,
+LeftRollerRPM and RightRollerRPM. IO logs include each velocity and voltage,
+combined supply current and the hotter roller temperature.
 
 STARTUP REFERENCE
 Physically fully retract BEFORE starting/restarting robot code, not just before
@@ -29,7 +37,9 @@ Rack X44: Canivore CAN ID 26. Inversion remains false; direction is unverified.
 Reduction: (28/16)*(30/20)*(15/18) = 2.1875 motor rotations per pinion rotation.
 Pinion pitch diameter: 1 inch. Motor travel: pi/2.1875 inches per rotation.
 Same-reference measurements: 4 cm retracted, 32.5 cm extended.
-Full stroke: 28.5 cm. Enabled extension: 80% = 22.8 cm, about 6.25 motor rotations.
+Full stroke: 28.5 cm. Enabled extension: 100% = 28.5 cm, about 7.81 motor rotations.
+This is the measured end of travel: verify zero and geometry before testing.
+Do not drive into the physical stop or keep the rack powered if it binds/screeches.
 Full-stroke encoder soft limits remain enabled; requests are clamped to that range.
 Motion Magic cruise 5.5 motor rotations/s; acceleration 50 rotations/s^2.
 Position kP 0.5; velocity kV 0.12. Brake neutral mode. Supply/stator limits 30/40 A.
@@ -38,10 +48,10 @@ These inherited gains and motor direction require physical verification.
 TEST
 1. Fully retract, start code, keep the rack path clear.
 2. Check Intake/DeployConnected, Intake/Ready and configuration/zero status.
-3. Enable: verify extension toward 22.8 cm and holding there beyond 3 seconds.
+3. Enable: verify extension toward 28.5 cm and holding there beyond 3 seconds.
 4. Disable at any time: output stops (no commanded retraction).
 5. Re-enable: verify the same position, without accumulating extra travel.
-6. Verify the roller does NOT spin while its conflicting placeholder is in use.
+6. Verify both rollers run at 1000 RPM in opposite directions and stop on disable.
 7. If direction is wrong, motion binds or the rack contacts a stop, disable.
 
 DIAGNOSTICS

@@ -7,12 +7,13 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.IntakeConstants;
 
-/** Hold 80% rack extension while enabled; roller output awaits a unique CAN address. */
+/** Hold full rack extension and run the two intake rollers while enabled. */
 public class Intake extends SubsystemBase {
     private final IntakeIO io;
     private final IntakeIO.IntakeIOInputs inputs = new IntakeIO.IntakeIOInputs();
     private boolean pitCoastMode;
     private double target = IntakeConstants.RETRACTED_POSITION_ROTATIONS;
+    private double rollerTargetRPM;
     private String lastConsoleState = "";
     private double nextConsolePrint;
 
@@ -31,12 +32,13 @@ public class Intake extends SubsystemBase {
     public void setRetracted() {}
     public void startShootingOscillation() {}
     public void stopShootingOscillation() {}
-    public boolean isActive() { return false; }
+    public boolean isActive() { return rollerTargetRPM != 0.0; }
     public boolean isShootingOscillationActive() { return false; }
 
     public State getState() {
         return target > IntakeConstants.RETRACTED_POSITION_ROTATIONS
-            ? State.EXTENDED_STOPPED : State.RETRACTED_STOPPED;
+            ? isActive() ? State.EXTENDED_SPINNING : State.EXTENDED_STOPPED
+            : State.RETRACTED_STOPPED;
     }
 
     public boolean isReady() {
@@ -50,6 +52,7 @@ public class Intake extends SubsystemBase {
 
     public void setPitCoastMode(boolean enabled) {
         pitCoastMode = enabled;
+        rollerTargetRPM = 0.0;
         io.stop();
         io.setCoastMode(enabled);
     }
@@ -67,13 +70,23 @@ public class Intake extends SubsystemBase {
         } else {
             io.stop();
         }
-        // ID 25 is only a placeholder and belongs to the flat indexer. No roller
-        // controller is constructed, and no nonzero request may use that address.
-        io.setRollerRPM(0.0);
+        // Roller readiness is independent of the rack's position/home reference.
+        rollerTargetRPM = enabled && !pitCoastMode && inputs.rollerConnected && inputs.rollerConfigured
+            ? IntakeConstants.ROLLER_RPM : 0.0;
+        io.setRollerRPM(rollerTargetRPM);
+        String rollerBlockedReason = !enabled ? "Robot is disabled"
+            : pitCoastMode ? "Pit coast mode is on"
+            : !inputs.rollerConnected ? "Check Canivore roller IDs 17 and 18, power and wiring"
+            : !inputs.rollerConfigured ? "Roller configuration failed; correct and restart code"
+            : "None";
         SmartDashboard.putNumber("Intake/RollerRequestedRPM", enabled ? IntakeConstants.ROLLER_RPM : 0.0);
-        SmartDashboard.putNumber("Intake/RollerCommandedRPM", 0.0);
-        SmartDashboard.putString("Intake/RollerBlockedReason",
-            "Placeholder CAN ID 25 conflicts with flat indexer; roller output disabled");
+        SmartDashboard.putNumber("Intake/RollerCommandedRPM", rollerTargetRPM);
+        SmartDashboard.putString("Intake/RollerBlockedReason", rollerBlockedReason);
+        SmartDashboard.putBoolean("Intake/RollerConnected", inputs.rollerConnected);
+        SmartDashboard.putString("Intake/RollerConfigurationStatus", inputs.rollerConfigurationStatus);
+        SmartDashboard.putString("Intake/RollerControlStatus", inputs.rollerControlStatus);
+        SmartDashboard.putNumber("Intake/LeftRollerRPM", inputs.rollerVelocityRPS * 60.0);
+        SmartDashboard.putNumber("Intake/RightRollerRPM", inputs.rightRollerVelocityRPS * 60.0);
         SmartDashboard.putBoolean("Intake/Ready", isReady());
         SmartDashboard.putBoolean("Intake/DeployConnected", inputs.deployConnected);
         SmartDashboard.putString("Intake/DeployConfigurationStatus", inputs.deployConfigurationStatus);
@@ -86,7 +99,7 @@ public class Intake extends SubsystemBase {
             : !inputs.deployHomed ? "Startup zero failed or controller reset: retract and restart code"
             : "None";
         String consoleState = blockedReason.equals("None")
-            ? "EXTEND / HOLD 80%"
+            ? "EXTEND / HOLD 100%"
             : "STOP: " + blockedReason;
         double now = Timer.getFPGATimestamp();
         // Print transitions immediately, plus one heartbeat/second while enabled.

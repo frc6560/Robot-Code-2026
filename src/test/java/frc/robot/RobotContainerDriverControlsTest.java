@@ -105,11 +105,11 @@ class RobotContainerDriverControlsTest {
         setDriver2Controls(false, false);
         assertTargets(shooter, indexer, 0.0, 0.0, 0.0);
         setDriver2Button(4, true);
-        assertEquals(false, intake.isActive());
+        assertEquals(true, intake.isActive());
         setDriver2Button(4, false);
         assertEquals(false, intake.isShootingOscillationActive());
         setDriver2Button(6, true);
-        assertEquals(false, intake.isActive());
+        assertEquals(true, intake.isActive());
         setDriver2Button(6, false);
         setDriver2Controls(false, true);
         assertTargets(shooter, indexer, 0.0, 1000.0, 1500.0);

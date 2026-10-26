@@ -27,6 +27,8 @@ class HardwareConfigurationTest {
         add(Constants.IndexerConstants.CAN_BUS, "talonfx", Constants.IndexerConstants.TUNNEL_MOTOR_ID);
         if (Constants.HardwareConstants.RACK_INTAKE_INSTALLED) {
             add(Constants.IntakeConstants.CAN_BUS, "talonfx", Constants.IntakeConstants.DEPLOY_MOTOR_ID);
+            add(Constants.IntakeConstants.CAN_BUS, "talonfx", Constants.IntakeConstants.LEFT_ROLLER_MOTOR_ID);
+            add(Constants.IntakeConstants.CAN_BUS, "talonfx", Constants.IntakeConstants.RIGHT_ROLLER_MOTOR_ID);
         }
         if (Constants.HardwareConstants.LEGACY_TURRET_INSTALLED) {
             add("rio", "talonfx", Constants.TurretConstants.MOTOR_ID);
@@ -57,6 +59,14 @@ class HardwareConfigurationTest {
     }
 
     @Test
+    void rollersUseConfirmedSeparateCanAddressesAndOppositeDirections() {
+        assertEquals(17, Constants.IntakeConstants.LEFT_ROLLER_MOTOR_ID);
+        assertEquals(18, Constants.IntakeConstants.RIGHT_ROLLER_MOTOR_ID);
+        assertTrue(Constants.IntakeConstants.LEFT_ROLLER_MOTOR_INVERTED
+            != Constants.IntakeConstants.RIGHT_ROLLER_MOTOR_INVERTED);
+    }
+
+    @Test
     void rackGeometryMatchesConfirmedGearTrainAndPitchDiameter() {
         assertEquals(2.1875, Constants.IntakeConstants.DEPLOY_GEAR_RATIO, 1e-9);
         assertEquals(1.0, Constants.IntakeConstants.PINION_DIAMETER_INCHES, 1e-9);
@@ -66,7 +76,7 @@ class HardwareConfigurationTest {
     }
 
     @Test
-    void rackEnableTargetMatchesEightyPercentOfMeasuredTravel() {
+    void rackEnableTargetMatchesFullMeasuredTravel() {
         assertEquals(26, Constants.IntakeConstants.DEPLOY_MOTOR_ID,
             "Extension motor's confirmed CAN ID");
         assertEquals("Canivore", Constants.IntakeConstants.CAN_BUS,
@@ -78,10 +88,10 @@ class HardwareConfigurationTest {
         assertTrue(Constants.IntakeConstants.SHOOT_OSCILLATION_FORWARD_POSITION_ROTATIONS
             <= Constants.IntakeConstants.EXTENDED_POSITION_ROTATIONS);
         assertEquals(28.5 / 2.54, Constants.IntakeConstants.MAX_EXTENSION_INCHES, 1e-9);
-        assertEquals(22.8 / 2.54 / Math.PI * 2.1875,
+        assertEquals(28.5 / 2.54 / Math.PI * 2.1875,
             Constants.IntakeConstants.ENABLE_POSITION_ROTATIONS, 1e-9);
-        assertTrue(Constants.IntakeConstants.ENABLE_POSITION_ROTATIONS
-            < Constants.IntakeConstants.EXTENDED_POSITION_ROTATIONS);
+        assertEquals(Constants.IntakeConstants.EXTENDED_POSITION_ROTATIONS,
+            Constants.IntakeConstants.ENABLE_POSITION_ROTATIONS, 1e-9);
         assertEquals(1000.0, Constants.IntakeConstants.ROLLER_RPM);
     }
 }

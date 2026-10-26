@@ -565,14 +565,16 @@ public final class Constants {
   public static final class IntakeConstants {
     private IntakeConstants() {}
 
-    // CAN IDs. The rack is a Kraken X44 and the roller is a Kraken X60.
+    // CAN IDs. The rack is a Kraken X44; the separate rollers are Kraken X60s.
     public static final int DEPLOY_MOTOR_ID = 26;
-    // Placeholder only: conflicts with the installed flat indexer. Do not instantiate it.
-    public static final int ROLLER_MOTOR_ID = 25;
+    public static final int LEFT_ROLLER_MOTOR_ID = 17;
+    public static final int RIGHT_ROLLER_MOTOR_ID = 18;
     public static final String CAN_BUS = "Canivore";
 
     public static final boolean DEPLOY_MOTOR_INVERTED = false;
-    public static final boolean ROLLER_MOTOR_INVERTED = false;
+    // Viewed from each motor's shaft end: left CCW, right CW for positive RPM.
+    public static final boolean LEFT_ROLLER_MOTOR_INVERTED = false;
+    public static final boolean RIGHT_ROLLER_MOTOR_INVERTED = true;
 
     // Current Limits
     public static final double DEPLOY_SUPPLY_CURRENT_LIMIT = 30.0;
@@ -580,7 +582,7 @@ public final class Constants {
     public static final double ROLLER_SUPPLY_CURRENT_LIMIT = 40.0;
     public static final double ROLLER_STATOR_CURRENT_LIMIT = 60.0;
 
-    // Roller speed. One X60 is used; a future second roller motor can follow this one in IO.
+    // Mechanism RPM for both separate rollers; inversion supplies opposite directions.
     public static final double ROLLER_RPM = 1000.0;
     public static final double ROLLER_GEARING = 1.5;
 
@@ -593,7 +595,7 @@ public final class Constants {
     public static final double INCHES_PER_PINION_ROTATION = Math.PI * PINION_DIAMETER_INCHES;
     // Same reference measures 4 cm retracted and 32.5 cm extended: 28.5 cm travel.
     public static final double MAX_EXTENSION_INCHES = (32.5 - 4.0) / 2.54;
-    public static final double ENABLE_EXTENSION_FRACTION = 0.80;
+    public static final double ENABLE_EXTENSION_FRACTION = 1.0;
 
     // Rack positions are X44 motor rotations.
     public static final double RETRACTED_POSITION_ROTATIONS = 0.0;
