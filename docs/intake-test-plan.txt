@@ -1,11 +1,11 @@
 INTAKE AUTOMATIC ENABLE CHECK
 
 BEHAVIOR
-While enabled (autonomous, teleop or Test), the rack moves to 60% travel and holds.
+While enabled (autonomous, teleop or Test), the rack moves to 80% travel and holds.
 There is no timed retraction or oscillation. Existing intake/shot buttons do not
 override this automatic behavior. Disable, pit coast mode, missing rack feedback,
 configuration failure or loss of the zero reference stops motor output.
-Re-enabling resumes the same absolute motor-position target, not another 60% move.
+Re-enabling resumes the same absolute motor-position target, not another 80% move.
 Other subsystem controls are unchanged.
 
 ROLLER PLACEHOLDER -- OUTPUT DISABLED
@@ -29,7 +29,7 @@ Rack X44: Canivore CAN ID 26. Inversion remains false; direction is unverified.
 Reduction: (28/16)*(30/20)*(15/18) = 2.1875 motor rotations per pinion rotation.
 Pinion pitch diameter: 1 inch. Motor travel: pi/2.1875 inches per rotation.
 Same-reference measurements: 4 cm retracted, 32.5 cm extended.
-Full stroke: 28.5 cm. Enabled extension: 60% = 17.1 cm, about 4.69 motor rotations.
+Full stroke: 28.5 cm. Enabled extension: 80% = 22.8 cm, about 6.25 motor rotations.
 Full-stroke encoder soft limits remain enabled; requests are clamped to that range.
 Motion Magic cruise 5.5 motor rotations/s; acceleration 50 rotations/s^2.
 Position kP 0.5; velocity kV 0.12. Brake neutral mode. Supply/stator limits 30/40 A.
@@ -38,7 +38,7 @@ These inherited gains and motor direction require physical verification.
 TEST
 1. Fully retract, start code, keep the rack path clear.
 2. Check Intake/DeployConnected, Intake/Ready and configuration/zero status.
-3. Enable: verify extension toward 17.1 cm and holding there beyond 3 seconds.
+3. Enable: verify extension toward 22.8 cm and holding there beyond 3 seconds.
 4. Disable at any time: output stops (no commanded retraction).
 5. Re-enable: verify the same position, without accumulating extra travel.
 6. Verify the roller does NOT spin while its conflicting placeholder is in use.

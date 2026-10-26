@@ -55,7 +55,7 @@ class IntakeTest {
         intake.periodic();
     }
 
-    @Test void extendsToSixtyPercentAndHoldsWithoutTimedRetraction() {
+    @Test void extendsToEightyPercentAndHoldsWithoutTimedRetraction() {
         teleop(true);
         assertEquals(IntakeConstants.ENABLE_POSITION_ROTATIONS, io.target);
         assertFalse(io.stopped);
@@ -70,7 +70,7 @@ class IntakeTest {
         assertTrue(SmartDashboard.getString("Intake/RollerBlockedReason", "").contains("conflicts"));
     }
 
-    @Test void delayedMotorReadinessStillExtendsToSixtyPercent() {
+    @Test void delayedMotorReadinessStillExtendsToEightyPercent() {
         io.ready = false;
         teleop(true);
         SimHooks.stepTiming(5.0);
@@ -117,7 +117,7 @@ class IntakeTest {
         assertEquals(IntakeConstants.ENABLE_POSITION_ROTATIONS, io.target);
     }
 
-    @Test void disabledStopsAndAllEnabledModesHoldSixtyPercent() {
+    @Test void disabledStopsAndAllEnabledModesHoldEightyPercent() {
         intake.periodic();
         assertTrue(io.stopped);
         DriverStationSim.setEnabled(true);

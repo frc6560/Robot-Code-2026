@@ -7,7 +7,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.IntakeConstants;
 
-/** Hold 60% rack extension while enabled; roller output awaits a unique CAN address. */
+/** Hold 80% rack extension while enabled; roller output awaits a unique CAN address. */
 public class Intake extends SubsystemBase {
     private final IntakeIO io;
     private final IntakeIO.IntakeIOInputs inputs = new IntakeIO.IntakeIOInputs();
@@ -86,7 +86,7 @@ public class Intake extends SubsystemBase {
             : !inputs.deployHomed ? "Startup zero failed or controller reset: retract and restart code"
             : "None";
         String consoleState = blockedReason.equals("None")
-            ? "EXTEND / HOLD 60%"
+            ? "EXTEND / HOLD 80%"
             : "STOP: " + blockedReason;
         double now = Timer.getFPGATimestamp();
         // Print transitions immediately, plus one heartbeat/second while enabled.

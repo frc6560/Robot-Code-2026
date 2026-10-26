@@ -593,7 +593,7 @@ public final class Constants {
     public static final double INCHES_PER_PINION_ROTATION = Math.PI * PINION_DIAMETER_INCHES;
     // Same reference measures 4 cm retracted and 32.5 cm extended: 28.5 cm travel.
     public static final double MAX_EXTENSION_INCHES = (32.5 - 4.0) / 2.54;
-    public static final double ENABLE_EXTENSION_FRACTION = 0.60;
+    public static final double ENABLE_EXTENSION_FRACTION = 0.80;
 
     // Rack positions are X44 motor rotations.
     public static final double RETRACTED_POSITION_ROTATIONS = 0.0;
