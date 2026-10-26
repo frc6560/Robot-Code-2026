@@ -76,7 +76,7 @@ class HardwareConfigurationTest {
     }
 
     @Test
-    void rackEnableTargetMatchesFullMeasuredTravel() {
+    void rackEnableTargetAndLimitMatchRequestedQuickTestRotations() {
         assertEquals(26, Constants.IntakeConstants.DEPLOY_MOTOR_ID,
             "Extension motor's confirmed CAN ID");
         assertEquals("Canivore", Constants.IntakeConstants.CAN_BUS,
@@ -88,10 +88,9 @@ class HardwareConfigurationTest {
         assertTrue(Constants.IntakeConstants.SHOOT_OSCILLATION_FORWARD_POSITION_ROTATIONS
             <= Constants.IntakeConstants.EXTENDED_POSITION_ROTATIONS);
         assertEquals(28.5 / 2.54, Constants.IntakeConstants.MAX_EXTENSION_INCHES, 1e-9);
-        assertEquals(28.5 / 2.54 / Math.PI * 2.1875,
-            Constants.IntakeConstants.ENABLE_POSITION_ROTATIONS, 1e-9);
+        assertEquals(9.5, Constants.IntakeConstants.ENABLE_POSITION_ROTATIONS, 1e-9);
         assertEquals(Constants.IntakeConstants.EXTENDED_POSITION_ROTATIONS,
             Constants.IntakeConstants.ENABLE_POSITION_ROTATIONS, 1e-9);
-        assertEquals(1000.0, Constants.IntakeConstants.ROLLER_RPM);
+        assertEquals(2500.0, Constants.IntakeConstants.ROLLER_RPM);
     }
 }

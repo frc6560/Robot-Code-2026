@@ -27,11 +27,11 @@ class IntakeRollerConfigurationTest {
     @Test void simulatedRollersRespondToEnableSpeedAndStopCommand() {
         var io = new IntakeIOSim();
         var inputs = new IntakeIO.IntakeIOInputs();
-        io.setRollerRPM(1000.0);
+        io.setRollerRPM(2500.0);
         for (int i = 0; i < 150; i++) io.updateInputs(inputs);
         assertTrue(inputs.rollerConnected && inputs.rollerConfigured);
-        assertEquals(1000.0, inputs.rollerVelocityRPS * 60.0, 150.0);
-        assertEquals(1000.0, inputs.rightRollerVelocityRPS * 60.0, 150.0);
+        assertEquals(2500.0, inputs.rollerVelocityRPS * 60.0, 150.0);
+        assertEquals(2500.0, inputs.rightRollerVelocityRPS * 60.0, 150.0);
         io.stop();
         io.updateInputs(inputs);
         assertEquals(0.0, inputs.rollerAppliedVolts);

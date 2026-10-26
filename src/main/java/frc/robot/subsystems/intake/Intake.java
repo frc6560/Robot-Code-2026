@@ -7,7 +7,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.IntakeConstants;
 
-/** Hold full rack extension and run the two intake rollers while enabled. */
+/** Hold the configured rack position and run both intake rollers while enabled. */
 public class Intake extends SubsystemBase {
     private final IntakeIO io;
     private final IntakeIO.IntakeIOInputs inputs = new IntakeIO.IntakeIOInputs();
@@ -99,7 +99,7 @@ public class Intake extends SubsystemBase {
             : !inputs.deployHomed ? "Startup zero failed or controller reset: retract and restart code"
             : "None";
         String consoleState = blockedReason.equals("None")
-            ? "EXTEND / HOLD 100%"
+            ? "EXTEND / HOLD"
             : "STOP: " + blockedReason;
         double now = Timer.getFPGATimestamp();
         // Print transitions immediately, plus one heartbeat/second while enabled.

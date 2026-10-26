@@ -67,9 +67,9 @@ class IntakeTest {
         intake.periodic();
         assertEquals(IntakeConstants.ENABLE_POSITION_ROTATIONS, io.target);
         assertEquals(Intake.State.EXTENDED_SPINNING, intake.getState());
-        assertEquals(1000.0, io.roller);
-        assertEquals(1000.0, SmartDashboard.getNumber("Intake/RollerRequestedRPM", -1));
-        assertEquals(1000.0, SmartDashboard.getNumber("Intake/RollerCommandedRPM", -1));
+        assertEquals(2500.0, io.roller);
+        assertEquals(2500.0, SmartDashboard.getNumber("Intake/RollerRequestedRPM", -1));
+        assertEquals(2500.0, SmartDashboard.getNumber("Intake/RollerCommandedRPM", -1));
         assertEquals("None", SmartDashboard.getString("Intake/RollerBlockedReason", ""));
     }
 
@@ -146,7 +146,7 @@ class IntakeTest {
         intake.startShootingOscillation();
         intake.periodic();
         assertEquals(IntakeConstants.ENABLE_POSITION_ROTATIONS, io.target);
-        assertEquals(1000.0, io.roller);
+        assertEquals(2500.0, io.roller);
         assertTrue(intake.isActive());
         assertFalse(intake.isShootingOscillationActive());
         SimHooks.stepTiming(20.0);
@@ -169,12 +169,12 @@ class IntakeTest {
         intake.setPitCoastMode(false);
         intake.periodic();
         assertFalse(io.stopped);
-        assertEquals(1000.0, io.roller);
+        assertEquals(2500.0, io.roller);
     }
 
     @Test void rollersStopOnConnectionOrConfigurationFailureWithoutStoppingReadyRack() {
         teleop(true);
-        assertEquals(1000.0, io.roller);
+        assertEquals(2500.0, io.roller);
         io.rollersConnected = false;
         intake.periodic();
         assertEquals(0.0, io.roller);
@@ -188,14 +188,14 @@ class IntakeTest {
         assertTrue(SmartDashboard.getString("Intake/RollerBlockedReason", "").contains("configuration"));
         io.rollersConfigured = true;
         intake.periodic();
-        assertEquals(1000.0, io.roller);
+        assertEquals(2500.0, io.roller);
     }
 
     @Test void rollersRunIndependentlyOfRackHomingAndStopWhenDisabled() {
         io.homed = false;
         teleop(true);
         assertTrue(io.stopped);
-        assertEquals(1000.0, io.roller);
+        assertEquals(2500.0, io.roller);
         teleop(false);
         assertEquals(0.0, io.roller);
         assertFalse(intake.isActive());

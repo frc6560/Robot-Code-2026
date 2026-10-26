@@ -1,8 +1,8 @@
 INTAKE AUTOMATIC ENABLE CHECK
 
 BEHAVIOR
-While enabled (autonomous, teleop or Test), the rack moves to 100% travel and holds,
-and both independent intake rollers run at 1000 mechanism RPM in opposite directions.
+While enabled (autonomous, teleop or Test), the rack moves to 9.5 motor rotations and holds,
+and both independent intake rollers run at 2500 mechanism RPM in opposite directions.
 There is no timed retraction or oscillation. Existing intake/shot buttons do not
 override this automatic behavior. Disable, pit coast mode, missing rack feedback,
 configuration failure or loss of the zero reference stops motor output.
@@ -15,7 +15,7 @@ Right roller: Kraken X60 Canivore ID 18, positive clockwise.
 Directions are viewed from each motor's shaft end; verify they pull balls inward.
 Both use separate VelocityVoltage requests, not a follower. The retained roller
 gearing is 1.5 motor rotations per roller rotation; confirm this on the hardware.
-SensorToMechanismRatio handles that gearing, so the command is 1000/60 roller RPS.
+SensorToMechanismRatio handles that gearing, so the command is 2500/60 roller RPS.
 Both roller configurations and feedback connections must be good to run either.
 Rack homing/readiness does not gate the separate rollers. Disabled or pit coast
 stops all intake outputs. CAN/configuration failure stops the roller pair.
@@ -37,8 +37,10 @@ Rack X44: Canivore CAN ID 26. Inversion remains false; direction is unverified.
 Reduction: (28/16)*(30/20)*(15/18) = 2.1875 motor rotations per pinion rotation.
 Pinion pitch diameter: 1 inch. Motor travel: pi/2.1875 inches per rotation.
 Same-reference measurements: 4 cm retracted, 32.5 cm extended.
-Full stroke: 28.5 cm. Enabled extension: 100% = 28.5 cm, about 7.81 motor rotations.
-This is the measured end of travel: verify zero and geometry before testing.
+Measured full stroke: 28.5 cm, about 7.81 motor rotations from current geometry.
+Operator-requested quick-test target AND forward soft limit: 9.5 motor rotations.
+That calculates to about 34.7 cm, beyond the measured stroke; verify clearance.
+The measured travel is retained for reference but does not set this overridden limit.
 Do not drive into the physical stop or keep the rack powered if it binds/screeches.
 Full-stroke encoder soft limits remain enabled; requests are clamped to that range.
 Motion Magic cruise 5.5 motor rotations/s; acceleration 50 rotations/s^2.
@@ -48,10 +50,10 @@ These inherited gains and motor direction require physical verification.
 TEST
 1. Fully retract, start code, keep the rack path clear.
 2. Check Intake/DeployConnected, Intake/Ready and configuration/zero status.
-3. Enable: verify extension toward 28.5 cm and holding there beyond 3 seconds.
+3. Enable briefly: observe approach to 9.5 motor rotations; disable before any hard stop.
 4. Disable at any time: output stops (no commanded retraction).
 5. Re-enable: verify the same position, without accumulating extra travel.
-6. Verify both rollers run at 1000 RPM in opposite directions and stop on disable.
+6. Verify both rollers run at 2500 RPM in opposite directions and stop on disable.
 7. If direction is wrong, motion binds or the rack contacts a stop, disable.
 
 DIAGNOSTICS

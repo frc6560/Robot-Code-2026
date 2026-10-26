@@ -583,7 +583,7 @@ public final class Constants {
     public static final double ROLLER_STATOR_CURRENT_LIMIT = 60.0;
 
     // Mechanism RPM for both separate rollers; inversion supplies opposite directions.
-    public static final double ROLLER_RPM = 1000.0;
+    public static final double ROLLER_RPM = 2500.0;
     public static final double ROLLER_GEARING = 1.5;
 
     public static final double ROLLER_kP = 0.5;
@@ -599,8 +599,9 @@ public final class Constants {
 
     // Rack positions are X44 motor rotations.
     public static final double RETRACTED_POSITION_ROTATIONS = 0.0;
-    public static final double EXTENDED_POSITION_ROTATIONS =
-        MAX_EXTENSION_INCHES / INCHES_PER_PINION_ROTATION * DEPLOY_GEAR_RATIO;
+    // Operator-requested quick-test override for both target and forward soft limit.
+    // 9.5 motor rotations exceeds the 7.81 rotations calculated from measured travel.
+    public static final double EXTENDED_POSITION_ROTATIONS = 9.5;
     public static final double ENABLE_POSITION_ROTATIONS =
         EXTENDED_POSITION_ROTATIONS * ENABLE_EXTENSION_FRACTION;
     public static final double DEPLOY_POSITION_TOLERANCE_ROTATIONS = 0.25;
