@@ -567,12 +567,12 @@ public final class Constants {
 
     // CAN IDs. The rack is a Kraken X44 and the roller is a Kraken X60.
     public static final int DEPLOY_MOTOR_ID = 26;
+    // Placeholder only: conflicts with the installed flat indexer. Do not instantiate it.
     public static final int ROLLER_MOTOR_ID = 25;
     public static final String CAN_BUS = "Canivore";
 
     public static final boolean DEPLOY_MOTOR_INVERTED = false;
     public static final boolean ROLLER_MOTOR_INVERTED = false;
-    public static final double DEPLOY_TEST_EXTEND_SECONDS = 3.0;
 
     // Current Limits
     public static final double DEPLOY_SUPPLY_CURRENT_LIMIT = 30.0;
@@ -581,22 +581,26 @@ public final class Constants {
     public static final double ROLLER_STATOR_CURRENT_LIMIT = 60.0;
 
     // Roller speed. One X60 is used; a future second roller motor can follow this one in IO.
-    public static final double ROLLER_RPM = 2100.0;
+    public static final double ROLLER_RPM = 1000.0;
     public static final double ROLLER_GEARING = 1.5;
 
     public static final double ROLLER_kP = 0.5;
     public static final double ROLLER_kV = 0.12;
 
-    // Rack geometry inherited from the original intake design.
-    public static final double DEPLOY_GEAR_RATIO = 64.0 / 14.0;
-    public static final double PINION_DIAMETER_INCHES = 1.751;
+    // Motor 16T -> 28T, same-shaft 20T -> 30T, same-shaft 18T -> 15T pulley.
+    public static final double DEPLOY_GEAR_RATIO = (28.0 / 16.0) * (30.0 / 20.0) * (15.0 / 18.0);
+    public static final double PINION_DIAMETER_INCHES = 1.0;
     public static final double INCHES_PER_PINION_ROTATION = Math.PI * PINION_DIAMETER_INCHES;
-    public static final double MAX_EXTENSION_INCHES = 11.0;
+    // Same reference measures 4 cm retracted and 32.5 cm extended: 28.5 cm travel.
+    public static final double MAX_EXTENSION_INCHES = (32.5 - 4.0) / 2.54;
+    public static final double ENABLE_EXTENSION_FRACTION = 0.60;
 
     // Rack positions are X44 motor rotations.
     public static final double RETRACTED_POSITION_ROTATIONS = 0.0;
     public static final double EXTENDED_POSITION_ROTATIONS =
         MAX_EXTENSION_INCHES / INCHES_PER_PINION_ROTATION * DEPLOY_GEAR_RATIO;
+    public static final double ENABLE_POSITION_ROTATIONS =
+        EXTENDED_POSITION_ROTATIONS * ENABLE_EXTENSION_FRACTION;
     public static final double DEPLOY_POSITION_TOLERANCE_ROTATIONS = 0.25;
 
     // Motion Magic values are motor rotations/sec and motor rotations/sec^2.

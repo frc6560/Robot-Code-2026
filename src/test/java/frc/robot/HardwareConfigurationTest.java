@@ -57,7 +57,16 @@ class HardwareConfigurationTest {
     }
 
     @Test
-    void rackTestTargetAndTimingFitConfiguredTravel() {
+    void rackGeometryMatchesConfirmedGearTrainAndPitchDiameter() {
+        assertEquals(2.1875, Constants.IntakeConstants.DEPLOY_GEAR_RATIO, 1e-9);
+        assertEquals(1.0, Constants.IntakeConstants.PINION_DIAMETER_INCHES, 1e-9);
+        assertEquals(Math.PI / 2.1875,
+            Constants.IntakeConstants.INCHES_PER_PINION_ROTATION
+                / Constants.IntakeConstants.DEPLOY_GEAR_RATIO, 1e-9);
+    }
+
+    @Test
+    void rackEnableTargetMatchesSixtyPercentOfMeasuredTravel() {
         assertEquals(26, Constants.IntakeConstants.DEPLOY_MOTOR_ID,
             "Extension motor's confirmed CAN ID");
         assertEquals("Canivore", Constants.IntakeConstants.CAN_BUS,
@@ -68,8 +77,11 @@ class HardwareConfigurationTest {
             < Constants.IntakeConstants.SHOOT_OSCILLATION_FORWARD_POSITION_ROTATIONS);
         assertTrue(Constants.IntakeConstants.SHOOT_OSCILLATION_FORWARD_POSITION_ROTATIONS
             <= Constants.IntakeConstants.EXTENDED_POSITION_ROTATIONS);
-        assertTrue(Constants.IntakeConstants.DEPLOY_TEST_EXTEND_SECONDS
-            > Constants.IntakeConstants.EXTENDED_POSITION_ROTATIONS
-                / Constants.IntakeConstants.DEPLOY_CRUISE_VELOCITY_RPS);
+        assertEquals(28.5 / 2.54, Constants.IntakeConstants.MAX_EXTENSION_INCHES, 1e-9);
+        assertEquals(17.1 / 2.54 / Math.PI * 2.1875,
+            Constants.IntakeConstants.ENABLE_POSITION_ROTATIONS, 1e-9);
+        assertTrue(Constants.IntakeConstants.ENABLE_POSITION_ROTATIONS
+            < Constants.IntakeConstants.EXTENDED_POSITION_ROTATIONS);
+        assertEquals(1000.0, Constants.IntakeConstants.ROLLER_RPM);
     }
 }

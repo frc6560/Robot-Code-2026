@@ -55,41 +55,35 @@ class IntakeTest {
         intake.periodic();
     }
 
-    @Test void extendsImmediatelyThenRetractsOnceAndHolds() {
+    @Test void extendsToSixtyPercentAndHoldsWithoutTimedRetraction() {
         teleop(true);
-        assertEquals(IntakeConstants.EXTENDED_POSITION_ROTATIONS, io.target);
+        assertEquals(IntakeConstants.ENABLE_POSITION_ROTATIONS, io.target);
         assertFalse(io.stopped);
         assertTrue(intake.isReady());
-        SimHooks.stepTiming(IntakeConstants.DEPLOY_TEST_EXTEND_SECONDS - 0.01);
-        intake.periodic();
-        assertEquals(IntakeConstants.EXTENDED_POSITION_ROTATIONS, io.target);
-        SimHooks.stepTiming(0.02);
-        intake.periodic();
-        assertEquals(IntakeConstants.RETRACTED_POSITION_ROTATIONS, io.target);
         SimHooks.stepTiming(20.0);
         intake.periodic();
-        assertEquals(IntakeConstants.RETRACTED_POSITION_ROTATIONS, io.target);
+        assertEquals(IntakeConstants.ENABLE_POSITION_ROTATIONS, io.target);
+        assertEquals(Intake.State.EXTENDED_STOPPED, intake.getState());
         assertEquals(0.0, io.roller);
+        assertEquals(1000.0, SmartDashboard.getNumber("Intake/RollerRequestedRPM", -1));
+        assertEquals(0.0, SmartDashboard.getNumber("Intake/RollerCommandedRPM", -1));
+        assertTrue(SmartDashboard.getString("Intake/RollerBlockedReason", "").contains("conflicts"));
     }
 
-    @Test void delayedMotorReadinessDoesNotConsumeExtensionWindow() {
+    @Test void delayedMotorReadinessStillExtendsToSixtyPercent() {
         io.ready = false;
         teleop(true);
         SimHooks.stepTiming(5.0);
         intake.periodic();
         assertTrue(io.stopped);
-        assertFalse(SmartDashboard.getBoolean("Intake/TestStarted", true));
         assertTrue(SmartDashboard.getString("Intake/BlockedReason", "").contains("26"));
         io.ready = true;
         intake.periodic();
         assertFalse(io.stopped);
-        assertEquals(IntakeConstants.EXTENDED_POSITION_ROTATIONS, io.target);
-        SimHooks.stepTiming(IntakeConstants.DEPLOY_TEST_EXTEND_SECONDS - 0.01);
+        assertEquals(IntakeConstants.ENABLE_POSITION_ROTATIONS, io.target);
+        SimHooks.stepTiming(20.0);
         intake.periodic();
-        assertEquals(IntakeConstants.EXTENDED_POSITION_ROTATIONS, io.target);
-        SimHooks.stepTiming(0.02);
-        intake.periodic();
-        assertEquals(IntakeConstants.RETRACTED_POSITION_ROTATIONS, io.target);
+        assertEquals(IntakeConstants.ENABLE_POSITION_ROTATIONS, io.target);
     }
 
     @Test void configurationAndZeroFailuresHaveVisibleReasonsAndBlockMotion() {
@@ -108,35 +102,39 @@ class IntakeTest {
         assertEquals("None", SmartDashboard.getString("Intake/BlockedReason", ""));
     }
 
-    @Test void disableStopsImmediatelyAndNextTeleopEnableRepeatsTest() {
+    @Test void disableStopsImmediatelyAndReenableResumesSameTarget() {
         teleop(true);
         SimHooks.stepTiming(0.5);
         teleop(false);
         assertTrue(io.stopped);
+        assertEquals(0.0, io.roller);
+        assertEquals(0.0, SmartDashboard.getNumber("Intake/RollerRequestedRPM", -1));
         teleop(true);
         assertFalse(io.stopped);
-        assertEquals(IntakeConstants.EXTENDED_POSITION_ROTATIONS, io.target);
-        SimHooks.stepTiming(IntakeConstants.DEPLOY_TEST_EXTEND_SECONDS + 0.01);
+        assertEquals(IntakeConstants.ENABLE_POSITION_ROTATIONS, io.target);
+        SimHooks.stepTiming(20.0);
         intake.periodic();
-        assertEquals(IntakeConstants.RETRACTED_POSITION_ROTATIONS, io.target);
+        assertEquals(IntakeConstants.ENABLE_POSITION_ROTATIONS, io.target);
     }
 
-    @Test void disabledAutonomousAndTestModesNeverDriveRack() {
+    @Test void disabledStopsAndAllEnabledModesHoldSixtyPercent() {
         intake.periodic();
         assertTrue(io.stopped);
         DriverStationSim.setEnabled(true);
         DriverStationSim.setAutonomous(true);
         DriverStationSim.notifyNewData();
         intake.periodic();
-        assertTrue(io.stopped);
+        assertFalse(io.stopped);
+        assertEquals(IntakeConstants.ENABLE_POSITION_ROTATIONS, io.target);
         DriverStationSim.setAutonomous(false);
         DriverStationSim.setTest(true);
         DriverStationSim.notifyNewData();
         intake.periodic();
-        assertTrue(io.stopped);
+        assertFalse(io.stopped);
+        assertEquals(IntakeConstants.ENABLE_POSITION_ROTATIONS, io.target);
     }
 
-    @Test void legacyIntakeAndShotCallsCannotOverrideHardwareTest() {
+    @Test void legacyIntakeAndShotCallsCannotOverrideEnableTarget() {
         teleop(true);
         intake.activate();
         intake.activateOuttake();
@@ -144,14 +142,14 @@ class IntakeTest {
         intake.setExtendedStopped();
         intake.startShootingOscillation();
         intake.periodic();
-        assertEquals(IntakeConstants.EXTENDED_POSITION_ROTATIONS, io.target);
+        assertEquals(IntakeConstants.ENABLE_POSITION_ROTATIONS, io.target);
         assertEquals(0.0, io.roller);
         assertFalse(intake.isActive());
         assertFalse(intake.isShootingOscillationActive());
-        SimHooks.stepTiming(IntakeConstants.DEPLOY_TEST_EXTEND_SECONDS + 0.01);
+        SimHooks.stepTiming(20.0);
         intake.activate();
         intake.periodic();
-        assertEquals(IntakeConstants.RETRACTED_POSITION_ROTATIONS, io.target);
+        assertEquals(IntakeConstants.ENABLE_POSITION_ROTATIONS, io.target);
     }
 
     @Test void feedbackFaultAndPitCoastStopOutput() {

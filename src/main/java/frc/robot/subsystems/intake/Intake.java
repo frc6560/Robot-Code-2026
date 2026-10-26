@@ -7,13 +7,11 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.IntakeConstants;
 
-/** Rack-only hardware test: extend once on teleop enable, then retract and hold. */
+/** Hold 60% rack extension while enabled; roller output awaits a unique CAN address. */
 public class Intake extends SubsystemBase {
     private final IntakeIO io;
     private final IntakeIO.IntakeIOInputs inputs = new IntakeIO.IntakeIOInputs();
-    private boolean testStarted;
     private boolean pitCoastMode;
-    private double enableTime;
     private double target = IntakeConstants.RETRACTED_POSITION_ROTATIONS;
     private String lastConsoleState = "";
     private double nextConsolePrint;
@@ -24,7 +22,7 @@ public class Intake extends SubsystemBase {
 
     public Intake(IntakeIO io) { this.io = io; }
 
-    // Existing auto/shot callers cannot override this rack-only hardware test.
+    // Existing buttons/auto/shot callers cannot override the automatic enable behavior.
     public void activate() {}
     public void deactivate() {}
     public void activateOuttake() {}
@@ -37,7 +35,7 @@ public class Intake extends SubsystemBase {
     public boolean isShootingOscillationActive() { return false; }
 
     public State getState() {
-        return target == IntakeConstants.EXTENDED_POSITION_ROTATIONS
+        return target > IntakeConstants.RETRACTED_POSITION_ROTATIONS
             ? State.EXTENDED_STOPPED : State.RETRACTED_STOPPED;
     }
 
@@ -60,31 +58,27 @@ public class Intake extends SubsystemBase {
     public void periodic() {
         io.updateInputs(inputs);
         Logger.processInputs("Intake", inputs);
-        boolean teleopEnabled = DriverStation.isTeleopEnabled();
-        if (!teleopEnabled) {
-            testStarted = false;
-        }
-        // Do not spend the entire outward test window waiting for CAN readiness.
-        if (teleopEnabled && !testStarted && !pitCoastMode && isReady()) {
-            enableTime = Timer.getFPGATimestamp();
-            testStarted = true;
-        }
-        // Three seconds includes outward travel, starting with the first ready command.
-        target = teleopEnabled && testStarted && Timer.getFPGATimestamp() - enableTime
-                < IntakeConstants.DEPLOY_TEST_EXTEND_SECONDS
-            ? IntakeConstants.EXTENDED_POSITION_ROTATIONS
+        boolean enabled = DriverStation.isEnabled();
+        target = enabled
+            ? IntakeConstants.ENABLE_POSITION_ROTATIONS
             : IntakeConstants.RETRACTED_POSITION_ROTATIONS;
-        if (teleopEnabled && testStarted && !pitCoastMode && isReady()) {
+        if (enabled && !pitCoastMode && isReady()) {
             io.setDeployPosition(target);
         } else {
             io.stop();
         }
+        // ID 25 is only a placeholder and belongs to the flat indexer. No roller
+        // controller is constructed, and no nonzero request may use that address.
         io.setRollerRPM(0.0);
+        SmartDashboard.putNumber("Intake/RollerRequestedRPM", enabled ? IntakeConstants.ROLLER_RPM : 0.0);
+        SmartDashboard.putNumber("Intake/RollerCommandedRPM", 0.0);
+        SmartDashboard.putString("Intake/RollerBlockedReason",
+            "Placeholder CAN ID 25 conflicts with flat indexer; roller output disabled");
         SmartDashboard.putBoolean("Intake/Ready", isReady());
         SmartDashboard.putBoolean("Intake/DeployConnected", inputs.deployConnected);
         SmartDashboard.putString("Intake/DeployConfigurationStatus", inputs.deployConfigurationStatus);
         SmartDashboard.putString("Intake/ZeroStatus", inputs.zeroStatus);
-        String blockedReason = !teleopEnabled ? "Teleop is not enabled"
+        String blockedReason = !enabled ? "Robot is disabled"
             : pitCoastMode ? "Pit coast mode is on"
             : !inputs.deployConnected ? "No rack feedback: check " + IntakeConstants.CAN_BUS
                 + " CAN ID " + IntakeConstants.DEPLOY_MOTOR_ID + ", power and wiring"
@@ -92,11 +86,11 @@ public class Intake extends SubsystemBase {
             : !inputs.deployHomed ? "Startup zero failed or controller reset: retract and restart code"
             : "None";
         String consoleState = blockedReason.equals("None")
-            ? target == IntakeConstants.EXTENDED_POSITION_ROTATIONS ? "EXTEND" : "RETRACT / HOLD"
+            ? "EXTEND / HOLD 60%"
             : "STOP: " + blockedReason;
         double now = Timer.getFPGATimestamp();
-        // Print transitions immediately, plus one heartbeat/second while teleop is enabled.
-        if (!consoleState.equals(lastConsoleState) || (teleopEnabled && now >= nextConsolePrint)) {
+        // Print transitions immediately, plus one heartbeat/second while enabled.
+        if (!consoleState.equals(lastConsoleState) || (enabled && now >= nextConsolePrint)) {
             System.out.printf(
                 "[Intake] %s | bus=%s id=%d target=%.3f rot position=%.3f rot "
                     + "volts=%.2f amps=%.2f configured=%s zero=%s lastControl=%s%n",
@@ -113,7 +107,6 @@ public class Intake extends SubsystemBase {
         SmartDashboard.putString("Intake/DeployCANBus", IntakeConstants.CAN_BUS);
         SmartDashboard.putNumber("Intake/DeployAppliedVolts", inputs.deployAppliedVolts);
         SmartDashboard.putNumber("Intake/DeployCurrentAmps", inputs.deployCurrentAmps);
-        SmartDashboard.putBoolean("Intake/TestStarted", testStarted);
         Logger.recordOutput("Intake/BlockedReason", blockedReason);
         SmartDashboard.putNumber("Intake/DeployPositionRotations", inputs.deployPositionRotations);
         SmartDashboard.putNumber("Intake/DeployTargetRotations", target);
