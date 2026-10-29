@@ -35,7 +35,7 @@ class RobotContainerDriverControlsTest {
     }
 
     @Test
-    void bumperAndTriggerIndependentlyControlFloorShooterAndTunnel() throws Exception {
+    void indexerStartsOnEnableAndManualControlsOverrideUntilReleased() throws Exception {
         DriverStationSim.setDsAttached(true);
         DriverStationSim.setEnabled(true);
         DriverStationSim.setAutonomous(false);
@@ -58,7 +58,7 @@ class RobotContainerDriverControlsTest {
         Intake intake = getField(container, "intake", Intake.class);
         Turret turret = getField(container, "turret", Turret.class);
         runCycles(150);
-        assertTargets(shooter, indexer, 0.0, 0.0, 0.0);
+        assertTargets(shooter, indexer, 0.0, 1000.0, 1500.0);
         assertEquals(0.0, shooter.getCurrentRPM(), 150.0);
         double turretGoalBeforeTrigger = turret.getGoalDegrees();
 
@@ -81,7 +81,7 @@ class RobotContainerDriverControlsTest {
         runCycles(150);
         assertEquals(3000.0, shooter.getCurrentRPM(), 200.0);
         setControls(false, false);
-        assertTargets(shooter, indexer, 0.0, 0.0, 0.0);
+        assertTargets(shooter, indexer, 0.0, 1000.0, 1500.0);
         runCycles(150);
 
         // Trigger alone feeds without changing the shooter's idle goal.
@@ -103,7 +103,7 @@ class RobotContainerDriverControlsTest {
         setDriver2Controls(true, false);
         assertTargets(shooter, indexer, 3000.0, 0.0, 0.0);
         setDriver2Controls(false, false);
-        assertTargets(shooter, indexer, 0.0, 0.0, 0.0);
+        assertTargets(shooter, indexer, 0.0, 1000.0, 1500.0);
         setDriver2Button(4, true);
         assertEquals(true, intake.isActive());
         setDriver2Button(4, false);
@@ -123,6 +123,41 @@ class RobotContainerDriverControlsTest {
         DriverStationSim.notifyNewData();
         runCycles(3);
         assertTargets(shooter, indexer, 1000.0, 0.0, 0.0);
+
+        // No held controls: the indexer restarts on enable, including autonomous.
+        DriverStationSim.setJoystickButton(0, XboxController.Button.kRightBumper.value, false);
+        DriverStationSim.setJoystickAxis(0, XboxController.Axis.kRightTrigger.value, 0.0);
+        DriverStationSim.notifyNewData();
+        runCycles(3);
+        DriverStationSim.setEnabled(true);
+        DriverStationSim.setAutonomous(true);
+        DriverStationSim.notifyNewData();
+        runCycles(3);
+        assertEquals(1000.0, indexer.getFloorTargetRPM());
+        assertEquals(1500.0, indexer.getTunnelTargetRPM());
+
+        // Pit coast stops automatic output; exiting it resumes the default.
+        DriverStationSim.setAutonomous(false);
+        DriverStationSim.notifyNewData();
+        runCycles(3);
+        DriverStationSim.setJoystickButton(0, XboxController.Button.kBack.value, true);
+        DriverStationSim.notifyNewData();
+        runCycles(3);
+        assertEquals(0.0, indexer.getFloorTargetRPM());
+        assertEquals(0.0, indexer.getTunnelTargetRPM());
+        DriverStationSim.setJoystickButton(0, XboxController.Button.kBack.value, false);
+        DriverStationSim.notifyNewData();
+        runCycles(3);
+        DriverStationSim.setJoystickButton(0, XboxController.Button.kBack.value, true);
+        DriverStationSim.notifyNewData();
+        runCycles(3);
+        assertEquals(1000.0, indexer.getFloorTargetRPM());
+        assertEquals(1500.0, indexer.getTunnelTargetRPM());
+        DriverStationSim.setEnabled(false);
+        DriverStationSim.notifyNewData();
+        runCycles(3);
+        assertEquals(0.0, indexer.getFloorTargetRPM());
+        assertEquals(0.0, indexer.getTunnelTargetRPM());
     }
 
     private static void setControls(boolean bumper, boolean trigger) {

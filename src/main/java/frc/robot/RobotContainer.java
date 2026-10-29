@@ -230,6 +230,17 @@ public class RobotContainer {
     }
 
     private void configureBindings() {
+        // Start the indexer automatically when enabled. Existing manual/auto
+        // commands can still take control; releasing them resumes this default.
+        indexer.setDefaultCommand(Commands.run(() -> {
+            if (DriverStation.isEnabled() && !pitCoastMode) {
+                indexer.setFloorRPM(Constants.IndexerConstants.FLOOR_RUNNING_RPM);
+                indexer.setTunnelRPM(Constants.IndexerConstants.TUNNEL_RUNNING_RPM);
+            } else {
+                indexer.stop();
+            }
+        }, indexer).finallyDo(interrupted -> indexer.stop()));
+
         Command driveFieldOrientedAnglularVelocity = drivebase.driveFieldOriented(
             () -> DriverStation.isTeleopEnabled()
                 ? clampSpeedsForShooting(driveAngularVelocity.get())
