@@ -550,9 +550,13 @@ public final class Constants {
 
   public static final class IndexerConstants {
     public static final int FLOOR_MOTOR_ID = 25;
+    public static final int FLOOR_SECONDARY_MOTOR_ID = 0;
+    // Viewed from each shaft end: ID 25 clockwise, ID 0 counterclockwise.
+    public static final boolean FLOOR_MOTOR_INVERTED = true;
+    public static final boolean FLOOR_SECONDARY_MOTOR_INVERTED = false;
     public static final int TUNNEL_MOTOR_ID = 16;
     public static final String CAN_BUS = "Canivore";
-    public static final double FLOOR_RUNNING_RPM = 1000.0;
+    public static final double FLOOR_RUNNING_RPM = 300.0;
     public static final double TUNNEL_RUNNING_RPM = 1500.0;
     /** Motor rotations per mechanism rotation; retained from the indexer hardware configuration. */
     public static final double FLOOR_GEAR_RATIO = 2.5;

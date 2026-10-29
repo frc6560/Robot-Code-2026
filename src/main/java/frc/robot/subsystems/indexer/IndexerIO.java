@@ -10,6 +10,10 @@ public interface IndexerIO {
         public double floorRPM = 0.0;
         public double tunnelRPM = 0.0;
         public boolean floorConnected = false;
+        public boolean floorSecondaryConnected = false;
+        public double floorSecondaryRPM = 0.0;
+        public double floorSecondaryAppliedVolts = 0.0;
+        public double floorSecondaryCurrentAmps = 0.0;
         public double floorAppliedVolts = 0.0;
         public double floorCurrentAmps = 0.0;
         public String floorConfigurationStatus = "Not configured";
@@ -18,7 +22,7 @@ public interface IndexerIO {
 
     default void updateInputs(IndexerIOInputs inputs) {}
 
-    /** Independent mechanism-side speed targets. Zero stops the respective motor. */
+    /** Mechanism RPM for both opposed floor motors. Zero stops both. */
     default void setFloorRPM(double rpm) {}
 
     default void setTunnelRPM(double rpm) {}

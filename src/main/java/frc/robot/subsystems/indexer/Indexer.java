@@ -40,6 +40,10 @@ public class Indexer extends SubsystemBase {
         SmartDashboard.putNumber("Indexer/FloorAmps", inputs.floorCurrentAmps);
         SmartDashboard.putString("Indexer/FloorConfigurationStatus", inputs.floorConfigurationStatus);
         SmartDashboard.putString("Indexer/FloorControlStatus", inputs.floorControlStatus);
+        SmartDashboard.putBoolean("Indexer/FloorSecondaryConnected", inputs.floorSecondaryConnected);
+        SmartDashboard.putNumber("Indexer/FloorSecondaryRPM", inputs.floorSecondaryRPM);
+        SmartDashboard.putNumber("Indexer/FloorSecondaryVolts", inputs.floorSecondaryAppliedVolts);
+        SmartDashboard.putNumber("Indexer/FloorSecondaryAmps", inputs.floorSecondaryCurrentAmps);
 
         rollerAngleDegrees += inputs.appliedVolts / 12.0
                 * MAX_VISUALIZER_SPEED_DEGREES_PER_SECOND

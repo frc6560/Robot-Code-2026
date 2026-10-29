@@ -58,20 +58,20 @@ class RobotContainerDriverControlsTest {
         Intake intake = getField(container, "intake", Intake.class);
         Turret turret = getField(container, "turret", Turret.class);
         runCycles(150);
-        assertTargets(shooter, indexer, 0.0, 1000.0, 1500.0);
+        assertTargets(shooter, indexer, 0.0, 300.0, 1500.0);
         assertEquals(0.0, shooter.getCurrentRPM(), 150.0);
         double turretGoalBeforeTrigger = turret.getGoalDegrees();
 
         setControls(true, false);
         runCycles(150);
-        assertTargets(shooter, indexer, 3000.0, 1000.0, 0.0);
+        assertTargets(shooter, indexer, 3000.0, 300.0, 0.0);
         assertEquals(3000.0, shooter.getCurrentRPM(), 200.0);
 
         setControls(true, true);
-        assertTargets(shooter, indexer, 3000.0, 1000.0, 1500.0);
+        assertTargets(shooter, indexer, 3000.0, 300.0, 1500.0);
         // Releasing the trigger must not cancel the bumper's shooter/floor command.
         setControls(true, false);
-        assertTargets(shooter, indexer, 3000.0, 1000.0, 0.0);
+        assertTargets(shooter, indexer, 3000.0, 300.0, 0.0);
         setControls(true, true);
         setControls(false, true);
         assertTargets(shooter, indexer, 0.0, 0.0, 1500.0);
@@ -81,7 +81,7 @@ class RobotContainerDriverControlsTest {
         runCycles(150);
         assertEquals(3000.0, shooter.getCurrentRPM(), 200.0);
         setControls(false, false);
-        assertTargets(shooter, indexer, 0.0, 1000.0, 1500.0);
+        assertTargets(shooter, indexer, 0.0, 300.0, 1500.0);
         runCycles(150);
 
         // Trigger alone feeds without changing the shooter's idle goal.
@@ -95,15 +95,15 @@ class RobotContainerDriverControlsTest {
         assertTargets(shooter, indexer, 3000.0, 0.0, 0.0);
         assertEquals(3000.0, shooter.getCurrentRPM(), 200.0);
         setDriver2Controls(true, true);
-        assertTargets(shooter, indexer, 3000.0, 1000.0, 1500.0);
+        assertTargets(shooter, indexer, 3000.0, 300.0, 1500.0);
         setDriver2Controls(false, true);
         runCycles(150);
-        assertTargets(shooter, indexer, 0.0, 1000.0, 1500.0);
+        assertTargets(shooter, indexer, 0.0, 300.0, 1500.0);
         setDriver2Controls(true, true);
         setDriver2Controls(true, false);
         assertTargets(shooter, indexer, 3000.0, 0.0, 0.0);
         setDriver2Controls(false, false);
-        assertTargets(shooter, indexer, 0.0, 1000.0, 1500.0);
+        assertTargets(shooter, indexer, 0.0, 300.0, 1500.0);
         setDriver2Button(4, true);
         assertEquals(true, intake.isActive());
         setDriver2Button(4, false);
@@ -112,9 +112,9 @@ class RobotContainerDriverControlsTest {
         assertEquals(true, intake.isActive());
         setDriver2Button(6, false);
         setDriver2Controls(false, true);
-        assertTargets(shooter, indexer, 0.0, 1000.0, 1500.0);
+        assertTargets(shooter, indexer, 0.0, 300.0, 1500.0);
         setControls(false, true);
-        assertTargets(shooter, indexer, 0.0, 1000.0, 1500.0);
+        assertTargets(shooter, indexer, 0.0, 300.0, 1500.0);
         setDriver2Controls(false, false);
         assertTargets(shooter, indexer, 0.0, 0.0, 1500.0);
 
@@ -133,7 +133,7 @@ class RobotContainerDriverControlsTest {
         DriverStationSim.setAutonomous(true);
         DriverStationSim.notifyNewData();
         runCycles(3);
-        assertEquals(1000.0, indexer.getFloorTargetRPM());
+        assertEquals(300.0, indexer.getFloorTargetRPM());
         assertEquals(1500.0, indexer.getTunnelTargetRPM());
 
         // Pit coast stops automatic output; exiting it resumes the default.
@@ -151,7 +151,7 @@ class RobotContainerDriverControlsTest {
         DriverStationSim.setJoystickButton(0, XboxController.Button.kBack.value, true);
         DriverStationSim.notifyNewData();
         runCycles(3);
-        assertEquals(1000.0, indexer.getFloorTargetRPM());
+        assertEquals(300.0, indexer.getFloorTargetRPM());
         assertEquals(1500.0, indexer.getTunnelTargetRPM());
         DriverStationSim.setEnabled(false);
         DriverStationSim.notifyNewData();

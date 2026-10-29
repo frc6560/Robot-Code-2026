@@ -24,6 +24,7 @@ class HardwareConfigurationTest {
         add(Constants.ShooterConstants.CAN_BUS, "talonfx", Constants.ShooterConstants.LEFT_FLYWHEEL_ID);
         add(Constants.ShooterConstants.CAN_BUS, "talonfx", Constants.ShooterConstants.RIGHT_FLYWHEEL_ID);
         add(Constants.IndexerConstants.CAN_BUS, "talonfx", Constants.IndexerConstants.FLOOR_MOTOR_ID);
+        add(Constants.IndexerConstants.CAN_BUS, "talonfx", Constants.IndexerConstants.FLOOR_SECONDARY_MOTOR_ID);
         add(Constants.IndexerConstants.CAN_BUS, "talonfx", Constants.IndexerConstants.TUNNEL_MOTOR_ID);
         if (Constants.HardwareConstants.RACK_INTAKE_INSTALLED) {
             add(Constants.IntakeConstants.CAN_BUS, "talonfx", Constants.IntakeConstants.DEPLOY_MOTOR_ID);

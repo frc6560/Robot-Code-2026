@@ -10,6 +10,7 @@ import frc.robot.Constants.IndexerConstants;
 /** Independent floor and tunnel velocity loops, using mechanism-side RPM like the real IO. */
 public class IndexerIOSim implements IndexerIO {
     private final DCMotorSim floor = createMotor(IndexerConstants.FLOOR_GEAR_RATIO);
+    private final DCMotorSim floorSecondary = createMotor(IndexerConstants.FLOOR_GEAR_RATIO);
     private final DCMotorSim tunnel = createMotor(IndexerConstants.TUNNEL_GEAR_RATIO);
     private double floorRPM = 0.0;
     private double tunnelRPM = 0.0;
@@ -32,10 +33,15 @@ public class IndexerIOSim implements IndexerIO {
     @Override
     public void updateInputs(IndexerIOInputs inputs) {
         inputs.floorAppliedVolts = updateMotor(floor, floorRPM, IndexerConstants.FLOOR_GEAR_RATIO);
+        inputs.floorSecondaryAppliedVolts = updateMotor(floorSecondary, floorRPM, IndexerConstants.FLOOR_GEAR_RATIO);
+        inputs.floorSecondaryRPM = floorSecondary.getAngularVelocityRPM();
+        inputs.floorSecondaryCurrentAmps = Math.abs(floorSecondary.getCurrentDrawAmps());
+        inputs.floorSecondaryConnected = true;
         inputs.appliedVolts = updateMotor(tunnel, tunnelRPM, IndexerConstants.TUNNEL_GEAR_RATIO);
         inputs.floorRPM = floor.getAngularVelocityRPM();
         inputs.tunnelRPM = tunnel.getAngularVelocityRPM();
-        inputs.currentAmps = Math.abs(floor.getCurrentDrawAmps()) + Math.abs(tunnel.getCurrentDrawAmps());
+        inputs.currentAmps = Math.abs(floor.getCurrentDrawAmps())
+            + Math.abs(floorSecondary.getCurrentDrawAmps()) + Math.abs(tunnel.getCurrentDrawAmps());
         inputs.floorCurrentAmps = Math.abs(floor.getCurrentDrawAmps());
         inputs.floorConnected = true;
         inputs.floorConfigurationStatus = "Simulation";

@@ -99,6 +99,7 @@ public class RobotContainer {
       indexer = switch (indexerMode) {
         case REAL -> new Indexer(new IndexerIOTalonFX(
             Constants.IndexerConstants.FLOOR_MOTOR_ID,
+            Constants.IndexerConstants.FLOOR_SECONDARY_MOTOR_ID,
             Constants.IndexerConstants.TUNNEL_MOTOR_ID));
         case SIM -> new Indexer(new IndexerIOSim());
         case REPLAY -> new Indexer(new IndexerIO() {});
