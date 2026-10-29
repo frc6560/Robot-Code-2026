@@ -613,8 +613,8 @@ public final class Constants {
     // Motion Magic values are motor rotations/sec and motor rotations/sec^2.
     public static final double DEPLOY_CRUISE_VELOCITY_RPS = 5.5;
     public static final double DEPLOY_ACCELERATION_RPS_SQ = 50.0;
-    public static final double DEPLOY_kP = 0.5;
-    public static final double DEPLOY_kV = 0.12;
+    public static final double DEPLOY_kP = 1.0;
+    public static final double DEPLOY_kV = 0.24;
 
     // During a shot the rack alternates between these two positions.
     public static final double SHOOT_OSCILLATION_REAR_POSITION_ROTATIONS =
