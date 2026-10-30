@@ -65,7 +65,7 @@ public class IntakeIOTalonFX implements IntakeIO {
         }
         configurationStatus = status;
         deployLimit = new StartupCurrentLimit(IntakeConstants.DEPLOY_STATOR_CURRENT_LIMIT,
-            IntakeConstants.DEPLOY_STATOR_CURRENT_LIMIT, 0.0,
+            StartupCurrentConstants.PEAK_AMPS, StartupCurrentConstants.DURATION_SECONDS,
             Timer::getFPGATimestamp,
             amps -> motor.getConfigurator().apply(deployCurrentLimits(amps),
                 StartupCurrentConstants.CONFIG_TIMEOUT_SECONDS).isOK(), () -> {

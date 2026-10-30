@@ -392,13 +392,13 @@ public final class Constants {
     public static final double FLYWHEEL_RPM_TOLERANCE = 200.0; 
 
     /** Current Limits */
-    public static final double FLYWHEEL_SUPPLY_CURRENT_LIMIT = 50.0; // Amps
+    public static final double FLYWHEEL_SUPPLY_CURRENT_LIMIT = 40.0; // Amps
 
     /** Motor Inversion Settings */
     public static final boolean LEFT_FLYWHEEL_INVERTED = true;
     public static final boolean RIGHT_FLYWHEEL_OPPOSED = true; 
 
-    public static final int FLYWHEEL_STATOR_CURRENT_LIMIT = 50;
+    public static final int FLYWHEEL_STATOR_CURRENT_LIMIT = 40;
 
     /**
      * Spin-up controller, ported from 6328's 2026 flywheel. Everything below is mechanism side
@@ -552,8 +552,10 @@ public final class Constants {
     public static final double WIRE_PROTECTION_UPPER = 270.0;
   }
 
-  /** Timeout for confirming motor current-limit configuration; no startup current boost. */
+  /** Intake rack startup allowance; indexer and shooter keep their fixed current limits. */
   public static final class StartupCurrentConstants {
+    public static final double PEAK_AMPS = 60.0;
+    public static final double DURATION_SECONDS = 1.0;
     public static final double CONFIG_TIMEOUT_SECONDS = 0.005;
   }
 

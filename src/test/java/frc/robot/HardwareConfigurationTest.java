@@ -60,6 +60,14 @@ class HardwareConfigurationTest {
     }
 
     @Test
+    void shooterKeepsFortyAmpLimitsWhileRackRetainsItsStartupAllowance() {
+        assertEquals(40.0, Constants.ShooterConstants.FLYWHEEL_SUPPLY_CURRENT_LIMIT);
+        assertEquals(40, Constants.ShooterConstants.FLYWHEEL_STATOR_CURRENT_LIMIT);
+        assertEquals(60.0, Constants.StartupCurrentConstants.PEAK_AMPS);
+        assertEquals(1.0, Constants.StartupCurrentConstants.DURATION_SECONDS);
+    }
+
+    @Test
     void rollersUseConfirmedSeparateCanAddressesAndOppositeDirections() {
         assertEquals(17, Constants.IntakeConstants.LEFT_ROLLER_MOTOR_ID);
         assertEquals(18, Constants.IntakeConstants.RIGHT_ROLLER_MOTOR_ID);

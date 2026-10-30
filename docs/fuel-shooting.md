@@ -66,17 +66,18 @@ formula shooting. No data submission or external tool is needed.
 
 ## Floor and intake current limits
 
-The floor target remains **800 RPM**. All startup current boosts have been removed.
+The floor target remains **800 RPM**. Only the intake rack has a startup boost.
 
-| Mechanism | Stator limit at all times | Supply limit |
+| Mechanism | Stator limit | Supply limit |
 |---|---|---|
 | Each floor motor | 40 A | 40 A |
 | Wall/tunnel motor | 40 A | 40 A |
-| Intake rack | 40 A | 30 A |
+| Intake rack | 60 A during first second of travel, then 40 A | 30 A |
 | Each intake roller | 40 A | 40 A |
 
-There is no one-second 60 A startup window. Normal shooter current limits remain
-50 A stator and 50 A supply per motor. Configuration confirmation/retry handling
+Both shooter motors stay at 40 A stator and 40 A supply per motor, with no startup
+boost. The intake rack retains its one-second 60 A stator allowance; it also returns
+to 40 A on arrival. Configuration confirmation/retry handling
 remains, including restoring fixed limits after a controller reset.
 
 Current limit telemetry: `Indexer/FloorStatorLimitAmps`, `Indexer/TunnelStatorLimitAmps`,
