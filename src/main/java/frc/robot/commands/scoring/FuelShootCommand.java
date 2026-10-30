@@ -9,6 +9,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants;
 import frc.robot.utility.shooting.FuelShotConfig;
+import frc.robot.utility.shooting.LaunchSpeedTuning;
 import frc.robot.subsystems.indexer.Indexer;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.utility.shooting.FuelShotModel;
@@ -28,11 +29,9 @@ public final class FuelShootCommand extends Command {
     private final BooleanSupplier pitCoast;
     private final FuelShotModel model;
     private final String calibrationStatus;
-    public static final String LAUNCH_COEFFICIENT_KEY = "Shooter/Launch Speed Coefficient";
-    /** Restore NetworkTables' saved value rather than overwriting it on every program start. */
+    public static final String LAUNCH_COEFFICIENT_KEY = LaunchSpeedTuning.REQUEST_KEY;
     public static void publishLaunchSpeedCoefficient() {
-        SmartDashboard.setDefaultNumber(LAUNCH_COEFFICIENT_KEY, 1.0);
-        SmartDashboard.getEntry(LAUNCH_COEFFICIENT_KEY).setPersistent();
+        LaunchSpeedTuning.initialize();
     }
     private double launchSpeedCoefficient = 1.0;
     private boolean calibrationMode;
@@ -68,17 +67,10 @@ public final class FuelShootCommand extends Command {
     }
 
     @Override public void execute() {
-        double requested = SmartDashboard.getNumber(LAUNCH_COEFFICIENT_KEY, launchSpeedCoefficient);
-        if (Double.isFinite(requested) && requested >= 0.5 && requested <= 1.5) {
-            launchSpeedCoefficient = requested;
-            if (model != null && model.setLaunchSpeedCoefficient(requested)) {
-                solvedRange = Double.NaN;
-                readySince = Double.NaN;
-            }
-            SmartDashboard.putString("Shooter/Launch Speed Coefficient Status", "Accepted");
-        } else {
-            SmartDashboard.putNumber(LAUNCH_COEFFICIENT_KEY, launchSpeedCoefficient);
-            SmartDashboard.putString("Shooter/Launch Speed Coefficient Status", "Rejected: enter a number from 0.5 to 1.5");
+        launchSpeedCoefficient = LaunchSpeedTuning.update();
+        if (model != null && model.setLaunchSpeedCoefficient(launchSpeedCoefficient)) {
+            solvedRange = Double.NaN;
+            readySince = Double.NaN;
         }
         SmartDashboard.putNumber("Shooter/Applied Launch Speed Coefficient", launchSpeedCoefficient);
         Pose2d current = pose.get();

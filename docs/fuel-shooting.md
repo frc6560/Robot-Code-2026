@@ -127,18 +127,30 @@ trajectory selection. The spin multiplier remains independently configured in Fu
 
 ## Persistent live launch-speed adjustment
 
-Edit the numeric SmartDashboard topic `Shooter/Launch Speed Coefficient` from
-Elastic and commit the edit. The supported range is 0.5 to 1.5. This topic is now
-persistent in the robot NetworkTables server, and startup uses a default rather
-than overwriting an existing value with 1.0. NetworkTables handles saving and
-restoring it across normal restarts; abrupt power loss before the server saves
-an edit may still lose that recent edit. The shooter applies changes while the
-shoot command executes. Check `Shooter/Applied Launch Speed Coefficient` and
-`Shooter/Launch Speed Coefficient Status` while holding shoot to confirm what
-was accepted. Invalid values are replaced with the last accepted value.
+Edit the numeric NetworkTables input `/SmartDashboard/Shooter/Launch Speed Coefficient`
+from Elastic and commit the edit. Do not edit the read-only logged trajectory
+coefficient or the separate Applied/Saved displays. Supported range: 0.5 to 1.5.
+The last accepted value now has its own Preferences key,
+`ShooterLaunchSpeedCoefficient`, separate from the dashboard request. Robot startup
+restores that saved value; a valid old dashboard value is migrated on first use.
+Edits are validated and saved every cycle, even while disabled and before shooting.
+Invalid or missing requests do not overwrite the saved value or force the input to 1.
+
+Check `Shooter/Saved Launch Speed Coefficient` while disabled; it should follow an
+accepted edit. Check `Shooter/Applied Launch Speed Coefficient` while shooting.
+`Shooter/Launch Speed Coefficient Status` describes request validation.
+`Fuel/Tuning` records requested/saved values and validity continuously.
+The NetworkTables server persists Preferences to disk; abrupt power loss before
+it saves a recent edit may still lose that edit.
 
 For intermittent shutdowns, inspect `Power/BatteryVoltage`, `Power/BrownedOut`,
 `Power/ControllerTemperatureCelsius`, and `Runtime/CodeUptimeSeconds`, together
 with Driver Station errors. Code uptime restarting indicates a new Robot instance;
 a graph simply freezing can also be a lost connection. These logs do not prove
 that a battery, connection, or noisy mechanism is electrically healthy.
+
+`Runtime/ProgramSession` changes for every new Robot instance. After reconnecting,
+a changed session and restarted CodeUptimeSeconds establish a program restart;
+a matching session and continuing uptime indicate the program survived the lost
+connection. Battery voltage, brownout flags and Driver Station messages are still
+needed to distinguish electrical failure, an exception, and a network problem.

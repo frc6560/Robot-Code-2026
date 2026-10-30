@@ -34,6 +34,7 @@ public class Robot extends LoggedRobot
 {
 
   private static Robot   instance;
+  private final String programSession = java.util.UUID.randomUUID().toString();
   private final double codeStartTime = Timer.getFPGATimestamp();
   private        Command m_autonomousCommand;
 
@@ -58,6 +59,7 @@ public class Robot extends LoggedRobot
   public Robot()
   {
     Logger.recordMetadata("Robot", "2026 Alpha");
+    Logger.recordMetadata("ProgramSession", programSession);
     Logger.recordMetadata("VisionConfiguration", LimelightConstants.CONFIGURATION_ID);
     Logger.recordMetadata("VisionCameraNames", String.join(", ", LimelightConstants.LIMELIGHT_NAMES));
     if (isReal()) {
@@ -125,11 +127,17 @@ public class Robot extends LoggedRobot
     // commands, running already-scheduled commands, removing finished or interrupted commands,
     // and running subsystem periodic() methods.  This must be called from the robot's periodic
     // block in order for anything in the Command-based framework to work.
+    frc.robot.utility.shooting.LaunchSpeedTuning.update();
     CommandScheduler.getInstance().run();
     Logger.recordOutput("Power/BatteryVoltage", RobotController.getBatteryVoltage());
     Logger.recordOutput("Power/BrownedOut", RobotController.isBrownedOut());
     Logger.recordOutput("Power/ControllerTemperatureCelsius", RobotController.getCPUTemp());
     Logger.recordOutput("Runtime/CodeUptimeSeconds", Timer.getFPGATimestamp() - codeStartTime);
+    Logger.recordOutput("Runtime/ProgramSession", programSession);
+    SmartDashboard.putString("Runtime/ProgramSession", programSession);
+    SmartDashboard.putNumber("Power/BatteryVoltage", RobotController.getBatteryVoltage());
+    SmartDashboard.putBoolean("Power/BrownedOut", RobotController.isBrownedOut());
+    SmartDashboard.putNumber("Runtime/CodeUptimeSeconds", Timer.getFPGATimestamp() - codeStartTime);
     if (isReal() && Timer.getFPGATimestamp() >= nextCANHealthSample) {
       nextCANHealthSample = Timer.getFPGATimestamp() + 1.0;
       var rio = RobotController.getCANStatus();

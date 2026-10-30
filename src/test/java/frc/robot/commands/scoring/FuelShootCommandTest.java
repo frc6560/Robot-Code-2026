@@ -41,6 +41,8 @@ class FuelShootCommandTest {
 
     @BeforeAll static void hal() { assertTrue(HAL.initialize(500, 0)); }
     @BeforeEach void setup() {
+        edu.wpi.first.wpilibj.Preferences.remove(LaunchSpeedTuning.PREFERENCE_KEY);
+        SmartDashboard.putNumber(FuelShootCommand.LAUNCH_COEFFICIENT_KEY, 1.0);
         SimHooks.pauseTiming();
         DriverStationSim.resetData();
         DriverStationSim.setDsAttached(true);
@@ -66,6 +68,9 @@ class FuelShootCommandTest {
         for (int i = 0; i < count; i++) { command.execute(); SimHooks.stepTiming(0.02); }
     }
     @AfterEach void cleanup() {
+        edu.wpi.first.wpilibj.Preferences.remove(LaunchSpeedTuning.PREFERENCE_KEY);
+        SmartDashboard.getEntry(FuelShootCommand.LAUNCH_COEFFICIENT_KEY).clearPersistent();
+        SmartDashboard.putNumber(FuelShootCommand.LAUNCH_COEFFICIENT_KEY, 1.0);
         if (command != null) command.end(true);
         CommandScheduler.getInstance().unregisterSubsystem(shooter, indexer);
         DriverStationSim.resetData();
@@ -87,6 +92,19 @@ class FuelShootCommandTest {
         aimReady = true; cycles(10); command.end(false);
         assertEquals(0, indexer.getTunnelTargetRPM()); assertEquals(0, shooter.getGoalRPM());
     }
+    @Test void savesWithoutShootingAndRestoresAfterDashboardValueIsLost() {
+        FuelShootCommand.publishLaunchSpeedCoefficient();
+        SmartDashboard.putNumber(FuelShootCommand.LAUNCH_COEFFICIENT_KEY, 1.08);
+        assertEquals(1.08, LaunchSpeedTuning.update());
+        assertEquals(1.08, edu.wpi.first.wpilibj.Preferences.getDouble(LaunchSpeedTuning.PREFERENCE_KEY, 0));
+        SmartDashboard.putNumber(FuelShootCommand.LAUNCH_COEFFICIENT_KEY, 1.0);
+        FuelShootCommand.publishLaunchSpeedCoefficient();
+        assertEquals(1.08, SmartDashboard.getNumber(FuelShootCommand.LAUNCH_COEFFICIENT_KEY, 0));
+        SmartDashboard.putNumber(FuelShootCommand.LAUNCH_COEFFICIENT_KEY, Double.NaN);
+        assertEquals(1.08, LaunchSpeedTuning.update());
+        assertEquals(1.08, edu.wpi.first.wpilibj.Preferences.getDouble(LaunchSpeedTuning.PREFERENCE_KEY, 0));
+    }
+
     @Test void startupDoesNotOverwriteDashboardTuningAndMarksItPersistent() {
         SmartDashboard.putNumber(FuelShootCommand.LAUNCH_COEFFICIENT_KEY, 1.06);
         try {
