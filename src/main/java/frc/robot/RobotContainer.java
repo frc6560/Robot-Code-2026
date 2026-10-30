@@ -263,12 +263,12 @@ public class RobotContainer {
         drivebase.setDefaultCommand(driveFieldOrientedAnglularVelocity);
         driveFieldOrientedAnglularVelocity.setName("Driver field-oriented drive");
 
-        // Driver right bumper owns the entire aim/spin/feed action. Left bumper no longer feeds.
+        // Driver right bumper owns aim/spin/feed. Left bumper retains standalone manual indexer feed.
         // Keep separate operator/button-board controls for explicit manual testing.
         Trigger spinUp = operatorXbox.a().or(new Trigger(() -> m_Controls.getButtonActivated(11)));
         Trigger driver2Indexer = new Trigger(() -> m_Controls.getButtonActivated(3));
-        Trigger floor = driver2Indexer;
-        Trigger feed = driver2Indexer;
+        Trigger feed = driverXbox.leftBumper().or(driver2Indexer);
+        Trigger floor = feed;
 
         // Triggers select rack endpoints without running the wall indexer.
         // Ignore simultaneous presses so neither direction wins unexpectedly.
@@ -330,7 +330,7 @@ public class RobotContainer {
             intake.stopShootingOscillation();
         }, feeder, intake));
 
-        // Driver 2 button 3 requests manual tunnel feed; the floor remains disabled.
+        // Driver left bumper and button-board 3 request manual floor/tunnel feed outside the aimed shot.
 
         Trigger intakeRoller = new Trigger(() -> m_Controls.getButtonActivated(4))
             .and(DriverStation::isTeleopEnabled);

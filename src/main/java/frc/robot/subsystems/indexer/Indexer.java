@@ -51,6 +51,11 @@ public class Indexer extends SubsystemBase {
         SmartDashboard.putBoolean("Indexer/FloorEnabled", FuelShotConfig.FLOOR_ENABLED);
         Logger.recordOutput("Indexer/TunnelTargetRPM", tunnelTargetRPM);
         SmartDashboard.putNumber("Indexer/TunnelRPM", inputs.tunnelRPM);
+        SmartDashboard.putNumber("Indexer/TunnelTargetRPM", tunnelTargetRPM);
+        SmartDashboard.putNumber("Indexer/TunnelVolts", inputs.appliedVolts);
+        SmartDashboard.putNumber("Indexer/TunnelStatorAmps", inputs.tunnelCurrentAmps);
+        SmartDashboard.putString("Indexer/TunnelConfigurationStatus", inputs.tunnelConfigurationStatus);
+        SmartDashboard.putString("Indexer/TunnelControlStatus", inputs.tunnelControlStatus);
         SmartDashboard.putBoolean("Indexer/TunnelReady", isTunnelReady());
         // Keep the floor diagnostics separate from the tunnel's legacy appliedVolts field.
         SmartDashboard.putNumber("Indexer/FloorTargetRPM", floorTargetRPM);

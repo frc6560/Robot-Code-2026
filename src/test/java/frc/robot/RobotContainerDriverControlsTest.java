@@ -53,7 +53,8 @@ class RobotContainerDriverControlsTest {
         DriverStationSim.notifyNewData(); runCycles(3);
 
         setButton(XboxController.Button.kLeftBumper, true);
-        assertEquals(0, indexer.getTunnelTargetRPM()); // No second bumper needed or ungated release.
+        assertEquals(1500, indexer.getTunnelTargetRPM()); // Standalone manual feed, independent of alliance/aim.
+        assertEquals(800, indexer.getFloorTargetRPM());
         setButton(XboxController.Button.kRightBumper, true);
         runCycles(150);
         assertEquals("FuelShootCommand", CommandScheduler.getInstance().requiring(indexer).getName());

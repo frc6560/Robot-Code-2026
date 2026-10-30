@@ -29,10 +29,12 @@ public class IndexerIOTalonFX implements IndexerIO {
     private final VelocityVoltage floorSecondaryRequest = new VelocityVoltage(0.0);
     private final VelocityVoltage tunnelRequest = new VelocityVoltage(0.0);
     private final NeutralOut floorStopRequest = new NeutralOut();
+    private final NeutralOut tunnelStopRequest = new NeutralOut();
     private final NeutralOut floorSecondaryStopRequest = new NeutralOut();
     private final StatusCode floorConfigurationStatus;
     private final StatusCode floorSecondaryConfigurationStatus;
     private String floorControlStatus = "No request";
+    private String tunnelControlStatus = "No request";
 
     private final StatusSignal<Angle> floorPosition;
     private final StatusSignal<AngularVelocity> floorVelocity;
@@ -148,6 +150,9 @@ public class IndexerIOTalonFX implements IndexerIO {
         inputs.tunnelConnected = tunnelMotor.isConnected();
         inputs.tunnelConfigured = tunnelConfigurationStatus.isOK();
         inputs.tunnelRPM = tunnelVelocity.getValueAsDouble() * 60.0;
+        inputs.tunnelCurrentAmps = tunnelCurrent.getValueAsDouble();
+        inputs.tunnelConfigurationStatus = tunnelConfigurationStatus.toString();
+        inputs.tunnelControlStatus = tunnelControlStatus;
         inputs.currentAmps = floorLeaderCurrent.getValueAsDouble()
             + floorSecondaryCurrent.getValueAsDouble() + tunnelCurrent.getValueAsDouble();
         inputs.floorConnected = floorLeader.isConnected() && floorSecondary.isConnected();
@@ -188,15 +193,15 @@ public class IndexerIOTalonFX implements IndexerIO {
     @Override
     public void setTunnelRPM(double rpm) {
         if (rpm == 0.0 || !Double.isFinite(rpm) || !tunnelConfigurationStatus.isOK()) {
-            tunnelMotor.stopMotor();
+            tunnelControlStatus = tunnelMotor.setControl(tunnelStopRequest).toString();
         } else {
-            tunnelMotor.setControl(tunnelRequest.withVelocity(rpm / 60.0));
+            tunnelControlStatus = tunnelMotor.setControl(tunnelRequest.withVelocity(rpm / 60.0)).toString();
         }
     }
 
     @Override
     public void stop() {
         setFloorRPM(0.0);
-        tunnelMotor.stopMotor();
+        setTunnelRPM(0.0);
     }
 }

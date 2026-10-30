@@ -25,7 +25,7 @@ from measured launch conditions. All flight aerodynamics are provisional until b
 
 Neither indexer runs automatically on enable. The floor is enabled by
 `FuelShotConfig.FLOOR_ENABLED=true` and runs alongside the tunnel once the shot is ready.
-Driver left bumper no longer runs the wall; Y is no longer the shooting binding. Operator A /
+Driver left bumper runs the floor/tunnel manually when RB is not held; Y is no longer the shooting binding. Operator A /
 button-board 11 still provide explicit manual spin-up, and board 3 still provides manual floor/tunnel
 feed outside RB. After RB release, any held operator control must release before manual feeding
 can resume. The driver's LT/RT rack controls are unchanged. Intake rollers run only after a valid, homed rack
@@ -199,3 +199,20 @@ make that distinction explicit. `Intake/LeftRollerVolts` / `Intake/RightRollerVo
 one roller failing to spin. The rack assumes physically retracted at code startup; its motor encoder
 cannot independently verify the physical endpoint. Verify that 9.5 rotations matches full extension
 before relying on the roller interlock, since the earlier measured-travel calculation was 7.81.
+
+
+## When the wall does not run
+
+Release both bumpers, then hold **left bumper alone** to request manual floor (800 RPM) and tunnel
+(1500 RPM) without alliance/aim/flywheel gates. This is an explicit ungated manual control; do not
+use it to judge automatic shot readiness. Right bumper still owns the mechanisms when held and
+waits for its release conditions. After releasing RB, release any held manual input before retrying.
+
+With RB held, `Fuel/Status` gives the blocking condition (for example Aiming, No alliance, Outside
+own alliance zone, Waiting for measured flywheel RPM, or Stop translating to shoot). No automatic
+feed is requested until those conditions pass; the 40 A limit is independent of that decision.
+
+`Indexer/TunnelTargetRPM=0` means the command is not requesting feed. A nonzero target with
+`Indexer/TunnelRPM` near zero needs the accompanying `Indexer/TunnelVolts`,
+`Indexer/TunnelStatorAmps`, `Indexer/TunnelConfigurationStatus`, and `Indexer/TunnelControlStatus`
+to distinguish a motor/controller problem from a stalled mechanism.
