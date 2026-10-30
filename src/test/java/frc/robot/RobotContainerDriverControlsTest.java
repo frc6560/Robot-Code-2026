@@ -69,7 +69,8 @@ class RobotContainerDriverControlsTest {
         setButton(XboxController.Button.kLeftBumper, false);
         assertEquals("FuelShootCommand", CommandScheduler.getInstance().requiring(indexer).getName());
         setButton(XboxController.Button.kRightBumper, false);
-        assertEquals(0, shooter.getGoalRPM());
+        runCycles(3); // Default tracking resumes after RB releases its requirements.
+        assertEquals(3000, shooter.getGoalRPM(), 1e-6);
         assertEquals(0, indexer.getTunnelTargetRPM());
         assertEquals(0, indexer.getFloorTargetRPM());
 

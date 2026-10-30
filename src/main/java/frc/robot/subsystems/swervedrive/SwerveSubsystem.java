@@ -79,7 +79,7 @@ public class SwerveSubsystem extends SubsystemBase {
     Pose2d startingPose = FieldConstants.BLUE_TESTING_START;
     SmartDashboard.setDefaultBoolean("Swerve/DetailedTelemetry", false);
     SwerveDriveTelemetry.verbosity = RobotBase.isSimulation()
-        ? TelemetryVerbosity.HIGH : TelemetryVerbosity.INFO;
+        ? TelemetryVerbosity.HIGH : TelemetryVerbosity.LOW;
     try
     {
       swerveDrive = new SwerveParser(directory).createSwerveDrive(Constants.MAX_SPEED, startingPose);
@@ -152,7 +152,7 @@ public class SwerveSubsystem extends SubsystemBase {
 
     SwerveDriveTelemetry.verbosity = RobotBase.isSimulation()
         || SmartDashboard.getBoolean("Swerve/DetailedTelemetry", false)
-            ? TelemetryVerbosity.HIGH : TelemetryVerbosity.INFO;
+            ? TelemetryVerbosity.HIGH : TelemetryVerbosity.LOW;
     // Pose2d is published as structured AdvantageKit data. In AdvantageScope, add
     // Swerve/Pose to a 2D Field tab and BLine/FollowPath/pathTranslations as the path.
     Logger.recordOutput("Swerve/Pose", getPose());

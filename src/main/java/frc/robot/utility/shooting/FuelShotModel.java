@@ -88,8 +88,9 @@ public final class FuelShotModel {
             : entered == 0 ? "Entry angle too shallow (requires 20 deg)" : "Reachable";
         diagnostics = new SolveDiagnostics(range, sampledRPM.size(), reached, cleared, landed, entered, reason);
         if (bestHigh < bestLow) return Shot.invalid();
-        double low = refine(range, bestLow, Math.max(calibration.minRPM(), bestLow - step));
-        double high = refine(range, bestHigh, Math.min(calibration.maxRPM(), bestHigh + step));
+        // Grid endpoints are already valid; avoid dozens of full integrations to refine sub-RPM edges.
+        double low = bestLow;
+        double high = bestHigh;
         double target = (low + high) / 2;
         Flight flight = flight(target);
         boolean valid = scores(range, target);

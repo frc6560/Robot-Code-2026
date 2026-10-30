@@ -83,7 +83,7 @@ public final class Constants {
         MAX_ANGULAR_ACCELERATION_RAD_PER_SEC_SQ;
 
     /** Stops small heading corrections once the chassis is pointed at the hub. */
-    public static final double HUB_AIM_TOLERANCE_RADIANS = Units.degreesToRadians(1.5);
+    public static final double HUB_AIM_TOLERANCE_RADIANS = Units.degreesToRadians(2.5);
 
     /** Required angular speed before hub alignment reports that it has settled. */
     public static final double HUB_AIM_VELOCITY_TOLERANCE_RAD_PER_SEC =

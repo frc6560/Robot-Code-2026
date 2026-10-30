@@ -134,7 +134,7 @@ public class RobotContainer {
       SmartDashboard.putNumber("Vision/ConfiguredCameraCount", limelights.size());
 
       // Temporary no-vision behavior: keep the flywheel warm at idle until a command takes it.
-      shooter.setDefaultCommand(Commands.run(shooter::setIdle, shooter));
+      shooter.setDefaultCommand(Commands.run(this::trackFlywheelTarget, shooter));
       led.setDefaultCommand(Commands.run(() -> {}, led));
 
       // Takes the shooter from its idle default until cancelled from the dashboard.
@@ -151,6 +151,33 @@ public class RobotContainer {
       configureBindings();
     }
 
+
+    private double nextFlywheelSolve;
+    private double continuousFlywheelRPM = Constants.ShooterConstants.FIXED_SHOT_RPM;
+
+    /** Teleop default: keep the wheel ready without requesting aim or feed. */
+    private void trackFlywheelTarget() {
+        if (!DriverStation.isTeleopEnabled() || pitCoastMode) {
+            shooter.stop();
+            return;
+        }
+        double now = edu.wpi.first.wpilibj.Timer.getFPGATimestamp();
+        if (now >= nextFlywheelSolve) {
+            nextFlywheelSolve = now + 0.1;
+            fuelShotModel.setLaunchSpeedCoefficient(frc.robot.utility.shooting.LaunchSpeedTuning.update());
+            var alliance = DriverStation.getAlliance();
+            var hub = alliance.orElse(DriverStation.Alliance.Blue) == DriverStation.Alliance.Blue
+                ? Constants.FieldConstants.BLUE_HUB_CENTER : Constants.FieldConstants.RED_HUB_CENTER;
+            var solution = fuelShotModel.solve(FuelShootCommand.releasePosition(drivebase.getPose()).getDistance(hub));
+            continuousFlywheelRPM = SmartDashboard.getBoolean("Fuel/Calibration Mode", false) || !solution.valid()
+                ? SmartDashboard.getNumber("Fuel/Test Flywheel RPM", Constants.ShooterConstants.FIXED_SHOT_RPM)
+                : solution.rpm();
+        }
+        if (Double.isFinite(continuousFlywheelRPM)
+                && continuousFlywheelRPM >= Constants.ShooterConstants.FLYWHEEL_IDLE_RPM
+                && continuousFlywheelRPM <= Constants.ShooterConstants.MAX_RPM) shooter.setGoal(continuousFlywheelRPM);
+        else shooter.stop();
+    }
 
     private static final double MAX_SHOOTING_VELOCITY_MPS = 1.2;
 

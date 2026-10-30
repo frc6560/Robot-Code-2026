@@ -123,42 +123,9 @@ public class AimAtHub extends Command {
         Math.toDegrees(headingController.getSetpoint().velocity));
     SmartDashboard.putBoolean("Hub Aim/At Target", atTarget);
 
-    Logger.recordOutput("HubAim/HasAlliance", true);
     Logger.recordOutput("HubAim/AtTarget", atTarget);
-    Logger.recordOutput("HubAim/TargetHeadingDeg", Math.toDegrees(targetHeading));
-    Logger.recordOutput("HubAim/CurrentHeadingDeg", robotPose.getRotation().getDegrees());
     Logger.recordOutput("HubAim/HeadingErrorDeg", Math.toDegrees(headingError));
-    Logger.recordOutput("HubAim/CommandedOmegaRadPerSec", omega);
-    Logger.recordOutput("HubAim/PIDFeedbackRadPerSec", feedbackOmega);
-    Logger.recordOutput("HubAim/ProfileFeedforwardRadPerSec", profileOmega);
-    Logger.recordOutput(
-        "HubAim/MeasuredOmegaRadPerSec", drivebase.getRobotVelocity().omegaRadiansPerSecond);
-    Logger.recordOutput(
-        "HubAim/ProfileSetpointPositionDeg",
-        Math.toDegrees(headingController.getSetpoint().position));
-    Logger.recordOutput(
-        "HubAim/ProfileSetpointVelocityDegPerSec",
-        Math.toDegrees(headingController.getSetpoint().velocity));
-    Logger.recordOutput("HubAim/DistanceToHubMeters", robotToHub.getNorm());
-    Logger.recordOutput("HubAim/CommandedFieldVxMetersPerSec", speeds.vxMetersPerSecond);
-    Logger.recordOutput("HubAim/CommandedFieldVyMetersPerSec", speeds.vyMetersPerSecond);
 
-    // Keep shooting auto-turn traces together and separate from BLine path-rotation telemetry.
-    Logger.recordOutput("AutoTurn/TargetHeadingDeg", Math.toDegrees(targetHeading));
-    Logger.recordOutput("AutoTurn/CurrentHeadingDeg", robotPose.getRotation().getDegrees());
-    Logger.recordOutput("AutoTurn/HeadingErrorDeg", Math.toDegrees(headingError));
-    Logger.recordOutput("AutoTurn/ProfilePositionDeg", Math.toDegrees(headingController.getSetpoint().position));
-    Logger.recordOutput("AutoTurn/ProfileVelocityDegPerSec", Math.toDegrees(profileOmega));
-    Logger.recordOutput("AutoTurn/PIDFeedbackRadPerSec", feedbackOmega);
-    Logger.recordOutput("AutoTurn/CommandedOmegaRadPerSec", omega);
-    Logger.recordOutput(
-        "AutoTurn/MeasuredOmegaRadPerSec", drivebase.getRobotVelocity().omegaRadiansPerSecond);
-    Logger.recordOutput(
-        "AutoTurn/MaxVelocityDegPerSec",
-        Math.toDegrees(DrivebaseConstants.HUB_AIM_MAX_ANGULAR_SPEED_RAD_PER_SEC));
-    Logger.recordOutput(
-        "AutoTurn/MaxAccelerationDegPerSecSq",
-        Math.toDegrees(DrivebaseConstants.HUB_AIM_MAX_ANGULAR_ACCELERATION_RAD_PER_SEC_SQ));
   }
 
   static boolean isSettled(double headingError, double measuredOmega) {
