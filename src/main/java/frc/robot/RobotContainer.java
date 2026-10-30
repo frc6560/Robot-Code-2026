@@ -157,16 +157,8 @@ public class RobotContainer {
       // Takes the shooter from its idle default until cancelled from the dashboard.
       SmartDashboard.putData("Shooter/FF Characterization", shooter.feedforwardCharacterizationCommand());
 
-      // Measurements are loaded once at startup. Never invent calibration values on the robot.
-      try {
-        fuelShotModel = new FuelShotModel(LaunchCalibration.load(
-            Filesystem.getDeployDirectory().toPath().resolve("fuel-launch.csv")));
-        fuelCalibrationStatus = fuelShotModel.calibration().hasMeasuredSpin()
-            ? "Measured speed and spin; aero still requires field validation"
-            : "Measured speed; spin uses rolling estimate";
-      } catch (java.io.IOException | IllegalArgumentException e) {
-        fuelCalibrationStatus = "Calibration unavailable: " + e.getMessage();
-      }
+      fuelShotModel = new FuelShotModel(LaunchCalibration.ideal());
+      fuelCalibrationStatus = "Ideal wheel/hood formula with tunable speed, spin and aero coefficients";
       SmartDashboard.putString("Fuel/Calibration Status", fuelCalibrationStatus);
       SmartDashboard.putBoolean("Fuel/Calibration Mode", false);
       SmartDashboard.putNumber("Fuel/Test Flywheel RPM", Constants.ShooterConstants.FIXED_SHOT_RPM);

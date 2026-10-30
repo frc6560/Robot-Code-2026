@@ -36,6 +36,21 @@ public final class LaunchCalibration {
         }
     }
 
+    /** Ideal powered wheel against a stationary hood: ball speed is half wheel surface speed. */
+    public static LaunchCalibration ideal() {
+        List<Point> points = new ArrayList<>();
+        for (double rpm : new double[] {ShooterConstants.FLYWHEEL_IDLE_RPM,
+                (ShooterConstants.FLYWHEEL_IDLE_RPM + ShooterConstants.MAX_RPM) / 2,
+                ShooterConstants.MAX_RPM}) {
+            double surfaceSpeed = Math.PI * frc.robot.Constants.ShotModelConstants.FLYWHEEL_DIAMETER_METERS * rpm / 60;
+            double speed = FuelShotConfig.EXIT_SPEED_MULTIPLIER * surfaceSpeed / 2;
+            double spinRps = FuelShotConfig.BACKSPIN_MULTIPLIER * surfaceSpeed
+                / (2 * Math.PI * frc.robot.Constants.ShotModelConstants.BALL_DIAMETER_METERS);
+            points.add(new Point(rpm, speed, spinRps));
+        }
+        return new LaunchCalibration(points, FuelShotConfig.TUNNEL_RPM);
+    }
+
     public static LaunchCalibration load(Path path) throws IOException {
         List<String> lines = Files.readAllLines(path);
         if (lines.isEmpty() || !lines.get(0).trim().equals("rpm,exit_speed_mps,backspin_rps,tunnel_rpm")) {

@@ -116,7 +116,7 @@ public final class FuelShootCommand extends Command {
         indexer.setTunnelRPM(feeding ? tunnelRPM : 0);
         String status = rawReady && !feeding ? "Settling" : reason;
         SmartDashboard.putString("Fuel/Mode", fixedRPM
-            ? (calibrationMode ? "Fixed RPM measurement" : "Fixed RPM (uncalibrated)") : "Calibrated trajectory");
+            ? (calibrationMode ? "Fixed RPM measurement" : "Fixed RPM (uncalibrated)") : "Formula trajectory");
         SmartDashboard.putString("Fuel/Calibration Status", calibrationStatus);
         SmartDashboard.putString("Fuel/Status", status);
         SmartDashboard.putBoolean("Fuel/Feeding", feeding);

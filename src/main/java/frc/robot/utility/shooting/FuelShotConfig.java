@@ -3,6 +3,11 @@ package frc.robot.utility.shooting;
 /** Stationary auto-turn shooting. Aerodynamic values require field validation. */
 public final class FuelShotConfig {
     private FuelShotConfig() {}
+    /** Multiply ideal exit speed; increase if actual balls launch faster than predicted. */
+    public static final double EXIT_SPEED_MULTIPLIER = 1.0;
+    /** Multiply ideal rolling backspin independently of exit speed. */
+    public static final double BACKSPIN_MULTIPLIER = 1.0;
+    public static final double TUNNEL_RPM = 1500.0;
     /** Global floor enable, applied at the subsystem output boundary. */
     public static final boolean FLOOR_ENABLED = true;
     public static final double RPM_TOLERANCE = 60.0;
