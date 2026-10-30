@@ -22,6 +22,9 @@ import frc.robot.Constants.LimelightConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.autonomous.AutoModeChooser;
 import frc.robot.commands.scoring.ShotCommand;
+import frc.robot.commands.scoring.FuelShootCommand;
+import frc.robot.utility.shooting.FuelShotModel;
+import frc.robot.utility.shooting.LaunchCalibration;
 import frc.robot.autonomous.AutoCommands;
 import frc.robot.commands.swervedrive.drivebase.AimAtHub;
 import frc.robot.utility.Shooter.ShotCalculator;
@@ -75,6 +78,9 @@ public class RobotContainer {
     private final ShotCalculator shotCalculator = new ShotCalculator();
     private Command shotCommand;
     private boolean pitCoastMode = false;
+    private boolean manualControlsSuppressedAfterAim;
+    private FuelShotModel fuelShotModel;
+    private String fuelCalibrationStatus = "No launch measurements: use calibration mode";
 
     private final AutoCommands factory;
     private final AutoModeChooser autoChooser;
@@ -150,6 +156,21 @@ public class RobotContainer {
       // Takes the shooter from its idle default until cancelled from the dashboard.
       SmartDashboard.putData("Shooter/FF Characterization", shooter.feedforwardCharacterizationCommand());
 
+      // Measurements are loaded once at startup. Never invent calibration values on the robot.
+      try {
+        fuelShotModel = new FuelShotModel(LaunchCalibration.load(
+            Filesystem.getDeployDirectory().toPath().resolve("fuel-launch.csv")));
+        fuelCalibrationStatus = fuelShotModel.calibration().hasMeasuredSpin()
+            ? "Measured speed and spin; aero still requires field validation"
+            : "Measured speed; spin uses rolling estimate";
+      } catch (java.io.IOException | IllegalArgumentException e) {
+        fuelCalibrationStatus = "Calibration unavailable: " + e.getMessage();
+      }
+      SmartDashboard.putString("Fuel/Calibration Status", fuelCalibrationStatus);
+      SmartDashboard.putBoolean("Fuel/Calibration Mode", false);
+      SmartDashboard.putNumber("Fuel/Test Flywheel RPM", 2500);
+      SmartDashboard.putNumber("Fuel/Test Tunnel RPM", Constants.IndexerConstants.TUNNEL_RUNNING_RPM);
+      SmartDashboard.putBoolean("Fuel/Feeding", false);
       configureBindings();
     }
 
@@ -172,12 +193,15 @@ public class RobotContainer {
 
     /** Gated shot plus BLine's AimAtHub, which turns the chassis to the hub while the driver translates. */
     private void scheduleAimedShotCommand() {
+        manualControlsSuppressedAfterAim = true;
         cancelShotCommand();
-        shotCommand = new ShotCommand(
-            feeder, turret, shooter, shotCalculator, drivebase::getPose, led, intake)
-            .alongWith(new AimAtHub(
-                drivebase,
-                () -> clampSpeedsForShooting(driveAngularVelocity.get())));
+        AimAtHub aim = new AimAtHub(drivebase,
+            () -> clampSpeedsForShooting(driveAngularVelocity.get()),
+            () -> FuelShootCommand.releasePosition(drivebase.getPose()));
+        shotCommand = new FuelShootCommand(shooter, indexer, drivebase::getPose,
+            drivebase::getRobotVelocity, aim, aim::isAtTarget,
+            () -> driverXbox.rightTrigger().getAsBoolean(), () -> pitCoastMode,
+            fuelShotModel, fuelCalibrationStatus);
         CommandScheduler.getInstance().schedule(shotCommand);
     }
 
@@ -231,12 +255,11 @@ public class RobotContainer {
     }
 
     private void configureBindings() {
-        // Start the indexer automatically when enabled. Existing manual/auto
-        // commands can still take control; releasing them resumes this default.
+        // The tunnel is a release mechanism: never feed by default. Manual feed remains explicit.
         indexer.setDefaultCommand(Commands.run(() -> {
             if (DriverStation.isEnabled() && !pitCoastMode) {
                 indexer.setFloorRPM(Constants.IndexerConstants.FLOOR_RUNNING_RPM);
-                indexer.setTunnelRPM(Constants.IndexerConstants.TUNNEL_RUNNING_RPM);
+                indexer.setTunnelRPM(0.0);
             } else {
                 indexer.stop();
             }
@@ -259,9 +282,14 @@ public class RobotContainer {
         Trigger driver2Indexer = new Trigger(() -> m_Controls.getButtonActivated(3));
         Trigger floor = combinedSpinUp.or(driver2Indexer);
         Trigger feed = driverXbox.rightTrigger().or(driver2Indexer);
+        // Releasing Y must stop feeding even if the calibration trigger is still held.
+        // Require all manual holds to release before an ungated manual shot can start again.
+        new Trigger(() -> !driverXbox.y().getAsBoolean() && !spinUp.getAsBoolean()
+            && !floor.getAsBoolean() && !feed.getAsBoolean())
+            .onTrue(Commands.runOnce(() -> manualControlsSuppressedAfterAim = false).ignoringDisable(true));
         spinUp.or(floor).or(feed)
             .and(DriverStation::isTeleopEnabled)
-            .and(() -> !pitCoastMode)
+            .and(() -> !pitCoastMode && !driverXbox.y().getAsBoolean() && !manualControlsSuppressedAfterAim)
             .whileTrue(manualShotCommand(spinUp, floor, feed));
 
         driverXbox.x()
@@ -284,7 +312,7 @@ public class RobotContainer {
         Trigger shootTrigger = new Trigger(m_Controls::getShootTrigger);
         Trigger shootReleaseTrigger = new Trigger(m_Controls::getShootReleaseTrigger);
         Trigger ungatedShootTrigger = new Trigger(m_Controls::getUngatedShootTrigger);
-        Trigger driverAimedShootTrigger = driverXbox.y().and(DriverStation::isTeleopEnabled);
+        Trigger driverAimedShootTrigger = driverXbox.y().and(DriverStation::isTeleopEnabled).and(() -> !pitCoastMode);
 
         // Hold driver Y to run the gated shot while the chassis aims at the hub.
         driverAimedShootTrigger.onTrue(Commands.runOnce(this::scheduleAimedShotCommand));

@@ -39,6 +39,8 @@ public class IndexerIOSim implements IndexerIO {
         inputs.floorSecondaryConnected = true;
         inputs.appliedVolts = updateMotor(tunnel, tunnelRPM, IndexerConstants.TUNNEL_GEAR_RATIO);
         inputs.floorRPM = floor.getAngularVelocityRPM();
+        inputs.tunnelConnected = true;
+        inputs.tunnelConfigured = true;
         inputs.tunnelRPM = tunnel.getAngularVelocityRPM();
         inputs.currentAmps = Math.abs(floor.getCurrentDrawAmps())
             + Math.abs(floorSecondary.getCurrentDrawAmps()) + Math.abs(tunnel.getCurrentDrawAmps());

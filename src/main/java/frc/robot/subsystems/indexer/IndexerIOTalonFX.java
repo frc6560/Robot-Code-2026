@@ -23,6 +23,7 @@ public class IndexerIOTalonFX implements IndexerIO {
     private final TalonFX floorLeader;
     private final TalonFX floorSecondary;
     private final TalonFX tunnelMotor;
+    private final StatusCode tunnelConfigurationStatus;
 
     private final VelocityVoltage floorRequest = new VelocityVoltage(0.0);
     private final VelocityVoltage floorSecondaryRequest = new VelocityVoltage(0.0);
@@ -66,7 +67,7 @@ public class IndexerIOTalonFX implements IndexerIO {
             IndexerConstants.FLOOR_MOTOR_INVERTED);
         floorSecondaryConfigurationStatus = configureMotor(floorSecondary, IndexerConstants.FLOOR_GEAR_RATIO,
             IndexerConstants.FLOOR_SECONDARY_MOTOR_INVERTED);
-        configureMotor(tunnelMotor, IndexerConstants.TUNNEL_GEAR_RATIO, false);
+        tunnelConfigurationStatus = configureMotor(tunnelMotor, IndexerConstants.TUNNEL_GEAR_RATIO, false);
 
         floorPosition = floorLeader.getPosition();
         floorVelocity = floorLeader.getVelocity();
@@ -140,6 +141,8 @@ public class IndexerIOTalonFX implements IndexerIO {
 
         inputs.appliedVolts = tunnelVoltage.getValueAsDouble();
         inputs.floorRPM = floorVelocity.getValueAsDouble() * 60.0;
+        inputs.tunnelConnected = tunnelMotor.isConnected();
+        inputs.tunnelConfigured = tunnelConfigurationStatus.isOK();
         inputs.tunnelRPM = tunnelVelocity.getValueAsDouble() * 60.0;
         inputs.currentAmps = floorLeaderCurrent.getValueAsDouble()
             + floorSecondaryCurrent.getValueAsDouble() + tunnelCurrent.getValueAsDouble();
@@ -180,7 +183,7 @@ public class IndexerIOTalonFX implements IndexerIO {
 
     @Override
     public void setTunnelRPM(double rpm) {
-        if (rpm == 0.0) {
+        if (rpm == 0.0 || !Double.isFinite(rpm) || !tunnelConfigurationStatus.isOK()) {
             tunnelMotor.stopMotor();
         } else {
             tunnelMotor.setControl(tunnelRequest.withVelocity(rpm / 60.0));

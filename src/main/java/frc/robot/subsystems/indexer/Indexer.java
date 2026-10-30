@@ -32,6 +32,8 @@ public class Indexer extends SubsystemBase {
         Logger.processInputs("Indexer", inputs);
         Logger.recordOutput("Indexer/FloorTargetRPM", floorTargetRPM);
         Logger.recordOutput("Indexer/TunnelTargetRPM", tunnelTargetRPM);
+        SmartDashboard.putNumber("Indexer/TunnelRPM", inputs.tunnelRPM);
+        SmartDashboard.putBoolean("Indexer/TunnelReady", isTunnelReady());
         // Keep the floor diagnostics separate from the tunnel's legacy appliedVolts field.
         SmartDashboard.putNumber("Indexer/FloorTargetRPM", floorTargetRPM);
         SmartDashboard.putNumber("Indexer/FloorRPM", inputs.floorRPM);
@@ -67,6 +69,9 @@ public class Indexer extends SubsystemBase {
         tunnelTargetRPM = 0.0;
         io.stop();
     }
+
+    public boolean isTunnelReady() { return inputs.tunnelConnected && inputs.tunnelConfigured; }
+    public double getTunnelRPM() { return inputs.tunnelRPM; }
 
     public double getFloorTargetRPM() {
         return floorTargetRPM;

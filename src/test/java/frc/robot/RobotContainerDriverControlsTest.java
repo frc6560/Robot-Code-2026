@@ -14,6 +14,7 @@ import edu.wpi.first.hal.HAL;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.simulation.DriverStationSim;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import frc.robot.subsystems.indexer.Indexer;
@@ -35,7 +36,7 @@ class RobotContainerDriverControlsTest {
     }
 
     @Test
-    void indexerStartsOnEnableAndManualControlsOverrideUntilReleased() throws Exception {
+    void floorStartsOnEnableButTunnelRequiresExplicitFeed() throws Exception {
         DriverStationSim.setDsAttached(true);
         DriverStationSim.setEnabled(true);
         DriverStationSim.setAutonomous(false);
@@ -58,7 +59,7 @@ class RobotContainerDriverControlsTest {
         Intake intake = getField(container, "intake", Intake.class);
         Turret turret = getField(container, "turret", Turret.class);
         runCycles(150);
-        assertTargets(shooter, indexer, 0.0, 300.0, 1500.0);
+        assertTargets(shooter, indexer, 0.0, 300.0, 0.0);
         assertEquals(0.0, shooter.getCurrentRPM(), 150.0);
         double turretGoalBeforeTrigger = turret.getGoalDegrees();
 
@@ -81,7 +82,7 @@ class RobotContainerDriverControlsTest {
         runCycles(150);
         assertEquals(3000.0, shooter.getCurrentRPM(), 200.0);
         setControls(false, false);
-        assertTargets(shooter, indexer, 0.0, 300.0, 1500.0);
+        assertTargets(shooter, indexer, 0.0, 300.0, 0.0);
         runCycles(150);
 
         // Trigger alone feeds without changing the shooter's idle goal.
@@ -103,7 +104,7 @@ class RobotContainerDriverControlsTest {
         setDriver2Controls(true, false);
         assertTargets(shooter, indexer, 3000.0, 0.0, 0.0);
         setDriver2Controls(false, false);
-        assertTargets(shooter, indexer, 0.0, 300.0, 1500.0);
+        assertTargets(shooter, indexer, 0.0, 300.0, 0.0);
         setDriver2Button(4, true);
         assertEquals(true, intake.isActive());
         setDriver2Button(4, false);
@@ -124,7 +125,7 @@ class RobotContainerDriverControlsTest {
         runCycles(3);
         assertTargets(shooter, indexer, 1000.0, 0.0, 0.0);
 
-        // No held controls: the indexer restarts on enable, including autonomous.
+        // No held controls: only the floor restarts on enable, including autonomous.
         DriverStationSim.setJoystickButton(0, XboxController.Button.kRightBumper.value, false);
         DriverStationSim.setJoystickAxis(0, XboxController.Axis.kRightTrigger.value, 0.0);
         DriverStationSim.notifyNewData();
@@ -134,9 +135,9 @@ class RobotContainerDriverControlsTest {
         DriverStationSim.notifyNewData();
         runCycles(3);
         assertEquals(300.0, indexer.getFloorTargetRPM());
-        assertEquals(1500.0, indexer.getTunnelTargetRPM());
+        assertEquals(0.0, indexer.getTunnelTargetRPM());
 
-        // Pit coast stops automatic output; exiting it resumes the default.
+        // Pit coast stops automatic output; exiting it resumes only the floor.
         DriverStationSim.setAutonomous(false);
         DriverStationSim.notifyNewData();
         runCycles(3);
@@ -152,7 +153,24 @@ class RobotContainerDriverControlsTest {
         DriverStationSim.notifyNewData();
         runCycles(3);
         assertEquals(300.0, indexer.getFloorTargetRPM());
-        assertEquals(1500.0, indexer.getTunnelTargetRPM());
+        assertEquals(0.0, indexer.getTunnelTargetRPM());
+        // Y owns shooter/tunnel even while the manual calibration trigger is held.
+        SmartDashboard.putBoolean("Fuel/Calibration Mode", false);
+        DriverStationSim.setJoystickButton(0, XboxController.Button.kBack.value, false);
+        DriverStationSim.setJoystickButton(0, XboxController.Button.kY.value, true);
+        DriverStationSim.setJoystickAxis(0, XboxController.Axis.kRightTrigger.value, 1.0);
+        DriverStationSim.notifyNewData();
+        runCycles(4);
+        assertEquals("FuelShootCommand", CommandScheduler.getInstance().requiring(indexer).getName());
+        assertEquals(0, indexer.getTunnelTargetRPM()); // No calibration/alliance, so never releases.
+        DriverStationSim.setJoystickButton(0, XboxController.Button.kY.value, false);
+        DriverStationSim.notifyNewData();
+        runCycles(4);
+        assertEquals(0, indexer.getTunnelTargetRPM()); // Trigger cannot resume ungated feed on Y release.
+        setControls(false, false);
+        setControls(false, true);
+        assertEquals(1500, indexer.getTunnelTargetRPM()); // Explicit new manual hold still works.
+        setControls(false, false);
         DriverStationSim.setEnabled(false);
         DriverStationSim.notifyNewData();
         runCycles(3);

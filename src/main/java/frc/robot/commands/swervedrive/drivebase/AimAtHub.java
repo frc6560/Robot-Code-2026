@@ -24,6 +24,11 @@ import org.littletonrobotics.junction.Logger;
 public class AimAtHub extends Command {
   private final SwerveSubsystem drivebase;
   private final Supplier<ChassisSpeeds> driverSpeeds;
+  private final Supplier<Translation2d> releasePosition;
+  private boolean atTarget;
+
+  /** Actual heading error and measured angular speed must both be within tolerance. */
+  public boolean isAtTarget() { return atTarget; }
   private final ProfiledPIDController headingController =
       new ProfiledPIDController(
           DrivebaseConstants.HUB_AIM_KP,
@@ -34,7 +39,13 @@ public class AimAtHub extends Command {
               DrivebaseConstants.HUB_AIM_MAX_ANGULAR_ACCELERATION_RAD_PER_SEC_SQ));
 
   public AimAtHub(SwerveSubsystem drivebase, Supplier<ChassisSpeeds> driverSpeeds) {
+    this(drivebase, driverSpeeds, () -> drivebase.getPose().getTranslation());
+  }
+
+  public AimAtHub(SwerveSubsystem drivebase, Supplier<ChassisSpeeds> driverSpeeds,
+      Supplier<Translation2d> releasePosition) {
     this.drivebase = drivebase;
+    this.releasePosition = releasePosition;
     this.driverSpeeds = driverSpeeds;
 
     headingController.enableContinuousInput(-Math.PI, Math.PI);
@@ -46,6 +57,7 @@ public class AimAtHub extends Command {
 
   @Override
   public void initialize() {
+    atTarget = false;
     headingController.reset(
         drivebase.getPose().getRotation().getRadians(),
         drivebase.getRobotVelocity().omegaRadiansPerSecond);
@@ -60,6 +72,7 @@ public class AimAtHub extends Command {
     Optional<Alliance> alliance = DriverStation.getAlliance();
 
     if (alliance.isEmpty()) {
+      atTarget = false;
       // Retain normal manual rotation if the Driver Station has not supplied an alliance.
       drivebase.driveFieldOriented(speeds);
       SmartDashboard.putBoolean("Hub Aim/Has Alliance", false);
@@ -74,10 +87,11 @@ public class AimAtHub extends Command {
         alliance.get() == Alliance.Blue
             ? FieldConstants.BLUE_HUB_CENTER
             : FieldConstants.RED_HUB_CENTER;
-    Translation2d robotToHub = hub.minus(robotPose.getTranslation());
+    Translation2d robotToHub = hub.minus(releasePosition.get());
     double targetHeading = Math.atan2(robotToHub.getY(), robotToHub.getX());
     double headingError =
         MathUtil.angleModulus(targetHeading - robotPose.getRotation().getRadians());
+    atTarget = isSettled(headingError, drivebase.getRobotVelocity().omegaRadiansPerSecond);
     double feedbackOmega =
         headingController.calculate(robotPose.getRotation().getRadians(), targetHeading);
     double profileOmega = headingController.getSetpoint().velocity;
@@ -86,7 +100,7 @@ public class AimAtHub extends Command {
     // follows the requested fast trapezoidal profile instead of slowly chasing it with PID alone.
     double omega = feedbackOmega + profileOmega;
 
-    if (headingController.atGoal()) {
+    if (atTarget) {
       omega = 0.0;
     }
     // Keep a final safety bound even if PID feedback briefly exceeds the profile velocity.
@@ -107,10 +121,10 @@ public class AimAtHub extends Command {
     SmartDashboard.putNumber(
         "Hub Aim/Profile Velocity Deg Per Sec",
         Math.toDegrees(headingController.getSetpoint().velocity));
-    SmartDashboard.putBoolean("Hub Aim/At Target", headingController.atGoal());
+    SmartDashboard.putBoolean("Hub Aim/At Target", atTarget);
 
     Logger.recordOutput("HubAim/HasAlliance", true);
-    Logger.recordOutput("HubAim/AtTarget", headingController.atGoal());
+    Logger.recordOutput("HubAim/AtTarget", atTarget);
     Logger.recordOutput("HubAim/TargetHeadingDeg", Math.toDegrees(targetHeading));
     Logger.recordOutput("HubAim/CurrentHeadingDeg", robotPose.getRotation().getDegrees());
     Logger.recordOutput("HubAim/HeadingErrorDeg", Math.toDegrees(headingError));
@@ -147,8 +161,16 @@ public class AimAtHub extends Command {
         Math.toDegrees(DrivebaseConstants.HUB_AIM_MAX_ANGULAR_ACCELERATION_RAD_PER_SEC_SQ));
   }
 
+  static boolean isSettled(double headingError, double measuredOmega) {
+    return Double.isFinite(headingError) && Double.isFinite(measuredOmega)
+        && Math.abs(headingError) <= DrivebaseConstants.HUB_AIM_TOLERANCE_RADIANS
+        && Math.abs(measuredOmega) <= DrivebaseConstants.HUB_AIM_VELOCITY_TOLERANCE_RAD_PER_SEC;
+  }
+
   @Override
   public void end(boolean interrupted) {
+    atTarget = false;
+    drivebase.driveFieldOriented(new ChassisSpeeds());
     SmartDashboard.putBoolean("Hub Aim/Active", false);
     SmartDashboard.putBoolean("Hub Aim/At Target", false);
     Logger.recordOutput("HubAim/Active", false);

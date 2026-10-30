@@ -9,6 +9,8 @@ public interface IndexerIO {
         public double currentAmps = 0.0;
         public double floorRPM = 0.0;
         public double tunnelRPM = 0.0;
+        public boolean tunnelConnected = false;
+        public boolean tunnelConfigured = false;
         public boolean floorConnected = false;
         public boolean floorSecondaryConnected = false;
         public double floorSecondaryRPM = 0.0;

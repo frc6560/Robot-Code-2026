@@ -105,6 +105,10 @@ public class Shooter extends SubsystemBase {
         return distanceMeters > ShooterConstants.BANGBANG_MIN_DISTANCE_METERS;
     }
 
+    public boolean isHardwareReady() {
+        return inputs.leaderConnected && inputs.followerConnected && !pitCoastMode;
+    }
+
     public double getGoalRPM() {
         return Units.radiansPerSecondToRotationsPerMinute(goalRadsPerSec);
     }
