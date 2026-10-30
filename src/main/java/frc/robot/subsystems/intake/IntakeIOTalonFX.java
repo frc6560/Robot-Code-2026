@@ -195,13 +195,15 @@ public class IntakeIOTalonFX implements IntakeIO {
     public void setRollerRPM(double rpm) {
         // A second interlock at the hardware boundary rejects roller commands even if a caller errs.
         boolean allowed = configurationStatus.isOK() && deployLimit.confirmed()
+            && deployLimit.appliedAmps() == IntakeConstants.DEPLOY_STATOR_CURRENT_LIMIT
             && rackAllowsRollers(homed, rackFeedbackFresh, stopped, requestedRackPosition,
                 motor.getPosition().getValueAsDouble(), motor.getVelocity().getValueAsDouble());
         if (!Double.isFinite(rpm) || rpm == 0.0 || !allowed || !leftRollerConfigurationStatus.isOK()
                 || !rightRollerConfigurationStatus.isOK()) {
             leftRoller.stopMotor();
             rightRoller.stopMotor();
-            rollerControlStatus = rpm == 0 ? "Stopped" : "Blocked: rack not confirmed extended / motor configuration";
+            rollerControlStatus = rpm == 0 ? "Stopped"
+                : "Blocked: rack not confirmed extended / startup push active / motor configuration";
             return;
         }
         StatusCode left = leftRoller.setControl(leftRollerRequest.withVelocity(rpm / 60.0));

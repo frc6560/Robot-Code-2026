@@ -21,10 +21,14 @@ class IntakeTest {
         boolean rollersConnected = true;
         boolean rollersConfigured = true;
         double position, stator, velocity;
+        double statorLimit = IntakeConstants.DEPLOY_STATOR_CURRENT_LIMIT;
+        boolean currentLimitOK = true;
         @Override public void updateInputs(IntakeIOInputs inputs) {
             inputs.deployPositionRotations = position;
             inputs.deployVelocityRPS = velocity;
             inputs.deployStatorCurrentAmps = stator;
+            inputs.deployStatorLimitAmps = statorLimit;
+            inputs.deployCurrentLimitOK = currentLimitOK;
             inputs.deployConnected = ready;
             inputs.configured = ready && configured;
             inputs.deployHomed = ready && homed;
@@ -110,6 +114,34 @@ class IntakeTest {
         intake.periodic();
         assertEquals(IntakeConstants.RETRACTED_POSITION_ROTATIONS, io.target);
         assertFalse(io.stopped);
+        assertEquals(0, io.roller);
+    }
+
+    @Test void rollersWaitForStartupPushToEndAndConfirmedContinuousLimit() {
+        teleop(true);
+        intake.requestRackExtended();
+        io.position = IntakeConstants.EXTENDED_POSITION_ROTATIONS;
+        io.statorLimit = 60.0;
+        intake.periodic();
+        SimHooks.stepTiming(2.0);
+        intake.periodic();
+        assertEquals(0, io.roller);
+        assertEquals("Waiting for rack startup push to end",
+            SmartDashboard.getString("Intake/RollerBlockedReason", ""));
+        io.statorLimit = IntakeConstants.DEPLOY_STATOR_CURRENT_LIMIT;
+        io.currentLimitOK = false;
+        intake.periodic();
+        SimHooks.stepTiming(1.0);
+        intake.periodic();
+        assertEquals(0, io.roller);
+        io.currentLimitOK = true;
+        intake.periodic();
+        assertEquals(0, io.roller);
+        SimHooks.stepTiming(IntakeConstants.ROLLER_EXTENSION_SETTLE_SECONDS + 0.01);
+        intake.periodic();
+        assertEquals(IntakeConstants.ROLLER_RPM, io.roller);
+        io.statorLimit = 60.0;
+        intake.periodic();
         assertEquals(0, io.roller);
     }
 

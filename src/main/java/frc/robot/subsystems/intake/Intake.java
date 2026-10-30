@@ -101,7 +101,9 @@ public class Intake extends SubsystemBase {
             && requestedDeployTarget == IntakeConstants.EXTENDED_POSITION_ROTATIONS
             && Math.abs(inputs.deployPositionRotations - IntakeConstants.EXTENDED_POSITION_ROTATIONS)
                 <= IntakeConstants.DEPLOY_POSITION_TOLERANCE_ROTATIONS;
-        boolean extensionStable = enabled && !pitCoastMode && fullyExtended
+        boolean startupPushFinished = inputs.deployCurrentLimitOK
+            && inputs.deployStatorLimitAmps == IntakeConstants.DEPLOY_STATOR_CURRENT_LIMIT;
+        boolean extensionStable = enabled && !pitCoastMode && fullyExtended && startupPushFinished
             && Double.isFinite(inputs.deployVelocityRPS)
             && Math.abs(inputs.deployVelocityRPS) <= IntakeConstants.ROLLER_MAX_DEPLOY_VELOCITY_RPS
             && inputs.rollerConnected && inputs.rollerConfigured;
@@ -117,11 +119,14 @@ public class Intake extends SubsystemBase {
             : !fullyExtended ? "Waiting for fully extended rack"
             : !inputs.rollerConnected ? "Check Canivore roller IDs 17 and 18, power and wiring"
             : !inputs.rollerConfigured ? "Roller configuration failed; correct and restart code"
+            : !inputs.deployCurrentLimitOK ? "Rack current-limit update not confirmed"
+            : !startupPushFinished ? "Waiting for rack startup push to end"
             : !rollerPermitted ? "Waiting for rack to settle at full extension"
             : "None";
         SmartDashboard.putNumber("Intake/RollerRequestedRPM", rollerTargetRPM);
         SmartDashboard.putBoolean("Intake/FullyExtended", fullyExtended);
         SmartDashboard.putBoolean("Intake/RollerPermitted", rollerPermitted);
+        SmartDashboard.putBoolean("Intake/StartupPushFinished", startupPushFinished);
         SmartDashboard.putBoolean("Intake/DeployStallFault", false);
         SmartDashboard.putNumber("Intake/DeployStatorLimitAmps", inputs.deployStatorLimitAmps);
         SmartDashboard.putBoolean("Intake/DeployCurrentLimitOK", inputs.deployCurrentLimitOK);
