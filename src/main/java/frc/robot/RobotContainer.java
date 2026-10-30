@@ -270,6 +270,7 @@ public class RobotContainer {
                 ? clampSpeedsForShooting(driveAngularVelocity.get())
                 : new ChassisSpeeds());
         drivebase.setDefaultCommand(driveFieldOrientedAnglularVelocity);
+        driveFieldOrientedAnglularVelocity.setName("Driver field-oriented drive");
 
         // Operator A remains an alternate hold-to-run control for the floor/shooter.
         // Avoid repeatedly asking WPILib for Button 6 when the driver HID lacks that button.
@@ -393,7 +394,7 @@ public class RobotContainer {
         Logger.recordOutput("Robot/PitCoastMode", enabled);
     }
 
-    /** Always restore normal motor control before an autonomous period begins. */
+    /** Restore normal motor control before an autonomous or teleop period begins. */
     public void disablePitCoastMode() {
         if (pitCoastMode) {
             setPitCoastMode(false);

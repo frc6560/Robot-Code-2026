@@ -14,6 +14,7 @@ class IntakeTest {
         double target;
         double roller;
         boolean stopped;
+        int positionRequests;
         boolean ready = true;
         boolean configured = true;
         boolean homed = true;
@@ -26,7 +27,11 @@ class IntakeTest {
             inputs.rollerConnected = rollersConnected;
             inputs.rollerConfigured = rollersConfigured;
         }
-        @Override public void setDeployPosition(double position) { target = position; stopped = false; }
+        @Override public void setDeployPosition(double position) {
+            target = position;
+            stopped = false;
+            positionRequests++;
+        }
         @Override public void setRollerRPM(double rpm) { roller = rpm; }
         @Override public void stop() { stopped = true; roller = 0.0; }
     }
@@ -58,68 +63,65 @@ class IntakeTest {
         intake.periodic();
     }
 
-    @Test void extendsFullyAndHoldsWithoutTimedRetraction() {
+    @Test void enablingNeverEnergizesRackWithoutRequestButStillRunsRollers() {
         teleop(true);
-        assertEquals(IntakeConstants.ENABLE_POSITION_ROTATIONS, io.target);
-        assertFalse(io.stopped);
-        assertTrue(intake.isReady());
         SimHooks.stepTiming(20.0);
         intake.periodic();
-        assertEquals(IntakeConstants.ENABLE_POSITION_ROTATIONS, io.target);
-        assertEquals(Intake.State.EXTENDED_SPINNING, intake.getState());
-        assertEquals(2500.0, io.roller);
-        assertEquals(2500.0, SmartDashboard.getNumber("Intake/RollerRequestedRPM", -1));
-        assertEquals(2500.0, SmartDashboard.getNumber("Intake/RollerCommandedRPM", -1));
-        assertEquals("None", SmartDashboard.getString("Intake/RollerBlockedReason", ""));
+        assertTrue(io.stopped);
+        assertEquals(0, io.positionRequests);
+        assertFalse(SmartDashboard.getBoolean("Intake/RackRequested", true));
+        assertEquals("Waiting for LT/RT rack request", SmartDashboard.getString("Intake/BlockedReason", ""));
+        assertEquals(IntakeConstants.ROLLER_RPM, io.roller);
+        DriverStationSim.setAutonomous(true);
+        DriverStationSim.notifyNewData();
+        intake.periodic();
+        DriverStationSim.setAutonomous(false);
+        DriverStationSim.setTest(true);
+        DriverStationSim.notifyNewData();
+        intake.periodic();
+        assertEquals(0, io.positionRequests);
+        assertTrue(io.stopped);
     }
 
-    @Test void rackRequestsPersistWithoutChangingRollersAndStillRespectInterlocks() {
+    @Test void rackSelectionsHoldUntilAnotherSelectionWithoutChangingRollers() {
         teleop(true);
+        intake.requestRackExtended();
+        intake.periodic();
+        assertFalse(io.stopped);
+        assertEquals(IntakeConstants.EXTENDED_POSITION_ROTATIONS, io.target);
+        SimHooks.stepTiming(20.0);
+        intake.periodic();
+        assertEquals(IntakeConstants.EXTENDED_POSITION_ROTATIONS, io.target);
+        assertEquals(Intake.State.EXTENDED_SPINNING, intake.getState());
         intake.requestRackRetracted();
         intake.periodic();
         assertEquals(IntakeConstants.RETRACTED_POSITION_ROTATIONS, io.target);
+        assertFalse(io.stopped);
         assertEquals(IntakeConstants.ROLLER_RPM, io.roller);
-        SimHooks.stepTiming(1.0);
+    }
+
+    @Test void disablingClearsRequestAndReenableRequiresNewSelection() {
+        teleop(true);
+        intake.requestRackExtended();
         intake.periodic();
-        assertEquals(IntakeConstants.RETRACTED_POSITION_ROTATIONS, io.target);
         teleop(false);
         assertTrue(io.stopped);
+        assertEquals(0.0, io.roller);
+        int requestsBeforeReenable = io.positionRequests;
         teleop(true);
+        assertTrue(io.stopped);
+        assertEquals(requestsBeforeReenable, io.positionRequests);
+        intake.requestRackRetracted();
+        intake.periodic();
+        assertFalse(io.stopped);
         assertEquals(IntakeConstants.RETRACTED_POSITION_ROTATIONS, io.target);
+    }
+
+    @Test void configurationHomingAndConnectionFaultsBlockRequestedMotion() {
+        teleop(true);
         intake.requestRackExtended();
-        io.homed = false;
-        intake.periodic();
-        assertTrue(io.stopped);
-        io.homed = true;
-        intake.setPitCoastMode(true);
-        intake.periodic();
-        assertTrue(io.stopped);
-        intake.setPitCoastMode(false);
-        intake.periodic();
-        assertEquals(IntakeConstants.EXTENDED_POSITION_ROTATIONS, io.target);
-        assertFalse(io.stopped);
-        assertEquals(IntakeConstants.ROLLER_RPM, io.roller);
-    }
-
-    @Test void delayedMotorReadinessStillExtendsFully() {
-        io.ready = false;
-        teleop(true);
-        SimHooks.stepTiming(5.0);
-        intake.periodic();
-        assertTrue(io.stopped);
-        assertTrue(SmartDashboard.getString("Intake/BlockedReason", "").contains("26"));
-        io.ready = true;
-        intake.periodic();
-        assertFalse(io.stopped);
-        assertEquals(IntakeConstants.ENABLE_POSITION_ROTATIONS, io.target);
-        SimHooks.stepTiming(20.0);
-        intake.periodic();
-        assertEquals(IntakeConstants.ENABLE_POSITION_ROTATIONS, io.target);
-    }
-
-    @Test void configurationAndZeroFailuresHaveVisibleReasonsAndBlockMotion() {
         io.configured = false;
-        teleop(true);
+        intake.periodic();
         assertTrue(io.stopped);
         assertTrue(SmartDashboard.getString("Intake/BlockedReason", "").contains("configuration failed"));
         io.configured = true;
@@ -128,44 +130,34 @@ class IntakeTest {
         assertTrue(io.stopped);
         assertTrue(SmartDashboard.getString("Intake/BlockedReason", "").contains("zero failed"));
         io.homed = true;
+        io.ready = false;
+        intake.periodic();
+        assertTrue(io.stopped);
+        assertEquals(0, io.positionRequests);
+        io.ready = true;
         intake.periodic();
         assertFalse(io.stopped);
-        assertEquals("None", SmartDashboard.getString("Intake/BlockedReason", ""));
+        assertEquals(IntakeConstants.EXTENDED_POSITION_ROTATIONS, io.target);
     }
 
-    @Test void disableStopsImmediatelyAndReenableResumesSameTarget() {
+    @Test void pitCoastClearsRackRequestAndStopsRollers() {
         teleop(true);
-        SimHooks.stepTiming(0.5);
-        teleop(false);
+        intake.requestRackExtended();
+        intake.periodic();
+        intake.setPitCoastMode(true);
+        intake.periodic();
         assertTrue(io.stopped);
         assertEquals(0.0, io.roller);
-        assertEquals(0.0, SmartDashboard.getNumber("Intake/RollerRequestedRPM", -1));
-        teleop(true);
-        assertFalse(io.stopped);
-        assertEquals(IntakeConstants.ENABLE_POSITION_ROTATIONS, io.target);
-        SimHooks.stepTiming(20.0);
-        intake.periodic();
-        assertEquals(IntakeConstants.ENABLE_POSITION_ROTATIONS, io.target);
-    }
-
-    @Test void disabledStopsAndAllEnabledModesHoldFullExtension() {
+        intake.setPitCoastMode(false);
         intake.periodic();
         assertTrue(io.stopped);
-        DriverStationSim.setEnabled(true);
-        DriverStationSim.setAutonomous(true);
-        DriverStationSim.notifyNewData();
+        assertEquals(IntakeConstants.ROLLER_RPM, io.roller);
+        intake.requestRackRetracted();
         intake.periodic();
         assertFalse(io.stopped);
-        assertEquals(IntakeConstants.ENABLE_POSITION_ROTATIONS, io.target);
-        DriverStationSim.setAutonomous(false);
-        DriverStationSim.setTest(true);
-        DriverStationSim.notifyNewData();
-        intake.periodic();
-        assertFalse(io.stopped);
-        assertEquals(IntakeConstants.ENABLE_POSITION_ROTATIONS, io.target);
     }
 
-    @Test void legacyIntakeAndShotCallsCannotOverrideEnableTarget() {
+    @Test void legacyIntakeAndShotCallsCannotMoveRack() {
         teleop(true);
         intake.activate();
         intake.activateOuttake();
@@ -173,59 +165,26 @@ class IntakeTest {
         intake.setExtendedStopped();
         intake.startShootingOscillation();
         intake.periodic();
-        assertEquals(IntakeConstants.ENABLE_POSITION_ROTATIONS, io.target);
-        assertEquals(2500.0, io.roller);
-        assertTrue(intake.isActive());
+        assertTrue(io.stopped);
+        assertEquals(0, io.positionRequests);
+        assertEquals(IntakeConstants.ROLLER_RPM, io.roller);
         assertFalse(intake.isShootingOscillationActive());
-        SimHooks.stepTiming(20.0);
-        intake.activate();
-        intake.periodic();
-        assertEquals(IntakeConstants.ENABLE_POSITION_ROTATIONS, io.target);
     }
 
-    @Test void feedbackFaultAndPitCoastStopOutput() {
+    @Test void rollersRunWithoutRackHomingButStopOnTheirOwnFaults() {
+        io.homed = false;
         teleop(true);
-        io.ready = false;
-        intake.periodic();
         assertTrue(io.stopped);
-        assertFalse(intake.isReady());
-        io.ready = true;
-        intake.setPitCoastMode(true);
-        intake.periodic();
-        assertTrue(io.stopped);
-        assertEquals(0.0, io.roller);
-        intake.setPitCoastMode(false);
-        intake.periodic();
-        assertFalse(io.stopped);
-        assertEquals(2500.0, io.roller);
-    }
-
-    @Test void rollersStopOnConnectionOrConfigurationFailureWithoutStoppingReadyRack() {
-        teleop(true);
-        assertEquals(2500.0, io.roller);
+        assertEquals(IntakeConstants.ROLLER_RPM, io.roller);
         io.rollersConnected = false;
         intake.periodic();
         assertEquals(0.0, io.roller);
-        assertFalse(io.stopped);
-        assertFalse(intake.isActive());
-        assertEquals(Intake.State.EXTENDED_STOPPED, intake.getState());
         io.rollersConnected = true;
         io.rollersConfigured = false;
         intake.periodic();
         assertEquals(0.0, io.roller);
-        assertTrue(SmartDashboard.getString("Intake/RollerBlockedReason", "").contains("configuration"));
         io.rollersConfigured = true;
         intake.periodic();
-        assertEquals(2500.0, io.roller);
-    }
-
-    @Test void rollersRunIndependentlyOfRackHomingAndStopWhenDisabled() {
-        io.homed = false;
-        teleop(true);
-        assertTrue(io.stopped);
-        assertEquals(2500.0, io.roller);
-        teleop(false);
-        assertEquals(0.0, io.roller);
-        assertFalse(intake.isActive());
+        assertEquals(IntakeConstants.ROLLER_RPM, io.roller);
     }
 }

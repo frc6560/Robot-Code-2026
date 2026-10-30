@@ -203,6 +203,7 @@ public class Robot extends LoggedRobot
   @Override
   public void teleopInit()
   {
+    m_robotContainer.disablePitCoastMode();
     if (m_autonomousCommand != null)
     {
       m_autonomousCommand.cancel();

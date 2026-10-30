@@ -60,6 +60,23 @@ class RobotContainerDriverControlsTest {
         Turret turret = getField(container, "turret", Turret.class);
         runCycles(150);
         assertTargets(shooter, indexer, 0.0, 300.0, 0.0);
+        assertEquals(false, SmartDashboard.getBoolean("Intake/RackRequested", true));
+        assertEquals(0.0, SmartDashboard.getNumber("Intake/DeployAppliedVolts", -1));
+
+        // The default drive must accept both translation and rotation with no shot held.
+        DriverStationSim.setJoystickAxis(0, XboxController.Axis.kLeftY.value, -0.6);
+        DriverStationSim.setJoystickAxis(0, XboxController.Axis.kRightX.value, 0.3);
+        DriverStationSim.notifyNewData();
+        runCycles(3);
+        assertTrue(Math.hypot(SmartDashboard.getNumber("Swerve/RequestedVxMPS", 0),
+            SmartDashboard.getNumber("Swerve/RequestedVyMPS", 0)) > 0.1);
+        assertTrue(Math.abs(SmartDashboard.getNumber("Swerve/RequestedOmegaRadPerSec", 0)) > 0.1);
+        assertTrue(SmartDashboard.getString("Swerve/ControlStatus", "")
+            .contains("Driver field-oriented drive"));
+        DriverStationSim.setJoystickAxis(0, XboxController.Axis.kLeftY.value, 0.0);
+        DriverStationSim.setJoystickAxis(0, XboxController.Axis.kRightX.value, 0.0);
+        DriverStationSim.notifyNewData();
+        runCycles(3);
         assertEquals(0.0, shooter.getCurrentRPM(), 150.0);
         // Rack triggers must select and retain endpoints without feeding the tunnel.
         DriverStationSim.setJoystickAxis(0, XboxController.Axis.kLeftTrigger.value, 1.0);
@@ -167,14 +184,19 @@ class RobotContainerDriverControlsTest {
         runCycles(3);
         assertEquals(0.0, indexer.getFloorTargetRPM());
         assertEquals(0.0, indexer.getTunnelTargetRPM());
+        assertTrue(SmartDashboard.getString("Swerve/ControlStatus", "").contains("Pit coast mode"));
         DriverStationSim.setJoystickButton(0, XboxController.Button.kBack.value, false);
         DriverStationSim.notifyNewData();
         runCycles(3);
-        DriverStationSim.setJoystickButton(0, XboxController.Button.kBack.value, true);
-        DriverStationSim.notifyNewData();
+        // Teleop initialization uses this same reset to avoid carrying coast across modes.
+        container.disablePitCoastMode();
         runCycles(3);
         assertEquals(300.0, indexer.getFloorTargetRPM());
         assertEquals(0.0, indexer.getTunnelTargetRPM());
+        assertEquals(false, SmartDashboard.getBoolean("Swerve/PitCoastMode", true));
+        assertTrue(SmartDashboard.getString("Swerve/ControlStatus", "")
+            .contains("Driver field-oriented drive"));
+        assertEquals(false, SmartDashboard.getBoolean("Intake/RackRequested", true));
         // Y owns shooter/tunnel even while the manual calibration bumper is held.
         SmartDashboard.putBoolean("Fuel/Calibration Mode", false);
         DriverStationSim.setJoystickButton(0, XboxController.Button.kBack.value, false);

@@ -13,7 +13,8 @@ public class Intake extends SubsystemBase {
     private final IntakeIO.IntakeIOInputs inputs = new IntakeIO.IntakeIOInputs();
     private boolean pitCoastMode;
     private double target = IntakeConstants.RETRACTED_POSITION_ROTATIONS;
-    private double requestedDeployTarget = IntakeConstants.ENABLE_POSITION_ROTATIONS;
+    private double requestedDeployTarget = IntakeConstants.RETRACTED_POSITION_ROTATIONS;
+    private boolean rackRequested;
     private double rollerTargetRPM;
     private String lastConsoleState = "";
     private double nextConsolePrint;
@@ -27,13 +28,15 @@ public class Intake extends SubsystemBase {
     /** Select a rack endpoint; periodic retains the request until the next selection. */
     public void requestRackRetracted() {
         requestedDeployTarget = IntakeConstants.RETRACTED_POSITION_ROTATIONS;
+        rackRequested = true;
     }
 
     public void requestRackExtended() {
         requestedDeployTarget = IntakeConstants.EXTENDED_POSITION_ROTATIONS;
+        rackRequested = true;
     }
 
-    // Existing buttons/auto/shot callers cannot override the automatic enable behavior.
+    // Legacy intake/shot callers do not override the driver's rack selection.
     public void activate() {}
     public void deactivate() {}
     public void activateOuttake() {}
@@ -62,6 +65,7 @@ public class Intake extends SubsystemBase {
 
     public void setPitCoastMode(boolean enabled) {
         pitCoastMode = enabled;
+        rackRequested = false;
         rollerTargetRPM = 0.0;
         io.stop();
         io.setCoastMode(enabled);
@@ -72,10 +76,13 @@ public class Intake extends SubsystemBase {
         io.updateInputs(inputs);
         Logger.processInputs("Intake", inputs);
         boolean enabled = DriverStation.isEnabled();
+        if (!enabled) {
+            rackRequested = false;
+        }
         target = enabled
             ? requestedDeployTarget
             : IntakeConstants.RETRACTED_POSITION_ROTATIONS;
-        if (enabled && !pitCoastMode && isReady()) {
+        if (enabled && !pitCoastMode && rackRequested && isReady()) {
             io.setDeployPosition(target);
         } else {
             io.stop();
@@ -107,6 +114,7 @@ public class Intake extends SubsystemBase {
                 + " CAN ID " + IntakeConstants.DEPLOY_MOTOR_ID + ", power and wiring"
             : !inputs.configured ? "Motor configuration failed: see configuration status; restart after fixing"
             : !inputs.deployHomed ? "Startup zero failed or controller reset: retract and restart code"
+            : !rackRequested ? "Waiting for LT/RT rack request"
             : "None";
         String consoleState = blockedReason.equals("None")
             ? (target == IntakeConstants.RETRACTED_POSITION_ROTATIONS ? "RETRACT / HOLD" : "EXTEND / HOLD")
@@ -125,6 +133,7 @@ public class Intake extends SubsystemBase {
             nextConsolePrint = now + 1.0;
         }
         SmartDashboard.putString("Intake/BlockedReason", blockedReason);
+        SmartDashboard.putBoolean("Intake/RackRequested", rackRequested);
         SmartDashboard.putString("Intake/DeployControlStatus", inputs.deployControlStatus);
         SmartDashboard.putNumber("Intake/DeployCANID", IntakeConstants.DEPLOY_MOTOR_ID);
         SmartDashboard.putString("Intake/DeployCANBus", IntakeConstants.CAN_BUS);
