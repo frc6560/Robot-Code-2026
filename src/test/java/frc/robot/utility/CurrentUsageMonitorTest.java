@@ -5,6 +5,17 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class CurrentUsageMonitorTest {
+    @Test void ranksTemperaturesIndependentlyAndOmitsMissingSamples() {
+        var hottest = CurrentUsageMonitor.rankTemperatures(List.of(
+            new CurrentUsageMonitor.TemperatureReading("Intake", 68),
+            new CurrentUsageMonitor.TemperatureReading("Shooter", 42),
+            new CurrentUsageMonitor.TemperatureReading("Drive", 55),
+            new CurrentUsageMonitor.TemperatureReading("Disconnected", Double.NaN)));
+        assertEquals(List.of("Intake", "Drive", "Shooter"),
+            hottest.stream().map(CurrentUsageMonitor.TemperatureReading::name).toList());
+        assertEquals(68, hottest.get(0).celsius());
+        assertTrue(CurrentUsageMonitor.rankTemperatures(List.of()).isEmpty());
+    }
     @Test void ranksActualSupplyDrawAndIgnoresInvalidReadings() {
         var readings = CurrentUsageMonitor.rank(List.of(
             new CurrentUsageMonitor.Reading("Shooter", 15),

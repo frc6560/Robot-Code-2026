@@ -173,8 +173,22 @@ be graphed. The same keys are recorded under AdvantageKit RealOutputs.
 All 16 installed Talon FX controllers are tracked together on hardware: eight
 swerve drive/steering motors, two shooter motors, three intake motors, and three
 indexer motors. No new motor-controller objects are created. Supply-current
-signals are requested at 50 Hz and ranked every robot loop. Failed/stale signals
+signals are requested at 20 Hz and ranked every robot loop. Refresh calls are
+grouped by CAN connection; a Phoenix refresh cannot mix rio and CANivore signals. Failed/stale signals
 are excluded; check Power/TrackedMotorCount and Power/FreshMotorCount for coverage.
 Per-motor readings/freshness are under Power/Motors. TotalTrackedSupplyAmps sums
 only fresh monitored motor readings, not all electrical loads on the robot.
 This is an instantaneous battery-draw ranking, not an overheating or fault diagnosis.
+
+
+Hottest-controller displays are `Power/Top1HottestDevice`, `Power/Top2HottestDevice`,
+and `Power/Top3HottestDevice`, with separate numeric `...Celsius` keys. These rank
+fresh device-temperature readings from the same 16 motor controllers, requested
+at 10 Hz. Temperatures more than 2 seconds old are excluded. Device temperature
+is the controller's reported sensor temperature, not a direct measurement of the
+motor windings, bearings or power connections. `Power/MonitorStatus` and
+`Power/RefreshStatus` expose diagnostic errors. A runtime exception in this monitor
+is reported without propagating into the robot loop; this does not catch crashes
+elsewhere or native/process failures. A stale device-temperature warning by itself
+does not establish an overtemperature condition. Preserve the Driver Station error
+and stack trace to investigate an actual program termination.
