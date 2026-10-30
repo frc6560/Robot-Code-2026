@@ -73,6 +73,34 @@ class IntakeTest {
         assertEquals("None", SmartDashboard.getString("Intake/RollerBlockedReason", ""));
     }
 
+    @Test void rackRequestsPersistWithoutChangingRollersAndStillRespectInterlocks() {
+        teleop(true);
+        intake.requestRackRetracted();
+        intake.periodic();
+        assertEquals(IntakeConstants.RETRACTED_POSITION_ROTATIONS, io.target);
+        assertEquals(IntakeConstants.ROLLER_RPM, io.roller);
+        SimHooks.stepTiming(1.0);
+        intake.periodic();
+        assertEquals(IntakeConstants.RETRACTED_POSITION_ROTATIONS, io.target);
+        teleop(false);
+        assertTrue(io.stopped);
+        teleop(true);
+        assertEquals(IntakeConstants.RETRACTED_POSITION_ROTATIONS, io.target);
+        intake.requestRackExtended();
+        io.homed = false;
+        intake.periodic();
+        assertTrue(io.stopped);
+        io.homed = true;
+        intake.setPitCoastMode(true);
+        intake.periodic();
+        assertTrue(io.stopped);
+        intake.setPitCoastMode(false);
+        intake.periodic();
+        assertEquals(IntakeConstants.EXTENDED_POSITION_ROTATIONS, io.target);
+        assertFalse(io.stopped);
+        assertEquals(IntakeConstants.ROLLER_RPM, io.roller);
+    }
+
     @Test void delayedMotorReadinessStillExtendsFully() {
         io.ready = false;
         teleop(true);

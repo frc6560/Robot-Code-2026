@@ -7,12 +7,13 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.IntakeConstants;
 
-/** Hold the configured rack position and run both intake rollers while enabled. */
+/** Hold the requested rack position and run both intake rollers while enabled. */
 public class Intake extends SubsystemBase {
     private final IntakeIO io;
     private final IntakeIO.IntakeIOInputs inputs = new IntakeIO.IntakeIOInputs();
     private boolean pitCoastMode;
     private double target = IntakeConstants.RETRACTED_POSITION_ROTATIONS;
+    private double requestedDeployTarget = IntakeConstants.ENABLE_POSITION_ROTATIONS;
     private double rollerTargetRPM;
     private String lastConsoleState = "";
     private double nextConsolePrint;
@@ -22,6 +23,15 @@ public class Intake extends SubsystemBase {
     }
 
     public Intake(IntakeIO io) { this.io = io; }
+
+    /** Select a rack endpoint; periodic retains the request until the next selection. */
+    public void requestRackRetracted() {
+        requestedDeployTarget = IntakeConstants.RETRACTED_POSITION_ROTATIONS;
+    }
+
+    public void requestRackExtended() {
+        requestedDeployTarget = IntakeConstants.EXTENDED_POSITION_ROTATIONS;
+    }
 
     // Existing buttons/auto/shot callers cannot override the automatic enable behavior.
     public void activate() {}
@@ -63,7 +73,7 @@ public class Intake extends SubsystemBase {
         Logger.processInputs("Intake", inputs);
         boolean enabled = DriverStation.isEnabled();
         target = enabled
-            ? IntakeConstants.ENABLE_POSITION_ROTATIONS
+            ? requestedDeployTarget
             : IntakeConstants.RETRACTED_POSITION_ROTATIONS;
         if (enabled && !pitCoastMode && isReady()) {
             io.setDeployPosition(target);
@@ -99,7 +109,7 @@ public class Intake extends SubsystemBase {
             : !inputs.deployHomed ? "Startup zero failed or controller reset: retract and restart code"
             : "None";
         String consoleState = blockedReason.equals("None")
-            ? "EXTEND / HOLD"
+            ? (target == IntakeConstants.RETRACTED_POSITION_ROTATIONS ? "RETRACT / HOLD" : "EXTEND / HOLD")
             : "STOP: " + blockedReason;
         double now = Timer.getFPGATimestamp();
         // Print transitions immediately, plus one heartbeat/second while enabled.

@@ -179,7 +179,7 @@ public class RobotContainer {
     private static final double MAX_PASSING_VELOCITY_MPS = 3.0;
 
     private boolean isShotCommandActive() {
-        return driverXbox.rightTrigger().getAsBoolean()
+        return driverXbox.leftBumper().getAsBoolean()
             || (shotCommand != null
                 && CommandScheduler.getInstance().isScheduled(shotCommand));
     }
@@ -200,7 +200,7 @@ public class RobotContainer {
             () -> FuelShootCommand.releasePosition(drivebase.getPose()));
         shotCommand = new FuelShootCommand(shooter, indexer, drivebase::getPose,
             drivebase::getRobotVelocity, aim, aim::isAtTarget,
-            () -> driverXbox.rightTrigger().getAsBoolean(), () -> pitCoastMode,
+            () -> driverXbox.leftBumper().getAsBoolean(), () -> pitCoastMode,
             fuelShotModel, fuelCalibrationStatus);
         CommandScheduler.getInstance().schedule(shotCommand);
     }
@@ -281,8 +281,19 @@ public class RobotContainer {
         Trigger spinUp = combinedSpinUp.or(new Trigger(() -> m_Controls.getButtonActivated(11)));
         Trigger driver2Indexer = new Trigger(() -> m_Controls.getButtonActivated(3));
         Trigger floor = combinedSpinUp.or(driver2Indexer);
-        Trigger feed = driverXbox.rightTrigger().or(driver2Indexer);
-        // Releasing Y must stop feeding even if the calibration trigger is still held.
+        Trigger feed = driverXbox.leftBumper().or(driver2Indexer);
+
+        // Triggers select rack endpoints without running the wall indexer.
+        // Ignore simultaneous presses so neither direction wins unexpectedly.
+        Trigger rackRetract = driverXbox.leftTrigger();
+        Trigger rackExtend = driverXbox.rightTrigger();
+        rackRetract.and(rackExtend.negate())
+            .and(DriverStation::isTeleopEnabled).and(() -> !pitCoastMode)
+            .onTrue(Commands.runOnce(intake::requestRackRetracted, intake));
+        rackExtend.and(rackRetract.negate())
+            .and(DriverStation::isTeleopEnabled).and(() -> !pitCoastMode)
+            .onTrue(Commands.runOnce(intake::requestRackExtended, intake));
+        // Releasing Y must stop feeding even if the calibration bumper is still held.
         // Require all manual holds to release before an ungated manual shot can start again.
         new Trigger(() -> !driverXbox.y().getAsBoolean() && !spinUp.getAsBoolean()
             && !floor.getAsBoolean() && !feed.getAsBoolean())

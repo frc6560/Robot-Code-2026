@@ -45,7 +45,7 @@ class RobotContainerDriverControlsTest {
         DriverStationSim.setJoystickButtonCount(0, 10);
         DriverStationSim.setJoystickIsXbox(0, true);
         DriverStationSim.setJoystickButtonCount(1, 11);
-        DriverStationSim.setJoystickAxis(0, XboxController.Axis.kRightTrigger.value, 0.0);
+        DriverStationSim.setJoystickButton(0, XboxController.Button.kLeftBumper.value, false);
         DriverStationSim.notifyNewData();
 
         RobotContainer container = new RobotContainer();
@@ -61,6 +61,27 @@ class RobotContainerDriverControlsTest {
         runCycles(150);
         assertTargets(shooter, indexer, 0.0, 300.0, 0.0);
         assertEquals(0.0, shooter.getCurrentRPM(), 150.0);
+        // Rack triggers must select and retain endpoints without feeding the tunnel.
+        DriverStationSim.setJoystickAxis(0, XboxController.Axis.kLeftTrigger.value, 1.0);
+        DriverStationSim.notifyNewData();
+        runCycles(3);
+        assertEquals(0.0, SmartDashboard.getNumber("Intake/DeployTargetRotations", -1));
+        assertTargets(shooter, indexer, 0.0, 300.0, 0.0);
+        DriverStationSim.setJoystickAxis(0, XboxController.Axis.kLeftTrigger.value, 0.0);
+        DriverStationSim.notifyNewData();
+        runCycles(3);
+        assertEquals(0.0, SmartDashboard.getNumber("Intake/DeployTargetRotations", -1));
+        DriverStationSim.setJoystickAxis(0, XboxController.Axis.kRightTrigger.value, 1.0);
+        DriverStationSim.notifyNewData();
+        runCycles(3);
+        assertEquals(Constants.IntakeConstants.EXTENDED_POSITION_ROTATIONS,
+            SmartDashboard.getNumber("Intake/DeployTargetRotations", -1));
+        assertTargets(shooter, indexer, 0.0, 300.0, 0.0);
+        DriverStationSim.setJoystickAxis(0, XboxController.Axis.kRightTrigger.value, 0.0);
+        DriverStationSim.notifyNewData();
+        runCycles(3);
+        assertEquals(Constants.IntakeConstants.EXTENDED_POSITION_ROTATIONS,
+            SmartDashboard.getNumber("Intake/DeployTargetRotations", -1));
         double turretGoalBeforeTrigger = turret.getGoalDegrees();
 
         setControls(true, false);
@@ -70,7 +91,7 @@ class RobotContainerDriverControlsTest {
 
         setControls(true, true);
         assertTargets(shooter, indexer, 3000.0, 300.0, 1500.0);
-        // Releasing the trigger must not cancel the bumper's shooter/floor command.
+        // Releasing the left bumper must not cancel the bumper's shooter/floor command.
         setControls(true, false);
         assertTargets(shooter, indexer, 3000.0, 300.0, 0.0);
         setControls(true, true);
@@ -85,7 +106,7 @@ class RobotContainerDriverControlsTest {
         assertTargets(shooter, indexer, 0.0, 300.0, 0.0);
         runCycles(150);
 
-        // Trigger alone feeds without changing the shooter's idle goal.
+        // Left bumper alone feeds without changing the shooter's idle goal.
         setControls(false, true);
         assertTargets(shooter, indexer, 0.0, 0.0, 1500.0);
         assertEquals(turretGoalBeforeTrigger, turret.getGoalDegrees(), 0.01);
@@ -127,7 +148,7 @@ class RobotContainerDriverControlsTest {
 
         // No held controls: only the floor restarts on enable, including autonomous.
         DriverStationSim.setJoystickButton(0, XboxController.Button.kRightBumper.value, false);
-        DriverStationSim.setJoystickAxis(0, XboxController.Axis.kRightTrigger.value, 0.0);
+        DriverStationSim.setJoystickButton(0, XboxController.Button.kLeftBumper.value, false);
         DriverStationSim.notifyNewData();
         runCycles(3);
         DriverStationSim.setEnabled(true);
@@ -154,11 +175,11 @@ class RobotContainerDriverControlsTest {
         runCycles(3);
         assertEquals(300.0, indexer.getFloorTargetRPM());
         assertEquals(0.0, indexer.getTunnelTargetRPM());
-        // Y owns shooter/tunnel even while the manual calibration trigger is held.
+        // Y owns shooter/tunnel even while the manual calibration bumper is held.
         SmartDashboard.putBoolean("Fuel/Calibration Mode", false);
         DriverStationSim.setJoystickButton(0, XboxController.Button.kBack.value, false);
         DriverStationSim.setJoystickButton(0, XboxController.Button.kY.value, true);
-        DriverStationSim.setJoystickAxis(0, XboxController.Axis.kRightTrigger.value, 1.0);
+        DriverStationSim.setJoystickButton(0, XboxController.Button.kLeftBumper.value, true);
         DriverStationSim.notifyNewData();
         runCycles(4);
         assertEquals("FuelShootCommand", CommandScheduler.getInstance().requiring(indexer).getName());
@@ -166,7 +187,7 @@ class RobotContainerDriverControlsTest {
         DriverStationSim.setJoystickButton(0, XboxController.Button.kY.value, false);
         DriverStationSim.notifyNewData();
         runCycles(4);
-        assertEquals(0, indexer.getTunnelTargetRPM()); // Trigger cannot resume ungated feed on Y release.
+        assertEquals(0, indexer.getTunnelTargetRPM()); // Left bumper cannot resume ungated feed on Y release.
         setControls(false, false);
         setControls(false, true);
         assertEquals(1500, indexer.getTunnelTargetRPM()); // Explicit new manual hold still works.
@@ -180,7 +201,7 @@ class RobotContainerDriverControlsTest {
 
     private static void setControls(boolean bumper, boolean trigger) {
         DriverStationSim.setJoystickButton(0, XboxController.Button.kRightBumper.value, bumper);
-        DriverStationSim.setJoystickAxis(0, XboxController.Axis.kRightTrigger.value, trigger ? 1.0 : 0.0);
+        DriverStationSim.setJoystickButton(0, XboxController.Button.kLeftBumper.value, trigger);
         DriverStationSim.notifyNewData();
         runCycles(3);
     }
