@@ -162,3 +162,19 @@ a changed session and restarted CodeUptimeSeconds establish a program restart;
 a matching session and continuing uptime indicate the program survived the lost
 connection. Battery voltage, brownout flags and Driver Station messages are still
 needed to distinguish electrical failure, an exception, and a network problem.
+
+## Top current users
+
+On Elastic, add text displays for SmartDashboard `Power/Top1CurrentUser`,
+`Power/Top2CurrentUser`, and `Power/Top3CurrentUser`. Each shows a physical motor
+label, CAN ID and current supply amps. Corresponding numeric `...Amps` keys can
+be graphed. The same keys are recorded under AdvantageKit RealOutputs.
+
+All 16 installed Talon FX controllers are tracked together on hardware: eight
+swerve drive/steering motors, two shooter motors, three intake motors, and three
+indexer motors. No new motor-controller objects are created. Supply-current
+signals are requested at 50 Hz and ranked every robot loop. Failed/stale signals
+are excluded; check Power/TrackedMotorCount and Power/FreshMotorCount for coverage.
+Per-motor readings/freshness are under Power/Motors. TotalTrackedSupplyAmps sums
+only fresh monitored motor readings, not all electrical loads on the robot.
+This is an instantaneous battery-draw ranking, not an overheating or fault diagnosis.

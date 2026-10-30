@@ -130,6 +130,9 @@ public class IndexerIOTalonFX implements IndexerIO {
         floorLeader.optimizeBusUtilization();
         floorSecondary.optimizeBusUtilization();
         tunnelMotor.optimizeBusUtilization();
+        frc.robot.utility.CurrentUsageMonitor.register("Floor leader", floorLeader);
+        frc.robot.utility.CurrentUsageMonitor.register("Floor follower", floorSecondary);
+        frc.robot.utility.CurrentUsageMonitor.register("Wall tunnel", tunnelMotor);
     }
 
     static TalonFXConfiguration motorConfiguration(double gearRatio, boolean inverted) {

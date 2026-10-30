@@ -97,6 +97,7 @@ public class SwerveSubsystem extends SubsystemBase {
                                                 1); 
     swerveDrive.replaceSwerveModuleFeedforward(driveFF);
     SmartDashboard.putData("Swerve/Field", swerveDrive.field);
+    registerCurrentMonitoring();
     setMotorBrake(true);
   }
 
@@ -119,7 +120,24 @@ public class SwerveSubsystem extends SubsystemBase {
                                   new Pose2d(new Translation2d(Meter.of(2), Meter.of(0)),
                                   Rotation2d.fromDegrees(0)));
     SmartDashboard.putData("Swerve/Field", swerveDrive.field);
+    registerCurrentMonitoring();
     setMotorBrake(true);
+  }
+
+  private void registerCurrentMonitoring() {
+    for (var module : swerveDrive.getModules()) {
+      String name = switch (module.moduleNumber) {
+        case 0 -> "Front left";
+        case 1 -> "Front right";
+        case 2 -> "Back left";
+        case 3 -> "Back right";
+        default -> "Module " + module.moduleNumber;
+      };
+      if (module.getDriveMotor().getMotor() instanceof com.ctre.phoenix6.hardware.TalonFX motor)
+        frc.robot.utility.CurrentUsageMonitor.register(name + " drive", motor);
+      if (module.getAngleMotor().getMotor() instanceof com.ctre.phoenix6.hardware.TalonFX motor)
+        frc.robot.utility.CurrentUsageMonitor.register(name + " steering", motor);
+    }
   }
 
   @Override

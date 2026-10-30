@@ -129,6 +129,7 @@ public class Robot extends LoggedRobot
     // block in order for anything in the Command-based framework to work.
     frc.robot.utility.shooting.LaunchSpeedTuning.update();
     CommandScheduler.getInstance().run();
+    frc.robot.utility.CurrentUsageMonitor.update();
     Logger.recordOutput("Power/BatteryVoltage", RobotController.getBatteryVoltage());
     Logger.recordOutput("Power/BrownedOut", RobotController.isBrownedOut());
     Logger.recordOutput("Power/ControllerTemperatureCelsius", RobotController.getCPUTemp());

@@ -43,6 +43,10 @@ public class IntakeIOTalonFX implements IntakeIO {
     private final StartupCurrentLimit deployLimit;
 
     public IntakeIOTalonFX() {
+        frc.robot.utility.CurrentUsageMonitor.register("Intake extension", motor);
+        frc.robot.utility.CurrentUsageMonitor.register("Left intake roller", leftRoller);
+        frc.robot.utility.CurrentUsageMonitor.register("Right intake roller", rightRoller);
+
         TalonFXConfiguration config = new TalonFXConfiguration();
         config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
         config.MotorOutput.Inverted = IntakeConstants.DEPLOY_MOTOR_INVERTED

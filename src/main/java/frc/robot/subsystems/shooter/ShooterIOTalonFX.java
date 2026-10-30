@@ -69,6 +69,8 @@ public class ShooterIOTalonFX implements ShooterIO {
 
         leaderMotor.optimizeBusUtilization();
         followerMotor.optimizeBusUtilization();
+        frc.robot.utility.CurrentUsageMonitor.register("Right shooter", leaderMotor);
+        frc.robot.utility.CurrentUsageMonitor.register("Left shooter", followerMotor);
     }
 
     private void configureLeaderMotor() {
