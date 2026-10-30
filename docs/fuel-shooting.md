@@ -126,3 +126,11 @@ feed is requested until those conditions pass; the timed current limits are inde
 `Indexer/TunnelRPM` near zero needs the accompanying `Indexer/TunnelVolts`,
 `Indexer/TunnelStatorAmps`, `Indexer/TunnelConfigurationStatus`, and `Indexer/TunnelControlStatus`
 to distinguish a motor/controller problem from a stalled mechanism.
+
+## Live dashboard coefficient
+
+`Shooter/Launch Speed Coefficient` defaults to 1.00 and accepts 0.5–1.5.
+It multiplies modeled exit speed and updates trajectories and scoring checks live, including
+while RB is held. Too far: try 1.03; too short: try 0.97. Restart resets it to 1.00.
+Keep `Fuel/Calibration Mode=false` for automatic formula shooting; fixed-RPM mode bypasses
+trajectory selection. The spin multiplier remains independently configured in FuelShotConfig.

@@ -11,6 +11,18 @@ public final class FuelShotModel {
         public static Shot invalid() { return new Shot(0, 0, 0, 0, false); }
     }
     private final LaunchCalibration calibration;
+    private double launchSpeedCoefficient = 1.0;
+
+    /** Update launch-speed scale and invalidate all cached trajectory predictions. */
+    public boolean setLaunchSpeedCoefficient(double coefficient) {
+        if (!Double.isFinite(coefficient) || coefficient < 0.5 || coefficient > 1.5
+                || coefficient == launchSpeedCoefficient) return false;
+        launchSpeedCoefficient = coefficient;
+        sampledFlights.clear();
+        for (double rpm : sampledRPM) sampledFlights.add(flight(rpm));
+        return true;
+    }
+
     private final java.util.List<Double> sampledRPM = new java.util.ArrayList<>();
     private final java.util.List<Flight> sampledFlights = new java.util.ArrayList<>();
     private static final double DT = 0.005;
@@ -82,7 +94,9 @@ public final class FuelShotModel {
 
     /** RK4 gravity + quadratic drag + backspin lift. Positive backspin gives upward lift. */
     public Flight flight(double rpm) {
-        LaunchCalibration.Launch launch = calibration.at(rpm);
+        LaunchCalibration.Launch base = calibration.at(rpm);
+        LaunchCalibration.Launch launch = new LaunchCalibration.Launch(
+            base.speed() * launchSpeedCoefficient, base.backspinRps());
         double angle = Math.toRadians(ShotModelConstants.LAUNCH_ELEVATION_DEGREES
             + FuelShotConfig.LAUNCH_ANGLE_OFFSET_DEGREES);
         double spin = Double.isFinite(launch.backspinRps()) ? launch.backspinRps() * 2 * Math.PI

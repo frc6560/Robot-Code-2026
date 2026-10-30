@@ -312,44 +312,44 @@ public final class Constants {
 
   public static class LimelightConstants
   {
+    public static final String FRONT_CAMERA = "limelight-cr";
+    public static final String LEFT_CAMERA = "limelight-cl";
+    public static final String RIGHT_CAMERA = "limelight-back";
+    public static final String CONFIGURATION_ID = "three-ll4-2026-10-30";
     public static final String[] LIMELIGHT_NAMES = {
-      "limelight-br", "limelight-cl","limelight-cr","limelight-back"
-    }; // one limelight for now
+      LEFT_CAMERA, FRONT_CAMERA, RIGHT_CAMERA
+    };
 
-    
+    /**
+     * Mounting values passed directly to Limelight: meters forward/right/up, then
+     * roll/pitch/yaw (stored in radians). These are Limelight robot-space values,
+     * not a WPILib robot-to-camera transform with positive Y to the left.
+     */
     public static Pose3d getLimelightPose(String name){
       Pose3d limelightPose;
       switch(name){
-        case "limelight-br":
+        case LEFT_CAMERA: // Physical left camera, facing left.
           limelightPose = new Pose3d(
-            -0.299, // front/back
-            0.2667, // left/right
-            0.540, // height
-            new Rotation3d(0, Units.degreesToRadians(30.0), 0)
+            -0.21325, // backward from drivetrain center
+            -0.32168, // left of drivetrain center
+            0.42430, // above floor
+            new Rotation3d(0, Units.degreesToRadians(15.0), Units.degreesToRadians(90.0))
           );
           break;
-        case "limelight-cl":
+        case FRONT_CAMERA: // Physical front camera, facing forward.
           limelightPose = new Pose3d(
-            -0.257, // front/back. this is temporary.
-            -0.325, // left/right 
-            0.336, // height
-            new Rotation3d(0, Units.degreesToRadians(25.0), Units.degreesToRadians(90.0))
+            -0.00918, // backward from drivetrain center
+            0.0, // Assumed centered horizontally; confirm with CAD.
+            0.73553, // above floor
+            new Rotation3d(0, Units.degreesToRadians(22.0), 0)
           );
           break;
-        case "limelight-cr":
+        case RIGHT_CAMERA: // Physical right camera, facing right (legacy name).
           limelightPose = new Pose3d(
-            -0.257, // front/back
-            0.325, // left/right
-            0.336, // height
-            new Rotation3d(0, Units.degreesToRadians(25.0), Units.degreesToRadians(-90.0))
-          );
-          break;
-        case "limelight-back":
-          limelightPose = new Pose3d(
-            -0.293, // front/back
-            -0.296, // left/right
-            0.499, // height
-            new Rotation3d(0, Units.degreesToRadians(0), Units.degreesToRadians(180.0))
+            -0.21325, // backward from drivetrain center
+            0.32168, // right of drivetrain center
+            0.42430, // above floor
+            new Rotation3d(0, Units.degreesToRadians(15.0), Units.degreesToRadians(-90.0))
           );
           break;
         default:

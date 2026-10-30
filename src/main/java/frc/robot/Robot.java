@@ -57,6 +57,8 @@ public class Robot extends LoggedRobot
   public Robot()
   {
     Logger.recordMetadata("Robot", "2026 Alpha");
+    Logger.recordMetadata("VisionConfiguration", LimelightConstants.CONFIGURATION_ID);
+    Logger.recordMetadata("VisionCameraNames", String.join(", ", LimelightConstants.LIMELIGHT_NAMES));
     if (isReal()) {
       Logger.addDataReceiver(new WPILOGWriter());
       Logger.addDataReceiver(new NT4Publisher());

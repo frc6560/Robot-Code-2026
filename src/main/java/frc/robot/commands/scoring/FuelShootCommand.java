@@ -28,6 +28,8 @@ public final class FuelShootCommand extends Command {
     private final BooleanSupplier pitCoast;
     private final FuelShotModel model;
     private final String calibrationStatus;
+    public static final String LAUNCH_COEFFICIENT_KEY = "Shooter/Launch Speed Coefficient";
+    private double launchSpeedCoefficient = 1.0;
     private boolean calibrationMode;
     private double testRPM, tunnelRPM, readySince;
     private double solvedRange;
@@ -61,6 +63,16 @@ public final class FuelShootCommand extends Command {
     }
 
     @Override public void execute() {
+        double requested = SmartDashboard.getNumber(LAUNCH_COEFFICIENT_KEY, launchSpeedCoefficient);
+        if (Double.isFinite(requested) && requested >= 0.5 && requested <= 1.5) {
+            launchSpeedCoefficient = requested;
+            if (model != null && model.setLaunchSpeedCoefficient(requested)) {
+                solvedRange = Double.NaN;
+                readySince = Double.NaN;
+            }
+        } else {
+            SmartDashboard.putNumber(LAUNCH_COEFFICIENT_KEY, launchSpeedCoefficient);
+        }
         Pose2d current = pose.get();
         ChassisSpeeds speeds = velocity.get();
         boolean finite = Double.isFinite(current.getX()) && Double.isFinite(current.getY())
@@ -127,6 +139,18 @@ public final class FuelShootCommand extends Command {
         SmartDashboard.putNumber("Fuel/Minimum Scoring RPM", shot.minimumRPM());
         SmartDashboard.putNumber("Fuel/Maximum Scoring RPM", shot.maximumRPM());
         Logger.recordOutput("Fuel/Status", status);
+        // Record each gate independently: Status shows the first blocker, not all blockers.
+        Logger.recordOutput("Fuel/Readiness/AllianceKnown", alliance.isPresent());
+        Logger.recordOutput("Fuel/Readiness/PoseAndVelocityFinite", finite);
+        Logger.recordOutput("Fuel/Readiness/InOwnZone", ownZone);
+        Logger.recordOutput("Fuel/Readiness/ShotReachable", fixedRPM || shot.valid());
+        Logger.recordOutput("Fuel/Readiness/SettingsValid", controlsValid);
+        Logger.recordOutput("Fuel/Readiness/StoppedTranslating", stationary);
+        Logger.recordOutput("Fuel/Readiness/Aimed", aligned.getAsBoolean());
+        Logger.recordOutput("Fuel/Readiness/TunnelReady", indexer.isTunnelReady());
+        Logger.recordOutput("Fuel/Readiness/FlywheelReady", shooter.isHardwareReady());
+        Logger.recordOutput("Fuel/Readiness/FlywheelAtSpeed", shooter.atTarget()
+            && shooter.withinTolerance(FuelShotConfig.RPM_TOLERANCE));
         Logger.recordOutput("Fuel/Feeding", feeding);
         Logger.recordOutput("Fuel/CalibrationMode", calibrationMode);
         Logger.recordOutput("Fuel/RangeMeters", range);

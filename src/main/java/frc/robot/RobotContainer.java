@@ -149,6 +149,11 @@ public class RobotContainer {
       }
 
       vision = new VisionSubsystem(limelights);
+      Logger.recordOutput("Vision/ConfigurationID", LimelightConstants.CONFIGURATION_ID);
+      Logger.recordOutput("Vision/ConfiguredCameraNames", LimelightConstants.LIMELIGHT_NAMES);
+      Logger.recordOutput("Vision/ConfiguredCameraCount", limelights.size());
+      SmartDashboard.putString("Vision/ConfigurationID", LimelightConstants.CONFIGURATION_ID);
+      SmartDashboard.putNumber("Vision/ConfiguredCameraCount", limelights.size());
 
       // Temporary no-vision behavior: keep the flywheel warm at idle until a command takes it.
       shooter.setDefaultCommand(Commands.run(shooter::setIdle, shooter));
@@ -160,6 +165,7 @@ public class RobotContainer {
       fuelShotModel = new FuelShotModel(LaunchCalibration.ideal());
       fuelCalibrationStatus = "Ideal wheel/hood formula with tunable speed, spin and aero coefficients";
       SmartDashboard.putString("Fuel/Calibration Status", fuelCalibrationStatus);
+      SmartDashboard.putNumber(FuelShootCommand.LAUNCH_COEFFICIENT_KEY, 1.0);
       SmartDashboard.putBoolean("Fuel/Calibration Mode", false);
       SmartDashboard.putNumber("Fuel/Test Flywheel RPM", Constants.ShooterConstants.FIXED_SHOT_RPM);
       SmartDashboard.putNumber("Fuel/Test Tunnel RPM", Constants.IndexerConstants.TUNNEL_RUNNING_RPM);
@@ -284,7 +290,7 @@ public class RobotContainer {
 
         driverXbox.x()
           .and(DriverStation::isTeleopEnabled)
-          .onTrue(Commands.runOnce(() -> vision.hardReset("limelight-br"), vision));
+          .onTrue(Commands.runOnce(() -> vision.hardReset(LimelightConstants.FRONT_CAMERA), vision));
         driverXbox.start().
           onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
         driverXbox.a()
@@ -353,7 +359,7 @@ public class RobotContainer {
 
         // --- RESETS ---
         Trigger resetPoseTrigger = new Trigger(m_Controls::getVisionResetTrigger);
-        resetPoseTrigger.onTrue(Commands.runOnce(() -> vision.hardReset("limelight-br"), vision));
+        resetPoseTrigger.onTrue(Commands.runOnce(() -> vision.hardReset(LimelightConstants.FRONT_CAMERA), vision));
     }
 
     private void togglePitCoastMode() {

@@ -13,6 +13,18 @@ class FuelShotModelTest {
             new LaunchCalibration.Point(3800, 10.11, Double.NaN)), 1500);
     }
 
+    @Test void liveCoefficientUpdatesFlightAndRejectsInvalidValues() {
+        var model = new FuelShotModel(fixture());
+        var baseline = model.flight(3000);
+        assertTrue(model.setLaunchSpeedCoefficient(1.05));
+        assertNotEquals(baseline.crossingX(), model.flight(3000).crossingX());
+        assertFalse(model.setLaunchSpeedCoefficient(Double.NaN));
+        assertFalse(model.setLaunchSpeedCoefficient(0));
+        assertFalse(model.setLaunchSpeedCoefficient(1.05));
+        model.setLaunchSpeedCoefficient(1.0);
+        assertEquals(baseline.crossingX(), model.flight(3000).crossingX(), 1e-9);
+    }
+
     @Test void interpolatesMeasuredSpeedAndNeverExtrapolates() {
         var calibration = fixture();
         assertEquals(6.65, calibration.at(2500).speed(), 1e-9);

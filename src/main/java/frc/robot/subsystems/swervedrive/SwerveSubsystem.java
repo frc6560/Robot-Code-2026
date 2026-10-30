@@ -30,8 +30,6 @@ import frc.robot.Constants;
 import frc.robot.Constants.DrivebaseConstants;
 import frc.robot.Constants.FieldConstants;
 import frc.robot.Constants.TurretConstants;
-import frc.robot.utility.LimelightHelpers;
-import frc.robot.utility.LimelightHelpers.PoseEstimate;
 
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StringSubscriber;
@@ -130,6 +128,13 @@ public class SwerveSubsystem extends SubsystemBase {
     // Pose2d is published as structured AdvantageKit data. In AdvantageScope, add
     // Swerve/Pose to a 2D Field tab and BLine/FollowPath/pathTranslations as the path.
     Logger.recordOutput("Swerve/Pose", getPose());
+    Pose2d diagnosticPose = getPose();
+    Logger.recordOutput("Swerve/XMeters", diagnosticPose.getX());
+    Logger.recordOutput("Swerve/YMeters", diagnosticPose.getY());
+    Logger.recordOutput("Swerve/HeadingDeg", diagnosticPose.getRotation().getDegrees());
+    SmartDashboard.putNumber("Swerve/XMeters", diagnosticPose.getX());
+    SmartDashboard.putNumber("Swerve/YMeters", diagnosticPose.getY());
+    SmartDashboard.putNumber("Swerve/HeadingDeg", diagnosticPose.getRotation().getDegrees());
     Logger.recordOutput("Swerve/RobotVelocity", getRobotVelocity());
     Logger.recordOutput("Swerve/FieldVelocity", getFieldVelocity());
     Logger.recordOutput("Swerve/PitCoastMode", pitCoastMode);
@@ -300,18 +305,6 @@ public class SwerveSubsystem extends SubsystemBase {
         3.0, 5.0, 3.0);
   }
 
-  // a hack method to reset the MT2 gyro
-  public void resetOdometryToLimelight() {
-    PoseEstimate poseEstimate = LimelightHelpers.getBotPoseEstimate_wpiBlue("limelight");
-    Pose2d pose = poseEstimate.pose;
-    if(pose != null){
-      resetOdometry(pose);
-      System.out.println("Resetting odometry to Limelight pose: " + pose);
-    } else {
-      System.out.println("Limelight pose is null, cannot reset odometry.");
-    }
-  }
-  
   /**
    * Returns a Command that centers the modules of the SwerveDrive subsystem.
    *
