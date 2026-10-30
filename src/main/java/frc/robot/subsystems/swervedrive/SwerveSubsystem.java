@@ -96,6 +96,7 @@ public class SwerveSubsystem extends SubsystemBase {
     swerveDrive.setModuleEncoderAutoSynchronize(false,
                                                 1); 
     swerveDrive.replaceSwerveModuleFeedforward(driveFF);
+    SmartDashboard.putData("Swerve/Field", swerveDrive.field);
     setMotorBrake(true);
   }
 
@@ -117,6 +118,7 @@ public class SwerveSubsystem extends SubsystemBase {
                                   Constants.MAX_SPEED,
                                   new Pose2d(new Translation2d(Meter.of(2), Meter.of(0)),
                                   Rotation2d.fromDegrees(0)));
+    SmartDashboard.putData("Swerve/Field", swerveDrive.field);
     setMotorBrake(true);
   }
 

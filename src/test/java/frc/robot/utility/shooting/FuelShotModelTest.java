@@ -52,6 +52,13 @@ class FuelShotModelTest {
         for (double range = 2; range <= 7; range += 0.1) {
             var shot = model.solve(range);
             if (!shot.valid()) continue;
+            var diagnostic = model.diagnostics();
+            assertEquals("Reachable", diagnostic.reason());
+            assertTrue(diagnostic.sampled() >= diagnostic.reachedHeight());
+            assertTrue(diagnostic.reachedHeight() >= diagnostic.clearedNearRim());
+            assertTrue(diagnostic.clearedNearRim() >= diagnostic.landedInOpening());
+            assertTrue(diagnostic.landedInOpening() >= diagnostic.passedEntryAngle());
+            assertTrue(diagnostic.passedEntryAngle() > 0);
             reachable++;
             assertTrue(model.scores(range, shot.rpm()));
             assertTrue(shot.minimumRPM() <= shot.rpm() && shot.rpm() <= shot.maximumRPM());
@@ -61,6 +68,9 @@ class FuelShotModelTest {
         assertTrue(reachable > 10, "Synthetic shooter should reach several ranges");
         assertFalse(model.solve(Double.NaN).valid());
         assertFalse(model.solve(20).valid());
+        assertEquals(20, model.diagnostics().rangeMeters());
+        assertEquals(0, model.diagnostics().sampled());
+        assertTrue(model.diagnostics().reason().startsWith("Range outside solver limits"));
         assertFalse(model.scores(4, Double.NaN));
         assertFalse(model.scores(4, 4000));
     }

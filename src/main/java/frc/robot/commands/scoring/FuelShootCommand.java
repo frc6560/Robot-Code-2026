@@ -85,6 +85,9 @@ public final class FuelShootCommand extends Command {
         Translation2d hub = alliance.orElse(DriverStation.Alliance.Blue) == DriverStation.Alliance.Blue
             ? Constants.FieldConstants.BLUE_HUB_CENTER : Constants.FieldConstants.RED_HUB_CENTER;
         double range = releasePosition(current).getDistance(hub);
+        Logger.recordOutput("Fuel/RobotPose", current);
+        Logger.recordOutput("Fuel/HubPose", new Pose2d(hub, new edu.wpi.first.math.geometry.Rotation2d()));
+        Logger.recordOutput("Fuel/ReleasePose", new Pose2d(releasePosition(current), current.getRotation()));
         boolean stationary = finite && Math.hypot(speeds.vxMetersPerSecond, speeds.vyMetersPerSecond)
             <= FuelShotConfig.MAX_TRANSLATION_MPS;
         if (!calibrationMode && model != null && finite
@@ -93,6 +96,26 @@ public final class FuelShootCommand extends Command {
             solvedRange = range;
         }
         boolean fixedRPM = calibrationMode || model == null;
+        String trajectoryReason = fixedRPM ? "Fixed RPM mode; trajectory solver bypassed"
+            : model.diagnostics().reason();
+        SmartDashboard.putString("Fuel/TrajectoryReason", trajectoryReason);
+        Logger.recordOutput("Fuel/Trajectory/Reason", trajectoryReason);
+        Logger.recordOutput("Fuel/Trajectory/SolvedRangeMeters", solvedRange);
+        if (model != null) {
+            var diagnostic = model.diagnostics();
+            Logger.recordOutput("Fuel/Trajectory/SampledRPMCount", diagnostic.sampled());
+            Logger.recordOutput("Fuel/Trajectory/ReachedHeightCount", diagnostic.reachedHeight());
+            Logger.recordOutput("Fuel/Trajectory/ClearedNearRimCount", diagnostic.clearedNearRim());
+            Logger.recordOutput("Fuel/Trajectory/LandedInOpeningCount", diagnostic.landedInOpening());
+            Logger.recordOutput("Fuel/Trajectory/PassedEntryAngleCount", diagnostic.passedEntryAngle());
+            Logger.recordOutput("Fuel/Trajectory/MinimumSearchRPM", model.calibration().minRPM());
+            Logger.recordOutput("Fuel/Trajectory/MaximumSearchRPM", model.calibration().maxRPM());
+        }
+        Logger.recordOutput("Fuel/Trajectory/LaunchSpeedCoefficient", launchSpeedCoefficient);
+        Logger.recordOutput("Fuel/Trajectory/LaunchAngleDeg", Constants.ShotModelConstants.LAUNCH_ELEVATION_DEGREES
+            + FuelShotConfig.LAUNCH_ANGLE_OFFSET_DEGREES);
+        Logger.recordOutput("Fuel/MinimumScoringRPM", shot.minimumRPM());
+        Logger.recordOutput("Fuel/MaximumScoringRPM", shot.maximumRPM());
         // Accelerate while approaching; only the release gate waits for aim/position readiness.
         double rpm = fixedRPM || !shot.valid() ? testRPM : shot.rpm();
         boolean controlsValid = Double.isFinite(rpm) && rpm >= Constants.ShooterConstants.FLYWHEEL_IDLE_RPM

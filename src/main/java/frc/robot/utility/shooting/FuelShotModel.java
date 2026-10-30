@@ -11,6 +11,10 @@ public final class FuelShotModel {
         public static Shot invalid() { return new Shot(0, 0, 0, 0, false); }
     }
     private final LaunchCalibration calibration;
+    public record SolveDiagnostics(double rangeMeters, int sampled, int reachedHeight,
+        int clearedNearRim, int landedInOpening, int passedEntryAngle, String reason) {}
+    private SolveDiagnostics diagnostics = new SolveDiagnostics(Double.NaN, 0, 0, 0, 0, 0, "Not solved yet");
+    public SolveDiagnostics diagnostics() { return diagnostics; }
     private double launchSpeedCoefficient = 1.0;
 
     /** Update launch-speed scale and invalidate all cached trajectory predictions. */
@@ -44,14 +48,31 @@ public final class FuelShotModel {
 
     /** Bounded work: scan the calibrated RPM span, then refine the selected contiguous band. */
     public Shot solve(double range) {
-        if (!Double.isFinite(range) || range < 0.75 || range > 8.0) return Shot.invalid();
+        if (!Double.isFinite(range) || range < 0.75 || range > 8.0) {
+            diagnostics = new SolveDiagnostics(range, 0, 0, 0, 0, 0, "Range outside solver limits (0.75–8 m)");
+            return Shot.invalid();
+        }
         // A fine grid finds narrow bands; midpoint refinement below never assumes a global monotonic trajectory.
         double step = 10.0;
         double bestLow = 0, bestHigh = -1, start = 0, previous = calibration.minRPM();
         boolean inBand = false;
+        int reached = 0, cleared = 0, landed = 0, entered = 0;
         for (int index = 0; index < sampledRPM.size(); index++) {
             double rpm = sampledRPM.get(index);
-            boolean valid = flightScores(range, sampledFlights.get(index));
+            Flight candidate = sampledFlights.get(index);
+            boolean valid = flightScores(range, candidate);
+            // Progressive counts explain exactly where candidate trajectories are eliminated.
+            if (candidate.reached()) {
+                reached++;
+                if (candidate.risingX() <= range - ShotModelConstants.HUB_OPENING_SPAN_METERS / 2
+                        - ShotModelConstants.HUB_RIM_MARGIN_METERS) {
+                    cleared++;
+                    if (Math.abs(candidate.crossingX() - range) <= HALF_WIDTH) {
+                        landed++;
+                        if (candidate.entryDegrees() >= FuelShotConfig.MIN_ENTRY_DEGREES) entered++;
+                    }
+                }
+            }
             if (valid && !inBand) { start = rpm; inBand = true; }
             if (inBand && (!valid || rpm == calibration.maxRPM())) {
                 double end = valid ? rpm : previous;
@@ -61,12 +82,20 @@ public final class FuelShotModel {
             if (rpm == calibration.maxRPM()) break;
             previous = rpm;
         }
+        String reason = reached == 0 ? "No sampled RPM reaches hub height"
+            : cleared == 0 ? "No sampled trajectory clears near rim"
+            : landed == 0 ? "No rim-clearing trajectory lands in opening"
+            : entered == 0 ? "Entry angle too shallow (requires 20 deg)" : "Reachable";
+        diagnostics = new SolveDiagnostics(range, sampledRPM.size(), reached, cleared, landed, entered, reason);
         if (bestHigh < bestLow) return Shot.invalid();
         double low = refine(range, bestLow, Math.max(calibration.minRPM(), bestLow - step));
         double high = refine(range, bestHigh, Math.min(calibration.maxRPM(), bestHigh + step));
         double target = (low + high) / 2;
         Flight flight = flight(target);
-        return new Shot(target, low, high, flight.time(), scores(range, target));
+        boolean valid = scores(range, target);
+        if (!valid) diagnostics = new SolveDiagnostics(range, sampledRPM.size(), reached, cleared,
+            landed, entered, "Refined RPM failed trajectory check");
+        return new Shot(target, low, high, flight.time(), valid);
     }
 
     private double refine(double range, double inside, double outside) {

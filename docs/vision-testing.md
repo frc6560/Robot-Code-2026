@@ -94,3 +94,21 @@ would disconnect the old code from that camera's NetworkTables entries.
 
 Quick-start:
 https://docs.limelightvision.io/docs/docs-limelight/getting-started/limelight-4
+
+## Drawing the robot and diagnosing unreachable shots
+
+In AdvantageScope live, create a 2D Field tab. Drag the entire
+`AdvantageKit/RealOutputs/Swerve/Pose` structured value onto it, not its individual
+X/Y members. Alternatively use the `SmartDashboard/Swerve/Field` Field2d value.
+While the aimed shot is held, `Fuel/RobotPose`, `Fuel/HubPose`, and `Fuel/ReleasePose`
+are also structured Pose2d outputs suitable for overlaying on the same field.
+The hub is a reference marker, not another robot. These Fuel poses describe the
+last active shot execution; Swerve/Pose updates continuously.
+
+When Fuel/Status says "No reachable shot", read `Fuel/Trajectory/Reason`
+(or SmartDashboard/Fuel/TrajectoryReason). The trajectory folder records the
+range last solved, RPM search limits, launch angle/speed scale and progressive
+candidate counts: reached hub height, cleared near rim, landed in opening, and
+passed minimum entry angle. A zero at one stage identifies the first stage
+where all RPM candidates failed. No model trajectory is bypassed by these logs.
+Compare `Fuel/RangeMeters` with the actual distance to hub center, not its edge.
