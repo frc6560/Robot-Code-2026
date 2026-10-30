@@ -277,7 +277,11 @@ public class RobotContainer {
             .onTrue(Commands.runOnce(intake::requestRackRetracted, intake));
         rackExtend.and(rackRetract.negate())
             .and(DriverStation::isTeleopEnabled).and(() -> !pitCoastMode)
-            .onTrue(Commands.runOnce(intake::requestRackExtended, intake));
+            .onTrue(Commands.runOnce(() -> {
+                intake.requestRackExtended();
+                intake.setRollersRequested(true);
+            }, intake))
+            .onFalse(Commands.runOnce(() -> intake.setRollersRequested(false), intake));
         // Releasing right bumper must stop feeding even if an operator control is held.
         // Require all manual holds to release before an ungated manual shot can start again.
         new Trigger(() -> !driverXbox.rightBumper().getAsBoolean() && !spinUp.getAsBoolean()

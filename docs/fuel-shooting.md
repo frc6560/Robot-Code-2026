@@ -28,9 +28,10 @@ Neither indexer runs automatically on enable. The floor is enabled by
 Driver left bumper runs the floor/tunnel manually when RB is not held; Y is no longer the shooting binding. Operator A /
 button-board 11 still provide explicit manual spin-up, and board 3 still provides manual floor/tunnel
 feed outside RB. After RB release, any held operator control must release before manual feeding
-can resume. The driver's LT/RT rack controls are unchanged. Intake rollers run only after a valid, homed rack
+can resume. LT selects rack retraction; RT selects extension. The rack holds its selected
+position after trigger release, but intake rollers run only while RT remains held and a valid, homed rack
 reaches the requested full-extension position (9.5 motor rotations, within 0.25 rotations) and settles
-for 150 ms below 0.1 motor rotations/s. Selecting retract immediately stops the rollers; losing
+for 150 ms below 0.1 motor rotations/s. Releasing RT or selecting retract immediately stops the rollers; losing
 position/home feedback also stops them. The motor-output layer independently enforces extension,
 request, homing, fresh feedback and speed checks. Rollers use brake neutral mode to reduce coasting.
 
@@ -38,7 +39,7 @@ This change replaces the driver shooting binding with a held-RB shot path. Legac
 shooting routines are not wired to this new calibrated model. In particular, legacy auto shooting
 that relied on the always-running tunnel will now need an explicit tunnel-owning shot command;
 do not rely on those routines for calibrated firing. The separate timed center-auto still explicitly
-owns its tunnel. The intake rack and intake rollers retain their existing automatic behavior.
+owns its tunnel. Shooting does not request intake roller motion; rollers require the held RT request.
 
 ## Formula shooting and tuning
 
@@ -95,7 +96,14 @@ Watch `Intake/FullyExtended` / `Intake/RollerPermitted` for the roller interlock
 The existing `Intake/DeployCurrentAmps` is **supply current**, whereas floor
 current readings are **stator current**. New `Intake/DeploySupplyAmps` and `Intake/DeployStatorAmps`
 make that distinction explicit. `Intake/LeftRollerVolts` / `Intake/RightRollerVolts` help investigate
-one roller failing to spin. The rack assumes physically retracted at code startup; its motor encoder
+one roller failing to spin. Separate `Intake/LeftRollerSupplyAmps`, `LeftRollerStatorAmps`,
+`RightRollerSupplyAmps`, and `RightRollerStatorAmps` are available on SmartDashboard
+and in saved logs. Legacy RollerCurrentAmps remains the combined supply current.
+`Intake/RollerTriggerHeld`, `RollerCommandedRPM`, and `RollerBlockedReason` explain
+whether the rollers were requested or stopped. For a noisy left roller, compare
+its current, voltage and measured RPM against the right side. A high current with
+little motion calls for checking binding, loading, wiring and motor feedback;
+it does not establish which fault is present. The rack assumes physically retracted at code startup; its motor encoder
 cannot independently verify the physical endpoint. Verify that 9.5 rotations matches full extension
 before relying on the roller interlock, since the earlier measured-travel calculation was 7.81.
 

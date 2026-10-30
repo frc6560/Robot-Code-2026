@@ -7,7 +7,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.IntakeConstants;
 
-/** Hold the requested rack position and run both intake rollers while enabled. */
+/** Hold rack position; rollers require an explicit held-trigger request and full extension. */
 public class Intake extends SubsystemBase {
     private final IntakeIO io;
     private final IntakeIO.IntakeIOInputs inputs = new IntakeIO.IntakeIOInputs();
@@ -15,6 +15,7 @@ public class Intake extends SubsystemBase {
     private double target = IntakeConstants.RETRACTED_POSITION_ROTATIONS;
     private double requestedDeployTarget = IntakeConstants.RETRACTED_POSITION_ROTATIONS;
     private boolean rackRequested;
+    private boolean rollerRequested;
     private double rollerTargetRPM;
     private double extendedSince = Double.NaN;
     private String lastConsoleState = "";
@@ -39,7 +40,13 @@ public class Intake extends SubsystemBase {
         rackRequested = true;
     }
 
+    public void setRollersRequested(boolean requested) {
+        rollerRequested = requested;
+        if (!requested) stopRollers();
+    }
+
     private void stopRollers() {
+        rollerRequested = false;
         extendedSince = Double.NaN;
         rollerTargetRPM = 0.0;
         io.setRollerRPM(0.0);
@@ -87,6 +94,7 @@ public class Intake extends SubsystemBase {
         boolean enabled = DriverStation.isEnabled();
         if (!enabled) {
             rackRequested = false;
+            rollerRequested = false;
         }
         target = enabled
             ? requestedDeployTarget
@@ -103,7 +111,7 @@ public class Intake extends SubsystemBase {
                 <= IntakeConstants.DEPLOY_POSITION_TOLERANCE_ROTATIONS;
         boolean startupPushFinished = inputs.deployCurrentLimitOK
             && inputs.deployStatorLimitAmps == IntakeConstants.DEPLOY_STATOR_CURRENT_LIMIT;
-        boolean extensionStable = enabled && !pitCoastMode && fullyExtended && startupPushFinished
+        boolean extensionStable = enabled && !pitCoastMode && rollerRequested && fullyExtended && startupPushFinished
             && Double.isFinite(inputs.deployVelocityRPS)
             && Math.abs(inputs.deployVelocityRPS) <= IntakeConstants.ROLLER_MAX_DEPLOY_VELOCITY_RPS
             && inputs.rollerConnected && inputs.rollerConfigured;
@@ -116,6 +124,7 @@ public class Intake extends SubsystemBase {
         io.setRollerRPM(rollerTargetRPM);
         String rollerBlockedReason = !enabled ? "Robot is disabled"
             : pitCoastMode ? "Pit coast mode is on"
+            : !rollerRequested ? "Right trigger not held"
             : !fullyExtended ? "Waiting for fully extended rack"
             : !inputs.rollerConnected ? "Check Canivore roller IDs 17 and 18, power and wiring"
             : !inputs.rollerConfigured ? "Roller configuration failed; correct and restart code"
@@ -123,6 +132,10 @@ public class Intake extends SubsystemBase {
             : !startupPushFinished ? "Waiting for rack startup push to end"
             : !rollerPermitted ? "Waiting for rack to settle at full extension"
             : "None";
+        SmartDashboard.putBoolean("Intake/RollerTriggerHeld", rollerRequested);
+        Logger.recordOutput("Intake/RollerTriggerHeld", rollerRequested);
+        Logger.recordOutput("Intake/RollerCommandedRPM", rollerTargetRPM);
+        Logger.recordOutput("Intake/RollerBlockedReason", rollerBlockedReason);
         SmartDashboard.putNumber("Intake/RollerRequestedRPM", rollerTargetRPM);
         SmartDashboard.putBoolean("Intake/FullyExtended", fullyExtended);
         SmartDashboard.putBoolean("Intake/RollerPermitted", rollerPermitted);
@@ -132,6 +145,14 @@ public class Intake extends SubsystemBase {
         SmartDashboard.putBoolean("Intake/DeployCurrentLimitOK", inputs.deployCurrentLimitOK);
         SmartDashboard.putNumber("Intake/DeployStatorAmps", inputs.deployStatorCurrentAmps);
         SmartDashboard.putNumber("Intake/DeploySupplyAmps", inputs.deployCurrentAmps);
+        SmartDashboard.putNumber("Intake/LeftRollerSupplyAmps", inputs.leftRollerSupplyAmps);
+        Logger.recordOutput("Intake/LeftRollerSupplyAmps", inputs.leftRollerSupplyAmps);
+        SmartDashboard.putNumber("Intake/LeftRollerStatorAmps", inputs.leftRollerStatorAmps);
+        Logger.recordOutput("Intake/LeftRollerStatorAmps", inputs.leftRollerStatorAmps);
+        SmartDashboard.putNumber("Intake/RightRollerSupplyAmps", inputs.rightRollerSupplyAmps);
+        Logger.recordOutput("Intake/RightRollerSupplyAmps", inputs.rightRollerSupplyAmps);
+        SmartDashboard.putNumber("Intake/RightRollerStatorAmps", inputs.rightRollerStatorAmps);
+        Logger.recordOutput("Intake/RightRollerStatorAmps", inputs.rightRollerStatorAmps);
         SmartDashboard.putNumber("Intake/LeftRollerVolts", inputs.rollerAppliedVolts);
         SmartDashboard.putNumber("Intake/RightRollerVolts", inputs.rightRollerAppliedVolts);
         Logger.recordOutput("Intake/DeployStallFault", false);

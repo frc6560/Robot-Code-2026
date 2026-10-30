@@ -30,6 +30,10 @@ public interface IntakeIO {
         public double rightRollerVelocityRPS = 0.0;
         public double rollerAppliedVolts = 0.0;
         public double rightRollerAppliedVolts = 0.0;
+        public double leftRollerSupplyAmps = 0.0;
+        public double rightRollerSupplyAmps = 0.0;
+        public double leftRollerStatorAmps = 0.0;
+        public double rightRollerStatorAmps = 0.0;
         public double rollerCurrentAmps = 0.0;
         public double rollerTempCelsius = 0.0;
 
@@ -57,6 +61,10 @@ public interface IntakeIO {
             table.put("RightRollerVelocityRPS", rightRollerVelocityRPS);
             table.put("RollerAppliedVolts", rollerAppliedVolts);
             table.put("RightRollerAppliedVolts", rightRollerAppliedVolts);
+            table.put("LeftRollerSupplyAmps", leftRollerSupplyAmps);
+            table.put("RightRollerSupplyAmps", rightRollerSupplyAmps);
+            table.put("LeftRollerStatorAmps", leftRollerStatorAmps);
+            table.put("RightRollerStatorAmps", rightRollerStatorAmps);
             table.put("RollerCurrentAmps", rollerCurrentAmps);
             table.put("RollerTempCelsius", rollerTempCelsius);
         }
@@ -85,6 +93,10 @@ public interface IntakeIO {
             rightRollerVelocityRPS = table.get("RightRollerVelocityRPS", rightRollerVelocityRPS);
             rollerAppliedVolts = table.get("RollerAppliedVolts", rollerAppliedVolts);
             rightRollerAppliedVolts = table.get("RightRollerAppliedVolts", rightRollerAppliedVolts);
+            leftRollerSupplyAmps = table.get("LeftRollerSupplyAmps", leftRollerSupplyAmps);
+            rightRollerSupplyAmps = table.get("RightRollerSupplyAmps", rightRollerSupplyAmps);
+            leftRollerStatorAmps = table.get("LeftRollerStatorAmps", leftRollerStatorAmps);
+            rightRollerStatorAmps = table.get("RightRollerStatorAmps", rightRollerStatorAmps);
             rollerCurrentAmps = table.get("RollerCurrentAmps", rollerCurrentAmps);
             rollerTempCelsius = table.get("RollerTempCelsius", rollerTempCelsius);
         }

@@ -62,8 +62,11 @@ public class IntakeIOSim implements IntakeIO {
         inputs.rightRollerAppliedVolts = updateRoller(rightRollerSim);
         inputs.rollerVelocityRPS = leftRollerSim.getAngularVelocityRPM() / 60.0;
         inputs.rightRollerVelocityRPS = rightRollerSim.getAngularVelocityRPM() / 60.0;
-        inputs.rollerCurrentAmps = Math.abs(leftRollerSim.getCurrentDrawAmps())
-            + Math.abs(rightRollerSim.getCurrentDrawAmps());
+        inputs.leftRollerSupplyAmps = Math.abs(leftRollerSim.getCurrentDrawAmps());
+        inputs.rightRollerSupplyAmps = Math.abs(rightRollerSim.getCurrentDrawAmps());
+        inputs.leftRollerStatorAmps = inputs.leftRollerSupplyAmps;
+        inputs.rightRollerStatorAmps = inputs.rightRollerSupplyAmps;
+        inputs.rollerCurrentAmps = inputs.leftRollerSupplyAmps + inputs.rightRollerSupplyAmps;
         inputs.rollerTempCelsius = 25.0;
     }
 

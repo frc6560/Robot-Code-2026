@@ -128,7 +128,7 @@ public class IntakeIOTalonFX implements IntakeIO {
             status = roller.getConfigurator().apply(config, 0.1);
         }
         BaseStatusSignal.setUpdateFrequencyForAll(50.0, roller.getVelocity(),
-            roller.getMotorVoltage(), roller.getSupplyCurrent(), roller.getDeviceTemp());
+            roller.getMotorVoltage(), roller.getSupplyCurrent(), roller.getStatorCurrent(), roller.getDeviceTemp());
         roller.optimizeBusUtilization();
         return status;
     }
@@ -162,8 +162,8 @@ public class IntakeIOTalonFX implements IntakeIO {
         inputs.deployTempCelsius = motor.getDeviceTemp().getValueAsDouble();
         boolean rollersFresh = BaseStatusSignal.refreshAll(
             leftRoller.getVelocity(), rightRoller.getVelocity()).isOK();
-        BaseStatusSignal.refreshAll(leftRoller.getMotorVoltage(), leftRoller.getSupplyCurrent(),
-            leftRoller.getDeviceTemp(), rightRoller.getMotorVoltage(), rightRoller.getSupplyCurrent(),
+        BaseStatusSignal.refreshAll(leftRoller.getMotorVoltage(), leftRoller.getSupplyCurrent(), leftRoller.getStatorCurrent(),
+            leftRoller.getDeviceTemp(), rightRoller.getMotorVoltage(), rightRoller.getSupplyCurrent(), rightRoller.getStatorCurrent(),
             rightRoller.getDeviceTemp());
         inputs.rollerConnected = rollersFresh && leftRoller.isConnected() && rightRoller.isConnected();
         inputs.rollerConfigured = leftRollerConfigurationStatus.isOK()
@@ -175,8 +175,11 @@ public class IntakeIOTalonFX implements IntakeIO {
         inputs.rightRollerVelocityRPS = rightRoller.getVelocity().getValueAsDouble();
         inputs.rollerAppliedVolts = leftRoller.getMotorVoltage().getValueAsDouble();
         inputs.rightRollerAppliedVolts = rightRoller.getMotorVoltage().getValueAsDouble();
-        inputs.rollerCurrentAmps = leftRoller.getSupplyCurrent().getValueAsDouble()
-            + rightRoller.getSupplyCurrent().getValueAsDouble();
+        inputs.leftRollerSupplyAmps = leftRoller.getSupplyCurrent().getValueAsDouble();
+        inputs.rightRollerSupplyAmps = rightRoller.getSupplyCurrent().getValueAsDouble();
+        inputs.leftRollerStatorAmps = leftRoller.getStatorCurrent().getValueAsDouble();
+        inputs.rightRollerStatorAmps = rightRoller.getStatorCurrent().getValueAsDouble();
+        inputs.rollerCurrentAmps = inputs.leftRollerSupplyAmps + inputs.rightRollerSupplyAmps;
         inputs.rollerTempCelsius = Math.max(leftRoller.getDeviceTemp().getValueAsDouble(),
             rightRoller.getDeviceTemp().getValueAsDouble());
     }

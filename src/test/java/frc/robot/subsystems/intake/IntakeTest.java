@@ -91,9 +91,33 @@ class IntakeTest {
         assertTrue(io.stopped);
     }
 
+    @Test void extendedRackCannotStartRollersWithoutHeldTriggerAndReleaseStopsImmediately() {
+        teleop(true);
+        intake.requestRackExtended();
+        io.position = IntakeConstants.EXTENDED_POSITION_ROTATIONS;
+        intake.periodic();
+        SimHooks.stepTiming(1);
+        intake.periodic();
+        assertEquals(0, io.roller);
+        intake.setRollersRequested(true);
+        intake.periodic();
+        SimHooks.stepTiming(IntakeConstants.ROLLER_EXTENSION_SETTLE_SECONDS + 0.01);
+        intake.periodic();
+        assertEquals(IntakeConstants.ROLLER_RPM, io.roller);
+        intake.setRollersRequested(false);
+        assertEquals(0, io.roller);
+        intake.periodic();
+        SimHooks.stepTiming(1);
+        intake.periodic();
+        assertEquals(0, io.roller);
+        assertEquals(IntakeConstants.EXTENDED_POSITION_ROTATIONS, io.target);
+        assertEquals("Right trigger not held", SmartDashboard.getString("Intake/RollerBlockedReason", ""));
+    }
+
     @Test void rackSelectionsHoldAndRollersWaitForMeasuredFullExtension() {
         teleop(true);
         intake.requestRackExtended();
+        intake.setRollersRequested(true);
         intake.periodic();
         assertFalse(io.stopped);
         assertEquals(IntakeConstants.EXTENDED_POSITION_ROTATIONS, io.target);
@@ -120,6 +144,7 @@ class IntakeTest {
     @Test void rollersWaitForStartupPushToEndAndConfirmedContinuousLimit() {
         teleop(true);
         intake.requestRackExtended();
+        intake.setRollersRequested(true);
         io.position = IntakeConstants.EXTENDED_POSITION_ROTATIONS;
         io.statorLimit = 60.0;
         intake.periodic();
@@ -148,6 +173,7 @@ class IntakeTest {
     @Test void disablingClearsRequestAndReenableRequiresNewSelection() {
         teleop(true);
         intake.requestRackExtended();
+        intake.setRollersRequested(true);
         intake.periodic();
         teleop(false);
         assertTrue(io.stopped);
@@ -165,6 +191,7 @@ class IntakeTest {
     @Test void configurationHomingAndConnectionFaultsBlockRequestedMotion() {
         teleop(true);
         intake.requestRackExtended();
+        intake.setRollersRequested(true);
         io.configured = false;
         intake.periodic();
         assertTrue(io.stopped);
@@ -188,6 +215,7 @@ class IntakeTest {
     @Test void pitCoastClearsRackRequestAndStopsRollers() {
         teleop(true);
         intake.requestRackExtended();
+        intake.setRollersRequested(true);
         intake.periodic();
         intake.setPitCoastMode(true);
         intake.periodic();
@@ -219,6 +247,7 @@ class IntakeTest {
     @Test void rollersRequireHomingFullPositionAndHealthyRollerControllers() {
         teleop(true);
         intake.requestRackExtended();
+        intake.setRollersRequested(true);
         io.position = IntakeConstants.EXTENDED_POSITION_ROTATIONS;
         intake.periodic();
         assertEquals(0, io.roller); // Endpoint must settle before rollers can start.
@@ -249,6 +278,7 @@ class IntakeTest {
     @Test void sustainedLowSpeedAndHighCurrentDoNotCancelRackRequest() {
         teleop(true);
         intake.requestRackExtended();
+        intake.setRollersRequested(true);
         io.stator = IntakeConstants.DEPLOY_STATOR_CURRENT_LIMIT;
         intake.periodic();
         SimHooks.stepTiming(2.0); intake.periodic();
