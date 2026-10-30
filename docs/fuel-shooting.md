@@ -13,7 +13,7 @@ from measured launch conditions. All flight aerodynamics are provisional until b
   its range/trajectory has not been validated.
 - Once actual heading error is within **1.5 degrees**, actual turn rate is within **5 deg/s**,
   measured flywheel speed is within **60 RPM** of the request, and those conditions remain true
-  for **0.10 s**, the command runs the real wall/tunnel and the floor indexer (**300 RPM**).
+  for **0.10 s**, the command runs the real wall/tunnel and the floor indexer (**800 RPM**).
 - With calibration loaded, measured RPM must also produce a scoring trajectory at the current range. Losing any
   release condition closes the gate immediately; regaining it requires another settling period.
 - Release RB: stop the tunnel and shooter. Both indexers remain stopped. No second button is needed.

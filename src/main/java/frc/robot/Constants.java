@@ -560,7 +560,7 @@ public final class Constants {
     public static final boolean FLOOR_SECONDARY_MOTOR_INVERTED = false;
     public static final int TUNNEL_MOTOR_ID = 16;
     public static final String CAN_BUS = "Canivore";
-    public static final double FLOOR_RUNNING_RPM = 300.0;
+    public static final double FLOOR_RUNNING_RPM = 800.0;
     public static final double TUNNEL_RUNNING_RPM = 1500.0;
     /** Motor rotations per mechanism rotation; retained from the indexer hardware configuration. */
     public static final double FLOOR_GEAR_RATIO = 2.5;

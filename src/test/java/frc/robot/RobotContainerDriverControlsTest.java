@@ -77,14 +77,14 @@ class RobotContainerDriverControlsTest {
         // Explicit operator feed runs both indexers; RB still takes ownership.
         setBoard(3, true);
         assertEquals(1500, indexer.getTunnelTargetRPM());
-        assertEquals(300, indexer.getFloorTargetRPM());
+        assertEquals(800, indexer.getFloorTargetRPM());
         setButton(XboxController.Button.kRightBumper, true);
         assertEquals("FuelShootCommand", CommandScheduler.getInstance().requiring(indexer).getName());
         setButton(XboxController.Button.kRightBumper, false);
         assertEquals(0, indexer.getTunnelTargetRPM()); // Held board input cannot resume after RB release.
         setBoard(3, false); setBoard(3, true);
         assertEquals(1500, indexer.getTunnelTargetRPM());
-        assertEquals(300, indexer.getFloorTargetRPM());
+        assertEquals(800, indexer.getFloorTargetRPM());
         setBoard(3, false);
 
         DriverStationSim.setAutonomous(true);

@@ -112,7 +112,7 @@ class FuelShootCommandTest {
         start(null); aimReady = true; cycles(20);
         assertEquals(1500, indexer.getTunnelTargetRPM());
         assertEquals("Fixed RPM (uncalibrated)", SmartDashboard.getString("Fuel/Mode", ""));
-        assertEquals(300, indexer.getFloorTargetRPM());
+        assertEquals(800, indexer.getFloorTargetRPM());
         command.end(false);
         SmartDashboard.putBoolean("Fuel/Calibration Mode", true);
         SmartDashboard.putNumber("Fuel/Test Flywheel RPM", Double.NaN);
@@ -131,7 +131,7 @@ class FuelShootCommandTest {
         cycles(15);
         assertEquals(shot.rpm(), shooter.getGoalRPM(), 1e-6);
         assertEquals(1400, indexer.getTunnelTargetRPM());
-        assertEquals(300, indexer.getFloorTargetRPM());
+        assertEquals(800, indexer.getFloorTargetRPM());
         shooter.measured = 1000; cycles(1);
         assertEquals(0, indexer.getTunnelTargetRPM());
         assertEquals(0, indexer.getFloorTargetRPM());
