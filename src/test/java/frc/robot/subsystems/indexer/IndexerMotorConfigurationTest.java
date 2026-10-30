@@ -61,4 +61,13 @@ class IndexerMotorConfigurationTest {
             DriverStationSim.notifyNewData();
         }
     }
+    @Test void startupChangesOnlyStatorAllowanceAndPreservesSupplyCeiling() {
+        var startup = IndexerIOTalonFX.currentLimits(60, 40);
+        var running = IndexerIOTalonFX.currentLimits(40, 40);
+        assertEquals(60, startup.StatorCurrentLimit);
+        assertEquals(40, running.StatorCurrentLimit);
+        assertEquals(40, startup.SupplyCurrentLimit);
+        assertEquals(40, running.SupplyCurrentLimit);
+        assertTrue(startup.StatorCurrentLimitEnable && startup.SupplyCurrentLimitEnable);
+    }
 }

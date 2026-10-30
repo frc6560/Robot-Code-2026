@@ -180,16 +180,37 @@ python3 -m unittest discover -s tools/fuel-calibration -v
 
 ## Floor and intake current limits
 
-The floor target remains **800 RPM**. Each floor motor has a **40 A stator** limit and **40 A
-supply** limit. The rack has a **40 A stator** limit and **30 A supply** limit. Each intake roller has
-**40 A stator / 40 A supply** limits. Do not increase these above the user's 40 A ceiling. Motor
-inversions and the tunnel's 40 A limits are unchanged. Current limits do not establish that a jammed
-mechanism is safe to drive.
+The floor target remains **800 RPM**. Startup stator-current allowances are:
+
+| Mechanism | First second of a new move | Continuing / stopped | Supply limit |
+|---|---|---|---|
+| Each floor motor | 60 A | 40 A | 40 A |
+| Wall/tunnel motor | 60 A | 40 A | 40 A |
+| Intake rack | 60 A while traveling | 40 A (also on arrival) | 30 A |
+| Each intake roller | 40 A | 40 A | 40 A |
+
+The startup window begins with the nonzero motor command, not after an encoder detects motion;
+a jam cannot keep the 60 A allowance indefinitely. Repeating the same command each loop, or
+changing a running indexer's RPM, does not restart the timer. Stopping immediately restores 40 A;
+a subsequent stop-to-start receives a new startup window. Selecting a different rack endpoint
+starts a new rack move; repeatedly holding the same endpoint does not. The rack also returns to
+40 A as soon as its measured position reaches the selected endpoint tolerance.
+
+The robot checks expiry every control cycle (normally 20 ms), independently of new button events.
+Only current-limit changes write controller configuration; repeated unchanged limits do not.
+Configuration writes use bounded timeouts. If a limit change cannot be confirmed, motor output
+is stopped while the limit update is retried, rather than continuing with an unconfirmed limit.
+This is a controller-configuration failure response, not the removed stall cutoff.
+
+Current limit telemetry: `Indexer/FloorStatorLimitAmps`, `Indexer/TunnelStatorLimitAmps`, and
+`Intake/DeployStatorLimitAmps`. Their corresponding `FloorCurrentLimitOK`, `TunnelCurrentLimitOK`,
+and `DeployCurrentLimitOK` flags indicate whether the controller update was confirmed. Stator and
+supply limits are independent; allowing 60 A stator does not increase the listed supply limits.
 
 Automatic floor and rack stall cutoffs have been removed by operator request. Sustained high-current,
 low-speed operation no longer cancels the requested RPM/position or requires a disable to reset.
-The 40 A current ceilings, rack soft limits, disable/pit-coast behavior, and roller extension interlocks
-remain. Legacy `Indexer/FloorStallFault` and `Intake/DeployStallFault` dashboard values are cleared to
+The timed startup/current limits above, rack soft limits, disable/pit-coast behavior, and roller
+extension interlocks remain. Legacy `Indexer/FloorStallFault` and `Intake/DeployStallFault` dashboard values are cleared to
 false to avoid stale fault indicators. This removes a software cutoff; it does not resolve binding.
 
 Watch `Intake/FullyExtended` / `Intake/RollerPermitted` for the roller interlock.
@@ -210,7 +231,7 @@ waits for its release conditions. After releasing RB, release any held manual in
 
 With RB held, `Fuel/Status` gives the blocking condition (for example Aiming, No alliance, Outside
 own alliance zone, Waiting for measured flywheel RPM, or Stop translating to shoot). No automatic
-feed is requested until those conditions pass; the 40 A limit is independent of that decision.
+feed is requested until those conditions pass; the timed current limits are independent of that decision.
 
 `Indexer/TunnelTargetRPM=0` means the command is not requesting feed. A nonzero target with
 `Indexer/TunnelRPM` near zero needs the accompanying `Indexer/TunnelVolts`,

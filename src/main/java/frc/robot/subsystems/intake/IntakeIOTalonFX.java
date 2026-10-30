@@ -4,6 +4,11 @@ import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.Timer;
+import frc.robot.Constants.StartupCurrentConstants;
+import frc.robot.utility.StartupCurrentLimit;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.hardware.TalonFX;
@@ -35,6 +40,7 @@ public class IntakeIOTalonFX implements IntakeIO {
     private boolean stopped = true;
     private boolean rackFeedbackFresh;
     private double requestedRackPosition = Double.NaN;
+    private final StartupCurrentLimit deployLimit;
 
     public IntakeIOTalonFX() {
         TalonFXConfiguration config = new TalonFXConfiguration();
@@ -58,6 +64,15 @@ public class IntakeIOTalonFX implements IntakeIO {
             status = motor.getConfigurator().apply(config, 0.1);
         }
         configurationStatus = status;
+        deployLimit = new StartupCurrentLimit(IntakeConstants.DEPLOY_STATOR_CURRENT_LIMIT,
+            StartupCurrentConstants.PEAK_AMPS, StartupCurrentConstants.DURATION_SECONDS,
+            Timer::getFPGATimestamp,
+            amps -> motor.getConfigurator().apply(deployCurrentLimits(amps),
+                StartupCurrentConstants.CONFIG_TIMEOUT_SECONDS).isOK(), () -> {
+                motor.stopMotor();
+                leftRoller.stopMotor();
+                rightRoller.stopMotor();
+            });
         // Hardware-test assumption: rack is physically fully retracted at code startup.
         StatusCode zero = status.isOK()
             ? motor.setPosition(IntakeConstants.RETRACTED_POSITION_ROTATIONS) : status;
@@ -74,6 +89,21 @@ public class IntakeIOTalonFX implements IntakeIO {
             IntakeConstants.LEFT_ROLLER_MOTOR_INVERTED);
         rightRollerConfigurationStatus = configureRoller(rightRoller,
             IntakeConstants.RIGHT_ROLLER_MOTOR_INVERTED);
+    }
+
+    static CurrentLimitsConfigs deployCurrentLimits(double statorAmps) {
+        CurrentLimitsConfigs limits = new CurrentLimitsConfigs();
+        limits.StatorCurrentLimitEnable = true;
+        limits.StatorCurrentLimit = statorAmps;
+        limits.SupplyCurrentLimitEnable = true;
+        limits.SupplyCurrentLimit = IntakeConstants.DEPLOY_SUPPLY_CURRENT_LIMIT;
+        return limits;
+    }
+
+    private boolean rackNeedsMotion() {
+        double position = motor.getPosition().getValueAsDouble();
+        return Double.isFinite(position) && Double.isFinite(requestedRackPosition)
+            && Math.abs(position - requestedRackPosition) > IntakeConstants.DEPLOY_POSITION_TOLERANCE_ROTATIONS;
     }
 
     static TalonFXConfiguration rollerConfiguration(boolean inverted) {
@@ -114,6 +144,10 @@ public class IntakeIOTalonFX implements IntakeIO {
             zeroStatus = "Rack controller reset: physically retract and restart code";
         }
         rackFeedbackFresh = fresh && motor.isConnected();
+        deployLimit.update(DriverStation.isEnabled() && !stopped && homed && rackFeedbackFresh,
+            false, rackNeedsMotion());
+        inputs.deployStatorLimitAmps = deployLimit.appliedAmps();
+        inputs.deployCurrentLimitOK = deployLimit.confirmed();
         inputs.deployConnected = rackFeedbackFresh;
         inputs.configured = configurationStatus.isOK();
         inputs.deployHomed = homed;
@@ -160,7 +194,7 @@ public class IntakeIOTalonFX implements IntakeIO {
     @Override
     public void setRollerRPM(double rpm) {
         // A second interlock at the hardware boundary rejects roller commands even if a caller errs.
-        boolean allowed = configurationStatus.isOK()
+        boolean allowed = configurationStatus.isOK() && deployLimit.confirmed()
             && rackAllowsRollers(homed, rackFeedbackFresh, stopped, requestedRackPosition,
                 motor.getPosition().getValueAsDouble(), motor.getVelocity().getValueAsDouble());
         if (!Double.isFinite(rpm) || rpm == 0.0 || !allowed || !leftRollerConfigurationStatus.isOK()
@@ -184,7 +218,12 @@ public class IntakeIOTalonFX implements IntakeIO {
         if (homed && configurationStatus.isOK() && Double.isFinite(rotations)) {
             double commandedTarget = MathUtil.clamp(rotations,
                 IntakeConstants.RETRACTED_POSITION_ROTATIONS, IntakeConstants.EXTENDED_POSITION_ROTATIONS);
+            boolean newMove = stopped || requestedRackPosition != commandedTarget;
             requestedRackPosition = commandedTarget;
+            if (!deployLimit.update(DriverStation.isEnabled() && rackFeedbackFresh, newMove, rackNeedsMotion())) {
+                controlStatus = "Current-limit update failed; motor stopped";
+                return;
+            }
             if (commandedTarget != IntakeConstants.EXTENDED_POSITION_ROTATIONS) setRollerRPM(0);
             StatusCode control = motor.setControl(request.withPosition(commandedTarget));
             controlStatus = control.toString();
@@ -205,6 +244,7 @@ public class IntakeIOTalonFX implements IntakeIO {
     @Override
     public void stop() {
         requestedRackPosition = Double.NaN;
+        deployLimit.update(false, false, false);
         motor.stopMotor();
         setRollerRPM(0.0);
         if (!stopped) {

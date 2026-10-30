@@ -552,6 +552,13 @@ public final class Constants {
     public static final double WIRE_PROTECTION_UPPER = 270.0;
   }
 
+  /** Stator-only startup allowance. Supply limits remain at their existing values. */
+  public static final class StartupCurrentConstants {
+    public static final double PEAK_AMPS = 60.0;
+    public static final double DURATION_SECONDS = 1.0;
+    public static final double CONFIG_TIMEOUT_SECONDS = 0.005;
+  }
+
   public static final class IndexerConstants {
     public static final int FLOOR_MOTOR_ID = 25;
     public static final int FLOOR_SECONDARY_MOTOR_ID = 0;

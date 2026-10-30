@@ -36,6 +36,10 @@ public class Indexer extends SubsystemBase {
         Logger.recordOutput("Indexer/FloorStallFault", false);
         Logger.processInputs("Indexer", inputs);
         Logger.recordOutput("Indexer/FloorTargetRPM", floorTargetRPM);
+        SmartDashboard.putNumber("Indexer/FloorStatorLimitAmps", inputs.floorStatorLimitAmps);
+        SmartDashboard.putNumber("Indexer/TunnelStatorLimitAmps", inputs.tunnelStatorLimitAmps);
+        SmartDashboard.putBoolean("Indexer/FloorCurrentLimitOK", inputs.floorCurrentLimitOK);
+        SmartDashboard.putBoolean("Indexer/TunnelCurrentLimitOK", inputs.tunnelCurrentLimitOK);
         SmartDashboard.putBoolean("Indexer/FloorEnabled", FuelShotConfig.FLOOR_ENABLED);
         Logger.recordOutput("Indexer/TunnelTargetRPM", tunnelTargetRPM);
         SmartDashboard.putNumber("Indexer/TunnelRPM", inputs.tunnelRPM);

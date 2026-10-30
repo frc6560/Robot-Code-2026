@@ -9,6 +9,10 @@ public interface IndexerIO {
         public double currentAmps = 0.0;
         public double floorRPM = 0.0;
         public double tunnelRPM = 0.0;
+        public double floorStatorLimitAmps = 40.0;
+        public double tunnelStatorLimitAmps = 40.0;
+        public boolean floorCurrentLimitOK = true;
+        public boolean tunnelCurrentLimitOK = true;
         public double tunnelCurrentAmps = 0.0;
         public String tunnelConfigurationStatus = "Not configured";
         public String tunnelControlStatus = "No request";

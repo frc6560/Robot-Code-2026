@@ -123,6 +123,8 @@ public class Intake extends SubsystemBase {
         SmartDashboard.putBoolean("Intake/FullyExtended", fullyExtended);
         SmartDashboard.putBoolean("Intake/RollerPermitted", rollerPermitted);
         SmartDashboard.putBoolean("Intake/DeployStallFault", false);
+        SmartDashboard.putNumber("Intake/DeployStatorLimitAmps", inputs.deployStatorLimitAmps);
+        SmartDashboard.putBoolean("Intake/DeployCurrentLimitOK", inputs.deployCurrentLimitOK);
         SmartDashboard.putNumber("Intake/DeployStatorAmps", inputs.deployStatorCurrentAmps);
         SmartDashboard.putNumber("Intake/DeploySupplyAmps", inputs.deployCurrentAmps);
         SmartDashboard.putNumber("Intake/LeftRollerVolts", inputs.rollerAppliedVolts);

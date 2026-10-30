@@ -5,6 +5,11 @@ import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
+import frc.robot.Constants.StartupCurrentConstants;
+import frc.robot.utility.StartupCurrentLimit;
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.Timer;
 import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.controls.NeutralOut;
 import com.ctre.phoenix6.hardware.TalonFX;
@@ -35,6 +40,9 @@ public class IndexerIOTalonFX implements IndexerIO {
     private final StatusCode floorSecondaryConfigurationStatus;
     private String floorControlStatus = "No request";
     private String tunnelControlStatus = "No request";
+    private final StartupCurrentLimit floorLimit;
+    private final StartupCurrentLimit tunnelLimit;
+    private double requestedFloorRPM, requestedTunnelRPM;
 
     private final StatusSignal<Angle> floorPosition;
     private final StatusSignal<AngularVelocity> floorVelocity;
@@ -70,6 +78,21 @@ public class IndexerIOTalonFX implements IndexerIO {
         floorSecondaryConfigurationStatus = configureMotor(floorSecondary, IndexerConstants.FLOOR_GEAR_RATIO,
             IndexerConstants.FLOOR_SECONDARY_MOTOR_INVERTED, true);
         tunnelConfigurationStatus = configureMotor(tunnelMotor, IndexerConstants.TUNNEL_GEAR_RATIO, false, false);
+
+        floorLimit = new StartupCurrentLimit(IndexerConstants.FLOOR_STATOR_CURRENT_LIMIT,
+            StartupCurrentConstants.PEAK_AMPS, StartupCurrentConstants.DURATION_SECONDS,
+            Timer::getFPGATimestamp, amps -> {
+                CurrentLimitsConfigs limits = currentLimits(amps, IndexerConstants.FLOOR_SUPPLY_CURRENT_LIMIT);
+                StatusCode first = floorLeader.getConfigurator().apply(limits, StartupCurrentConstants.CONFIG_TIMEOUT_SECONDS);
+                StatusCode second = floorSecondary.getConfigurator().apply(limits, StartupCurrentConstants.CONFIG_TIMEOUT_SECONDS);
+                return first.isOK() && second.isOK();
+            }, this::stopFloorOutputs);
+        tunnelLimit = new StartupCurrentLimit(CURRENT_LIMIT_AMPS,
+            StartupCurrentConstants.PEAK_AMPS, StartupCurrentConstants.DURATION_SECONDS,
+            Timer::getFPGATimestamp,
+            amps -> tunnelMotor.getConfigurator().apply(currentLimits(amps, CURRENT_LIMIT_AMPS),
+                StartupCurrentConstants.CONFIG_TIMEOUT_SECONDS).isOK(),
+            () -> tunnelMotor.setControl(tunnelStopRequest));
 
         floorPosition = floorLeader.getPosition();
         floorVelocity = floorLeader.getVelocity();
@@ -121,6 +144,20 @@ public class IndexerIOTalonFX implements IndexerIO {
         return config;
     }
 
+    static CurrentLimitsConfigs currentLimits(double statorAmps, double supplyAmps) {
+        CurrentLimitsConfigs limits = new CurrentLimitsConfigs();
+        limits.StatorCurrentLimitEnable = true;
+        limits.StatorCurrentLimit = statorAmps;
+        limits.SupplyCurrentLimitEnable = true;
+        limits.SupplyCurrentLimit = supplyAmps;
+        return limits;
+    }
+
+    private void stopFloorOutputs() {
+        floorLeader.setControl(floorStopRequest);
+        floorSecondary.setControl(floorSecondaryStopRequest);
+    }
+
     private static StatusCode configureMotor(TalonFX motor, double gearRatio, boolean inverted, boolean floor) {
         TalonFXConfiguration config = motorConfiguration(gearRatio, inverted, floor);
         StatusCode status = motor.getConfigurator().apply(config, 0.1);
@@ -132,6 +169,13 @@ public class IndexerIOTalonFX implements IndexerIO {
 
     @Override
     public void updateInputs(IndexerIOInputs inputs) {
+        // Also check the deadline here, even if no command issues another RPM request.
+        floorLimit.update(DriverStation.isEnabled() && requestedFloorRPM != 0, false, true);
+        tunnelLimit.update(DriverStation.isEnabled() && requestedTunnelRPM != 0, false, true);
+        inputs.floorStatorLimitAmps = floorLimit.appliedAmps();
+        inputs.tunnelStatorLimitAmps = tunnelLimit.appliedAmps();
+        inputs.floorCurrentLimitOK = floorLimit.confirmed();
+        inputs.tunnelCurrentLimitOK = tunnelLimit.confirmed();
         BaseStatusSignal.refreshAll(
                 floorPosition,
                 floorVelocity,
@@ -148,7 +192,7 @@ public class IndexerIOTalonFX implements IndexerIO {
         inputs.appliedVolts = tunnelVoltage.getValueAsDouble();
         inputs.floorRPM = floorVelocity.getValueAsDouble() * 60.0;
         inputs.tunnelConnected = tunnelMotor.isConnected();
-        inputs.tunnelConfigured = tunnelConfigurationStatus.isOK();
+        inputs.tunnelConfigured = tunnelConfigurationStatus.isOK() && tunnelLimit.confirmed();
         inputs.tunnelRPM = tunnelVelocity.getValueAsDouble() * 60.0;
         inputs.tunnelCurrentAmps = tunnelCurrent.getValueAsDouble();
         inputs.tunnelConfigurationStatus = tunnelConfigurationStatus.toString();
@@ -173,6 +217,13 @@ public class IndexerIOTalonFX implements IndexerIO {
 
     @Override
     public void setFloorRPM(double rpm) {
+        requestedFloorRPM = DriverStation.isEnabled() && Double.isFinite(rpm)
+            && floorConfigurationStatus.isOK() && floorSecondaryConfigurationStatus.isOK() ? rpm : 0;
+        if (!floorLimit.update(requestedFloorRPM != 0, false, true)) {
+            floorControlStatus = "Current-limit update failed; motors stopped";
+            return;
+        }
+        rpm = requestedFloorRPM;
         if (rpm == 0.0 || !Double.isFinite(rpm) || !floorConfigurationStatus.isOK()
                 || !floorSecondaryConfigurationStatus.isOK()) {
             StatusCode first = floorLeader.setControl(floorStopRequest);
@@ -192,6 +243,13 @@ public class IndexerIOTalonFX implements IndexerIO {
 
     @Override
     public void setTunnelRPM(double rpm) {
+        requestedTunnelRPM = DriverStation.isEnabled() && Double.isFinite(rpm)
+            && tunnelConfigurationStatus.isOK() ? rpm : 0;
+        if (!tunnelLimit.update(requestedTunnelRPM != 0, false, true)) {
+            tunnelControlStatus = "Current-limit update failed; motor stopped";
+            return;
+        }
+        rpm = requestedTunnelRPM;
         if (rpm == 0.0 || !Double.isFinite(rpm) || !tunnelConfigurationStatus.isOK()) {
             tunnelControlStatus = tunnelMotor.setControl(tunnelStopRequest).toString();
         } else {
