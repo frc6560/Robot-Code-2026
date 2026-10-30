@@ -561,7 +561,7 @@ public final class Constants {
     public static final int TUNNEL_MOTOR_ID = 16;
     public static final String CAN_BUS = "Canivore";
     public static final double FLOOR_RUNNING_RPM = 800.0;
-    public static final double FLOOR_STATOR_CURRENT_LIMIT = 60.0;
+    public static final double FLOOR_STATOR_CURRENT_LIMIT = 40.0;
     public static final double FLOOR_SUPPLY_CURRENT_LIMIT = 40.0;
     public static final double FLOOR_STALL_SECONDS = 1.0;
     public static final double TUNNEL_RUNNING_RPM = 1500.0;
@@ -589,10 +589,10 @@ public final class Constants {
 
     // Current Limits
     public static final double DEPLOY_SUPPLY_CURRENT_LIMIT = 30.0;
-    public static final double DEPLOY_STATOR_CURRENT_LIMIT = 60.0;
+    public static final double DEPLOY_STATOR_CURRENT_LIMIT = 40.0;
     public static final double DEPLOY_STALL_SECONDS = 1.0;
     public static final double ROLLER_SUPPLY_CURRENT_LIMIT = 40.0;
-    public static final double ROLLER_STATOR_CURRENT_LIMIT = 60.0;
+    public static final double ROLLER_STATOR_CURRENT_LIMIT = 40.0;
 
     // Mechanism RPM for both separate rollers; inversion supplies opposite directions.
     public static final double ROLLER_RPM = 2500.0;
@@ -617,6 +617,8 @@ public final class Constants {
     public static final double ENABLE_POSITION_ROTATIONS =
         EXTENDED_POSITION_ROTATIONS * ENABLE_EXTENSION_FRACTION;
     public static final double DEPLOY_POSITION_TOLERANCE_ROTATIONS = 0.25;
+    public static final double ROLLER_EXTENSION_SETTLE_SECONDS = 0.15;
+    public static final double ROLLER_MAX_DEPLOY_VELOCITY_RPS = 0.1;
 
     // Motion Magic values are motor rotations/sec and motor rotations/sec^2.
     public static final double DEPLOY_CRUISE_VELOCITY_RPS = 5.5;

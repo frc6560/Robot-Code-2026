@@ -33,6 +33,8 @@ public class IntakeIOTalonFX implements IntakeIO {
     private double lastPrintedTarget = Double.NaN;
     private String lastPrintedControlStatus = "";
     private boolean stopped = true;
+    private boolean rackFeedbackFresh;
+    private double requestedRackPosition = Double.NaN;
 
     public IntakeIOTalonFX() {
         TalonFXConfiguration config = new TalonFXConfiguration();
@@ -76,7 +78,7 @@ public class IntakeIOTalonFX implements IntakeIO {
 
     static TalonFXConfiguration rollerConfiguration(boolean inverted) {
         TalonFXConfiguration config = new TalonFXConfiguration();
-        config.MotorOutput.NeutralMode = NeutralModeValue.Coast;
+        config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
         config.MotorOutput.Inverted = inverted
             ? InvertedValue.Clockwise_Positive : InvertedValue.CounterClockwise_Positive;
         config.CurrentLimits.SupplyCurrentLimitEnable = true;
@@ -111,7 +113,8 @@ public class IntakeIOTalonFX implements IntakeIO {
             homed = false;
             zeroStatus = "Rack controller reset: physically retract and restart code";
         }
-        inputs.deployConnected = fresh && motor.isConnected();
+        rackFeedbackFresh = fresh && motor.isConnected();
+        inputs.deployConnected = rackFeedbackFresh;
         inputs.configured = configurationStatus.isOK();
         inputs.deployHomed = homed;
         inputs.deployConfigurationStatus = configurationStatus.toString();
@@ -144,17 +147,29 @@ public class IntakeIOTalonFX implements IntakeIO {
             rightRoller.getDeviceTemp().getValueAsDouble());
     }
 
+    static boolean rackAllowsRollers(boolean homed, boolean fresh, boolean stopped,
+            double requestedPosition, double measuredPosition, double measuredVelocity) {
+        return homed && fresh && !stopped
+            && requestedPosition == IntakeConstants.EXTENDED_POSITION_ROTATIONS
+            && Double.isFinite(measuredPosition) && Double.isFinite(measuredVelocity)
+            && Math.abs(measuredPosition - IntakeConstants.EXTENDED_POSITION_ROTATIONS)
+                <= IntakeConstants.DEPLOY_POSITION_TOLERANCE_ROTATIONS
+            && Math.abs(measuredVelocity) <= IntakeConstants.ROLLER_MAX_DEPLOY_VELOCITY_RPS;
+    }
+
     @Override
     public void setRollerRPM(double rpm) {
-        if (!Double.isFinite(rpm) || rpm == 0.0 || !leftRollerConfigurationStatus.isOK()
+        // A second interlock at the hardware boundary rejects roller commands even if a caller errs.
+        boolean allowed = configurationStatus.isOK()
+            && rackAllowsRollers(homed, rackFeedbackFresh, stopped, requestedRackPosition,
+                motor.getPosition().getValueAsDouble(), motor.getVelocity().getValueAsDouble());
+        if (!Double.isFinite(rpm) || rpm == 0.0 || !allowed || !leftRollerConfigurationStatus.isOK()
                 || !rightRollerConfigurationStatus.isOK()) {
             leftRoller.stopMotor();
             rightRoller.stopMotor();
-            rollerControlStatus = "Stopped";
+            rollerControlStatus = rpm == 0 ? "Stopped" : "Blocked: rack not confirmed extended / motor configuration";
             return;
         }
-        // SensorToMechanismRatio already handles gearing. Both requests are positive;
-        // opposite motor inversion makes their physical rotation directions opposite.
         StatusCode left = leftRoller.setControl(leftRollerRequest.withVelocity(rpm / 60.0));
         StatusCode right = rightRoller.setControl(rightRollerRequest.withVelocity(rpm / 60.0));
         rollerControlStatus = "Left=" + left + " Right=" + right;
@@ -169,7 +184,11 @@ public class IntakeIOTalonFX implements IntakeIO {
         if (homed && configurationStatus.isOK() && Double.isFinite(rotations)) {
             double commandedTarget = MathUtil.clamp(rotations,
                 IntakeConstants.RETRACTED_POSITION_ROTATIONS, IntakeConstants.EXTENDED_POSITION_ROTATIONS);
-            controlStatus = motor.setControl(request.withPosition(commandedTarget)).toString();
+            requestedRackPosition = commandedTarget;
+            if (commandedTarget != IntakeConstants.EXTENDED_POSITION_ROTATIONS) setRollerRPM(0);
+            StatusCode control = motor.setControl(request.withPosition(commandedTarget));
+            controlStatus = control.toString();
+            if (!control.isOK()) { stop(); return; }
             if (stopped || commandedTarget != lastPrintedTarget
                     || !controlStatus.equals(lastPrintedControlStatus)) {
                 System.out.printf("[Intake motor] SENT MotionMagic position=%.3f rot bus=%s id=%d setControl=%s%n",
@@ -185,6 +204,7 @@ public class IntakeIOTalonFX implements IntakeIO {
 
     @Override
     public void stop() {
+        requestedRackPosition = Double.NaN;
         motor.stopMotor();
         setRollerRPM(0.0);
         if (!stopped) {

@@ -18,6 +18,7 @@ public class Intake extends SubsystemBase {
     private double requestedDeployTarget = IntakeConstants.RETRACTED_POSITION_ROTATIONS;
     private boolean rackRequested;
     private double rollerTargetRPM;
+    private double extendedSince = Double.NaN;
     private String lastConsoleState = "";
     private double nextConsolePrint;
 
@@ -29,13 +30,21 @@ public class Intake extends SubsystemBase {
 
     /** Select a rack endpoint; periodic retains the request until the next selection. */
     public void requestRackRetracted() {
+        stopRollers();
         requestedDeployTarget = IntakeConstants.RETRACTED_POSITION_ROTATIONS;
         rackRequested = true;
     }
 
     public void requestRackExtended() {
+        stopRollers();
         requestedDeployTarget = IntakeConstants.EXTENDED_POSITION_ROTATIONS;
         rackRequested = true;
+    }
+
+    private void stopRollers() {
+        extendedSince = Double.NaN;
+        rollerTargetRPM = 0.0;
+        io.setRollerRPM(0.0);
     }
 
     // Legacy intake/shot callers do not override the driver's rack selection.
@@ -68,7 +77,7 @@ public class Intake extends SubsystemBase {
     public void setPitCoastMode(boolean enabled) {
         pitCoastMode = enabled;
         rackRequested = false;
-        rollerTargetRPM = 0.0;
+        stopRollers();
         io.stop();
         io.setCoastMode(enabled);
     }
@@ -99,8 +108,16 @@ public class Intake extends SubsystemBase {
             && requestedDeployTarget == IntakeConstants.EXTENDED_POSITION_ROTATIONS
             && Math.abs(inputs.deployPositionRotations - IntakeConstants.EXTENDED_POSITION_ROTATIONS)
                 <= IntakeConstants.DEPLOY_POSITION_TOLERANCE_ROTATIONS;
-        rollerTargetRPM = enabled && !pitCoastMode && !deployStall.isTripped() && fullyExtended
-            && inputs.rollerConnected && inputs.rollerConfigured ? IntakeConstants.ROLLER_RPM : 0.0;
+        boolean extensionStable = enabled && !pitCoastMode && !deployStall.isTripped() && fullyExtended
+            && Double.isFinite(inputs.deployVelocityRPS)
+            && Math.abs(inputs.deployVelocityRPS) <= IntakeConstants.ROLLER_MAX_DEPLOY_VELOCITY_RPS
+            && inputs.rollerConnected && inputs.rollerConfigured;
+        double extensionNow = Timer.getFPGATimestamp();
+        if (!extensionStable) extendedSince = Double.NaN;
+        else if (!Double.isFinite(extendedSince)) extendedSince = extensionNow;
+        boolean rollerPermitted = extensionStable
+            && extensionNow - extendedSince >= IntakeConstants.ROLLER_EXTENSION_SETTLE_SECONDS;
+        rollerTargetRPM = rollerPermitted ? IntakeConstants.ROLLER_RPM : 0.0;
         io.setRollerRPM(rollerTargetRPM);
         String rollerBlockedReason = !enabled ? "Robot is disabled"
             : pitCoastMode ? "Pit coast mode is on"
@@ -108,9 +125,11 @@ public class Intake extends SubsystemBase {
             : !fullyExtended ? "Waiting for fully extended rack"
             : !inputs.rollerConnected ? "Check Canivore roller IDs 17 and 18, power and wiring"
             : !inputs.rollerConfigured ? "Roller configuration failed; correct and restart code"
+            : !rollerPermitted ? "Waiting for rack to settle at full extension"
             : "None";
         SmartDashboard.putNumber("Intake/RollerRequestedRPM", rollerTargetRPM);
         SmartDashboard.putBoolean("Intake/FullyExtended", fullyExtended);
+        SmartDashboard.putBoolean("Intake/RollerPermitted", rollerPermitted);
         SmartDashboard.putBoolean("Intake/DeployStallFault", deployStall.isTripped());
         SmartDashboard.putNumber("Intake/DeployStatorAmps", inputs.deployStatorCurrentAmps);
         SmartDashboard.putNumber("Intake/DeploySupplyAmps", inputs.deployCurrentAmps);

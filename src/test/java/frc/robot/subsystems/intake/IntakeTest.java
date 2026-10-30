@@ -20,9 +20,10 @@ class IntakeTest {
         boolean homed = true;
         boolean rollersConnected = true;
         boolean rollersConfigured = true;
-        double position, stator;
+        double position, stator, velocity;
         @Override public void updateInputs(IntakeIOInputs inputs) {
             inputs.deployPositionRotations = position;
+            inputs.deployVelocityRPS = velocity;
             inputs.deployStatorCurrentAmps = stator;
             inputs.deployConnected = ready;
             inputs.configured = ready && configured;
@@ -99,9 +100,13 @@ class IntakeTest {
         assertEquals(0, io.roller);
         io.position = IntakeConstants.EXTENDED_POSITION_ROTATIONS;
         intake.periodic();
+        assertEquals(0, io.roller); // Endpoint must settle before rollers can start.
+        SimHooks.stepTiming(IntakeConstants.ROLLER_EXTENSION_SETTLE_SECONDS + 0.01);
+        intake.periodic();
         assertEquals(IntakeConstants.ROLLER_RPM, io.roller);
         assertEquals(Intake.State.EXTENDED_SPINNING, intake.getState());
         intake.requestRackRetracted();
+        assertEquals(0, io.roller); // Stop immediately, before the next periodic cycle.
         intake.periodic();
         assertEquals(IntakeConstants.RETRACTED_POSITION_ROTATIONS, io.target);
         assertFalse(io.stopped);
@@ -184,6 +189,9 @@ class IntakeTest {
         intake.requestRackExtended();
         io.position = IntakeConstants.EXTENDED_POSITION_ROTATIONS;
         intake.periodic();
+        assertEquals(0, io.roller); // Endpoint must settle before rollers can start.
+        SimHooks.stepTiming(IntakeConstants.ROLLER_EXTENSION_SETTLE_SECONDS + 0.01);
+        intake.periodic();
         assertEquals(IntakeConstants.ROLLER_RPM, io.roller);
         io.homed = false;
         intake.periodic();
@@ -193,10 +201,16 @@ class IntakeTest {
         io.rollersConnected = true; io.rollersConfigured = false;
         intake.periodic(); assertEquals(0, io.roller);
         io.rollersConfigured = true;
+        intake.periodic();
+        SimHooks.stepTiming(IntakeConstants.ROLLER_EXTENSION_SETTLE_SECONDS + 0.01);
         intake.periodic(); assertEquals(IntakeConstants.ROLLER_RPM, io.roller);
         io.position -= 1;
         intake.periodic(); assertEquals(0, io.roller); // Slipping out of extension stops them again.
-        io.position = Double.NaN;
+        io.position = IntakeConstants.EXTENDED_POSITION_ROTATIONS;
+        io.velocity = 1;
+        intake.periodic();
+        SimHooks.stepTiming(1); intake.periodic(); assertEquals(0, io.roller);
+        io.position = Double.NaN; io.velocity = 0;
         intake.periodic(); assertEquals(0, io.roller);
     }
 

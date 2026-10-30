@@ -22,9 +22,9 @@ class IndexerMotorConfigurationTest {
         assertEquals(InvertedValue.Clockwise_Positive, primary.MotorOutput.Inverted);
         assertEquals(InvertedValue.CounterClockwise_Positive, secondary.MotorOutput.Inverted);
         assertEquals(primary.Feedback.SensorToMechanismRatio, secondary.Feedback.SensorToMechanismRatio);
-        assertEquals(60, primary.CurrentLimits.StatorCurrentLimit);
+        assertEquals(40, primary.CurrentLimits.StatorCurrentLimit);
         assertEquals(40, primary.CurrentLimits.SupplyCurrentLimit);
-        assertEquals(60, secondary.CurrentLimits.StatorCurrentLimit);
+        assertEquals(40, secondary.CurrentLimits.StatorCurrentLimit);
         var tunnel = IndexerIOTalonFX.motorConfiguration(IndexerConstants.TUNNEL_GEAR_RATIO, false);
         assertEquals(40, tunnel.CurrentLimits.StatorCurrentLimit);
         assertTrue(primary.CurrentLimits.StatorCurrentLimitEnable);
