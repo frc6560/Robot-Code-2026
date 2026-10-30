@@ -70,9 +70,7 @@ public class IndexerIOTalonFX implements IndexerIO {
             CANBus canBus) {
         floorLeader = new TalonFX(floorLeaderId, canBus);
         floorSecondary = new TalonFX(floorSecondaryId, canBus);
-        floorFollowerRequest = new Follower(floorLeaderId,
-            IndexerConstants.FLOOR_MOTOR_INVERTED != IndexerConstants.FLOOR_SECONDARY_MOTOR_INVERTED
-                ? MotorAlignmentValue.Opposed : MotorAlignmentValue.Aligned);
+        floorFollowerRequest = new Follower(floorLeaderId, MotorAlignmentValue.Aligned);
         tunnelMotor = new TalonFX(tunnelMotorId, canBus);
 
         floorConfigurationStatus = configureMotor(floorLeader, IndexerConstants.FLOOR_GEAR_RATIO,
