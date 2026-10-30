@@ -3,6 +3,8 @@ package frc.robot.utility.shooting;
 /** Stationary auto-turn shooting. Aerodynamic values require field validation. */
 public final class FuelShotConfig {
     private FuelShotConfig() {}
+    /** Global floor enable, applied at the subsystem output boundary. */
+    public static final boolean FLOOR_ENABLED = true;
     public static final double RPM_TOLERANCE = 60.0;
     public static final double READY_DWELL_SECONDS = 0.10;
     public static final double MAX_TRANSLATION_MPS = 0.15;

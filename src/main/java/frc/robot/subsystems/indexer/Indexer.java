@@ -3,6 +3,7 @@ package frc.robot.subsystems.indexer;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import org.littletonrobotics.junction.Logger;
+import frc.robot.utility.shooting.FuelShotConfig;
 import org.littletonrobotics.junction.mechanism.LoggedMechanism2d;
 import org.littletonrobotics.junction.mechanism.LoggedMechanismLigament2d;
 import org.littletonrobotics.junction.mechanism.LoggedMechanismRoot2d;
@@ -31,6 +32,7 @@ public class Indexer extends SubsystemBase {
         io.updateInputs(inputs);
         Logger.processInputs("Indexer", inputs);
         Logger.recordOutput("Indexer/FloorTargetRPM", floorTargetRPM);
+        SmartDashboard.putBoolean("Indexer/FloorEnabled", FuelShotConfig.FLOOR_ENABLED);
         Logger.recordOutput("Indexer/TunnelTargetRPM", tunnelTargetRPM);
         SmartDashboard.putNumber("Indexer/TunnelRPM", inputs.tunnelRPM);
         SmartDashboard.putBoolean("Indexer/TunnelReady", isTunnelReady());
@@ -55,8 +57,8 @@ public class Indexer extends SubsystemBase {
     }
 
     public void setFloorRPM(double rpm) {
-        floorTargetRPM = rpm;
-        io.setFloorRPM(rpm);
+        floorTargetRPM = FuelShotConfig.FLOOR_ENABLED && Double.isFinite(rpm) ? rpm : 0.0;
+        io.setFloorRPM(floorTargetRPM);
     }
 
     public void setTunnelRPM(double rpm) {

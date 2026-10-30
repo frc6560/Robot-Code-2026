@@ -25,7 +25,6 @@ public final class FuelShootCommand extends Command {
     private final Supplier<ChassisSpeeds> velocity;
     private final Command aim;
     private final BooleanSupplier aligned;
-    private final BooleanSupplier calibrationFeed;
     private final BooleanSupplier pitCoast;
     private final FuelShotModel model;
     private final String calibrationStatus;
@@ -36,10 +35,10 @@ public final class FuelShootCommand extends Command {
 
     public FuelShootCommand(Shooter shooter, Indexer indexer, Supplier<Pose2d> pose,
             Supplier<ChassisSpeeds> velocity, Command aim, BooleanSupplier aligned,
-            BooleanSupplier calibrationFeed, BooleanSupplier pitCoast,
+            BooleanSupplier pitCoast,
             FuelShotModel model, String calibrationStatus) {
         this.shooter = shooter; this.indexer = indexer; this.pose = pose; this.velocity = velocity;
-        this.aim = aim; this.aligned = aligned; this.calibrationFeed = calibrationFeed;
+        this.aim = aim; this.aligned = aligned;
         this.pitCoast = pitCoast; this.model = model; this.calibrationStatus = calibrationStatus;
         addRequirements(shooter, indexer);
         addRequirements(aim.getRequirements());
@@ -52,9 +51,10 @@ public final class FuelShootCommand extends Command {
 
     @Override public void initialize() {
         calibrationMode = SmartDashboard.getBoolean("Fuel/Calibration Mode", false);
-        testRPM = SmartDashboard.getNumber("Fuel/Test Flywheel RPM", 2500);
-        tunnelRPM = calibrationMode ? SmartDashboard.getNumber("Fuel/Test Tunnel RPM", 1500)
-            : model == null ? 0 : model.calibration().tunnelRPM();
+        testRPM = SmartDashboard.getNumber("Fuel/Test Flywheel RPM", Constants.ShooterConstants.FIXED_SHOT_RPM);
+        tunnelRPM = calibrationMode || model == null
+            ? SmartDashboard.getNumber("Fuel/Test Tunnel RPM", Constants.IndexerConstants.TUNNEL_RUNNING_RPM)
+            : model.calibration().tunnelRPM();
         readySince = Double.NaN; solvedRange = Double.NaN; shot = Shot.invalid();
         indexer.stop();
         aim.initialize();
@@ -80,7 +80,9 @@ public final class FuelShootCommand extends Command {
             shot = model.solve(range);
             solvedRange = range;
         }
-        double rpm = calibrationMode ? testRPM : shot.rpm();
+        boolean fixedRPM = calibrationMode || model == null;
+        // Accelerate while approaching; only the release gate waits for aim/position readiness.
+        double rpm = fixedRPM || !shot.valid() ? testRPM : shot.rpm();
         boolean controlsValid = Double.isFinite(rpm) && rpm >= Constants.ShooterConstants.FLYWHEEL_IDLE_RPM
             && rpm <= Constants.ShooterConstants.MAX_RPM
             && Double.isFinite(tunnelRPM) && tunnelRPM > 0 && tunnelRPM <= 3000;
@@ -95,17 +97,15 @@ public final class FuelShootCommand extends Command {
             : !finite ? "Invalid pose or velocity"
             : alliance.isEmpty() ? "No alliance"
             : !ownZone ? "Outside own alliance zone"
-            : !calibrationMode && model == null ? calibrationStatus
             : !controlsValid ? "Invalid RPM settings / no reachable shot"
-            : !calibrationMode && !shot.valid() ? "No reachable shot"
+            : !fixedRPM && !shot.valid() ? "No reachable shot"
             : !stationary ? "Stop translating to shoot"
             : !aligned.getAsBoolean() ? "Aiming"
             : !indexer.isTunnelReady() ? "Tunnel disconnected or configuration failed"
             : !shooter.isHardwareReady() ? "Flywheel disconnected or pit coast"
             : !shooter.atTarget() || !shooter.withinTolerance(FuelShotConfig.RPM_TOLERANCE)
                 ? "Waiting for measured flywheel RPM"
-            : !calibrationMode && !model.scores(range, shooter.getCurrentRPM()) ? "Measured RPM outside scoring band"
-            : calibrationMode && !calibrationFeed.getAsBoolean() ? "Calibration: hold right trigger to feed"
+            : !fixedRPM && !model.scores(range, shooter.getCurrentRPM()) ? "Measured RPM outside scoring band"
             : "Ready";
         boolean rawReady = reason.equals("Ready");
         double now = Timer.getFPGATimestamp();
@@ -115,6 +115,9 @@ public final class FuelShootCommand extends Command {
         indexer.setFloorRPM(feeding ? Constants.IndexerConstants.FLOOR_RUNNING_RPM : 0);
         indexer.setTunnelRPM(feeding ? tunnelRPM : 0);
         String status = rawReady && !feeding ? "Settling" : reason;
+        SmartDashboard.putString("Fuel/Mode", fixedRPM
+            ? (calibrationMode ? "Fixed RPM measurement" : "Fixed RPM (uncalibrated)") : "Calibrated trajectory");
+        SmartDashboard.putString("Fuel/Calibration Status", calibrationStatus);
         SmartDashboard.putString("Fuel/Status", status);
         SmartDashboard.putBoolean("Fuel/Feeding", feeding);
         SmartDashboard.putNumber("Fuel/Range M", range);

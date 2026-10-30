@@ -1,30 +1,36 @@
 # Fuel shooting: setup, measurement, and tuning
 
-This is the new stationary **driver Y auto-turn** path. It does not use the old video calibrator,
+This is the new stationary **driver right-bumper auto-turn** path. It does not use the old video calibrator,
 its files, or its fitted distance policy. `FuelShotModel` integrates gravity, drag and backspin lift
 from measured launch conditions. All flight aerodynamics are provisional until basket tests.
 
 ## Driver behavior
 
-- Hold **driver Y**: auto-turn to the alliance HUB and spin the flywheel to the calculated RPM.
+- Hold **driver right bumper (RB)**: auto-turn to the alliance HUB and immediately accelerate the
+  flywheel while approaching. With launch calibration loaded, RPM follows the calculated trajectory.
+  Without it, use the explicit fixed-speed fallback: `Fuel/Test Flywheel RPM` defaults to **3000**,
+  and `Fuel/Test Tunnel RPM` defaults to **1500**. `Fuel/Mode` identifies the uncalibrated fallback;
+  its range/trajectory has not been validated.
 - Once actual heading error is within **1.5 degrees**, actual turn rate is within **5 deg/s**,
   measured flywheel speed is within **60 RPM** of the request, and those conditions remain true
-  for **0.10 s**, the command runs the floor indexer and real tunnel.
-- The measured RPM must also produce a scoring trajectory at the current range. Losing any
+  for **0.10 s**, the command runs the real wall/tunnel and the floor indexer (**300 RPM**).
+- With calibration loaded, measured RPM must also produce a scoring trajectory at the current range. Losing any
   release condition closes the gate immediately; regaining it requires another settling period.
-- Release Y: stop the tunnel and stop the shooter. The normal floor-only default resumes.
+- Release RB: stop the tunnel and shooter. Both indexers remain stopped. No second button is needed.
 - Translation remains driver controlled, but **feeding pauses above 0.15 m/s**. This version does
   not claim moving-shot compensation. Measured release delay and flight validation come first.
 - Driver Station alliance and a finite, correctly localized pose are required. Only shots from
   your own alliance zone are allowed. Start by resetting localization at a known position.
 - Pit coast, disconnected flywheel motors, or a disconnected/misconfigured tunnel block feeding.
 
-The tunnel no longer runs automatically on enable. Existing explicit manual controls (bumper /
-operator A / button-board 11 spin-up; trigger / board 3 feed) remain ungated overrides outside Y.
-When Y is released with a manual control still held, all those controls must release before manual
-feeding can resume. Do not use the manual override to evaluate the automatic release gate.
+Neither indexer runs automatically on enable. The floor is enabled by
+`FuelShotConfig.FLOOR_ENABLED=true` and runs alongside the tunnel once the shot is ready.
+Driver left bumper no longer runs the wall; Y is no longer the shooting binding. Operator A /
+button-board 11 still provide explicit manual spin-up, and board 3 still provides manual floor/tunnel
+feed outside RB. After RB release, any held operator control must release before manual feeding
+can resume. The driver's LT/RT rack controls and automatic intake roller behavior are unchanged.
 
-This change replaces the driver-Y shot path. Legacy button-board shot actions and autonomous
+This change replaces the driver shooting binding with a held-RB shot path. Legacy button-board shot actions and autonomous
 shooting routines are not wired to this new calibrated model. In particular, legacy auto shooting
 that relied on the always-running tunnel will now need an explicit tunnel-owning shot command;
 do not rely on those routines for calibrated firing. The separate timed center-auto still explicitly
@@ -39,10 +45,10 @@ owns its tunnel. The intake rack and intake rollers retain their existing automa
    - `Fuel/Calibration Mode` = **true**
    - `Fuel/Test Flywheel RPM` = **2500** to start
    - `Fuel/Test Tunnel RPM` = **1500**
-3. Load one ball for each measurement. Hold **Y** to aim and spin up. In measurement mode,
-   **Y alone never feeds**: additionally hold the **right trigger** to feed after alignment/speed settle.
-   Release the trigger between balls; release Y before changing test values. RPM settings and mode
-   are sampled on Y press, not changed in the middle of a shot.
+3. Load one ball for each measurement. Hold **RB** to aim and spin up; it automatically feeds after
+   alignment/speed settle, in measurement mode too. Release RB between shots and before changing
+   test values. RPM settings and mode are sampled on RB press, not changed in the middle of a shot.
+   No left bumper or trigger is required.
 4. Watch `Fuel/Status` for the reason a shot is waiting. `Fuel/Measured RPM` is flywheel shaft RPM,
    already corrected for 12:18 gearing. Do not multiply it by the gear ratio again.
 5. Measure at least **three repeated shots at each of at least three speeds**. A useful first session
@@ -120,8 +126,9 @@ narrow scoring bands; such shots are deliberately not supported reliably.
 
 Redeploy/restart after generating the file. `Fuel/Calibration Status` reports whether it loaded and
 whether spin is measured or estimated. Set `Fuel/Calibration Mode` to **false** (also reset to false
-at startup). Holding Y now automatically feeds after readiness; the extra trigger is only required
-in measurement mode. Missing/invalid calibration leaves auto-turn available but blocks normal shots.
+at startup). Holding RB automatically feeds after readiness using the calibrated trajectory. Missing
+or invalid calibration instead uses the fixed-RPM fallback described above; it does not calculate
+a distance-dependent shot. Check `Fuel/Mode` before interpreting results.
 
 ## Field validation and hand tuning
 
@@ -153,7 +160,7 @@ actual launch elevation relative to 48.36 degrees. Change it to match the measur
 needed. Missing spin uses an ideal rolling estimate. Speed measurements alone cannot validate all
 these aerodynamic assumptions. Confirm basket performance before relying on multiple ranges.
 
-Useful dashboard entries: `Fuel/Status`, `Fuel/Calibration Status`, `Fuel/Feeding`, `Fuel/Range M`,
+Useful dashboard entries: `Fuel/Status`, `Fuel/Mode`, `Fuel/Calibration Status`, `Fuel/Feeding`, `Fuel/Range M`,
 `Fuel/Target RPM`, `Fuel/Measured RPM`, minimum/maximum scoring RPM; `Hub Aim/Heading Error Deg`,
 `Hub Aim/At Target`; `Indexer/TunnelRPM`, `Indexer/TunnelReady`. Logs under `Fuel/` include tunnel
 requested/measured RPM, predicted flight time, and feeding state. Old LED/calculator indicators are

@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 
 class IndexerTest {
     @Test
-    void floorCommandsReachIOAndDiagnosticsAreSeparateFromTunnel() {
+    void floorAndTunnelCommandsReachIndependentOutputs() {
         assertTrue(HAL.initialize(500, 0));
         class FakeIO implements IndexerIO {
             double floorTarget;
@@ -41,6 +41,7 @@ class IndexerTest {
         try {
             indexer.setFloorRPM(1000);
             indexer.setTunnelRPM(1500);
+            assertEquals(1500, io.tunnelTarget);
             indexer.setTunnelRPM(0);
             assertEquals(1000, io.floorTarget);
             assertEquals(0, io.tunnelTarget);

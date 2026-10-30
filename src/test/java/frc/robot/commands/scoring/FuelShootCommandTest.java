@@ -34,7 +34,7 @@ class FuelShootCommandTest {
     }
     FakeShooter shooter;
     FakeIndexer indexer;
-    boolean aimReady, trigger, pit;
+    boolean aimReady, pit;
     Pose2d pose;
     ChassisSpeeds speeds;
     FuelShootCommand command;
@@ -52,14 +52,14 @@ class FuelShootCommandTest {
             Constants.FieldConstants.BLUE_HUB_CENTER.getY(), new Rotation2d());
         speeds = new ChassisSpeeds();
         shooter = new FakeShooter(); indexer = new FakeIndexer();
-        aimReady = false; trigger = false; pit = false;
+        aimReady = false; pit = false;
         SmartDashboard.putBoolean("Fuel/Calibration Mode", true);
         SmartDashboard.putNumber("Fuel/Test Flywheel RPM", 3000);
         SmartDashboard.putNumber("Fuel/Test Tunnel RPM", 1500);
     }
     void start(FuelShotModel model) {
         command = new FuelShootCommand(shooter, indexer, () -> pose, () -> speeds,
-            new Command() {}, () -> aimReady, () -> trigger, () -> pit, model, "No calibration");
+            new Command() {}, () -> aimReady, () -> pit, model, "No calibration");
         command.initialize();
     }
     void cycles(int count) {
@@ -72,13 +72,11 @@ class FuelShootCommandTest {
         DriverStationSim.notifyNewData();
         SimHooks.resumeTiming();
     }
-    @Test void calibrationRequiresAimTriggerMeasuredSpeedAndDwellThenStopsImmediately() {
+    @Test void oneHoldRequiresAimMeasuredSpeedAndDwellThenStopsImmediately() {
         start(null); cycles(15);
         assertEquals(3000, shooter.getGoalRPM(), 1e-6);
         assertEquals(0, indexer.getTunnelTargetRPM());
-        aimReady = true; cycles(15);
-        assertEquals(0, indexer.getTunnelTargetRPM());
-        trigger = true; cycles(2);
+        aimReady = true; cycles(2);
         assertEquals(0, indexer.getTunnelTargetRPM());
         cycles(10); assertEquals(1500, indexer.getTunnelTargetRPM());
         shooter.measured = 2700; cycles(1);
@@ -90,9 +88,10 @@ class FuelShootCommandTest {
         assertEquals(0, indexer.getTunnelTargetRPM()); assertEquals(0, shooter.getGoalRPM());
     }
     @Test void motionAlliancePitFaultsAndDisableBlockFeed() {
-        start(null); aimReady = trigger = true; cycles(10);
-        assertEquals(1500, indexer.getTunnelTargetRPM());
-        speeds = new ChassisSpeeds(0.3, 0, 0); cycles(1);
+        start(null); aimReady = true;
+        speeds = new ChassisSpeeds(0.3, 0, 0); cycles(10);
+        assertEquals(3000, shooter.getGoalRPM(), 1e-6); // Spin while approaching.
+        assertEquals(0, indexer.getFloorTargetRPM());
         assertEquals(0, indexer.getTunnelTargetRPM());
         speeds = new ChassisSpeeds(); cycles(10);
         pit = true; cycles(1); assertEquals(0, indexer.getTunnelTargetRPM());
@@ -108,10 +107,12 @@ class FuelShootCommandTest {
         DriverStationSim.setEnabled(false); DriverStationSim.notifyNewData();
         cycles(10); assertEquals(0, indexer.getTunnelTargetRPM());
     }
-    @Test void normalModeCannotFeedWithoutMeasurementsAndRejectsBadCalibrationSettings() {
+    @Test void missingMeasurementsUseExplicitFixedRPMAndBadSettingsStillBlock() {
         SmartDashboard.putBoolean("Fuel/Calibration Mode", false);
-        start(null); aimReady = trigger = true; cycles(20);
-        assertEquals(0, indexer.getTunnelTargetRPM());
+        start(null); aimReady = true; cycles(20);
+        assertEquals(1500, indexer.getTunnelTargetRPM());
+        assertEquals("Fixed RPM (uncalibrated)", SmartDashboard.getString("Fuel/Mode", ""));
+        assertEquals(300, indexer.getFloorTargetRPM());
         command.end(false);
         SmartDashboard.putBoolean("Fuel/Calibration Mode", true);
         SmartDashboard.putNumber("Fuel/Test Flywheel RPM", Double.NaN);
@@ -131,6 +132,8 @@ class FuelShootCommandTest {
         assertEquals(shot.rpm(), shooter.getGoalRPM(), 1e-6);
         assertEquals(1400, indexer.getTunnelTargetRPM());
         assertEquals(300, indexer.getFloorTargetRPM());
-        shooter.measured = 1000; cycles(1); assertEquals(0, indexer.getTunnelTargetRPM());
+        shooter.measured = 1000; cycles(1);
+        assertEquals(0, indexer.getTunnelTargetRPM());
+        assertEquals(0, indexer.getFloorTargetRPM());
     }
 }

@@ -2,7 +2,6 @@ package frc.robot;
 
 import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
@@ -170,7 +169,7 @@ public class RobotContainer {
       }
       SmartDashboard.putString("Fuel/Calibration Status", fuelCalibrationStatus);
       SmartDashboard.putBoolean("Fuel/Calibration Mode", false);
-      SmartDashboard.putNumber("Fuel/Test Flywheel RPM", 2500);
+      SmartDashboard.putNumber("Fuel/Test Flywheel RPM", Constants.ShooterConstants.FIXED_SHOT_RPM);
       SmartDashboard.putNumber("Fuel/Test Tunnel RPM", Constants.IndexerConstants.TUNNEL_RUNNING_RPM);
       SmartDashboard.putBoolean("Fuel/Feeding", false);
       configureBindings();
@@ -181,7 +180,7 @@ public class RobotContainer {
     private static final double MAX_PASSING_VELOCITY_MPS = 3.0;
 
     private boolean isShotCommandActive() {
-        return driverXbox.leftBumper().getAsBoolean()
+        return driverXbox.rightBumper().getAsBoolean()
             || (shotCommand != null
                 && CommandScheduler.getInstance().isScheduled(shotCommand));
     }
@@ -194,17 +193,14 @@ public class RobotContainer {
     }
 
     /** Gated shot plus BLine's AimAtHub, which turns the chassis to the hub while the driver translates. */
-    private void scheduleAimedShotCommand() {
-        manualControlsSuppressedAfterAim = true;
-        cancelShotCommand();
+    private Command createAimedShotCommand() {
         AimAtHub aim = new AimAtHub(drivebase,
             () -> clampSpeedsForShooting(driveAngularVelocity.get()),
             () -> FuelShootCommand.releasePosition(drivebase.getPose()));
         shotCommand = new FuelShootCommand(shooter, indexer, drivebase::getPose,
             drivebase::getRobotVelocity, aim, aim::isAtTarget,
-            () -> driverXbox.leftBumper().getAsBoolean(), () -> pitCoastMode,
-            fuelShotModel, fuelCalibrationStatus);
-        CommandScheduler.getInstance().schedule(shotCommand);
+            () -> pitCoastMode, fuelShotModel, fuelCalibrationStatus);
+        return shotCommand;
     }
 
     private void cancelShotCommand() {
@@ -257,15 +253,8 @@ public class RobotContainer {
     }
 
     private void configureBindings() {
-        // The tunnel is a release mechanism: never feed by default. Manual feed remains explicit.
-        indexer.setDefaultCommand(Commands.run(() -> {
-            if (DriverStation.isEnabled() && !pitCoastMode) {
-                indexer.setFloorRPM(Constants.IndexerConstants.FLOOR_RUNNING_RPM);
-                indexer.setTunnelRPM(0.0);
-            } else {
-                indexer.stop();
-            }
-        }, indexer).finallyDo(interrupted -> indexer.stop()));
+        // Both indexers stay stopped unless an explicit command owns them.
+        indexer.setDefaultCommand(Commands.run(indexer::stop, indexer));
 
         Command driveFieldOrientedAnglularVelocity = drivebase.driveFieldOriented(
             () -> DriverStation.isTeleopEnabled()
@@ -274,17 +263,12 @@ public class RobotContainer {
         drivebase.setDefaultCommand(driveFieldOrientedAnglularVelocity);
         driveFieldOrientedAnglularVelocity.setName("Driver field-oriented drive");
 
-        // Operator A remains an alternate hold-to-run control for the floor/shooter.
-        // Avoid repeatedly asking WPILib for Button 6 when the driver HID lacks that button.
-        Trigger combinedSpinUp = new Trigger(() ->
-            DriverStation.getStickButtonCount(driverXbox.getHID().getPort())
-                >= XboxController.Button.kRightBumper.value
-            && driverXbox.getHID().getRightBumperButton()).or(operatorXbox.a());
-        // Driver 2 is the separate button board; use raw held states, not press edges.
-        Trigger spinUp = combinedSpinUp.or(new Trigger(() -> m_Controls.getButtonActivated(11)));
+        // Driver right bumper owns the entire aim/spin/feed action. Left bumper no longer feeds.
+        // Keep separate operator/button-board controls for explicit manual testing.
+        Trigger spinUp = operatorXbox.a().or(new Trigger(() -> m_Controls.getButtonActivated(11)));
         Trigger driver2Indexer = new Trigger(() -> m_Controls.getButtonActivated(3));
-        Trigger floor = combinedSpinUp.or(driver2Indexer);
-        Trigger feed = driverXbox.leftBumper().or(driver2Indexer);
+        Trigger floor = driver2Indexer;
+        Trigger feed = driver2Indexer;
 
         // Triggers select rack endpoints without running the wall indexer.
         // Ignore simultaneous presses so neither direction wins unexpectedly.
@@ -296,14 +280,14 @@ public class RobotContainer {
         rackExtend.and(rackRetract.negate())
             .and(DriverStation::isTeleopEnabled).and(() -> !pitCoastMode)
             .onTrue(Commands.runOnce(intake::requestRackExtended, intake));
-        // Releasing Y must stop feeding even if the calibration bumper is still held.
+        // Releasing right bumper must stop feeding even if an operator control is held.
         // Require all manual holds to release before an ungated manual shot can start again.
-        new Trigger(() -> !driverXbox.y().getAsBoolean() && !spinUp.getAsBoolean()
+        new Trigger(() -> !driverXbox.rightBumper().getAsBoolean() && !spinUp.getAsBoolean()
             && !floor.getAsBoolean() && !feed.getAsBoolean())
             .onTrue(Commands.runOnce(() -> manualControlsSuppressedAfterAim = false).ignoringDisable(true));
         spinUp.or(floor).or(feed)
             .and(DriverStation::isTeleopEnabled)
-            .and(() -> !pitCoastMode && !driverXbox.y().getAsBoolean() && !manualControlsSuppressedAfterAim)
+            .and(() -> !pitCoastMode && !driverXbox.rightBumper().getAsBoolean() && !manualControlsSuppressedAfterAim)
             .whileTrue(manualShotCommand(spinUp, floor, feed));
 
         driverXbox.x()
@@ -326,26 +310,27 @@ public class RobotContainer {
         Trigger shootTrigger = new Trigger(m_Controls::getShootTrigger);
         Trigger shootReleaseTrigger = new Trigger(m_Controls::getShootReleaseTrigger);
         Trigger ungatedShootTrigger = new Trigger(m_Controls::getUngatedShootTrigger);
-        Trigger driverAimedShootTrigger = driverXbox.y().and(DriverStation::isTeleopEnabled).and(() -> !pitCoastMode);
+        Trigger driverAimedShootTrigger = driverXbox.rightBumper().and(DriverStation::isTeleopEnabled).and(() -> !pitCoastMode);
 
-        // Hold driver Y to run the gated shot while the chassis aims at the hub.
-        driverAimedShootTrigger.onTrue(Commands.runOnce(this::scheduleAimedShotCommand));
-        driverAimedShootTrigger.onFalse(Commands.runOnce(this::cancelShotCommand));
+        // One held command owns drivetrain, shooter and indexer. Releasing RB cancels all three.
+        Command aimedShot = createAimedShotCommand();
+        driverAimedShootTrigger.onTrue(Commands.runOnce(() -> manualControlsSuppressedAfterAim = true));
+        driverAimedShootTrigger.whileTrue(aimedShot);
 
-        shootTrigger.onTrue(Commands.runOnce(this::scheduleShotCommand));
-        shootReleaseTrigger.onTrue(Commands.runOnce(this::cancelShotCommand));
-        ungatedShootTrigger.onTrue(Commands.sequence(
+        shootTrigger.and(driverAimedShootTrigger.negate()).onTrue(Commands.runOnce(this::scheduleShotCommand));
+        shootReleaseTrigger.and(driverAimedShootTrigger.negate()).onTrue(Commands.runOnce(this::cancelShotCommand));
+        ungatedShootTrigger.and(driverAimedShootTrigger.negate()).onTrue(Commands.sequence(
             Commands.runOnce(this::cancelShotCommand),
             Commands.runOnce(() -> {
                 feeder.setShooting(true);
                 intake.startShootingOscillation();
             }, feeder, intake)));
-        ungatedShootTrigger.onFalse(Commands.runOnce(() -> {
+        ungatedShootTrigger.and(driverAimedShootTrigger.negate()).onFalse(Commands.runOnce(() -> {
             feeder.setShooting(false);
             intake.stopShootingOscillation();
         }, feeder, intake));
 
-        // Driver 2 button 3 runs the flat indexer and tunnel together above.
+        // Driver 2 button 3 requests manual tunnel feed; the floor remains disabled.
 
         Trigger intakeRoller = new Trigger(() -> m_Controls.getButtonActivated(4))
             .and(DriverStation::isTeleopEnabled);
