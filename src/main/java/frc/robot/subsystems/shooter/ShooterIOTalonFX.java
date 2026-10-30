@@ -44,8 +44,8 @@ public class ShooterIOTalonFX implements ShooterIO {
     private final StatusSignal<Temperature> followerTemp;
 
     public ShooterIOTalonFX() {
-        leaderMotor = new TalonFX(ShooterConstants.LEFT_FLYWHEEL_ID, ShooterConstants.CAN_BUS);
-        followerMotor = new TalonFX(ShooterConstants.RIGHT_FLYWHEEL_ID, ShooterConstants.CAN_BUS);
+        leaderMotor = new TalonFX(ShooterConstants.RIGHT_FLYWHEEL_ID, ShooterConstants.CAN_BUS);
+        followerMotor = new TalonFX(ShooterConstants.LEFT_FLYWHEEL_ID, ShooterConstants.CAN_BUS);
 
         configureLeaderMotor();
         configureFollowerMotor();
@@ -81,7 +81,7 @@ public class ShooterIOTalonFX implements ShooterIO {
         config.Slot0.kD = ShooterConstants.kD;
 
         config.MotorOutput.NeutralMode = NeutralModeValue.Coast;
-        config.MotorOutput.Inverted = ShooterConstants.LEFT_FLYWHEEL_INVERTED
+        config.MotorOutput.Inverted = ShooterConstants.RIGHT_FLYWHEEL_INVERTED
             ? InvertedValue.Clockwise_Positive
             : InvertedValue.CounterClockwise_Positive;
 

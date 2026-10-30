@@ -36,6 +36,9 @@ class RobotContainerDriverControlsTest {
         DriverStationSim.setJoystickButtonCount(BUTTON_BOARD_PORT, 11);
         DriverStationSim.notifyNewData();
         RobotContainer container = new RobotContainer();
+        // This test checks button ownership and fixed-RPM feeding, not the trajectory solver.
+        SmartDashboard.putBoolean("Fuel/Calibration Mode", true);
+        SmartDashboard.putNumber("Fuel/Test Flywheel RPM", 3000);
         container.getDrivebase().resetOdometry(new Pose2d());
         Shooter shooter = getField(container, "shooter", Shooter.class);
         Indexer indexer = getField(container, "indexer", Indexer.class);

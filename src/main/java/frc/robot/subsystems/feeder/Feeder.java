@@ -26,11 +26,11 @@ public class Feeder extends SubsystemBase {
     }
 
     public double getPanActualRPM() {
-        return inputs.panVelocityRPS * 60.0 * FeederConstants.PAN_GEAR_RATIO;
+        return inputs.panVelocityRPS * 60.0;
     }
 
     public double getPusherActualRPM() {
-        return inputs.pusherVelocityRPS * 60.0 * FeederConstants.PUSHER_GEAR_RATIO;
+        return inputs.pusherVelocityRPS * 60.0;
     }
 
     public boolean panAtSpeed() {

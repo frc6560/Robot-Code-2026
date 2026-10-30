@@ -27,15 +27,6 @@ public final class Constants {
 
   public static final Mode currentMode = Mode.REAL; // Change to REPLAY for log replay
 
-  /** Installed hardware on this robot. Legacy roboRIO mechanisms are physically absent. */
-  public static final class HardwareConstants {
-    public static final boolean LEGACY_TURRET_INSTALLED = false;
-    public static final boolean LEGACY_FEEDER_INSTALLED = false;
-    public static final boolean RACK_INTAKE_INSTALLED = true;
-
-    private HardwareConstants() {}
-  }
-
   public static final double ROBOT_MASS = 62.59; // TODO: replace with true robot mass
   public static final Matter CHASSIS    = new Matter(new Translation3d(0, 0, Units.inchesToMeters(8)), ROBOT_MASS);
   public static final double LOOP_TIME  = 0.13; //s, 20ms + 110ms sprk max velocity lag
@@ -368,8 +359,8 @@ public final class Constants {
 
   public static final class ShooterConstants{
     /** CAN IDs */
-    public static final int LEFT_FLYWHEEL_ID = 15;
-    public static final int RIGHT_FLYWHEEL_ID = 24;
+    public static final int RIGHT_FLYWHEEL_ID = 15;
+    public static final int LEFT_FLYWHEEL_ID = 24;
     public static final String CAN_BUS = "Canivore";
 
     /** PID Gains */
@@ -395,8 +386,7 @@ public final class Constants {
     public static final double FLYWHEEL_SUPPLY_CURRENT_LIMIT = 40.0; // Amps
 
     /** Motor Inversion Settings */
-    public static final boolean LEFT_FLYWHEEL_INVERTED = true;
-    public static final boolean RIGHT_FLYWHEEL_OPPOSED = true; 
+    public static final boolean RIGHT_FLYWHEEL_INVERTED = true;
 
     public static final int FLYWHEEL_STATOR_CURRENT_LIMIT = 40;
 
@@ -510,38 +500,21 @@ public final class Constants {
     public static final double PASS_MAX_DISTANCE_METERS = 12.0;
   }
 
+  /** Kinematics for retained command/simulation adapters; no hardware addresses. */
   public static final class TurretConstants{ 
     public static final Transform3d ROBOT_RELATIVE_TURRET = new Transform3d(-0.048, 0.1143, 0, new Rotation3d()); // x --> front/back, y --> left/right
 
-    /** CAN IDs */
-    public static final int MOTOR_ID = 17;      
-    public static final int ENCODER_ID = 18;   
-
     /** Characterization Gains */
-    public static final double kS = 0.1;
     public static final double kV = 0.2;
-    public static final double kA = 0.05;
-
-    public static final double kG = 0.6;
 
     /** PID Gains */
-    public static final double kP = 8.0; // old: 5.0
+    public static final double kP = 8.0;
     public static final double kI = 0.05;
-    public static final double kD = 0.3; // old: 0.2
-
-    /** Motion Constraints. IN DEGREES PER SECOND */
-    public static final double kMaxV = 450;
-    public static final double kMaxA = 900;
-
-    public static final boolean MOTOR_INVERTED = false; 
+    public static final double kD = 0.3;
 
     /** Turret Geometry */
     public static final double MOTOR_GEAR_RATIO = 254.0 / 28.0; // turret spins once for every ~9 motor rotations
     public static final double ENCODER_GEAR_RATIO = 127.0 / 168.0; // turret spins once for every ~0.75 encoder rotations. fix.
-
-    // Absolute encoder setup
-    public static final double ABSOLUTE_ENCODER_OFFSET = 0.377; 
-    public static final boolean ABSOLUTE_ENCODER_REVERSED = false; 
 
     // soft limits
     public static final double LOWER_SOFT_LIMIT = -100.0;
@@ -640,36 +613,8 @@ public final class Constants {
     public static final double SHOOT_OSCILLATION_HALF_PERIOD_SECONDS = 0.25;
   }
 
+  /** Setpoints for retained command/simulation adapters; contains no hardware addresses. */
   public static final class FeederConstants {
-    // CAN IDs
-    public static final int PAN_MOTOR_ID = 14;
-    public static final int PUSHER_MOTOR_ID = 23;
-    public static final int FLOOR_ID = 15; // placeholder. ask derek for actual ids.
-    public static final String CAN_BUS = "rio";
-
-    // Gear Ratios
-    public static final double PAN_GEAR_RATIO = 324 / 2688;
-    public static final double PUSHER_GEAR_RATIO = 1.0 / 2.5;
-    public static final double WALL_GEAR_RATIO = 1.0 / 2.5; 
-    public static final double FLOOR_GEAR_RATIO = 1.0 / 2.5; 
-
-    // PID Gains
-    public static final double PAN_kP = 0.25;
-    public static final double PUSHER_kP = 0.15;
-    public static final double WALL_kP = 0.15; // tune  
-    public static final double FLOOR_kP = 0.15; // tune
-    public static final double kV = 0.12;
-
-    // Current Limits
-    public static final int SUPPLY_CURRENT_LIMIT = 40;
-    public static final int STATOR_CURRENT_LIMIT = 40;
-
-    // Motor Inversions
-    public static final boolean PAN_MOTOR_INVERTED = false;
-    public static final boolean PUSHER_MOTOR_INVERTED = true;
-    public static final boolean WALL_MOTOR_INVERTED = false; // tune
-    public static final boolean FLOOR_MOTOR_INVERTED = true; // tune
-
     // RPM Settings
     public static final double PAN_RUNNING_RPM = 7000.0;
     public static final double PUSHER_RUNNING_RPM = 7000.0;

@@ -34,11 +34,9 @@ import frc.robot.subsystems.shooter.ShooterIOTalonFX;
 import frc.robot.subsystems.turret.Turret;
 import frc.robot.subsystems.turret.TurretIO;
 import frc.robot.subsystems.turret.TurretIOSim;
-import frc.robot.subsystems.turret.TurretIOTalonFX;
 import frc.robot.subsystems.feeder.Feeder;
 import frc.robot.subsystems.feeder.FeederIO;
 import frc.robot.subsystems.feeder.FeederIOSim;
-import frc.robot.subsystems.feeder.FeederIOTalonFX;
 import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.intake.IntakeIO;
 import frc.robot.subsystems.intake.IntakeIOSim;
@@ -114,13 +112,10 @@ public class RobotContainer {
 
       if (Robot.isReal()) {
         shooter = new Shooter(new ShooterIOTalonFX());
-        // Do not create CAN controllers for devices that are not installed.
-        turret = new Turret(Constants.HardwareConstants.LEGACY_TURRET_INSTALLED
-            ? new TurretIOTalonFX() : new TurretIO() {});
-        feeder = new Feeder(Constants.HardwareConstants.LEGACY_FEEDER_INSTALLED
-            ? new FeederIOTalonFX() : new FeederIO() {});
-        intake = new Intake(Constants.HardwareConstants.RACK_INTAKE_INSTALLED
-            ? new IntakeIOTalonFX() : new IntakeIO() {});
+        // Compatibility adapters for existing command APIs; no hardware drivers or CAN addresses.
+        turret = new Turret(new TurretIO() {});
+        feeder = new Feeder(new FeederIO() {});
+        intake = new Intake(new IntakeIOTalonFX());
         led = new LED(new LEDIOAddressable(3, 65), shooter, turret, shotCalculator);
       } else {
           shooter = new Shooter(new ShooterIOSim());

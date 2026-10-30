@@ -26,20 +26,10 @@ class HardwareConfigurationTest {
         add(Constants.IndexerConstants.CAN_BUS, "talonfx", Constants.IndexerConstants.FLOOR_MOTOR_ID);
         add(Constants.IndexerConstants.CAN_BUS, "talonfx", Constants.IndexerConstants.FLOOR_SECONDARY_MOTOR_ID);
         add(Constants.IndexerConstants.CAN_BUS, "talonfx", Constants.IndexerConstants.TUNNEL_MOTOR_ID);
-        if (Constants.HardwareConstants.RACK_INTAKE_INSTALLED) {
-            add(Constants.IntakeConstants.CAN_BUS, "talonfx", Constants.IntakeConstants.DEPLOY_MOTOR_ID);
-            add(Constants.IntakeConstants.CAN_BUS, "talonfx", Constants.IntakeConstants.LEFT_ROLLER_MOTOR_ID);
-            add(Constants.IntakeConstants.CAN_BUS, "talonfx", Constants.IntakeConstants.RIGHT_ROLLER_MOTOR_ID);
-        }
-        if (Constants.HardwareConstants.LEGACY_TURRET_INSTALLED) {
-            add("rio", "talonfx", Constants.TurretConstants.MOTOR_ID);
-            add("rio", "cancoder", Constants.TurretConstants.ENCODER_ID);
-        }
-        if (Constants.HardwareConstants.LEGACY_FEEDER_INSTALLED) {
-            add(Constants.FeederConstants.CAN_BUS, "talonfx", Constants.FeederConstants.PAN_MOTOR_ID);
-            add(Constants.FeederConstants.CAN_BUS, "talonfx", Constants.FeederConstants.PUSHER_MOTOR_ID);
-            add(Constants.FeederConstants.CAN_BUS, "talonfx", Constants.FeederConstants.FLOOR_ID);
-        }
+        add(Constants.IntakeConstants.CAN_BUS, "talonfx", Constants.IntakeConstants.DEPLOY_MOTOR_ID);
+        add(Constants.IntakeConstants.CAN_BUS, "talonfx", Constants.IntakeConstants.LEFT_ROLLER_MOTOR_ID);
+        add(Constants.IntakeConstants.CAN_BUS, "talonfx", Constants.IntakeConstants.RIGHT_ROLLER_MOTOR_ID);
+        assertEquals(16, devices.size() + 8, "Only eight mechanism motors plus eight swerve motors are installed");
         ObjectMapper mapper = new ObjectMapper();
         Path root = Path.of("src/main/deploy/swerve/falcon");
         JsonNode swerve = mapper.readTree(root.resolve("swervedrive.json").toFile());
@@ -57,6 +47,15 @@ class HardwareConfigurationTest {
                 add(device.get("canbus").asText(), type, device.get("id").asInt());
             }
         }
+    }
+
+    @Test
+    void motorNamesMatchTheConfirmedPhysicalAddresses() {
+        assertEquals(15, Constants.ShooterConstants.RIGHT_FLYWHEEL_ID);
+        assertEquals(24, Constants.ShooterConstants.LEFT_FLYWHEEL_ID);
+        assertEquals(17, Constants.IntakeConstants.LEFT_ROLLER_MOTOR_ID);
+        assertEquals(18, Constants.IntakeConstants.RIGHT_ROLLER_MOTOR_ID);
+        assertEquals(26, Constants.IntakeConstants.DEPLOY_MOTOR_ID);
     }
 
     @Test
