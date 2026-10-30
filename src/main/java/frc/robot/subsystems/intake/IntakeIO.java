@@ -20,7 +20,8 @@ public interface IntakeIO {
         public double deployPositionRotations = 0.0;
         public double deployVelocityRPS = 0.0;
         public double deployAppliedVolts = 0.0;
-        public double deployCurrentAmps = 0.0;
+        public double deployCurrentAmps = 0.0; // supply current, retained for log compatibility
+        public double deployStatorCurrentAmps = 0.0;
         public double deployTempCelsius = 0.0;
 
         public double rollerVelocityRPS = 0.0;
@@ -46,6 +47,7 @@ public interface IntakeIO {
             table.put("DeployVelocityRPS", deployVelocityRPS);
             table.put("DeployAppliedVolts", deployAppliedVolts);
             table.put("DeployCurrentAmps", deployCurrentAmps);
+            table.put("DeployStatorCurrentAmps", deployStatorCurrentAmps);
             table.put("DeployTempCelsius", deployTempCelsius);
             table.put("RollerVelocityRPS", rollerVelocityRPS);
             table.put("RightRollerVelocityRPS", rightRollerVelocityRPS);
@@ -71,6 +73,7 @@ public interface IntakeIO {
             deployVelocityRPS = table.get("DeployVelocityRPS", deployVelocityRPS);
             deployAppliedVolts = table.get("DeployAppliedVolts", deployAppliedVolts);
             deployCurrentAmps = table.get("DeployCurrentAmps", deployCurrentAmps);
+            deployStatorCurrentAmps = table.get("DeployStatorCurrentAmps", deployStatorCurrentAmps);
             deployTempCelsius = table.get("DeployTempCelsius", deployTempCelsius);
             rollerVelocityRPS = table.get("RollerVelocityRPS", rollerVelocityRPS);
             rightRollerVelocityRPS = table.get("RightRollerVelocityRPS", rightRollerVelocityRPS);

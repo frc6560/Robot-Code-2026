@@ -64,10 +64,10 @@ public class IndexerIOTalonFX implements IndexerIO {
         tunnelMotor = new TalonFX(tunnelMotorId, canBus);
 
         floorConfigurationStatus = configureMotor(floorLeader, IndexerConstants.FLOOR_GEAR_RATIO,
-            IndexerConstants.FLOOR_MOTOR_INVERTED);
+            IndexerConstants.FLOOR_MOTOR_INVERTED, true);
         floorSecondaryConfigurationStatus = configureMotor(floorSecondary, IndexerConstants.FLOOR_GEAR_RATIO,
-            IndexerConstants.FLOOR_SECONDARY_MOTOR_INVERTED);
-        tunnelConfigurationStatus = configureMotor(tunnelMotor, IndexerConstants.TUNNEL_GEAR_RATIO, false);
+            IndexerConstants.FLOOR_SECONDARY_MOTOR_INVERTED, true);
+        tunnelConfigurationStatus = configureMotor(tunnelMotor, IndexerConstants.TUNNEL_GEAR_RATIO, false, false);
 
         floorPosition = floorLeader.getPosition();
         floorVelocity = floorLeader.getVelocity();
@@ -102,21 +102,25 @@ public class IndexerIOTalonFX implements IndexerIO {
     }
 
     static TalonFXConfiguration motorConfiguration(double gearRatio, boolean inverted) {
+        return motorConfiguration(gearRatio, inverted, false);
+    }
+
+    static TalonFXConfiguration motorConfiguration(double gearRatio, boolean inverted, boolean floor) {
         TalonFXConfiguration config = new TalonFXConfiguration();
         config.MotorOutput.Inverted = inverted
             ? InvertedValue.Clockwise_Positive : InvertedValue.CounterClockwise_Positive;
         config.Feedback.SensorToMechanismRatio = gearRatio;
         config.Slot0.kP = IndexerConstants.VELOCITY_KP;
         config.Slot0.kV = IndexerConstants.MOTOR_KV * gearRatio;
-        config.CurrentLimits.StatorCurrentLimit = CURRENT_LIMIT_AMPS;
+        config.CurrentLimits.StatorCurrentLimit = floor ? IndexerConstants.FLOOR_STATOR_CURRENT_LIMIT : CURRENT_LIMIT_AMPS;
         config.CurrentLimits.StatorCurrentLimitEnable = true;
-        config.CurrentLimits.SupplyCurrentLimit = CURRENT_LIMIT_AMPS;
+        config.CurrentLimits.SupplyCurrentLimit = floor ? IndexerConstants.FLOOR_SUPPLY_CURRENT_LIMIT : CURRENT_LIMIT_AMPS;
         config.CurrentLimits.SupplyCurrentLimitEnable = true;
         return config;
     }
 
-    private static StatusCode configureMotor(TalonFX motor, double gearRatio, boolean inverted) {
-        TalonFXConfiguration config = motorConfiguration(gearRatio, inverted);
+    private static StatusCode configureMotor(TalonFX motor, double gearRatio, boolean inverted, boolean floor) {
+        TalonFXConfiguration config = motorConfiguration(gearRatio, inverted, floor);
         StatusCode status = motor.getConfigurator().apply(config, 0.1);
         for (int attempt = 1; attempt < 3 && !status.isOK(); attempt++) {
             status = motor.getConfigurator().apply(config, 0.1);

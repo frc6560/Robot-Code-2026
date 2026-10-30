@@ -16,12 +16,17 @@ class IndexerMotorConfigurationTest {
         assertEquals(0, IndexerConstants.FLOOR_SECONDARY_MOTOR_ID);
         assertEquals(16, IndexerConstants.TUNNEL_MOTOR_ID);
         var primary = IndexerIOTalonFX.motorConfiguration(IndexerConstants.FLOOR_GEAR_RATIO,
-            IndexerConstants.FLOOR_MOTOR_INVERTED);
+            IndexerConstants.FLOOR_MOTOR_INVERTED, true);
         var secondary = IndexerIOTalonFX.motorConfiguration(IndexerConstants.FLOOR_GEAR_RATIO,
-            IndexerConstants.FLOOR_SECONDARY_MOTOR_INVERTED);
+            IndexerConstants.FLOOR_SECONDARY_MOTOR_INVERTED, true);
         assertEquals(InvertedValue.Clockwise_Positive, primary.MotorOutput.Inverted);
         assertEquals(InvertedValue.CounterClockwise_Positive, secondary.MotorOutput.Inverted);
         assertEquals(primary.Feedback.SensorToMechanismRatio, secondary.Feedback.SensorToMechanismRatio);
+        assertEquals(60, primary.CurrentLimits.StatorCurrentLimit);
+        assertEquals(40, primary.CurrentLimits.SupplyCurrentLimit);
+        assertEquals(60, secondary.CurrentLimits.StatorCurrentLimit);
+        var tunnel = IndexerIOTalonFX.motorConfiguration(IndexerConstants.TUNNEL_GEAR_RATIO, false);
+        assertEquals(40, tunnel.CurrentLimits.StatorCurrentLimit);
         assertTrue(primary.CurrentLimits.StatorCurrentLimitEnable);
         assertTrue(secondary.CurrentLimits.SupplyCurrentLimitEnable);
     }

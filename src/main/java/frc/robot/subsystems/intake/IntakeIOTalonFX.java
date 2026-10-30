@@ -66,7 +66,7 @@ public class IntakeIOTalonFX implements IntakeIO {
             configurationStatus, zeroStatus, homed);
         motor.hasResetOccurred();
         BaseStatusSignal.setUpdateFrequencyForAll(50.0, motor.getPosition(), motor.getVelocity(),
-            motor.getMotorVoltage(), motor.getSupplyCurrent(), motor.getDeviceTemp());
+            motor.getMotorVoltage(), motor.getSupplyCurrent(), motor.getStatorCurrent(), motor.getDeviceTemp());
         motor.optimizeBusUtilization();
         leftRollerConfigurationStatus = configureRoller(leftRoller,
             IntakeConstants.LEFT_ROLLER_MOTOR_INVERTED);
@@ -106,7 +106,7 @@ public class IntakeIOTalonFX implements IntakeIO {
         // Only motion feedback determines connection readiness; stale temperature
         // or current telemetry must not suppress an otherwise valid position command.
         boolean fresh = BaseStatusSignal.refreshAll(motor.getPosition(), motor.getVelocity()).isOK();
-        BaseStatusSignal.refreshAll(motor.getMotorVoltage(), motor.getSupplyCurrent(), motor.getDeviceTemp());
+        BaseStatusSignal.refreshAll(motor.getMotorVoltage(), motor.getSupplyCurrent(), motor.getStatorCurrent(), motor.getDeviceTemp());
         if (motor.hasResetOccurred()) {
             homed = false;
             zeroStatus = "Rack controller reset: physically retract and restart code";
@@ -121,6 +121,7 @@ public class IntakeIOTalonFX implements IntakeIO {
         inputs.deployVelocityRPS = motor.getVelocity().getValueAsDouble();
         inputs.deployAppliedVolts = motor.getMotorVoltage().getValueAsDouble();
         inputs.deployCurrentAmps = motor.getSupplyCurrent().getValueAsDouble();
+        inputs.deployStatorCurrentAmps = motor.getStatorCurrent().getValueAsDouble();
         inputs.deployTempCelsius = motor.getDeviceTemp().getValueAsDouble();
         boolean rollersFresh = BaseStatusSignal.refreshAll(
             leftRoller.getVelocity(), rightRoller.getVelocity()).isOK();

@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import edu.wpi.first.hal.HAL;
+import edu.wpi.first.wpilibj.simulation.DriverStationSim;
+import edu.wpi.first.wpilibj.simulation.SimHooks;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import org.junit.jupiter.api.Test;
@@ -58,6 +60,41 @@ class IndexerTest {
             assertEquals(0, io.tunnelTarget);
         } finally {
             CommandScheduler.getInstance().unregisterSubsystem(indexer);
+        }
+    }
+    @Test void eitherStalledFloorMotorStopsBothAndRequiresDisableToReset() {
+        assertTrue(HAL.initialize(500, 0));
+        SimHooks.pauseTiming();
+        DriverStationSim.resetData();
+        DriverStationSim.setDsAttached(true);
+        DriverStationSim.setEnabled(true);
+        DriverStationSim.notifyNewData();
+        class BlockedIO implements IndexerIO {
+            double requested;
+            @Override public void setFloorRPM(double rpm) { requested = rpm; }
+            @Override public void updateInputs(IndexerIOInputs inputs) {
+                inputs.floorRPM = 100; // First motor moves; secondary alone can trip the guard.
+                inputs.floorSecondaryRPM = 0;
+                inputs.floorSecondaryCurrentAmps = 60;
+            }
+        }
+        var io = new BlockedIO();
+        var indexer = new Indexer(io);
+        try {
+            indexer.setFloorRPM(800); indexer.periodic();
+            SimHooks.stepTiming(0.5); indexer.periodic();
+            assertEquals(800, io.requested);
+            SimHooks.stepTiming(0.6); indexer.periodic();
+            assertEquals(0, io.requested);
+            indexer.setFloorRPM(800); assertEquals(0, io.requested);
+            assertTrue(SmartDashboard.getBoolean("Indexer/FloorStallFault", false));
+            DriverStationSim.setEnabled(false); DriverStationSim.notifyNewData();
+            indexer.periodic();
+            indexer.setFloorRPM(800); assertEquals(800, io.requested);
+        } finally {
+            CommandScheduler.getInstance().unregisterSubsystem(indexer);
+            DriverStationSim.resetData(); DriverStationSim.notifyNewData();
+            SimHooks.resumeTiming();
         }
     }
 }

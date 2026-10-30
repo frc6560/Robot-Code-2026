@@ -28,7 +28,9 @@ Neither indexer runs automatically on enable. The floor is enabled by
 Driver left bumper no longer runs the wall; Y is no longer the shooting binding. Operator A /
 button-board 11 still provide explicit manual spin-up, and board 3 still provides manual floor/tunnel
 feed outside RB. After RB release, any held operator control must release before manual feeding
-can resume. The driver's LT/RT rack controls and automatic intake roller behavior are unchanged.
+can resume. The driver's LT/RT rack controls are unchanged. Intake rollers run only after a valid, homed rack
+reaches the requested full-extension position (9.5 motor rotations, within 0.25 rotations). Selecting
+retract or losing position/home feedback stops the rollers.
 
 This change replaces the driver shooting binding with a held-RB shot path. Legacy button-board shot actions and autonomous
 shooting routines are not wired to this new calibrated model. In particular, legacy auto shooting
@@ -172,3 +174,25 @@ Software verification:
 ./gradlew test
 python3 -m unittest discover -s tools/fuel-calibration -v
 ```
+
+
+## Floor and rack breakaway torque / stall faults
+
+The floor target remains **800 RPM**. Each floor motor now has a **60 A stator** limit and **40 A
+supply** limit. The rack has a **60 A stator** limit and **30 A supply** limit. These allow more
+breakaway torque; they do not establish that a jammed mechanism is safe to drive. The tunnel and
+intake roller current limits and motor inversion settings were not changed.
+
+At 90% of the stator limit with almost no motion for one second, output is cut and a fault latches.
+Either floor motor can trip both floor motors; the rack fault also prevents intake roller operation.
+The low-speed thresholds are 5 mechanism RPM for the floor and 0.1 motor rotations/s for the rack.
+Disable the robot and inspect the mechanism before retrying; disable clears the fault. After a rack
+fault/disable, select LT or RT again to request rack motion.
+
+Watch `Indexer/FloorStallFault`, `Indexer/FloorBlockedReason`, `Intake/DeployStallFault`, and
+`Intake/FullyExtended`. The existing `Intake/DeployCurrentAmps` is **supply current**, whereas floor
+current readings are **stator current**. New `Intake/DeploySupplyAmps` and `Intake/DeployStatorAmps`
+make that distinction explicit. `Intake/LeftRollerVolts` / `Intake/RightRollerVolts` help investigate
+one roller failing to spin. The rack assumes physically retracted at code startup; its motor encoder
+cannot independently verify the physical endpoint. Verify that 9.5 rotations matches full extension
+before relying on the roller interlock, since the earlier measured-travel calculation was 7.81.

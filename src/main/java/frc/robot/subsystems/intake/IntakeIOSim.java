@@ -51,6 +51,7 @@ public class IntakeIOSim implements IntakeIO {
         inputs.deployVelocityRPS = deploySim.getAngularVelocityRPM() / 60.0;
         inputs.deployAppliedVolts = volts;
         inputs.deployCurrentAmps = Math.abs(deploySim.getCurrentDrawAmps());
+        inputs.deployStatorCurrentAmps = inputs.deployCurrentAmps;
         inputs.deployTempCelsius = 25.0;
         inputs.rollerConnected = true;
         inputs.rollerConfigured = true;
