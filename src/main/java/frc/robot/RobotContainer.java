@@ -59,9 +59,11 @@ import org.littletonrobotics.junction.Logger;
 
 public class RobotContainer {
     // Controllers
-    private final CommandXboxController driverXbox = new CommandXboxController(0);
-    private final CommandXboxController operatorXbox = new CommandXboxController(1);
-    private final ManualControls m_Controls = new ManualControls(1);
+    private final CommandXboxController driverXbox =
+        new CommandXboxController(OperatorConstants.DRIVER_CONTROLLER_PORT);
+    private final CommandXboxController operatorXbox =
+        new CommandXboxController(OperatorConstants.OPERATOR_CONTROLLER_PORT);
+    private final ManualControls m_Controls = new ManualControls(OperatorConstants.BUTTON_BOARD_PORT);
 
      // The robot's subsystems and commands are defined here...
     private final SwerveSubsystem drivebase  = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(),
@@ -278,7 +280,7 @@ public class RobotContainer {
             DriverStation.getStickButtonCount(driverXbox.getHID().getPort())
                 >= XboxController.Button.kRightBumper.value
             && driverXbox.getHID().getRightBumperButton()).or(operatorXbox.a());
-        // Driver 2 is the button board on USB port 1; use raw held states, not press edges.
+        // Driver 2 is the separate button board; use raw held states, not press edges.
         Trigger spinUp = combinedSpinUp.or(new Trigger(() -> m_Controls.getButtonActivated(11)));
         Trigger driver2Indexer = new Trigger(() -> m_Controls.getButtonActivated(3));
         Trigger floor = combinedSpinUp.or(driver2Indexer);

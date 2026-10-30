@@ -134,18 +134,20 @@ public class SwerveSubsystem extends SubsystemBase {
     Logger.recordOutput("Swerve/FieldVelocity", getFieldVelocity());
     Logger.recordOutput("Swerve/PitCoastMode", pitCoastMode);
     Command activeCommand = getCurrentCommand();
+    int driverPort = Constants.OperatorConstants.DRIVER_CONTROLLER_PORT;
     String controlStatus = !DriverStation.isEnabled() ? "Robot disabled"
         : pitCoastMode ? "Pit coast mode: press Back/View to restore drive"
-        : !DriverStation.isJoystickConnected(0) ? "Driver controller missing on USB 0"
+        : !DriverStation.isJoystickConnected(driverPort) ? "Driver controller missing on USB " + driverPort
         : !DriverStation.isTeleopEnabled() ? "Outside Teleop: joystick drive inactive"
         : activeCommand == null ? "Waiting for drive command"
         : "Active: " + activeCommand.getName();
     SmartDashboard.putString("Swerve/ControlStatus", controlStatus);
     SmartDashboard.putBoolean("Swerve/PitCoastMode", pitCoastMode);
-    int driverAxisCount = DriverStation.getStickAxisCount(0);
-    SmartDashboard.putNumber("Swerve/DriverLeftX", driverAxisCount > 0 ? DriverStation.getStickAxis(0, 0) : 0);
-    SmartDashboard.putNumber("Swerve/DriverLeftY", driverAxisCount > 1 ? DriverStation.getStickAxis(0, 1) : 0);
-    SmartDashboard.putNumber("Swerve/DriverRightX", driverAxisCount > 4 ? DriverStation.getStickAxis(0, 4) : 0);
+    SmartDashboard.putNumber("Swerve/DriverControllerPort", driverPort);
+    int driverAxisCount = DriverStation.getStickAxisCount(driverPort);
+    SmartDashboard.putNumber("Swerve/DriverLeftX", driverAxisCount > 0 ? DriverStation.getStickAxis(driverPort, 0) : 0);
+    SmartDashboard.putNumber("Swerve/DriverLeftY", driverAxisCount > 1 ? DriverStation.getStickAxis(driverPort, 1) : 0);
+    SmartDashboard.putNumber("Swerve/DriverRightX", driverAxisCount > 4 ? DriverStation.getStickAxis(driverPort, 4) : 0);
     Logger.recordOutput("Swerve/ControlStatus", controlStatus);
 
     // Set initial pose once based on auto selection (only while disabled)

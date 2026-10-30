@@ -298,6 +298,10 @@ public final class Constants {
 
   public static class OperatorConstants
   {
+    // Driver Station USB slots. Keep the button board separate from the driver Xbox.
+    public static final int DRIVER_CONTROLLER_PORT = 1;
+    public static final int OPERATOR_CONTROLLER_PORT = 0;
+    public static final int BUTTON_BOARD_PORT = OPERATOR_CONTROLLER_PORT;
 
     // Joystick Deadband
     public static final double DEADBAND = 0.1;
