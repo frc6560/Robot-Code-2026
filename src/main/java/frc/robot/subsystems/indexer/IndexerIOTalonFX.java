@@ -11,6 +11,8 @@ import frc.robot.utility.StartupCurrentLimit;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
 import com.ctre.phoenix6.controls.VelocityVoltage;
+import com.ctre.phoenix6.controls.Follower;
+import com.ctre.phoenix6.signals.MotorAlignmentValue;
 import com.ctre.phoenix6.controls.NeutralOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
@@ -26,12 +28,16 @@ public class IndexerIOTalonFX implements IndexerIO {
     private static final double STATUS_FREQUENCY_HZ = 50.0;
 
     private final TalonFX floorLeader;
+    private final TalonFX floorSecondary;
+    private final Follower floorFollowerRequest;
+    private final StatusCode floorSecondaryConfigurationStatus;
     private final TalonFX tunnelMotor;
     private final StatusCode tunnelConfigurationStatus;
 
     private final VelocityVoltage floorRequest = new VelocityVoltage(0.0);
     private final VelocityVoltage tunnelRequest = new VelocityVoltage(0.0);
     private final NeutralOut floorStopRequest = new NeutralOut();
+    private final NeutralOut floorFollowerStopRequest = new NeutralOut();
     private final NeutralOut tunnelStopRequest = new NeutralOut();
     private final StatusCode floorConfigurationStatus;
     private String floorControlStatus = "No request";
@@ -62,13 +68,25 @@ public class IndexerIOTalonFX implements IndexerIO {
             int floorSecondaryId,
             int tunnelMotorId,
             CANBus canBus) {
-        // Temporary hardware setup: ID 0 is removed. Do not create or depend on its controller.
-        // Keep the constructor argument for compatibility with existing wiring code.
         floorLeader = new TalonFX(floorLeaderId, canBus);
+        floorSecondary = new TalonFX(floorSecondaryId, canBus);
+        floorFollowerRequest = new Follower(floorLeaderId,
+            IndexerConstants.FLOOR_MOTOR_INVERTED != IndexerConstants.FLOOR_SECONDARY_MOTOR_INVERTED
+                ? MotorAlignmentValue.Opposed : MotorAlignmentValue.Aligned);
         tunnelMotor = new TalonFX(tunnelMotorId, canBus);
 
         floorConfigurationStatus = configureMotor(floorLeader, IndexerConstants.FLOOR_GEAR_RATIO,
             IndexerConstants.FLOOR_MOTOR_INVERTED, true);
+        // ID 0 mirrors leader voltage; it never runs its own RPM controller.
+        TalonFXConfiguration followerConfig = motorConfiguration(IndexerConstants.FLOOR_GEAR_RATIO,
+            IndexerConstants.FLOOR_SECONDARY_MOTOR_INVERTED, true);
+        followerConfig.Slot0.kP = 0;
+        followerConfig.Slot0.kV = 0;
+        StatusCode followerStatus = floorSecondary.getConfigurator().apply(followerConfig, 0.1);
+        for (int attempt = 1; attempt < 3 && !followerStatus.isOK(); attempt++) {
+            followerStatus = floorSecondary.getConfigurator().apply(followerConfig, 0.1);
+        }
+        floorSecondaryConfigurationStatus = followerStatus;
         tunnelConfigurationStatus = configureMotor(tunnelMotor, IndexerConstants.TUNNEL_GEAR_RATIO, false, false);
 
         floorLimit = new StartupCurrentLimit(IndexerConstants.FLOOR_STATOR_CURRENT_LIMIT,
@@ -76,7 +94,8 @@ public class IndexerIOTalonFX implements IndexerIO {
             Timer::getFPGATimestamp, amps -> {
                 CurrentLimitsConfigs limits = currentLimits(amps, IndexerConstants.FLOOR_SUPPLY_CURRENT_LIMIT);
                 StatusCode first = floorLeader.getConfigurator().apply(limits, StartupCurrentConstants.CONFIG_TIMEOUT_SECONDS);
-                return first.isOK();
+                StatusCode second = floorSecondary.getConfigurator().apply(limits, StartupCurrentConstants.CONFIG_TIMEOUT_SECONDS);
+                return first.isOK() && second.isOK();
             }, this::stopFloorOutputs);
         tunnelLimit = new StartupCurrentLimit(CURRENT_LIMIT_AMPS,
             StartupCurrentConstants.PEAK_AMPS, StartupCurrentConstants.DURATION_SECONDS,
@@ -101,12 +120,16 @@ public class IndexerIOTalonFX implements IndexerIO {
                 floorVelocity,
                 floorVoltage,
                 floorLeaderCurrent,
+                floorSecondary.getVelocity(),
+                floorSecondary.getMotorVoltage(),
+                floorSecondary.getStatorCurrent(),
                 tunnelPosition,
                 tunnelVelocity,
                 tunnelVoltage,
                 tunnelCurrent);
 
         floorLeader.optimizeBusUtilization();
+        floorSecondary.optimizeBusUtilization();
         tunnelMotor.optimizeBusUtilization();
     }
 
@@ -139,6 +162,7 @@ public class IndexerIOTalonFX implements IndexerIO {
 
     private void stopFloorOutputs() {
         floorLeader.setControl(floorStopRequest);
+        floorSecondary.setControl(floorFollowerStopRequest);
     }
 
     private static StatusCode configureMotor(TalonFX motor, double gearRatio, boolean inverted, boolean floor) {
@@ -164,6 +188,9 @@ public class IndexerIOTalonFX implements IndexerIO {
                 floorVelocity,
                 floorVoltage,
                 floorLeaderCurrent,
+                floorSecondary.getVelocity(),
+                floorSecondary.getMotorVoltage(),
+                floorSecondary.getStatorCurrent(),
                 tunnelPosition,
                 tunnelVelocity,
                 tunnelVoltage,
@@ -177,37 +204,46 @@ public class IndexerIOTalonFX implements IndexerIO {
         inputs.tunnelCurrentAmps = tunnelCurrent.getValueAsDouble();
         inputs.tunnelConfigurationStatus = tunnelConfigurationStatus.toString();
         inputs.tunnelControlStatus = tunnelControlStatus;
-        inputs.currentAmps = floorLeaderCurrent.getValueAsDouble() + tunnelCurrent.getValueAsDouble();
-        inputs.floorConnected = floorLeader.isConnected();
-        inputs.floorSecondaryConnected = false;
-        inputs.floorSecondaryRPM = 0;
-        inputs.floorSecondaryAppliedVolts = 0;
-        inputs.floorSecondaryCurrentAmps = 0;
+        inputs.currentAmps = floorLeaderCurrent.getValueAsDouble()
+            + floorSecondary.getStatorCurrent().getValueAsDouble() + tunnelCurrent.getValueAsDouble();
+        inputs.floorConnected = floorLeader.isConnected() && floorSecondary.isConnected();
+        inputs.floorSecondaryConnected = floorSecondary.isConnected();
+        inputs.floorSecondaryRPM = floorSecondary.getVelocity().getValueAsDouble() * 60;
+        inputs.floorSecondaryAppliedVolts = floorSecondary.getMotorVoltage().getValueAsDouble();
+        inputs.floorSecondaryCurrentAmps = floorSecondary.getStatorCurrent().getValueAsDouble();
         inputs.floorAppliedVolts = floorVoltage.getValueAsDouble();
         inputs.floorCurrentAmps = floorLeaderCurrent.getValueAsDouble();
-        inputs.floorConfigurationStatus = "ID25=" + floorConfigurationStatus + "; ID0 removed";
+        inputs.floorConfigurationStatus = "ID25=" + floorConfigurationStatus
+            + "; ID0 follower=" + floorSecondaryConfigurationStatus;
         inputs.floorControlStatus = floorControlStatus;
 
         Logger.recordOutput("Indexer/Connected/FloorLeader", floorLeader.isConnected());
-        Logger.recordOutput("Indexer/Connected/FloorSecondary", false);
+        Logger.recordOutput("Indexer/Connected/FloorSecondary", floorSecondary.isConnected());
         Logger.recordOutput("Indexer/Connected/TunnelMotor", tunnelMotor.isConnected());
     }
 
     @Override
     public void setFloorRPM(double rpm) {
         requestedFloorRPM = DriverStation.isEnabled() && Double.isFinite(rpm)
-            && floorConfigurationStatus.isOK() ? rpm : 0;
+            && floorConfigurationStatus.isOK() && floorSecondaryConfigurationStatus.isOK() ? rpm : 0;
         if (!floorLimit.update(requestedFloorRPM != 0, false, true)) {
             floorControlStatus = "Current-limit update failed; motors stopped";
             return;
         }
         rpm = requestedFloorRPM;
-        if (rpm == 0.0 || !Double.isFinite(rpm) || !floorConfigurationStatus.isOK()) {
-            floorControlStatus = "Stopped: ID25=" + floorLeader.setControl(floorStopRequest);
+        if (rpm == 0.0) {
+            stopFloorOutputs();
+            floorControlStatus = "Stopped: leader and follower";
         } else {
-            StatusCode status = floorLeader.setControl(floorRequest.withVelocity(rpm / 60.0));
-            floorControlStatus = "ID25=" + status;
-            if (!status.isOK()) floorLeader.setControl(floorStopRequest);
+            StatusCode follower = floorSecondary.setControl(floorFollowerRequest);
+            if (!follower.isOK()) {
+                stopFloorOutputs();
+                floorControlStatus = "ID0 follower request failed: " + follower;
+                return;
+            }
+            StatusCode leader = floorLeader.setControl(floorRequest.withVelocity(rpm / 60.0));
+            floorControlStatus = "ID25=" + leader + "; ID0 follower=" + follower;
+            if (!leader.isOK()) stopFloorOutputs();
         }
     }
 
