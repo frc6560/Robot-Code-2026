@@ -62,12 +62,9 @@ class IndexerMotorConfigurationTest {
         }
     }
     @Test void indexerKeepsFixedFortyAmpCeiling() {
-        var startup = IndexerIOTalonFX.currentLimits(40, 40);
-        var running = IndexerIOTalonFX.currentLimits(40, 40);
-        assertEquals(40, startup.StatorCurrentLimit);
-        assertEquals(40, running.StatorCurrentLimit);
-        assertEquals(40, startup.SupplyCurrentLimit);
-        assertEquals(40, running.SupplyCurrentLimit);
-        assertTrue(startup.StatorCurrentLimitEnable && startup.SupplyCurrentLimitEnable);
+        var limits = IndexerIOTalonFX.motorConfiguration(1, false).CurrentLimits;
+        assertEquals(40, limits.StatorCurrentLimit);
+        assertEquals(40, limits.SupplyCurrentLimit);
+        assertTrue(limits.StatorCurrentLimitEnable && limits.SupplyCurrentLimitEnable);
     }
 }

@@ -6,8 +6,9 @@ import org.littletonrobotics.junction.Logger;
 
 /** Dashboard edit is a request; the last accepted value has a separate persistent home. */
 public final class LaunchSpeedTuning {
+    public static final double DEFAULT_COEFFICIENT = 1.05;
     public static final String REQUEST_KEY = "Shooter/Launch Speed Coefficient";
-    public static final String PREFERENCE_KEY = "ShooterLaunchSpeedCoefficient";
+    public static final String PREFERENCE_KEY = "ShooterLaunchSpeedCoefficientV2";
     private LaunchSpeedTuning() {}
 
     private static boolean valid(double value) {
@@ -17,9 +18,8 @@ public final class LaunchSpeedTuning {
     public static void initialize() {
         double saved = Preferences.getDouble(PREFERENCE_KEY, Double.NaN);
         if (!valid(saved)) {
-            // Migrate a valid value from the previous dashboard-only implementation.
-            saved = SmartDashboard.getNumber(REQUEST_KEY, 1.0);
-            if (!valid(saved)) saved = 1.0;
+            // Start this calibration at 1.05; subsequent dashboard edits persist.
+            saved = DEFAULT_COEFFICIENT;
             Preferences.setDouble(PREFERENCE_KEY, saved);
         }
         SmartDashboard.putNumber(REQUEST_KEY, saved);
@@ -29,8 +29,8 @@ public final class LaunchSpeedTuning {
 
     /** Runs while disabled as well as enabled; no shoot-button press is needed to save. */
     public static double update() {
-        double saved = Preferences.getDouble(PREFERENCE_KEY, 1.0);
-        if (!valid(saved)) saved = 1.0;
+        double saved = Preferences.getDouble(PREFERENCE_KEY, DEFAULT_COEFFICIENT);
+        if (!valid(saved)) saved = DEFAULT_COEFFICIENT;
         double requested = SmartDashboard.getNumber(REQUEST_KEY, Double.NaN);
         boolean accepted = valid(requested);
         if (accepted && requested != saved) {

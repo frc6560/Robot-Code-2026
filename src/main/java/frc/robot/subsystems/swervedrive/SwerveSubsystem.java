@@ -29,7 +29,6 @@ import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Config;
 import frc.robot.Constants;
 import frc.robot.Constants.DrivebaseConstants;
 import frc.robot.Constants.FieldConstants;
-import frc.robot.Constants.TurretConstants;
 
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StringSubscriber;
@@ -177,7 +176,6 @@ public class SwerveSubsystem extends SubsystemBase {
 
     // Set initial pose once based on auto selection (only while disabled)
     if (!initialPoseSet && DriverStation.isDisabled()) {
-      System.out.println("Resetting pose!");
       updateInitialPose();
     }
 
@@ -186,17 +184,10 @@ public class SwerveSubsystem extends SubsystemBase {
       initialPoseSet = true;  // Lock in the pose once auto starts
     }
 
-    // Update distance to hub on SmartDashboard for debugging
-    Transform2d turretTransform = new Transform2d(
-            TurretConstants.ROBOT_RELATIVE_TURRET.getX(), 
-            TurretConstants.ROBOT_RELATIVE_TURRET.getY(),
-            new Rotation2d()
-        );
-    Pose2d robotRelativeTurret = getPose().transformBy( turretTransform );
-    swerveDrive.field.getObject("TurretPose").setPose(robotRelativeTurret);
     swerveDrive.field.getObject("BlueHub").setPose(new Pose2d(FieldConstants.BLUE_HUB_CENTER, new Rotation2d()));
-    SmartDashboard.getEntry("DistToBlueHub").setDouble(
-      robotRelativeTurret.getTranslation().getDistance(FieldConstants.BLUE_HUB_CENTER));
+    SmartDashboard.putNumber("DistToBlueHub",
+        frc.robot.commands.scoring.FuelShootCommand.releasePosition(getPose())
+            .getDistance(FieldConstants.BLUE_HUB_CENTER));
   }
 
   /** Rotates to a specified angle while inheriting the chassis's original translational velocity */

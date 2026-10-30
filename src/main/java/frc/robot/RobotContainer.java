@@ -20,23 +20,15 @@ import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import frc.robot.Constants.LimelightConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.autonomous.AutoModeChooser;
-import frc.robot.commands.scoring.ShotCommand;
 import frc.robot.commands.scoring.FuelShootCommand;
 import frc.robot.utility.shooting.FuelShotModel;
 import frc.robot.utility.shooting.LaunchCalibration;
 import frc.robot.autonomous.AutoCommands;
 import frc.robot.commands.swervedrive.drivebase.AimAtHub;
-import frc.robot.utility.Shooter.ShotCalculator;
 
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.shooter.ShooterIOSim;
 import frc.robot.subsystems.shooter.ShooterIOTalonFX;
-import frc.robot.subsystems.turret.Turret;
-import frc.robot.subsystems.turret.TurretIO;
-import frc.robot.subsystems.turret.TurretIOSim;
-import frc.robot.subsystems.feeder.Feeder;
-import frc.robot.subsystems.feeder.FeederIO;
-import frc.robot.subsystems.feeder.FeederIOSim;
 import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.intake.IntakeIO;
 import frc.robot.subsystems.intake.IntakeIOSim;
@@ -68,14 +60,11 @@ public class RobotContainer {
     private final VisionSubsystem vision;
 
     private final Shooter shooter;
-    private final Turret turret;
-    private final Feeder feeder;
     private final Intake intake;
     private final Indexer indexer;
     private final LED led;
 
-    private final ShotCalculator shotCalculator = new ShotCalculator();
-    private Command shotCommand;
+    private FuelShootCommand shotCommand;
     private boolean pitCoastMode = false;
     private boolean manualControlsSuppressedAfterAim;
     private FuelShotModel fuelShotModel;
@@ -112,27 +101,21 @@ public class RobotContainer {
 
       if (Robot.isReal()) {
         shooter = new Shooter(new ShooterIOTalonFX());
-        // Compatibility adapters for existing command APIs; no hardware drivers or CAN addresses.
-        turret = new Turret(new TurretIO() {});
-        feeder = new Feeder(new FeederIO() {});
+
+
         intake = new Intake(new IntakeIOTalonFX());
-        led = new LED(new LEDIOAddressable(3, 65), shooter, turret, shotCalculator);
+        led = new LED(new LEDIOAddressable(3, 65), () -> shotCommand != null && shotCommand.isScheduled(),
+            () -> shotCommand != null && shotCommand.isReadyToFeed());
       } else {
           shooter = new Shooter(new ShooterIOSim());
-          turret = new Turret(new TurretIOSim());
-          feeder = new Feeder(new FeederIOSim());
+
+
           intake = new Intake(new IntakeIOSim());
-          led = new LED(new LEDIOSim(65), shooter, turret, shotCalculator);
+          led = new LED(new LEDIOSim(65), () -> shotCommand != null && shotCommand.isScheduled(),
+            () -> shotCommand != null && shotCommand.isReadyToFeed());
       }
 
-      factory = new AutoCommands(
-        drivebase,
-        feeder,
-        intake,
-        shooter,
-        turret,
-        shotCalculator
-      );
+      factory = new AutoCommands(drivebase, intake, shooter);
       autoChooser = new AutoModeChooser(factory, indexer);
       SmartDashboard.putData("Auto Chooser", autoChooser.getAutoChooser());
       SmartDashboard.putBoolean("Pit Coast Mode", false);
@@ -170,19 +153,11 @@ public class RobotContainer {
 
 
     private static final double MAX_SHOOTING_VELOCITY_MPS = 1.2;
-    private static final double MAX_PASSING_VELOCITY_MPS = 3.0;
 
     private boolean isShotCommandActive() {
         return driverXbox.rightBumper().getAsBoolean()
             || (shotCommand != null
                 && CommandScheduler.getInstance().isScheduled(shotCommand));
-    }
-
-    private void scheduleShotCommand() {
-        cancelShotCommand();
-        shotCommand = new ShotCommand(
-            feeder, turret, shooter, shotCalculator, drivebase::getPose, led, intake);
-        CommandScheduler.getInstance().schedule(shotCommand);
     }
 
     /** Gated shot plus BLine's AimAtHub, which turns the chassis to the hub while the driver translates. */
@@ -220,17 +195,12 @@ public class RobotContainer {
         });
     }
 
-    private boolean isInPassingZone() {
-        double poseX = drivebase.getPose().getX();
-        return poseX > Constants.FieldConstants.BLUE_ZONE_X && poseX < Constants.FieldConstants.RED_ZONE_X;
-    }
-
     private ChassisSpeeds clampSpeedsForShooting(ChassisSpeeds speeds) {
         if (!isShotCommandActive()) {
             return speeds;
         }
 
-        double maxVelocity = isInPassingZone() ? MAX_PASSING_VELOCITY_MPS : MAX_SHOOTING_VELOCITY_MPS;
+        double maxVelocity = MAX_SHOOTING_VELOCITY_MPS;
 
         double vx = speeds.vxMetersPerSecond;
         double vy = speeds.vyMetersPerSecond;
@@ -300,13 +270,10 @@ public class RobotContainer {
           .and(DriverStation::isTeleopEnabled)
           .onTrue(Commands.runOnce(
               this::togglePitCoastMode,
-              drivebase, shooter, turret, feeder, intake, indexer));
+              drivebase, shooter, intake, indexer));
 
         // --- SHOTS ---
         
-        Trigger shootTrigger = new Trigger(m_Controls::getShootTrigger);
-        Trigger shootReleaseTrigger = new Trigger(m_Controls::getShootReleaseTrigger);
-        Trigger ungatedShootTrigger = new Trigger(m_Controls::getUngatedShootTrigger);
         Trigger driverAimedShootTrigger = driverXbox.rightBumper().and(DriverStation::isTeleopEnabled).and(() -> !pitCoastMode);
 
         // One held command owns drivetrain, shooter and indexer. Releasing RB cancels all three.
@@ -314,47 +281,7 @@ public class RobotContainer {
         driverAimedShootTrigger.onTrue(Commands.runOnce(() -> manualControlsSuppressedAfterAim = true));
         driverAimedShootTrigger.whileTrue(aimedShot);
 
-        shootTrigger.and(driverAimedShootTrigger.negate()).onTrue(Commands.runOnce(this::scheduleShotCommand));
-        shootReleaseTrigger.and(driverAimedShootTrigger.negate()).onTrue(Commands.runOnce(this::cancelShotCommand));
-        ungatedShootTrigger.and(driverAimedShootTrigger.negate()).onTrue(Commands.sequence(
-            Commands.runOnce(this::cancelShotCommand),
-            Commands.runOnce(() -> {
-                feeder.setShooting(true);
-                intake.startShootingOscillation();
-            }, feeder, intake)));
-        ungatedShootTrigger.and(driverAimedShootTrigger.negate()).onFalse(Commands.runOnce(() -> {
-            feeder.setShooting(false);
-            intake.stopShootingOscillation();
-        }, feeder, intake));
-
         // Driver left bumper and button-board 3 request manual floor/tunnel feed outside the aimed shot.
-
-        Trigger intakeRoller = new Trigger(() -> m_Controls.getButtonActivated(4))
-            .and(DriverStation::isTeleopEnabled);
-        intakeRoller.onTrue(Commands.runOnce(() -> {
-            intake.activate();
-            feeder.setIntaking(true);
-        }, intake, feeder));
-        intakeRoller.onFalse(Commands.runOnce(() -> {
-            intake.setExtendedStopped();
-            feeder.setIntaking(false);
-        }, intake, feeder));
-        new Trigger(m_Controls::getIntakeResetTrigger)
-            .and(DriverStation::isTeleopEnabled)
-            .onTrue(Commands.runOnce(() -> {
-                intake.setRetracted();
-                feeder.setIntaking(false);
-            }, intake, feeder));
-
-        // --- OUTTAKE/DEJAM ---
-        driverXbox.b().onTrue(Commands.runOnce(() -> {
-            intake.activateOuttake();
-            feeder.setOuttaking(true);
-        }));
-        driverXbox.b().onFalse(Commands.runOnce(() -> {
-            intake.deactivate();
-            feeder.setOuttaking(false);
-        }));
 
         // --- RESETS ---
         Trigger resetPoseTrigger = new Trigger(m_Controls::getVisionResetTrigger);
@@ -369,8 +296,6 @@ public class RobotContainer {
         pitCoastMode = enabled;
         drivebase.setPitCoastMode(enabled);
         shooter.setPitCoastMode(enabled);
-        turret.setPitCoastMode(enabled);
-        feeder.setPitCoastMode(enabled);
         intake.setPitCoastMode(enabled);
         indexer.stop();
 

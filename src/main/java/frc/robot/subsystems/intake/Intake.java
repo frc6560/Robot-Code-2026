@@ -18,8 +18,6 @@ public class Intake extends SubsystemBase {
     private boolean rollerRequested;
     private double rollerTargetRPM;
     private double extendedSince = Double.NaN;
-    private String lastConsoleState = "";
-    private double nextConsolePrint;
 
     public enum State {
         RETRACTED_STOPPED, EXTENDED_STOPPED, EXTENDED_SPINNING, EXTENDED_OUTTAKING
@@ -53,16 +51,7 @@ public class Intake extends SubsystemBase {
     }
 
     // Legacy intake/shot callers do not override the driver's rack selection.
-    public void activate() {}
-    public void deactivate() {}
-    public void activateOuttake() {}
-    public void setExtendedSpinning() {}
-    public void setExtendedStopped() {}
-    public void setRetracted() {}
-    public void startShootingOscillation() {}
-    public void stopShootingOscillation() {}
     public boolean isActive() { return rollerTargetRPM != 0.0; }
-    public boolean isShootingOscillationActive() { return false; }
 
     public State getState() {
         return target > IntakeConstants.RETRACTED_POSITION_ROTATIONS
@@ -109,9 +98,7 @@ public class Intake extends SubsystemBase {
             && requestedDeployTarget == IntakeConstants.EXTENDED_POSITION_ROTATIONS
             && Math.abs(inputs.deployPositionRotations - IntakeConstants.EXTENDED_POSITION_ROTATIONS)
                 <= IntakeConstants.DEPLOY_POSITION_TOLERANCE_ROTATIONS;
-        boolean startupPushFinished = inputs.deployCurrentLimitOK
-            && inputs.deployStatorLimitAmps == IntakeConstants.DEPLOY_STATOR_CURRENT_LIMIT;
-        boolean extensionStable = enabled && !pitCoastMode && rollerRequested && fullyExtended && startupPushFinished
+        boolean extensionStable = enabled && !pitCoastMode && rollerRequested && fullyExtended
             && Double.isFinite(inputs.deployVelocityRPS)
             && Math.abs(inputs.deployVelocityRPS) <= IntakeConstants.ROLLER_MAX_DEPLOY_VELOCITY_RPS
             && inputs.rollerConnected && inputs.rollerConfigured;
@@ -129,7 +116,6 @@ public class Intake extends SubsystemBase {
             : !inputs.rollerConnected ? "Check Canivore roller IDs 17 and 18, power and wiring"
             : !inputs.rollerConfigured ? "Roller configuration failed; correct and restart code"
             : !inputs.deployCurrentLimitOK ? "Rack current-limit update not confirmed"
-            : !startupPushFinished ? "Waiting for rack startup push to end"
             : !rollerPermitted ? "Waiting for rack to settle at full extension"
             : "None";
         SmartDashboard.putBoolean("Intake/RollerTriggerHeld", rollerRequested);
@@ -139,7 +125,6 @@ public class Intake extends SubsystemBase {
         SmartDashboard.putNumber("Intake/RollerRequestedRPM", rollerTargetRPM);
         SmartDashboard.putBoolean("Intake/FullyExtended", fullyExtended);
         SmartDashboard.putBoolean("Intake/RollerPermitted", rollerPermitted);
-        SmartDashboard.putBoolean("Intake/StartupPushFinished", startupPushFinished);
         SmartDashboard.putBoolean("Intake/DeployStallFault", false);
         SmartDashboard.putNumber("Intake/DeployStatorLimitAmps", inputs.deployStatorLimitAmps);
         SmartDashboard.putBoolean("Intake/DeployCurrentLimitOK", inputs.deployCurrentLimitOK);
@@ -175,22 +160,6 @@ public class Intake extends SubsystemBase {
             : !inputs.deployHomed ? "Startup zero failed or controller reset: retract and restart code"
             : !rackRequested ? "Waiting for LT/RT rack request"
             : "None";
-        String consoleState = blockedReason.equals("None")
-            ? (target == IntakeConstants.RETRACTED_POSITION_ROTATIONS ? "RETRACT / HOLD" : "EXTEND / HOLD")
-            : "STOP: " + blockedReason;
-        double now = Timer.getFPGATimestamp();
-        // Print transitions immediately, plus one heartbeat/second while enabled.
-        if (!consoleState.equals(lastConsoleState) || (enabled && now >= nextConsolePrint)) {
-            System.out.printf(
-                "[Intake] %s | bus=%s id=%d target=%.3f rot position=%.3f rot "
-                    + "volts=%.2f amps=%.2f configured=%s zero=%s lastControl=%s%n",
-                consoleState, IntakeConstants.CAN_BUS, IntakeConstants.DEPLOY_MOTOR_ID,
-                target, inputs.deployPositionRotations, inputs.deployAppliedVolts,
-                inputs.deployCurrentAmps, inputs.deployConfigurationStatus,
-                inputs.zeroStatus, inputs.deployControlStatus);
-            lastConsoleState = consoleState;
-            nextConsolePrint = now + 1.0;
-        }
         SmartDashboard.putString("Intake/BlockedReason", blockedReason);
         SmartDashboard.putBoolean("Intake/RackRequested", rackRequested);
         SmartDashboard.putString("Intake/DeployControlStatus", inputs.deployControlStatus);

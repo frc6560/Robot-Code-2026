@@ -8,12 +8,9 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Rotation3d;
-import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.math.util.Units;
-import swervelib.math.Matter;
 import frc.robot.lib.BLine.JsonUtils;
 import frc.robot.lib.BLine.Path;
 
@@ -27,10 +24,6 @@ public final class Constants {
 
   public static final Mode currentMode = Mode.REAL; // Change to REPLAY for log replay
 
-  public static final double ROBOT_MASS = 62.59; // TODO: replace with true robot mass
-  public static final Matter CHASSIS    = new Matter(new Translation3d(0, 0, Units.inchesToMeters(8)), ROBOT_MASS);
-  public static final double LOOP_TIME  = 0.13; //s, 20ms + 110ms sprk max velocity lag
-  // public static final double MAX_SPEED = Units.feetToMeters(14.5); // Previous limit
   public static final double MAX_SPEED = Units.feetToMeters(19.5);
   // Shared with the BLine editor/optimizer via deploy/autos/config.json.
   // These are selected operating limits, not measured physical maxima.
@@ -38,11 +31,6 @@ public final class Constants {
       Units.degreesToRadians(BLineConstants.GLOBAL_MAX_ANGULAR_VELOCITY_DEG_PER_SEC);
   public static final double MAX_ANGULAR_ACCELERATION_RAD_PER_SEC_SQ =
       Units.degreesToRadians(BLineConstants.GLOBAL_MAX_ANGULAR_ACCELERATION_DEG_PER_SEC2);
-  // Maximum speed of the robot in meters per second, used to limit acceleration.
-
-  // Robot dimensions (in meters, from PathPlanner settings)
-  public static final double robotLength = 0.812;
-  public static final double robotWidth = 0.812;
 
   public static final class DrivebaseConstants {
     // Hold time on motor brakes when disabled
@@ -102,9 +90,7 @@ public final class Constants {
         Units.degreesToRadians(5.0);
 
     // Pure pursuit tuning (meters, meters per second)
-    public static final double kPurePursuitMinLookahead = 0.3;
-    public static final double kPurePursuitMaxLookahead = 1.5;
-    public static final double kPurePursuitLookaheadSpeedFactor = 0.15;
+
   }
 
   /**
@@ -276,15 +262,6 @@ public final class Constants {
     public static final Pose2d BLUE_TESTING_START = new Pose2d(3.70, 4.00, Rotation2d.fromDegrees(0.0));
     public static final Pose2d RED_TESTING_START = new Pose2d(12.85, 4.00, Rotation2d.fromDegrees(180.0));
 
-    public static final double PASS_DEADZONE_MIN_Y = 3.657;
-    public static final double PASS_DEADZONE_MAX_Y = 4.343;
-    public static final double HUB_TOLERANCE = 0.65;
-
-    // A list of pass poses
-    public static final Translation2d BLUE_BOTTOM_PASS_POS = new Translation2d(2.24, 2.36);
-    public static final Translation2d BLUE_TOP_PASS_POS = new Translation2d(2.24, 5.64);
-    public static final Translation2d RED_BOTTOM_PASS_POS = new Translation2d(14.29, 2.36);
-    public static final Translation2d RED_TOP_PASS_POS = new Translation2d(14.29, 5.64);
   }
 
   public static class OperatorConstants
@@ -296,9 +273,7 @@ public final class Constants {
 
     // Joystick Deadband
     public static final double DEADBAND = 0.1;
-    public static final double LEFT_Y_DEADBAND = 0.1;
-    public static final double RIGHT_X_DEADBAND = 0.1;
-    public static final double TURN_CONSTANT = 6;
+
   }
 
   public static class LimelightConstants
@@ -373,8 +348,7 @@ public final class Constants {
     /** Flywheel Geometry */
     /** Kraken free speed (6000 RPM) through the 12:18 reduction is 4000; leave headroom to hold speed. */
     public static final double MAX_RPM = 3800;
-    public static final double FLYWHEEL_ACCELERATION = 2000.0;
-    public static final double PASS_RPM = 1600.0; 
+
     /** 12T motor gear drives the 18T flywheel gear, so flywheel speed = motor speed * 12/18. */
     public static final double FLYWHEEL_GEAR_RATIO = 12.0 / 18.0;
     public static final double FLYWHEEL_IDLE_RPM = 1000;
@@ -420,7 +394,6 @@ public final class Constants {
 
     /** Bang-bang (feedforward x constant while below setpoint) is used for hub shots past this range. */
     public static final double BANGBANG_CONSTANT = 2.0;
-    public static final double BANGBANG_MIN_DISTANCE_METERS = 3.25;
     /** Added to the PID setpoint only (not the feedforward) to offset steady-state droop. */
     public static final double PID_SETPOINT_OFFSET = 0.0; // rad/s
     /** atTarget() compares the rate-limited setpoint against the goal, not the encoder. */
@@ -433,103 +406,17 @@ public final class Constants {
     public static final double FF_kV_TOLERANCE = 0.002; // V per rad/s
   }
 
-  /**
-   * Physics and scoring constraints for the single-flywheel, fixed-hood shooter. The ball rolls
-   * between the 4 in flywheel and the static hood, so it leaves at about half the wheel's surface
-   * speed with backspin. Names and meanings match the shot-calibrator's "Powered wheel + fixed hood"
-   * model so its fits can be copied straight in.
-   */
+  /** Geometry used by the active fixed-hood trajectory model. */
   public static final class ShotModelConstants {
     private ShotModelConstants() {}
-
-    /**
-     * Hub-shot range. Closer than 2.9 m a 48.36 deg launch can't drop into the funnel steeply enough
-     * to clear the near rim (the scoring band is under 100 RPM wide at 2.9 m and gone by 2.87 m).
-     */
-    public static final double MIN_DISTANCE_METERS = 2.9;
-    public static final double MAX_DISTANCE_METERS = 6.050;
-
-    /** Measured game-piece and shooter geometry. */
     public static final double BALL_MASS_KG = 0.215;
     public static final double BALL_DIAMETER_METERS = 0.150;
     public static final double FLYWHEEL_DIAMETER_METERS = Units.inchesToMeters(4.0);
-    /** Angle from horizontal to the top of the fixed hood, which the ball leaves along. */
     public static final double LAUNCH_ELEVATION_DEGREES = 48.36;
     public static final double RELEASE_HEIGHT_METERS = Units.inchesToMeters(27.875);
-
-    /** 2026 HUB upper funnel dimensions and ball-center scoring plane. */
     public static final double HUB_OPENING_SPAN_METERS = Units.inchesToMeters(41.7);
     public static final double HUB_RIM_HEIGHT_METERS = Units.inchesToMeters(72.0);
-    public static final double HUB_BALL_CENTER_HEIGHT_METERS =
-        HUB_RIM_HEIGHT_METERS + BALL_DIAMETER_METERS / 2.0;
     public static final double HUB_RIM_MARGIN_METERS = Units.inchesToMeters(1.0);
-    public static final double MIN_ENTRY_ANGLE_DEGREES = 20.0;
-
-    /** Air and sphere model. */
-    public static final double AIR_DENSITY_KG_PER_CUBIC_METER = 1.225;
-    public static final double GRAVITY_METERS_PER_SECOND_SQUARED = 9.80665;
-    public static final double DRAG_COEFFICIENT = 0.47;
-    public static final double WIND_X_METERS_PER_SECOND = 0.0;
-
-    /**
-     * Empirical model. These are the no-slip ideal, not a fit: exit speed = VELOCITY_TRANSFER *
-     * surface speed / 2, backspin = SPIN_TRANSFER * surface speed / ball diameter, launch elevation =
-     * LAUNCH_ELEVATION_DEGREES + HOOD_OFFSET_DEGREES. Real slip makes the ball slower than this, so
-     * replace them with a shot-calibrator fit from tracked shots, then regenerate the policy below.
-     */
-    public static final double VELOCITY_TRANSFER = 1.0;
-    public static final double SPIN_TRANSFER = 1.0;
-    public static final double HOOD_OFFSET_DEGREES = 0.0;
-    public static final double DRAG_SCALE = 1.0;
-    public static final double LIFT_SLOPE = 0.75;
-    public static final double MAX_LIFT_COEFFICIENT = 0.35;
-    public static final double SPIN_DECAY_PER_SECOND = 0.10;
-
-    /**
-     * Runtime RPM policy: a quadratic through the middle of each distance's scoring RPM band over
-     * the hub range, {@code a*d^2 + b*d + c} with distance in meters. It stays at least 27 RPM inside
-     * the band everywhere (tightest at 2.9 m). Regenerate with
-     * {@code tools/shot-calibrator/fit_runtime_policy.py} whenever a value above changes.
-     */
-    public static final double RPM_POLICY_DISTANCE_SQUARED = 9.657936094980364;
-    public static final double RPM_POLICY_DISTANCE = 158.6483569325706;
-    public static final double RPM_POLICY_CONSTANT = 2043.043454014593;
-
-    /** Passes land the ball on the carpet; the pass table is built from this model at startup. */
-    public static final double PASS_MIN_DISTANCE_METERS = 2.0;
-    public static final double PASS_MAX_DISTANCE_METERS = 12.0;
-  }
-
-  /** Kinematics for retained command/simulation adapters; no hardware addresses. */
-  public static final class TurretConstants{ 
-    public static final Transform3d ROBOT_RELATIVE_TURRET = new Transform3d(-0.048, 0.1143, 0, new Rotation3d()); // x --> front/back, y --> left/right
-
-    /** Characterization Gains */
-    public static final double kV = 0.2;
-
-    /** PID Gains */
-    public static final double kP = 8.0;
-    public static final double kI = 0.05;
-    public static final double kD = 0.3;
-
-    /** Turret Geometry */
-    public static final double MOTOR_GEAR_RATIO = 254.0 / 28.0; // turret spins once for every ~9 motor rotations
-    public static final double ENCODER_GEAR_RATIO = 127.0 / 168.0; // turret spins once for every ~0.75 encoder rotations. fix.
-
-    // soft limits
-    public static final double LOWER_SOFT_LIMIT = -100.0;
-    public static final double UPPER_SOFT_LIMIT = 270.0;
-
-    // Wire protection thresholds - prefer unwinding toward center when outside these bounds
-    public static final double WIRE_PROTECTION_LOWER = -100.0;
-    public static final double WIRE_PROTECTION_UPPER = 270.0;
-  }
-
-  /** Intake rack startup allowance; indexer and shooter keep their fixed current limits. */
-  public static final class StartupCurrentConstants {
-    public static final double PEAK_AMPS = 60.0;
-    public static final double DURATION_SECONDS = 1.0;
-    public static final double CONFIG_TIMEOUT_SECONDS = 0.005;
   }
 
   public static final class IndexerConstants {
@@ -557,7 +444,7 @@ public final class Constants {
 
     // CAN IDs. The rack is a Kraken X44; the separate rollers are Kraken X60s.
     public static final int DEPLOY_MOTOR_ID = 26;
-    public static final int LEFT_ROLLER_MOTOR_ID = 17;
+    public static final int LEFT_ROLLER_MOTOR_ID = 36;
     public static final int RIGHT_ROLLER_MOTOR_ID = 18;
     public static final String CAN_BUS = "Canivore";
 
@@ -579,21 +466,11 @@ public final class Constants {
     public static final double ROLLER_kP = 0.5;
     public static final double ROLLER_kV = 0.12;
 
-    // Motor 16T -> 28T, same-shaft 20T -> 30T, same-shaft 18T -> 15T pulley.
-    public static final double DEPLOY_GEAR_RATIO = (28.0 / 16.0) * (30.0 / 20.0) * (15.0 / 18.0);
-    public static final double PINION_DIAMETER_INCHES = 1.0;
-    public static final double INCHES_PER_PINION_ROTATION = Math.PI * PINION_DIAMETER_INCHES;
-    // Same reference measures 4 cm retracted and 32.5 cm extended: 28.5 cm travel.
-    public static final double MAX_EXTENSION_INCHES = (32.5 - 4.0) / 2.54;
-    public static final double ENABLE_EXTENSION_FRACTION = 1.0;
-
     // Rack positions are X44 motor rotations.
     public static final double RETRACTED_POSITION_ROTATIONS = 0.0;
     // Operator-requested quick-test override for both target and forward soft limit.
     // 9.5 motor rotations exceeds the 7.81 rotations calculated from measured travel.
     public static final double EXTENDED_POSITION_ROTATIONS = 9.5;
-    public static final double ENABLE_POSITION_ROTATIONS =
-        EXTENDED_POSITION_ROTATIONS * ENABLE_EXTENSION_FRACTION;
     public static final double DEPLOY_POSITION_TOLERANCE_ROTATIONS = 0.25;
     public static final double ROLLER_EXTENSION_SETTLE_SECONDS = 0.15;
     public static final double ROLLER_MAX_DEPLOY_VELOCITY_RPS = 0.1;
@@ -604,26 +481,6 @@ public final class Constants {
     public static final double DEPLOY_kP = 1.0;
     public static final double DEPLOY_kV = 0.24;
 
-    // During a shot the rack alternates between these two positions.
-    public static final double SHOOT_OSCILLATION_REAR_POSITION_ROTATIONS =
-        9.0 / INCHES_PER_PINION_ROTATION * DEPLOY_GEAR_RATIO;
-    public static final double SHOOT_OSCILLATION_FORWARD_POSITION_ROTATIONS =
-        EXTENDED_POSITION_ROTATIONS;
-    // Minimum dwell at each measured endpoint; travel time is additional.
-    public static final double SHOOT_OSCILLATION_HALF_PERIOD_SECONDS = 0.25;
   }
 
-  /** Setpoints for retained command/simulation adapters; contains no hardware addresses. */
-  public static final class FeederConstants {
-    // RPM Settings
-    public static final double PAN_RUNNING_RPM = 7000.0;
-    public static final double PUSHER_RUNNING_RPM = 7000.0;
-    public static final double IDLE_RPM = 0.0;
-
-    public static final double WALL_RPM = 1000.0;
-    public static final double FLOOR_RPM = 3000.0;
-
-    // Tolerances
-    public static final double PAN_SPEED_TOLERANCE_RPM = Double.POSITIVE_INFINITY;
-  }
 }

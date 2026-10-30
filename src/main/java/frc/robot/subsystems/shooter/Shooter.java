@@ -100,11 +100,6 @@ public class Shooter extends SubsystemBase {
         stop();
     }
 
-    /** Whether the distance to the target calls for bang-bang control on a hub shot. */
-    public static boolean useBangBang(double distanceMeters) {
-        return distanceMeters > ShooterConstants.BANGBANG_MIN_DISTANCE_METERS;
-    }
-
     public boolean isHardwareReady() {
         return inputs.leaderConnected && inputs.followerConnected && !pitCoastMode;
     }
@@ -124,7 +119,7 @@ public class Shooter extends SubsystemBase {
     /**
      * True once the rate-limited setpoint has reached a non-idle goal. This deliberately ignores the
      * encoder, so a ball strike mid-volley doesn't drop it; gate the actual release on measured speed
-     * (e.g. {@code ShotCalculator.measuredControlsScore}) or {@link #withinTolerance}.
+     * using the trajectory model or {@link #withinTolerance}.
      */
     public boolean atTarget() {
         return atGoal && !idle && getGoalRPM() >= 60.0;

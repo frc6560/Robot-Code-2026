@@ -33,8 +33,11 @@ public final class FuelShootCommand extends Command {
     public static void publishLaunchSpeedCoefficient() {
         LaunchSpeedTuning.initialize();
     }
-    private double launchSpeedCoefficient = 1.0;
+    private double launchSpeedCoefficient = LaunchSpeedTuning.DEFAULT_COEFFICIENT;
     private boolean calibrationMode;
+    private boolean readyToFeed;
+
+    public boolean isReadyToFeed() { return readyToFeed; }
     private double testRPM, tunnelRPM, readySince;
     private double solvedRange;
     private Shot shot = Shot.invalid();
@@ -61,6 +64,7 @@ public final class FuelShootCommand extends Command {
         tunnelRPM = calibrationMode || model == null
             ? SmartDashboard.getNumber("Fuel/Test Tunnel RPM", Constants.IndexerConstants.TUNNEL_RUNNING_RPM)
             : model.calibration().tunnelRPM();
+        readyToFeed = false;
         readySince = Double.NaN; solvedRange = Double.NaN; shot = Shot.invalid();
         indexer.stop();
         aim.initialize();
@@ -146,6 +150,7 @@ public final class FuelShootCommand extends Command {
         double now = Timer.getFPGATimestamp();
         if (!rawReady) readySince = Double.NaN;
         else if (!Double.isFinite(readySince)) readySince = now;
+        readyToFeed = rawReady;
         boolean feeding = rawReady && now - readySince >= FuelShotConfig.READY_DWELL_SECONDS;
         indexer.setFloorRPM(feeding ? Constants.IndexerConstants.FLOOR_RUNNING_RPM : 0);
         indexer.setTunnelRPM(feeding ? tunnelRPM : 0);
@@ -185,6 +190,7 @@ public final class FuelShootCommand extends Command {
     }
 
     @Override public void end(boolean interrupted) {
+        readyToFeed = false;
         aim.end(interrupted);
         indexer.stop(); shooter.stop();
         readySince = Double.NaN;

@@ -58,13 +58,4 @@ class IntakeRollerConfigurationTest {
         assertFalse(IntakeIOTalonFX.rackAllowsRollers(true, true, false, end, Double.NaN, 0));
         assertFalse(IntakeIOTalonFX.rackAllowsRollers(true, true, false, end, end, Double.NaN));
     }
-    @Test void rackStartupBoostPreservesSupplyLimitAndRollersKeepContinuousLimits() {
-        var startup = IntakeIOTalonFX.deployCurrentLimits(frc.robot.Constants.StartupCurrentConstants.PEAK_AMPS);
-        var running = IntakeIOTalonFX.deployCurrentLimits(40);
-        assertEquals(60, startup.StatorCurrentLimit);
-        assertEquals(40, running.StatorCurrentLimit);
-        assertEquals(IntakeConstants.DEPLOY_SUPPLY_CURRENT_LIMIT, startup.SupplyCurrentLimit);
-        assertEquals(IntakeConstants.DEPLOY_SUPPLY_CURRENT_LIMIT, running.SupplyCurrentLimit);
-        assertEquals(40, IntakeIOTalonFX.rollerConfiguration(false).CurrentLimits.StatorCurrentLimit);
-    }
 }

@@ -3,55 +3,39 @@ package frc.robot.autonomous;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
-import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import org.littletonrobotics.junction.Logger;
-import frc.robot.lib.BLine.BLineCommands;
 import frc.robot.lib.BLine.FlippingUtil;
 import frc.robot.lib.BLine.FollowPath;
 import frc.robot.lib.BLine.Path;
 import frc.robot.Constants.BLineConstants;
-import frc.robot.subsystems.feeder.Feeder;
 import frc.robot.subsystems.indexer.Indexer;
 import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
-import frc.robot.subsystems.turret.Turret;
-import frc.robot.utility.Shooter.ShotCalculator;
 import java.util.List;
 
-import edu.wpi.first.math.util.Units;
 
-/** Creates autonomous commands: BLine for pathing, the physics shot calculator for shooting. */
+/** Creates autonomous commands: BLine path following and the fixed-speed center autonomous. */
 public class AutoCommands {
     private static final double BLINE_WAIT_EVENT_SECONDS = 5.0;
 
     private final SwerveSubsystem drivetrain;
-    private final Feeder feeder;
     private final Intake intake;
     private final Shooter shooter;
-    private final Turret turret;
-    private final ShotCalculator calculator;
-    private final FollowPath.Builder pathBuilder;
     private final FollowPath.Builder firstPathBuilder;
     private double bLinePauseUntilSeconds;
 
     public AutoCommands(SwerveSubsystem drivetrain,
-        Feeder feeder,
         Intake intake,
-        Shooter shooter,
-        Turret turret,
-        ShotCalculator calculator
+        Shooter shooter
     ) {
         this.drivetrain = drivetrain;
-        this.feeder = feeder;
         this.intake = intake;
         this.shooter = shooter;
-        this.turret = turret;
-        this.calculator = calculator;
 
         configureBLineLogging();
 
@@ -64,7 +48,6 @@ public class AutoCommands {
             BLineConstants.END_ROTATION_TOLERANCE_DEGREES,
             BLineConstants.INTERMEDIATE_HANDOFF_RADIUS_METERS));
 
-        pathBuilder = createPathBuilder();
         firstPathBuilder = createPathBuilder().withPoseReset(drivetrain::resetOdometry);
 
         FollowPath.registerEventTrigger("intake", intake());
@@ -221,79 +204,17 @@ public class AutoCommands {
         return passedFinishPlane;
     }
 
-    public Command shoot() {
-        return Commands.run(() -> {
-            calculator.calculate(drivetrain.getPose(), drivetrain.getFieldVelocity());
-            shooter.setGoal(
-                calculator.getFlywheelRPM(),
-                Shooter.useBangBang(calculator.getDistanceToVirtualTarget()));
-            turret.setGoalWithVelocity(
-                Units.radiansToDegrees(calculator.getTurretAngle()),
-                Units.radiansToDegrees(calculator.getTurretVelocityFF())
-            );
-
-            boolean ready = calculator.isShotValid()
-                && shooter.atTarget()
-                && turret.getAtTarget(calculator.getTurretTolerance())
-                && calculator.measuredControlsScore(shooter.getCurrentRPM());
-            if(ready){
-                feeder.setShooting(true);
-                feeder.setIntaking(true);
-                intake.startShootingOscillation();
-            } else {
-                feeder.setShooting(false);
-            }
-        }, shooter, turret, feeder, intake).withTimeout(3.0)
-        .finallyDo((interrupted) -> {
-            feeder.setShooting(false);
-            feeder.setIntaking(false);
-            intake.stopShootingOscillation();
-            intake.deactivate();
-            shooter.setIdle();
-        });
-    }
-
     public Command intake() {
         return Commands.runOnce(() -> {
-            intake.activate();
-            feeder.setIntaking(true);
-        }, intake, feeder);
+            intake.requestRackExtended();
+            intake.setRollersRequested(true);
+        }, intake);
     }
 
     public Command retract() {
         return Commands.runOnce(() -> {
-            intake.deactivate();
-            feeder.setIntaking(false);
-        }, intake, feeder);
-    }
-
-    public Command getRightAuto() {
-        return BLineCommands.sequence(
-            firstPathBuilder.build(BLinePaths.hpTrenchToCenter()),
-            pathBuilder.build(BLinePaths.hpTrenchToShoot()),
-            shoot(),
-            pathBuilder.build(BLinePaths.hpTrenchToHp()),
-            shoot(),
-            pathBuilder.build(BLinePaths.hpHpToCenter()));
-    }
-
-    public Command getLeftAuto() {
-        return BLineCommands.sequence(
-            firstPathBuilder.build(BLinePaths.depotTrenchToCenter()),
-            pathBuilder.build(BLinePaths.depotTrenchToShoot()),
-            shoot(),
-            pathBuilder.build(BLinePaths.depotTrenchToDepot()),
-            shoot(),
-            pathBuilder.build(BLinePaths.depotPullout()),
-            pathBuilder.build(BLinePaths.depotDepotToCenter()));
-    }
-
-    public Command getRightTwoSwipe() {
-        return BLineCommands.sequence(
-            firstPathBuilder.build(BLinePaths.hpTrenchToCenter()),
-            pathBuilder.build(BLinePaths.hpFirstSwipeBack()),
-            shoot(),
-            pathBuilder.build(BLinePaths.hpSecondSwipe()),
-            shoot());
+            intake.setRollersRequested(false);
+            intake.requestRackRetracted();
+        }, intake);
     }
 }

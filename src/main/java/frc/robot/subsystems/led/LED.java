@@ -1,6 +1,7 @@
 package frc.robot.subsystems.led;
 
 import java.util.Optional;
+import java.util.function.BooleanSupplier;
 
 import org.littletonrobotics.junction.Logger;
 
@@ -8,9 +9,6 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.subsystems.shooter.Shooter;
-import frc.robot.subsystems.turret.Turret;
-import frc.robot.utility.Shooter.ShotCalculator;
 
 public class LED extends SubsystemBase {
 
@@ -53,10 +51,8 @@ public class LED extends SubsystemBase {
     private final LEDIOInputsAutoLogged inputs = new LEDIOInputsAutoLogged();
     private final Timer animTimer = new Timer();
 
-    // Subsystems for tolerance checking
-    private final Shooter shooter;
-    private final Turret turret;
-    private final ShotCalculator shotCalculator;
+    private final BooleanSupplier shooting;
+    private final BooleanSupplier shotReady;
 
     // Robot state
     private boolean mechanismsStowed = false;
@@ -72,11 +68,10 @@ public class LED extends SubsystemBase {
     // State machine
     private LEDState currentState = LEDState.OFF;
 
-    public LED(LEDIO io, Shooter shooter, Turret turret, ShotCalculator shotCalculator) {
+    public LED(LEDIO io, BooleanSupplier shooting, BooleanSupplier shotReady) {
         this.io = io;
-        this.shooter = shooter;
-        this.turret = turret;
-        this.shotCalculator = shotCalculator;
+        this.shooting = shooting;
+        this.shotReady = shotReady;
         animTimer.start();
     }
 
@@ -95,17 +90,8 @@ public class LED extends SubsystemBase {
         io.updateInputs(inputs);
         Logger.processInputs("LED", inputs);
 
-        // Always calculate ready to shoot based on tolerances
-        boolean shotValid = shotCalculator.isShotValid();
-        double turretTolerance = shotCalculator.getTurretTolerance();
-        boolean turretReady = turret.getAtTarget(turretTolerance);
-        boolean shooterReady = shooter.atTarget();
-
-        readyToShoot = shotValid && turretReady && shooterReady;
-
-        Logger.recordOutput("LED/ShotValid", shotValid);
-        Logger.recordOutput("LED/TurretReady", turretReady);
-        Logger.recordOutput("LED/ShooterReady", shooterReady);
+        shootIntent = shooting.getAsBoolean();
+        readyToShoot = shotReady.getAsBoolean();
 
         LEDState nextState = resolveState();
         if (nextState != currentState) {

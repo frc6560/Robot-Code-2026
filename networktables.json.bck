@@ -1,0 +1,18 @@
+[
+  {
+    "name": "/Preferences/ShooterLaunchSpeedCoefficient",
+    "type": "double",
+    "value": 1.0,
+    "properties": {
+      "persistent": true
+    }
+  },
+  {
+    "name": "/SmartDashboard/Shooter/Launch Speed Coefficient",
+    "type": "double",
+    "value": 1.0,
+    "properties": {
+      "persistent": true
+    }
+  }
+]

@@ -53,34 +53,24 @@ class HardwareConfigurationTest {
     void motorNamesMatchTheConfirmedPhysicalAddresses() {
         assertEquals(15, Constants.ShooterConstants.RIGHT_FLYWHEEL_ID);
         assertEquals(24, Constants.ShooterConstants.LEFT_FLYWHEEL_ID);
-        assertEquals(17, Constants.IntakeConstants.LEFT_ROLLER_MOTOR_ID);
+        assertEquals(16, Constants.IndexerConstants.TUNNEL_MOTOR_ID);
+        assertEquals(36, Constants.IntakeConstants.LEFT_ROLLER_MOTOR_ID);
         assertEquals(18, Constants.IntakeConstants.RIGHT_ROLLER_MOTOR_ID);
         assertEquals(26, Constants.IntakeConstants.DEPLOY_MOTOR_ID);
     }
 
     @Test
-    void shooterKeepsFortyAmpLimitsWhileRackRetainsItsStartupAllowance() {
+    void shooterKeepsFortyAmpLimits() {
         assertEquals(40.0, Constants.ShooterConstants.FLYWHEEL_SUPPLY_CURRENT_LIMIT);
         assertEquals(40, Constants.ShooterConstants.FLYWHEEL_STATOR_CURRENT_LIMIT);
-        assertEquals(60.0, Constants.StartupCurrentConstants.PEAK_AMPS);
-        assertEquals(1.0, Constants.StartupCurrentConstants.DURATION_SECONDS);
     }
 
     @Test
     void rollersUseConfirmedSeparateCanAddressesAndOppositeDirections() {
-        assertEquals(17, Constants.IntakeConstants.LEFT_ROLLER_MOTOR_ID);
+        assertEquals(36, Constants.IntakeConstants.LEFT_ROLLER_MOTOR_ID);
         assertEquals(18, Constants.IntakeConstants.RIGHT_ROLLER_MOTOR_ID);
         assertTrue(Constants.IntakeConstants.LEFT_ROLLER_MOTOR_INVERTED
             != Constants.IntakeConstants.RIGHT_ROLLER_MOTOR_INVERTED);
-    }
-
-    @Test
-    void rackGeometryMatchesConfirmedGearTrainAndPitchDiameter() {
-        assertEquals(2.1875, Constants.IntakeConstants.DEPLOY_GEAR_RATIO, 1e-9);
-        assertEquals(1.0, Constants.IntakeConstants.PINION_DIAMETER_INCHES, 1e-9);
-        assertEquals(Math.PI / 2.1875,
-            Constants.IntakeConstants.INCHES_PER_PINION_ROTATION
-                / Constants.IntakeConstants.DEPLOY_GEAR_RATIO, 1e-9);
     }
 
     @Test
@@ -89,16 +79,8 @@ class HardwareConfigurationTest {
             "Extension motor's confirmed CAN ID");
         assertEquals("Canivore", Constants.IntakeConstants.CAN_BUS,
             "Extension motor is wired to the CANivore");
-        assertTrue(Constants.IntakeConstants.RETRACTED_POSITION_ROTATIONS
-            < Constants.IntakeConstants.SHOOT_OSCILLATION_REAR_POSITION_ROTATIONS);
-        assertTrue(Constants.IntakeConstants.SHOOT_OSCILLATION_REAR_POSITION_ROTATIONS
-            < Constants.IntakeConstants.SHOOT_OSCILLATION_FORWARD_POSITION_ROTATIONS);
-        assertTrue(Constants.IntakeConstants.SHOOT_OSCILLATION_FORWARD_POSITION_ROTATIONS
-            <= Constants.IntakeConstants.EXTENDED_POSITION_ROTATIONS);
-        assertEquals(28.5 / 2.54, Constants.IntakeConstants.MAX_EXTENSION_INCHES, 1e-9);
-        assertEquals(9.5, Constants.IntakeConstants.ENABLE_POSITION_ROTATIONS, 1e-9);
-        assertEquals(Constants.IntakeConstants.EXTENDED_POSITION_ROTATIONS,
-            Constants.IntakeConstants.ENABLE_POSITION_ROTATIONS, 1e-9);
+        assertEquals(0, Constants.IntakeConstants.RETRACTED_POSITION_ROTATIONS);
+        assertEquals(9.5, Constants.IntakeConstants.EXTENDED_POSITION_ROTATIONS);
         assertEquals(2500.0, Constants.IntakeConstants.ROLLER_RPM);
     }
 }

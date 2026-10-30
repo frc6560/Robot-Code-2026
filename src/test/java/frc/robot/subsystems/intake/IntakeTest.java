@@ -230,19 +230,6 @@ class IntakeTest {
         assertFalse(io.stopped);
     }
 
-    @Test void legacyIntakeAndShotCallsCannotMoveRack() {
-        teleop(true);
-        intake.activate();
-        intake.activateOuttake();
-        intake.setRetracted();
-        intake.setExtendedStopped();
-        intake.startShootingOscillation();
-        intake.periodic();
-        assertTrue(io.stopped);
-        assertEquals(0, io.positionRequests);
-        assertEquals(0, io.roller);
-        assertFalse(intake.isShootingOscillationActive());
-    }
 
     @Test void rollersRequireHomingFullPositionAndHealthyRollerControllers() {
         teleop(true);
