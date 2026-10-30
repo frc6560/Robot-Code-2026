@@ -35,6 +35,7 @@ public final class FuelShootCommand extends Command {
     }
     private double launchSpeedCoefficient = LaunchSpeedTuning.DEFAULT_COEFFICIENT;
     private boolean calibrationMode;
+    private double nextTelemetry;
     private boolean readyToFeed;
 
     public boolean isReadyToFeed() { return readyToFeed; }
@@ -155,6 +156,11 @@ public final class FuelShootCommand extends Command {
         indexer.setFloorRPM(feeding ? Constants.IndexerConstants.FLOOR_RUNNING_RPM : 0);
         indexer.setTunnelRPM(feeding ? tunnelRPM : 0);
         String status = rawReady && !feeding ? "Settling" : reason;
+        // Preserve full-rate release gates and feeding evidence; slow human-facing diagnostics.
+        Logger.recordOutput("Fuel/Feeding", feeding);
+        Logger.recordOutput("Fuel/MeasuredRPM", shooter.getCurrentRPM());
+        if (edu.wpi.first.wpilibj.RobotBase.isReal() && now < nextTelemetry) return;
+        nextTelemetry = now + 0.2;
         SmartDashboard.putString("Fuel/Mode", fixedRPM
             ? (calibrationMode ? "Fixed RPM measurement" : "Fixed RPM (uncalibrated)") : "Formula trajectory");
         SmartDashboard.putString("Fuel/Calibration Status", calibrationStatus);

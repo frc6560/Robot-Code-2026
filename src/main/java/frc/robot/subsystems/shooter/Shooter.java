@@ -163,16 +163,8 @@ public class Shooter extends SubsystemBase {
         io.applyOutputs(outputs);
 
         Logger.recordOutput("Shooter/GoalRPM", getGoalRPM());
-        Logger.recordOutput("Shooter/SetpointRPM", getSetpointRPM());
         Logger.recordOutput("Shooter/CurrentRPM", getCurrentRPM());
-        Logger.recordOutput("Shooter/ErrorRPM", getCurrentRPM() - getGoalRPM());
         Logger.recordOutput("Shooter/AtTarget", atTarget());
-        Logger.recordOutput("Shooter/SetpointAccel", filteredAccel);
-        Logger.recordOutput("Shooter/Feedforward", outputs.feedforwardVolts);
-        Logger.recordOutput("Shooter/BangBang", bangBang);
-        Logger.recordOutput("Shooter/Idle", idle);
-        Logger.recordOutput("Shooter/Mode", outputs.mode.toString());
-        Logger.recordOutput("Shooter/PitCoastMode", pitCoastMode);
     }
 
     private void runVelocity(double goal, boolean bangBang, boolean idle) {
@@ -317,10 +309,6 @@ public class Shooter extends SubsystemBase {
 
         withinTolerancekS = Math.abs(kS - ShooterConstants.FF_kS) <= ShooterConstants.FF_kS_TOLERANCE;
         withinTolerancekV = Math.abs(kV - ShooterConstants.FF_kV) <= ShooterConstants.FF_kV_TOLERANCE;
-        Logger.recordOutput("Shooter/Characterization/kS", kS);
-        Logger.recordOutput("Shooter/Characterization/kV", kV);
-        Logger.recordOutput("Shooter/Characterization/WithinTolerancekS", withinTolerancekS);
-        Logger.recordOutput("Shooter/Characterization/WithinTolerancekV", withinTolerancekV);
         System.out.printf(
             "[Shooter] FF characterization: kS=%.5f V (%s), kV=%.5f V/(rad/s) (%s)%n",
             kS, withinTolerancekS ? "ok" : "OUT OF TOLERANCE",

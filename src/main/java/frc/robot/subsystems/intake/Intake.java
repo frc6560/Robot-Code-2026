@@ -15,6 +15,7 @@ public class Intake extends SubsystemBase {
     private double target = IntakeConstants.RETRACTED_POSITION_ROTATIONS;
     private double requestedDeployTarget = IntakeConstants.RETRACTED_POSITION_ROTATIONS;
     private boolean rackRequested;
+    private double nextTelemetry;
     private boolean rollerRequested;
     private double rollerTargetRPM;
     private double extendedSince = Double.NaN;
@@ -118,6 +119,9 @@ public class Intake extends SubsystemBase {
             : !inputs.deployCurrentLimitOK ? "Rack current-limit update not confirmed"
             : !rollerPermitted ? "Waiting for rack to settle at full extension"
             : "None";
+        // Outputs/interlocks above remain at control-loop frequency.
+        if (edu.wpi.first.wpilibj.RobotBase.isReal() && extensionNow < nextTelemetry) return;
+        nextTelemetry = extensionNow + 0.2;
         SmartDashboard.putBoolean("Intake/RollerTriggerHeld", rollerRequested);
         Logger.recordOutput("Intake/RollerTriggerHeld", rollerRequested);
         Logger.recordOutput("Intake/RollerCommandedRPM", rollerTargetRPM);

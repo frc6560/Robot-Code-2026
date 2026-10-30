@@ -78,56 +78,19 @@ public class LimelightVision {
             lastUsedTime = now;
             status = "Used";
         }
-        PoseEstimate mt1 = LimelightHelpers.getBotPoseEstimate_wpiBlue(name);
-        boolean hasPose = estimate != null && estimate.tagCount > 0 && finitePose(estimate.pose);
-        boolean hasMT1 = mt1 != null && mt1.tagCount > 0 && finitePose(mt1.pose);
-        double[] ids = estimate == null || estimate.rawFiducials == null ? new double[0]
-            : Arrays.stream(estimate.rawFiducials).filter(f -> f != null).mapToDouble(f -> f.id).toArray();
-        // Compact dashboard summary; all diagnostic detail lives in the same saved-log folder.
+        // Vision fusion above still runs every loop; publish only a compact 5 Hz summary.
+        if (now < nextTelemetry) return;
+        nextTelemetry = now + 0.2;
         SmartDashboard.putString(logKey + "/Status", status);
         SmartDashboard.putBoolean(logKey + "/Connected", connected);
         SmartDashboard.putNumber(logKey + "/TagCount", estimate == null ? 0 : estimate.tagCount);
-        // Retain the old boolean for existing dashboards, but never leave it stuck true.
         SmartDashboard.putBoolean(name + "/MeasurementAccepted", used);
         Logger.recordOutput(logKey + "/Status", status);
         Logger.recordOutput(logKey + "/Connected", connected);
         Logger.recordOutput(logKey + "/UsedThisLoop", used);
-        Logger.recordOutput(logKey + "/SecondsSinceUsed", Double.isFinite(lastUsedTime) ? now - lastUsedTime : -1);
-        Logger.recordOutput(logKey + "/NetworkName", name);
-        Logger.recordOutput(logKey + "/TagCount", estimate == null ? 0 : estimate.tagCount);
-        Logger.recordOutput(logKey + "/TagIDs", ids);
-        Logger.recordOutput(logKey + "/PrimaryTagID", LimelightHelpers.getFiducialID(name));
-        Logger.recordOutput(logKey + "/TargetVisible", LimelightHelpers.getTV(name));
-        Logger.recordOutput(logKey + "/MegaTag1Pose", hasMT1 ? new Pose2d[]{mt1.pose} : new Pose2d[0]);
-        Logger.recordOutput(logKey + "/MegaTag1FrameAgeSeconds", mt1 == null ? -1 : now - mt1.timestampSeconds);
-        Logger.recordOutput(logKey + "/MegaTag2Pose", hasPose ? new Pose2d[]{estimate.pose} : new Pose2d[0]);
-        Logger.recordOutput(logKey + "/HasMegaTag2Pose", hasPose);
-        recordPoseNumbers("MegaTag1", hasMT1 ? mt1.pose : null);
-        recordPoseNumbers("MegaTag2", hasPose ? estimate.pose : null);
-        Logger.recordOutput(logKey + "/FrameAgeSeconds", estimate == null ? -1 : now - estimate.timestampSeconds);
-        Logger.recordOutput(logKey + "/LatencySeconds", latency);
-        Logger.recordOutput(logKey + "/PoseDifferenceMeters", hasPose
-            ? estimate.pose.getTranslation().getDistance(fusedPose.getTranslation()) : -1);
-        Logger.recordOutput(logKey + "/StdDevXYMeters", stdXY);
-        Logger.recordOutput(logKey + "/ConfiguredMount", cameraPose);
-        Logger.recordOutput(logKey + "/ReportedMount", LimelightHelpers.getLimelightNTDoubleArray(name, "camerapose_robotspace"));
-        Logger.recordOutput(logKey + "/IMU", LimelightHelpers.getLimelightNTDoubleArray(name, "imu"));
-        Logger.recordOutput(logKey + "/PipelineIndex", LimelightHelpers.getCurrentPipelineIndex(name));
-        drivebase.getSwerveDrive().field.getObject(logKey + "/CameraEstimate")
-            .setPoses(hasPose ? new Pose2d[]{estimate.pose} : new Pose2d[0]);
     }
 
-    private void recordPoseNumbers(String algorithm, Pose2d pose) {
-        String key = logKey + "/" + algorithm;
-        double x = pose == null ? Double.NaN : pose.getX();
-        double y = pose == null ? Double.NaN : pose.getY();
-        double heading = pose == null ? Double.NaN : pose.getRotation().getDegrees();
-        Logger.recordOutput(key + "/XMeters", x);
-        Logger.recordOutput(key + "/YMeters", y);
-        Logger.recordOutput(key + "/HeadingDeg", heading);
-        SmartDashboard.putString(key + "/Pose", pose == null ? "No tagged pose"
-            : String.format(java.util.Locale.ROOT, "X %.3f m, Y %.3f m, heading %.1f deg", x, y, heading));
-    }
+    private double nextTelemetry;
 
     static boolean finitePose(Pose2d pose) {
         return pose != null && Double.isFinite(pose.getX()) && Double.isFinite(pose.getY())

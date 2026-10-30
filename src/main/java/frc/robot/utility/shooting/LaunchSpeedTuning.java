@@ -9,6 +9,7 @@ public final class LaunchSpeedTuning {
     public static final double DEFAULT_COEFFICIENT = 1.05;
     public static final String REQUEST_KEY = "Shooter/Launch Speed Coefficient";
     public static final String PREFERENCE_KEY = "ShooterLaunchSpeedCoefficientV2";
+    private static double nextTelemetry;
     private LaunchSpeedTuning() {}
 
     private static boolean valid(double value) {
@@ -37,12 +38,16 @@ public final class LaunchSpeedTuning {
             saved = requested;
             Preferences.setDouble(PREFERENCE_KEY, saved);
         }
+        double now = edu.wpi.first.wpilibj.Timer.getFPGATimestamp();
+        if (now >= nextTelemetry) {
+            nextTelemetry = now + 0.2;
         SmartDashboard.putNumber("Shooter/Saved Launch Speed Coefficient", saved);
         SmartDashboard.putString("Shooter/Launch Speed Coefficient Status", accepted
             ? "Saved on robot" : "Edit not received as a number in [0.5, 1.5]; keeping saved value");
         Logger.recordOutput("Fuel/Tuning/RequestedCoefficient", requested);
         Logger.recordOutput("Fuel/Tuning/SavedCoefficient", saved);
         Logger.recordOutput("Fuel/Tuning/RequestValid", accepted);
+        }
         return saved;
     }
 }

@@ -132,15 +132,13 @@ public class Robot extends LoggedRobot
     frc.robot.utility.CurrentUsageMonitor.update();
     Logger.recordOutput("Power/BatteryVoltage", RobotController.getBatteryVoltage());
     Logger.recordOutput("Power/BrownedOut", RobotController.isBrownedOut());
-    Logger.recordOutput("Power/ControllerTemperatureCelsius", RobotController.getCPUTemp());
-    Logger.recordOutput("Runtime/CodeUptimeSeconds", Timer.getFPGATimestamp() - codeStartTime);
-    Logger.recordOutput("Runtime/ProgramSession", programSession);
-    SmartDashboard.putString("Runtime/ProgramSession", programSession);
-    SmartDashboard.putNumber("Power/BatteryVoltage", RobotController.getBatteryVoltage());
-    SmartDashboard.putBoolean("Power/BrownedOut", RobotController.isBrownedOut());
-    SmartDashboard.putNumber("Runtime/CodeUptimeSeconds", Timer.getFPGATimestamp() - codeStartTime);
+    // Battery/brownout stay at 50 Hz; slow dashboard health is published once a second.
     if (isReal() && Timer.getFPGATimestamp() >= nextCANHealthSample) {
       nextCANHealthSample = Timer.getFPGATimestamp() + 1.0;
+      SmartDashboard.putString("Runtime/ProgramSession", programSession);
+      SmartDashboard.putNumber("Runtime/CodeUptimeSeconds", Timer.getFPGATimestamp() - codeStartTime);
+      SmartDashboard.putNumber("Power/BatteryVoltage", RobotController.getBatteryVoltage());
+      SmartDashboard.putBoolean("Power/BrownedOut", RobotController.isBrownedOut());
       var rio = RobotController.getCANStatus();
       Logger.recordOutput("CAN/rio/UtilizationPercent", rio.percentBusUtilization * 100.0);
       Logger.recordOutput("CAN/rio/BusOffCount", rio.busOffCount);

@@ -44,7 +44,13 @@ public final class CurrentUsageMonitor {
 
     private static String lastError = "";
 
+    private static double nextUpdate;
+
     public static void update() {
+        double now = edu.wpi.first.wpilibj.Timer.getFPGATimestamp();
+        if (now < nextUpdate) return;
+        nextUpdate = now + 0.5; // Slow diagnostics: 2 Hz, not every control cycle.
+
         try {
             updateReadings();
             Logger.recordOutput("Power/MonitorStatus", "Running");
