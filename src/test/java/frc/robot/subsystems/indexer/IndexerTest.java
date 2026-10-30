@@ -2,6 +2,7 @@ package frc.robot.subsystems.indexer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import edu.wpi.first.hal.HAL;
 import edu.wpi.first.wpilibj.simulation.DriverStationSim;
@@ -62,7 +63,7 @@ class IndexerTest {
             CommandScheduler.getInstance().unregisterSubsystem(indexer);
         }
     }
-    @Test void eitherStalledFloorMotorStopsBothAndRequiresDisableToReset() {
+    @Test void sustainedLowSpeedAndHighCurrentDoNotCancelFloorRequest() {
         assertTrue(HAL.initialize(500, 0));
         SimHooks.pauseTiming();
         DriverStationSim.resetData();
@@ -73,9 +74,9 @@ class IndexerTest {
             double requested;
             @Override public void setFloorRPM(double rpm) { requested = rpm; }
             @Override public void updateInputs(IndexerIOInputs inputs) {
-                inputs.floorRPM = 100; // First motor moves; secondary alone can trip the guard.
+                inputs.floorRPM = 100; // First motor moves, secondary is stationary.
                 inputs.floorSecondaryRPM = 0;
-                inputs.floorSecondaryCurrentAmps = 60;
+                inputs.floorSecondaryCurrentAmps = 40;
             }
         }
         var io = new BlockedIO();
@@ -84,12 +85,11 @@ class IndexerTest {
             indexer.setFloorRPM(800); indexer.periodic();
             SimHooks.stepTiming(0.5); indexer.periodic();
             assertEquals(800, io.requested);
-            SimHooks.stepTiming(0.6); indexer.periodic();
-            assertEquals(0, io.requested);
-            indexer.setFloorRPM(800); assertEquals(0, io.requested);
-            assertTrue(SmartDashboard.getBoolean("Indexer/FloorStallFault", false));
-            DriverStationSim.setEnabled(false); DriverStationSim.notifyNewData();
-            indexer.periodic();
+            SimHooks.stepTiming(2.0); indexer.periodic();
+            assertEquals(800, io.requested);
+            assertEquals(800, indexer.getFloorTargetRPM());
+            assertFalse(SmartDashboard.getBoolean("Indexer/FloorStallFault", true));
+            indexer.setFloorRPM(0); assertEquals(0, io.requested);
             indexer.setFloorRPM(800); assertEquals(800, io.requested);
         } finally {
             CommandScheduler.getInstance().unregisterSubsystem(indexer);

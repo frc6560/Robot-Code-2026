@@ -563,7 +563,6 @@ public final class Constants {
     public static final double FLOOR_RUNNING_RPM = 800.0;
     public static final double FLOOR_STATOR_CURRENT_LIMIT = 40.0;
     public static final double FLOOR_SUPPLY_CURRENT_LIMIT = 40.0;
-    public static final double FLOOR_STALL_SECONDS = 1.0;
     public static final double TUNNEL_RUNNING_RPM = 1500.0;
     /** Motor rotations per mechanism rotation; retained from the indexer hardware configuration. */
     public static final double FLOOR_GEAR_RATIO = 2.5;
@@ -590,7 +589,6 @@ public final class Constants {
     // Current Limits
     public static final double DEPLOY_SUPPLY_CURRENT_LIMIT = 30.0;
     public static final double DEPLOY_STATOR_CURRENT_LIMIT = 40.0;
-    public static final double DEPLOY_STALL_SECONDS = 1.0;
     public static final double ROLLER_SUPPLY_CURRENT_LIMIT = 40.0;
     public static final double ROLLER_STATOR_CURRENT_LIMIT = 40.0;
 

@@ -214,21 +214,18 @@ class IntakeTest {
         intake.periodic(); assertEquals(0, io.roller);
     }
 
-    @Test void sustainedRackStallStopsAndLatchesUntilDisabled() {
+    @Test void sustainedLowSpeedAndHighCurrentDoNotCancelRackRequest() {
         teleop(true);
         intake.requestRackExtended();
         io.stator = IntakeConstants.DEPLOY_STATOR_CURRENT_LIMIT;
         intake.periodic();
-        SimHooks.stepTiming(0.5); intake.periodic();
-        assertFalse(io.stopped); // Allow breakaway effort briefly.
-        SimHooks.stepTiming(0.6); intake.periodic();
-        assertTrue(io.stopped);
-        assertTrue(SmartDashboard.getBoolean("Intake/DeployStallFault", false));
-        io.stator = 0;
-        intake.requestRackExtended(); intake.periodic();
-        assertTrue(io.stopped); // A repeated button cannot defeat the latched fault.
-        teleop(false); teleop(true);
-        intake.requestRackExtended(); intake.periodic();
+        SimHooks.stepTiming(2.0); intake.periodic();
         assertFalse(io.stopped);
+        assertEquals(IntakeConstants.EXTENDED_POSITION_ROTATIONS, io.target);
+        assertFalse(SmartDashboard.getBoolean("Intake/DeployStallFault", true));
+        assertEquals(0, io.roller); // Extension interlock remains active.
+        intake.requestRackRetracted(); intake.periodic();
+        assertFalse(io.stopped);
+        assertEquals(IntakeConstants.RETRACTED_POSITION_ROTATIONS, io.target);
     }
 }

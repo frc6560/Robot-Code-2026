@@ -178,7 +178,7 @@ python3 -m unittest discover -s tools/fuel-calibration -v
 ```
 
 
-## Floor and rack breakaway torque / stall faults
+## Floor and intake current limits
 
 The floor target remains **800 RPM**. Each floor motor has a **40 A stator** limit and **40 A
 supply** limit. The rack has a **40 A stator** limit and **30 A supply** limit. Each intake roller has
@@ -186,14 +186,14 @@ supply** limit. The rack has a **40 A stator** limit and **30 A supply** limit. 
 inversions and the tunnel's 40 A limits are unchanged. Current limits do not establish that a jammed
 mechanism is safe to drive.
 
-At 90% of the stator limit with almost no motion for one second, output is cut and a fault latches.
-Either floor motor can trip both floor motors; the rack fault also prevents intake roller operation.
-The low-speed thresholds are 5 mechanism RPM for the floor and 0.1 motor rotations/s for the rack.
-Disable the robot and inspect the mechanism before retrying; disable clears the fault. After a rack
-fault/disable, select LT or RT again to request rack motion.
+Automatic floor and rack stall cutoffs have been removed by operator request. Sustained high-current,
+low-speed operation no longer cancels the requested RPM/position or requires a disable to reset.
+The 40 A current ceilings, rack soft limits, disable/pit-coast behavior, and roller extension interlocks
+remain. Legacy `Indexer/FloorStallFault` and `Intake/DeployStallFault` dashboard values are cleared to
+false to avoid stale fault indicators. This removes a software cutoff; it does not resolve binding.
 
-Watch `Indexer/FloorStallFault`, `Indexer/FloorBlockedReason`, `Intake/DeployStallFault`, and
-`Intake/FullyExtended` / `Intake/RollerPermitted`. The existing `Intake/DeployCurrentAmps` is **supply current**, whereas floor
+Watch `Intake/FullyExtended` / `Intake/RollerPermitted` for the roller interlock.
+The existing `Intake/DeployCurrentAmps` is **supply current**, whereas floor
 current readings are **stator current**. New `Intake/DeploySupplyAmps` and `Intake/DeployStatorAmps`
 make that distinction explicit. `Intake/LeftRollerVolts` / `Intake/RightRollerVolts` help investigate
 one roller failing to spin. The rack assumes physically retracted at code startup; its motor encoder

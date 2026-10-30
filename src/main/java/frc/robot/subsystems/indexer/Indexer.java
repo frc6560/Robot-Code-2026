@@ -4,10 +4,6 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import org.littletonrobotics.junction.Logger;
 import frc.robot.utility.shooting.FuelShotConfig;
-import frc.robot.Constants.IndexerConstants;
-import frc.robot.utility.StallGuard;
-import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.Timer;
 import org.littletonrobotics.junction.mechanism.LoggedMechanism2d;
 import org.littletonrobotics.junction.mechanism.LoggedMechanismLigament2d;
 import org.littletonrobotics.junction.mechanism.LoggedMechanismRoot2d;
@@ -24,7 +20,6 @@ public class Indexer extends SubsystemBase {
             new LoggedMechanismLigament2d("Roller", 0.75, 0.0));
 
     private double rollerAngleDegrees = 0.0;
-    private final StallGuard floorStall = new StallGuard(IndexerConstants.FLOOR_STALL_SECONDS);
     private double floorTargetRPM = 0.0;
     private double tunnelTargetRPM = 0.0;
 
@@ -35,17 +30,10 @@ public class Indexer extends SubsystemBase {
     @Override
     public void periodic() {
         io.updateInputs(inputs);
-        if (DriverStation.isDisabled()) floorStall.reset();
-        boolean blocked = (Math.abs(inputs.floorRPM) < 5
-                && Math.abs(inputs.floorCurrentAmps) >= 0.9 * IndexerConstants.FLOOR_STATOR_CURRENT_LIMIT)
-            || (Math.abs(inputs.floorSecondaryRPM) < 5
-                && Math.abs(inputs.floorSecondaryCurrentAmps) >= 0.9 * IndexerConstants.FLOOR_STATOR_CURRENT_LIMIT);
-        if (floorStall.update(DriverStation.isEnabled() && floorTargetRPM != 0,
-                blocked, Timer.getFPGATimestamp())) setFloorRPM(0);
-        SmartDashboard.putBoolean("Indexer/FloorStallFault", floorStall.isTripped());
-        SmartDashboard.putString("Indexer/FloorBlockedReason", floorStall.isTripped()
-            ? "Stall: disable robot and check binding / opposing motors" : "None");
-        Logger.recordOutput("Indexer/FloorStallFault", floorStall.isTripped());
+        // Clear legacy telemetry: automatic stall cutoffs are disabled by operator request.
+        SmartDashboard.putBoolean("Indexer/FloorStallFault", false);
+        SmartDashboard.putString("Indexer/FloorBlockedReason", "None");
+        Logger.recordOutput("Indexer/FloorStallFault", false);
         Logger.processInputs("Indexer", inputs);
         Logger.recordOutput("Indexer/FloorTargetRPM", floorTargetRPM);
         SmartDashboard.putBoolean("Indexer/FloorEnabled", FuelShotConfig.FLOOR_ENABLED);
@@ -78,7 +66,7 @@ public class Indexer extends SubsystemBase {
     }
 
     public void setFloorRPM(double rpm) {
-        floorTargetRPM = FuelShotConfig.FLOOR_ENABLED && !floorStall.isTripped() && Double.isFinite(rpm) ? rpm : 0.0;
+        floorTargetRPM = FuelShotConfig.FLOOR_ENABLED && Double.isFinite(rpm) ? rpm : 0.0;
         io.setFloorRPM(floorTargetRPM);
     }
 
