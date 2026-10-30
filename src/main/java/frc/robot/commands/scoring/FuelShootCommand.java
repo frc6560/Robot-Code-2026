@@ -90,7 +90,6 @@ public final class FuelShootCommand extends Command {
         Translation2d hub = alliance.orElse(DriverStation.Alliance.Blue) == DriverStation.Alliance.Blue
             ? Constants.FieldConstants.BLUE_HUB_CENTER : Constants.FieldConstants.RED_HUB_CENTER;
         double range = releasePosition(current).getDistance(hub);
-        Logger.recordOutput("Fuel/RobotPose", current);
         Logger.recordOutput("Fuel/HubPose", new Pose2d(hub, new edu.wpi.first.math.geometry.Rotation2d()));
         Logger.recordOutput("Fuel/ReleasePose", new Pose2d(releasePosition(current), current.getRotation()));
         boolean stationary = finite && Math.hypot(speeds.vxMetersPerSecond, speeds.vyMetersPerSecond)

@@ -139,8 +139,17 @@ public class SwerveSubsystem extends SubsystemBase {
     }
   }
 
+  private double nextFuelPoseLog;
+
   @Override
   public void periodic() {
+    // Publish independently of the shoot command, including while disabled.
+    double poseLogTime = edu.wpi.first.wpilibj.Timer.getFPGATimestamp();
+    if (poseLogTime >= nextFuelPoseLog) {
+      nextFuelPoseLog = poseLogTime + 0.5;
+      Logger.recordOutput("Fuel/RobotPose", getPose());
+    }
+
     SwerveDriveTelemetry.verbosity = RobotBase.isSimulation()
         || SmartDashboard.getBoolean("Swerve/DetailedTelemetry", false)
             ? TelemetryVerbosity.HIGH : TelemetryVerbosity.INFO;
