@@ -87,8 +87,9 @@ public class IndexerIOTalonFX implements IndexerIO {
         floorSecondaryConfigurationStatus = followerStatus;
         tunnelConfigurationStatus = configureMotor(tunnelMotor, IndexerConstants.TUNNEL_GEAR_RATIO, false, false);
 
+        // Indexer motors have a fixed 40 A ceiling; no startup boost.
         floorLimit = new StartupCurrentLimit(IndexerConstants.FLOOR_STATOR_CURRENT_LIMIT,
-            StartupCurrentConstants.PEAK_AMPS, StartupCurrentConstants.DURATION_SECONDS,
+            IndexerConstants.FLOOR_STATOR_CURRENT_LIMIT, 0.0,
             Timer::getFPGATimestamp, amps -> {
                 CurrentLimitsConfigs limits = currentLimits(amps, IndexerConstants.FLOOR_SUPPLY_CURRENT_LIMIT);
                 StatusCode first = floorLeader.getConfigurator().apply(limits, StartupCurrentConstants.CONFIG_TIMEOUT_SECONDS);
@@ -96,7 +97,7 @@ public class IndexerIOTalonFX implements IndexerIO {
                 return first.isOK() && second.isOK();
             }, this::stopFloorOutputs);
         tunnelLimit = new StartupCurrentLimit(CURRENT_LIMIT_AMPS,
-            StartupCurrentConstants.PEAK_AMPS, StartupCurrentConstants.DURATION_SECONDS,
+            CURRENT_LIMIT_AMPS, 0.0,
             Timer::getFPGATimestamp,
             amps -> tunnelMotor.getConfigurator().apply(currentLimits(amps, CURRENT_LIMIT_AMPS),
                 StartupCurrentConstants.CONFIG_TIMEOUT_SECONDS).isOK(),

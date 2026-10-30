@@ -184,14 +184,17 @@ The floor target remains **800 RPM**. Startup stator-current allowances are:
 
 | Mechanism | First second of a new move | Continuing / stopped | Supply limit |
 |---|---|---|---|
-| Each floor motor | 60 A | 40 A | 40 A |
-| Wall/tunnel motor | 60 A | 40 A | 40 A |
+| Each floor motor | 40 A | 40 A | 40 A |
+| Wall/tunnel motor | 40 A | 40 A | 40 A |
 | Intake rack | 60 A while traveling | 40 A (also on arrival) | 30 A |
 | Each intake roller | 40 A | 40 A | 40 A |
 
-The startup window begins with the nonzero motor command, not after an encoder detects motion;
+The indexers have no startup boost: both floor motors and the wall/tunnel stay at 40 A stator and
+40 A supply. Only the intake rack retains its startup window.
+
+The rack startup window begins with the nonzero motor command, not after an encoder detects motion;
 a jam cannot keep the 60 A allowance indefinitely. Repeating the same command each loop, or
-changing a running indexer's RPM, does not restart the timer. Stopping immediately restores 40 A;
+changing a running indexer's RPM has no effect on its fixed 40 A ceiling. Stopping restores 40 A;
 a subsequent stop-to-start receives a new startup window. Selecting a different rack endpoint
 starts a new rack move; repeatedly holding the same endpoint does not. The rack also returns to
 40 A as soon as its measured position reaches the selected endpoint tolerance.
