@@ -13,7 +13,7 @@ public final class FuelShotConfig {
     public static final double RPM_TOLERANCE = 60.0;
     public static final double READY_DWELL_SECONDS = 0.10;
     public static final double MAX_TRANSLATION_MPS = 0.15;
-    public static final double MIN_ENTRY_DEGREES = 20.0;
+    public static final double MIN_ENTRY_DEGREES = 10.0;
     public static final double LAUNCH_ANGLE_OFFSET_DEGREES = 0.0;
     public static final double DRAG_COEFFICIENT = 0.47;
     public static final double LIFT_SLOPE = 0.75;

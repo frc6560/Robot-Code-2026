@@ -151,6 +151,27 @@ class FuelShootCommandTest {
         start(null); cycles(20);
         assertEquals(0, indexer.getTunnelTargetRPM()); assertEquals(0, shooter.getGoalRPM());
     }
+    @Test void tenDegreeEntryLimitAllowsPhotographedRangeWhenReady() {
+        SmartDashboard.putBoolean("Fuel/Calibration Mode", false);
+        pose = new Pose2d(Constants.FieldConstants.BLUE_HUB_CENTER.getX() - 2.355,
+            Constants.FieldConstants.BLUE_HUB_CENTER.getY(), new Rotation2d());
+        var model = new FuelShotModel(LaunchCalibration.ideal());
+        var shot = model.solve(2.355);
+        assertTrue(shot.valid());
+        assertTrue(model.flight(shot.rpm()).entryDegrees() >= 10);
+        assertTrue(model.flight(shot.rpm()).entryDegrees() < 20);
+        start(model);
+        shooter.measured = shot.rpm();
+        aimReady = true;
+        cycles(15);
+        assertEquals(1500, indexer.getTunnelTargetRPM());
+        assertEquals(800, indexer.getFloorTargetRPM());
+        assertEquals("Ready",
+            SmartDashboard.getString("Fuel/Status", ""));
+        assertEquals("Reachable",
+            SmartDashboard.getString("Fuel/Trajectory Status", ""));
+    }
+
     @Test void normalModeCommandsCalibratedShotAndUsesRealTunnel() {
         var model = new FuelShotModel(new LaunchCalibration(List.of(
             new LaunchCalibration.Point(1000, 2.66, Double.NaN),

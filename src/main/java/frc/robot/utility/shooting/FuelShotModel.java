@@ -85,7 +85,8 @@ public final class FuelShotModel {
         String reason = reached == 0 ? "No sampled RPM reaches hub height"
             : cleared == 0 ? "No sampled trajectory clears near rim"
             : landed == 0 ? "No rim-clearing trajectory lands in opening"
-            : entered == 0 ? "Entry angle too shallow (requires 20 deg)" : "Reachable";
+            : entered == 0 ? "Entry angle too shallow (requires "
+                + FuelShotConfig.MIN_ENTRY_DEGREES + " deg)" : "Reachable";
         diagnostics = new SolveDiagnostics(range, sampledRPM.size(), reached, cleared, landed, entered, reason);
         if (bestHigh < bestLow) return Shot.invalid();
         // Grid endpoints are already valid; avoid dozens of full integrations to refine sub-RPM edges.

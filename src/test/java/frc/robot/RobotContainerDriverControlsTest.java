@@ -46,6 +46,16 @@ class RobotContainerDriverControlsTest {
         assertEquals(0, indexer.getFloorTargetRPM());
         assertEquals(0, indexer.getTunnelTargetRPM());
 
+        // Driver X routes the explicit reset to the front camera only.
+        for (String camera : new String[] {"Front", "Left", "Right"}) {
+            SmartDashboard.putString("Vision/" + camera + "/ResetStatus", "Not requested");
+        }
+        setButton(XboxController.Button.kX, true);
+        assertNotEquals("Not requested", SmartDashboard.getString("Vision/Front/ResetStatus", "Not requested"));
+        assertEquals("Not requested", SmartDashboard.getString("Vision/Left/ResetStatus", ""));
+        assertEquals("Not requested", SmartDashboard.getString("Vision/Right/ResetStatus", ""));
+        setButton(XboxController.Button.kX, false);
+
         // Rack triggers keep their independent endpoint selection.
         DriverStationSim.setJoystickAxis(DRIVER_PORT, XboxController.Axis.kRightTrigger.value, 1);
         DriverStationSim.notifyNewData(); runCycles(3);

@@ -62,7 +62,7 @@ class FuelShotModelTest {
             reachable++;
             assertTrue(model.scores(range, shot.rpm()));
             assertTrue(shot.minimumRPM() <= shot.rpm() && shot.rpm() <= shot.maximumRPM());
-            assertTrue(model.flight(shot.rpm()).entryDegrees() >= 20);
+            assertTrue(model.flight(shot.rpm()).entryDegrees() >= FuelShotConfig.MIN_ENTRY_DEGREES);
             assertTrue(shot.rpm() >= 1000 && shot.rpm() <= 3800);
         }
         assertTrue(reachable > 10, "Synthetic shooter should reach several ranges");

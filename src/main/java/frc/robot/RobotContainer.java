@@ -284,9 +284,6 @@ public class RobotContainer {
             .and(() -> !pitCoastMode && !driverXbox.rightBumper().getAsBoolean() && !manualControlsSuppressedAfterAim)
             .whileTrue(manualShotCommand(spinUp, floor, feed));
 
-        driverXbox.x()
-          .and(DriverStation::isTeleopEnabled)
-          .onTrue(Commands.runOnce(() -> vision.hardReset(LimelightConstants.FRONT_CAMERA), vision));
         driverXbox.start().
           onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
         driverXbox.a()
@@ -311,7 +308,7 @@ public class RobotContainer {
         // Driver left bumper and button-board 3 request manual floor/tunnel feed outside the aimed shot.
 
         // --- RESETS ---
-        Trigger resetPoseTrigger = new Trigger(m_Controls::getVisionResetTrigger);
+        Trigger resetPoseTrigger = driverXbox.x().and(DriverStation::isTeleopEnabled);
         resetPoseTrigger.onTrue(Commands.runOnce(() -> vision.hardReset(LimelightConstants.FRONT_CAMERA), vision));
     }
 

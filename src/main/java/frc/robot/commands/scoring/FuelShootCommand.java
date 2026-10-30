@@ -119,7 +119,7 @@ public final class FuelShootCommand extends Command {
             : alliance.isEmpty() ? "No alliance"
             : !ownZone ? "Outside own alliance zone"
             : !controlsValid ? "Invalid RPM settings / no reachable shot"
-            : !fixedRPM && !shot.valid() ? "No reachable shot"
+            : !fixedRPM && !shot.valid() ? "No reachable shot: " + model.diagnostics().reason()
             : !stationary ? "Stop translating to shoot"
             : !aligned.getAsBoolean() ? "Aiming"
             : !indexer.isTunnelReady() ? "Tunnel disconnected or configuration failed"
@@ -146,6 +146,17 @@ public final class FuelShootCommand extends Command {
             ? (calibrationMode ? "Fixed RPM measurement" : "Fixed RPM (uncalibrated)") : "Formula trajectory");
         SmartDashboard.putString("Fuel/Calibration Status", calibrationStatus);
         SmartDashboard.putString("Fuel/Status", status);
+        String trajectoryStatus = fixedRPM ? "Fixed RPM; trajectory model bypassed" : model.diagnostics().reason();
+        SmartDashboard.putString("Fuel/Trajectory Status", trajectoryStatus);
+        Logger.recordOutput("Fuel/Trajectory/Status", trajectoryStatus);
+        if (!fixedRPM) {
+            var diagnostic = model.diagnostics();
+            Logger.recordOutput("Fuel/Trajectory/Sampled", diagnostic.sampled());
+            Logger.recordOutput("Fuel/Trajectory/ReachedHeight", diagnostic.reachedHeight());
+            Logger.recordOutput("Fuel/Trajectory/ClearedNearRim", diagnostic.clearedNearRim());
+            Logger.recordOutput("Fuel/Trajectory/LandedInOpening", diagnostic.landedInOpening());
+            Logger.recordOutput("Fuel/Trajectory/PassedEntryAngle", diagnostic.passedEntryAngle());
+        }
         SmartDashboard.putBoolean("Fuel/Feeding", feeding);
         SmartDashboard.putNumber("Fuel/Range M", range);
         SmartDashboard.putNumber("Fuel/Target RPM", rpm);
