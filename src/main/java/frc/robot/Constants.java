@@ -312,10 +312,10 @@ public final class Constants {
 
   public static class LimelightConstants
   {
-    public static final String FRONT_CAMERA = "limelight-cr";
-    public static final String LEFT_CAMERA = "limelight-cl";
-    public static final String RIGHT_CAMERA = "limelight-back";
-    public static final String CONFIGURATION_ID = "three-ll4-2026-10-30";
+    public static final String FRONT_CAMERA = "limelight-front";
+    public static final String LEFT_CAMERA = "limelight-left";
+    public static final String RIGHT_CAMERA = "limelight-right";
+    public static final String CONFIGURATION_ID = "three-ll4-named-2026-10-30";
     public static final String[] LIMELIGHT_NAMES = {
       LEFT_CAMERA, FRONT_CAMERA, RIGHT_CAMERA
     };
@@ -344,7 +344,7 @@ public final class Constants {
             new Rotation3d(0, Units.degreesToRadians(22.0), 0)
           );
           break;
-        case RIGHT_CAMERA: // Physical right camera, facing right (legacy name).
+        case RIGHT_CAMERA: // Physical right camera, facing right.
           limelightPose = new Pose3d(
             -0.21325, // backward from drivetrain center
             0.32168, // right of drivetrain center

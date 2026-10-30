@@ -9,10 +9,12 @@ import org.junit.jupiter.api.Test;
 class LimelightConfigurationTest {
     @Test void onlyTheThreeInstalledNetworkNamesAreConfigured() {
         assertEquals(3, LimelightConstants.LIMELIGHT_NAMES.length);
-        assertEquals(Set.of("limelight-cl", "limelight-cr", "limelight-back"),
+        assertEquals(Set.of("limelight-left", "limelight-front", "limelight-right"),
             Set.of(LimelightConstants.LIMELIGHT_NAMES));
-        assertThrows(IllegalArgumentException.class,
-            () -> LimelightConstants.getLimelightPose("limelight-br"));
+        for (String removed : Set.of("limelight-br", "limelight-cr", "limelight-cl", "limelight-back")) {
+            assertThrows(IllegalArgumentException.class,
+                () -> LimelightConstants.getLimelightPose(removed));
+        }
         assertThrows(IllegalArgumentException.class,
             () -> LimelightConstants.getLimelightPose("limelight"));
     }

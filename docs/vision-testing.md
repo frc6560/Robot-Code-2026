@@ -4,9 +4,9 @@ The saved AdvantageKit `.wpilog` now contains the vision diagnostics. Open it in
 AdvantageScope, or connect AdvantageScope to the robot live. Look under RealOutputs
 in a saved log (or AdvantageKit/RealOutputs live). Start with these folders:
 
-- `Vision/Front`: physical front camera, network name `limelight-cr`.
-- `Vision/Left`: physical left camera, network name `limelight-cl`.
-- `Vision/Right`: physical right camera, network name `limelight-back`.
+- `Vision/Front`: physical front camera, network name `limelight-front`.
+- `Vision/Left`: physical left camera, network name `limelight-left`.
+- `Vision/Right`: physical right camera, network name `limelight-right`.
 - `Swerve/Pose`: the combined robot position and heading used for driving/aiming.
 - `Fuel/Status`: first reason feeding is blocked. `Fuel/Readiness` shows individual
   conditions; `Fuel/Feeding` is the actual automatic feed decision.
@@ -77,12 +77,14 @@ https://raw.githubusercontent.com/wpilibsuite/allwpilib/v2026.2.1/apriltag/src/m
 
 ## Camera names and configuration
 
-The new log names do not rename hardware. Network names remain unchanged, so this
-change does not require reconfiguring the cameras. Limelights communicate over
+Hardware hostnames and code now both use limelight-front, limelight-left, and
+limelight-right. Deploy this version after renaming the cameras. The dashboard
+must show Vision/ConfigurationID = three-ll4-named-2026-10-30 and
+Vision/ConfiguredCameraCount = 3. Limelights communicate over
 the robot's Ethernet/IP network, using NetworkTables to exchange data with the
 roboRIO; they are not motor-controller devices listed in Phoenix Tuner.
 
-To rename hardware later, connect the laptop to the robot network and use
+For future hostname changes, connect the laptop to the robot network and use
 Limelight Hardware Manager to discover/open each camera, or use its IP address
 with port 5801 in a browser. Settings contains the hostname and team number.
 Give each camera a unique name, such as limelight-front, limelight-left, and
