@@ -34,6 +34,7 @@ public class Robot extends LoggedRobot
 {
 
   private static Robot   instance;
+  private final double codeStartTime = Timer.getFPGATimestamp();
   private        Command m_autonomousCommand;
 
   private RobotContainer m_robotContainer;
@@ -125,6 +126,10 @@ public class Robot extends LoggedRobot
     // and running subsystem periodic() methods.  This must be called from the robot's periodic
     // block in order for anything in the Command-based framework to work.
     CommandScheduler.getInstance().run();
+    Logger.recordOutput("Power/BatteryVoltage", RobotController.getBatteryVoltage());
+    Logger.recordOutput("Power/BrownedOut", RobotController.isBrownedOut());
+    Logger.recordOutput("Power/ControllerTemperatureCelsius", RobotController.getCPUTemp());
+    Logger.recordOutput("Runtime/CodeUptimeSeconds", Timer.getFPGATimestamp() - codeStartTime);
     if (isReal() && Timer.getFPGATimestamp() >= nextCANHealthSample) {
       nextCANHealthSample = Timer.getFPGATimestamp() + 1.0;
       var rio = RobotController.getCANStatus();

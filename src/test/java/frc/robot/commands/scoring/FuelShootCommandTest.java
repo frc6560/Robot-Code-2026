@@ -87,6 +87,20 @@ class FuelShootCommandTest {
         aimReady = true; cycles(10); command.end(false);
         assertEquals(0, indexer.getTunnelTargetRPM()); assertEquals(0, shooter.getGoalRPM());
     }
+    @Test void startupDoesNotOverwriteDashboardTuningAndMarksItPersistent() {
+        SmartDashboard.putNumber(FuelShootCommand.LAUNCH_COEFFICIENT_KEY, 1.06);
+        try {
+            FuelShootCommand.publishLaunchSpeedCoefficient();
+            assertEquals(1.06, SmartDashboard.getNumber(FuelShootCommand.LAUNCH_COEFFICIENT_KEY, 0));
+            assertTrue(SmartDashboard.getEntry(FuelShootCommand.LAUNCH_COEFFICIENT_KEY).isPersistent());
+            start(null); cycles(1);
+            assertEquals(1.06, SmartDashboard.getNumber("Shooter/Applied Launch Speed Coefficient", 0));
+            assertEquals(1.06, SmartDashboard.getNumber(FuelShootCommand.LAUNCH_COEFFICIENT_KEY, 0));
+        } finally {
+            SmartDashboard.getEntry(FuelShootCommand.LAUNCH_COEFFICIENT_KEY).clearPersistent();
+            SmartDashboard.putNumber(FuelShootCommand.LAUNCH_COEFFICIENT_KEY, 1.0);
+        }
+    }
     @Test void motionAlliancePitFaultsAndDisableBlockFeed() {
         start(null); aimReady = true;
         speeds = new ChassisSpeeds(0.3, 0, 0); cycles(10);

@@ -66,39 +66,27 @@ formula shooting. No data submission or external tool is needed.
 
 ## Floor and intake current limits
 
-The floor target remains **800 RPM**. Startup stator-current allowances are:
+The floor target remains **800 RPM**. All startup current boosts have been removed.
 
-| Mechanism | First second of a new move | Continuing / stopped | Supply limit |
-|---|---|---|---|
-| Each floor motor | 40 A | 40 A | 40 A |
-| Wall/tunnel motor | 40 A | 40 A | 40 A |
-| Intake rack | 60 A while traveling | 40 A (also on arrival) | 30 A |
-| Each intake roller | 40 A | 40 A | 40 A |
+| Mechanism | Stator limit at all times | Supply limit |
+|---|---|---|
+| Each floor motor | 40 A | 40 A |
+| Wall/tunnel motor | 40 A | 40 A |
+| Intake rack | 40 A | 30 A |
+| Each intake roller | 40 A | 40 A |
 
-The indexers have no startup boost: both floor motors and the wall/tunnel stay at 40 A stator and
-40 A supply. Only the intake rack retains its startup window.
+There is no one-second 60 A startup window. Normal shooter current limits remain
+50 A stator and 50 A supply per motor. Configuration confirmation/retry handling
+remains, including restoring fixed limits after a controller reset.
 
-The rack startup window begins with the nonzero motor command, not after an encoder detects motion;
-a jam cannot keep the 60 A allowance indefinitely. Repeating the same command each loop, or
-changing a running indexer's RPM has no effect on its fixed 40 A ceiling. Stopping restores 40 A;
-a subsequent stop-to-start receives a new startup window. Selecting a different rack endpoint
-starts a new rack move; repeatedly holding the same endpoint does not. The rack also returns to
-40 A as soon as its measured position reaches the selected endpoint tolerance.
-
-The robot checks expiry every control cycle (normally 20 ms), independently of new button events.
-Only current-limit changes write controller configuration; repeated unchanged limits do not.
-Configuration writes use bounded timeouts. If a limit change cannot be confirmed, motor output
-is stopped while the limit update is retried, rather than continuing with an unconfirmed limit.
-This is a controller-configuration failure response, not the removed stall cutoff.
-
-Current limit telemetry: `Indexer/FloorStatorLimitAmps`, `Indexer/TunnelStatorLimitAmps`, and
-`Intake/DeployStatorLimitAmps`. Their corresponding `FloorCurrentLimitOK`, `TunnelCurrentLimitOK`,
-and `DeployCurrentLimitOK` flags indicate whether the controller update was confirmed. Stator and
-supply limits are independent; allowing 60 A stator does not increase the listed supply limits.
+Current limit telemetry: `Indexer/FloorStatorLimitAmps`, `Indexer/TunnelStatorLimitAmps`,
+and `Intake/DeployStatorLimitAmps`. Their corresponding `FloorCurrentLimitOK`,
+`TunnelCurrentLimitOK`, and `DeployCurrentLimitOK` flags indicate whether the
+controller configuration was confirmed.
 
 Automatic floor and rack stall cutoffs have been removed by operator request. Sustained high-current,
 low-speed operation no longer cancels the requested RPM/position or requires a disable to reset.
-The timed startup/current limits above, rack soft limits, disable/pit-coast behavior, and roller
+The continuous current limits above, rack soft limits, disable/pit-coast behavior, and roller
 extension interlocks remain. Legacy `Indexer/FloorStallFault` and `Intake/DeployStallFault` dashboard values are cleared to
 false to avoid stale fault indicators. This removes a software cutoff; it does not resolve binding.
 
@@ -134,3 +122,22 @@ It multiplies modeled exit speed and updates trajectories and scoring checks liv
 while RB is held. Too far: try 1.03; too short: try 0.97. Restart resets it to 1.00.
 Keep `Fuel/Calibration Mode=false` for automatic formula shooting; fixed-RPM mode bypasses
 trajectory selection. The spin multiplier remains independently configured in FuelShotConfig.
+
+
+## Persistent live launch-speed adjustment
+
+Edit the numeric SmartDashboard topic `Shooter/Launch Speed Coefficient` from
+Elastic and commit the edit. The supported range is 0.5 to 1.5. This topic is now
+persistent in the robot NetworkTables server, and startup uses a default rather
+than overwriting an existing value with 1.0. NetworkTables handles saving and
+restoring it across normal restarts; abrupt power loss before the server saves
+an edit may still lose that recent edit. The shooter applies changes while the
+shoot command executes. Check `Shooter/Applied Launch Speed Coefficient` and
+`Shooter/Launch Speed Coefficient Status` while holding shoot to confirm what
+was accepted. Invalid values are replaced with the last accepted value.
+
+For intermittent shutdowns, inspect `Power/BatteryVoltage`, `Power/BrownedOut`,
+`Power/ControllerTemperatureCelsius`, and `Runtime/CodeUptimeSeconds`, together
+with Driver Station errors. Code uptime restarting indicates a new Robot instance;
+a graph simply freezing can also be a lost connection. These logs do not prove
+that a battery, connection, or noisy mechanism is electrically healthy.

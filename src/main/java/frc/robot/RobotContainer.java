@@ -165,7 +165,7 @@ public class RobotContainer {
       fuelShotModel = new FuelShotModel(LaunchCalibration.ideal());
       fuelCalibrationStatus = "Ideal wheel/hood formula with tunable speed, spin and aero coefficients";
       SmartDashboard.putString("Fuel/Calibration Status", fuelCalibrationStatus);
-      SmartDashboard.putNumber(FuelShootCommand.LAUNCH_COEFFICIENT_KEY, 1.0);
+      FuelShootCommand.publishLaunchSpeedCoefficient();
       SmartDashboard.putBoolean("Fuel/Calibration Mode", false);
       SmartDashboard.putNumber("Fuel/Test Flywheel RPM", Constants.ShooterConstants.FIXED_SHOT_RPM);
       SmartDashboard.putNumber("Fuel/Test Tunnel RPM", Constants.IndexerConstants.TUNNEL_RUNNING_RPM);

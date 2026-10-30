@@ -29,6 +29,11 @@ public final class FuelShootCommand extends Command {
     private final FuelShotModel model;
     private final String calibrationStatus;
     public static final String LAUNCH_COEFFICIENT_KEY = "Shooter/Launch Speed Coefficient";
+    /** Restore NetworkTables' saved value rather than overwriting it on every program start. */
+    public static void publishLaunchSpeedCoefficient() {
+        SmartDashboard.setDefaultNumber(LAUNCH_COEFFICIENT_KEY, 1.0);
+        SmartDashboard.getEntry(LAUNCH_COEFFICIENT_KEY).setPersistent();
+    }
     private double launchSpeedCoefficient = 1.0;
     private boolean calibrationMode;
     private double testRPM, tunnelRPM, readySince;
@@ -70,9 +75,12 @@ public final class FuelShootCommand extends Command {
                 solvedRange = Double.NaN;
                 readySince = Double.NaN;
             }
+            SmartDashboard.putString("Shooter/Launch Speed Coefficient Status", "Accepted");
         } else {
             SmartDashboard.putNumber(LAUNCH_COEFFICIENT_KEY, launchSpeedCoefficient);
+            SmartDashboard.putString("Shooter/Launch Speed Coefficient Status", "Rejected: enter a number from 0.5 to 1.5");
         }
+        SmartDashboard.putNumber("Shooter/Applied Launch Speed Coefficient", launchSpeedCoefficient);
         Pose2d current = pose.get();
         ChassisSpeeds speeds = velocity.get();
         boolean finite = Double.isFinite(current.getX()) && Double.isFinite(current.getY())
