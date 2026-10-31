@@ -32,7 +32,7 @@ Teleop intake controls:
 | --- | --- |
 | Left trigger | Drive outward independently of encoder position and request rollers at `IntakeConstants.ROLLER_RPM`, gated by the confirmed continuous current limit, with no encoder-extension threshold. |
 | Right bumper | Force retract inward until the wall-current stop; stop rollers. |
-| Left bumper | Force extend outward until the sustained-current stop; stop rollers. |
+| Left bumper | Outtake: reverse intake rollers and floor indexer while held; tunnel stopped. No actuator extension. |
 | Right trigger | Aim, spin and shoot while force retracting the intake fully. Retraction starts alongside alignment and stops at the wall. |
 | A | Confirm the intake is already fully extended and stop rack output without changing its encoder reading. Does not start rollers by itself. |
 
@@ -53,3 +53,5 @@ A wall/current spike requires stator current **strictly above 40 A for two conti
 Both driver triggers now use direct actuator drive rather than encoder-position control. Left trigger drives outward and requests collection; right trigger drives inward alongside aiming/shooting. Encoder position cannot stop either trigger move or establish arrival. `FullyExtended`, `FullyRetracted` and `atDeployTarget()` require the corresponding sustained-current endpoint latch; A remains the explicitly requested manual extension-confirmation override. Encoder feedback remains available for telemetry; neither roller-control layer checks an encoder extension fraction. Autonomous position requests retain their existing control path.
 
 Teleop roller override: the intake rollers sample left trigger directly every control loop. While held, they request `IntakeConstants.ROLLER_RPM` regardless of rack direction, position, endpoint latch, startup-current allowance, homing or feedback/configuration flags. Release stops them. Neither roller-control layer gates on rack readiness or extension, and a failed command to one roller no longer stops the other. Disabled and pit-coast modes still stop output. Autonomous retains its explicit roller requests. Roller motor electrical current-limit configuration is retained. This supersedes earlier descriptions of roller gating above.
+
+Left-bumper outtake overrides left-trigger forward collection and blocks aimed shooting/manual indexer feed while held. Both intake rollers run at negative `IntakeConstants.ROLLER_RPM`; the floor indexer runs at negative `IndexerConstants.FLOOR_RUNNING_RPM`. Release stops outtake; if left trigger remains held, rollers resume forward collection.

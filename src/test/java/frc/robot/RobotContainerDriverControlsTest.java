@@ -97,13 +97,21 @@ class RobotContainerDriverControlsTest {
         setTrigger(XboxController.Axis.kLeftTrigger, false);
 
         setButton(XboxController.Button.kLeftBumper, true);
-        assertTrue(SmartDashboard.getBoolean("Intake/ForceExtendRequested", false));
-        assertFalse(SmartDashboard.getBoolean("Intake/ForceRetractRequested", true));
-        assertEquals(Constants.IntakeConstants.EXTENDED_POSITION_ROTATIONS,
-            SmartDashboard.getNumber("Intake/DeployTargetRotations", -1));
-        setButton(XboxController.Button.kLeftBumper, false);
+        assertEquals(-Constants.IntakeConstants.ROLLER_RPM,
+            SmartDashboard.getNumber("Intake/RollerCommandedRPM", 0));
+        assertEquals(-Constants.IndexerConstants.FLOOR_RUNNING_RPM, indexer.getFloorTargetRPM());
+        assertEquals(0, indexer.getTunnelTargetRPM());
         assertFalse(SmartDashboard.getBoolean("Intake/RackRequested", true));
-        assertFalse(SmartDashboard.getBoolean("Intake/ForceExtendRequested", true));
+        setTrigger(XboxController.Axis.kLeftTrigger, true);
+        assertEquals(-Constants.IntakeConstants.ROLLER_RPM,
+            SmartDashboard.getNumber("Intake/RollerCommandedRPM", 0));
+        setTrigger(XboxController.Axis.kRightTrigger, true);
+        assertEquals(-Constants.IndexerConstants.FLOOR_RUNNING_RPM, indexer.getFloorTargetRPM());
+        setTrigger(XboxController.Axis.kRightTrigger, false);
+        setTrigger(XboxController.Axis.kLeftTrigger, false);
+        setButton(XboxController.Button.kLeftBumper, false);
+        assertEquals(0, indexer.getFloorTargetRPM());
+        assertEquals(0, SmartDashboard.getNumber("Intake/RollerCommandedRPM", 99));
 
         setTrigger(XboxController.Axis.kLeftTrigger, true);
         setButton(XboxController.Button.kA, true);

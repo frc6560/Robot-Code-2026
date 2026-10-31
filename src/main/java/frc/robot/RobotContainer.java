@@ -221,6 +221,7 @@ public class RobotContainer {
 
     private void configureBindings() {
         intake.setTeleopRollerRequest(() -> driverXbox.leftTrigger().getAsBoolean());
+        intake.setTeleopOuttakeRequest(() -> driverXbox.leftBumper().getAsBoolean());
         // Both indexers stay stopped unless an explicit command owns them.
         indexer.setDefaultCommand(Commands.run(indexer::stop, indexer));
 
@@ -237,32 +238,37 @@ public class RobotContainer {
         Trigger feed = driver2Indexer;
         Trigger floor = feed;
 
-        // Raw press edges prevent a release from reactivating another held control.
-        // Retraction takes priority over forced extension, which takes priority over collection.
-        Trigger rackForceExtend = driverXbox.leftBumper();
+        // Outtake owns intake/indexer and takes priority over intake and shooting.
+        Trigger outtake = driverXbox.leftBumper();
         Trigger rackRetract = driverXbox.rightBumper();
         Trigger rackExtend = driverXbox.leftTrigger();
-        rackForceExtend
-            .and(DriverStation::isTeleopEnabled).and(() -> !pitCoastMode)
-            .onTrue(Commands.runOnce(() -> {
-                if (!rackRetract.getAsBoolean()) intake.requestForceExtended();
-            }, intake))
-            .onFalse(Commands.runOnce(() -> {
-                if (DriverStation.isTeleopEnabled()) intake.stop();
-            }));
+        outtake.and(DriverStation::isTeleopEnabled).and(() -> !pitCoastMode)
+            .whileTrue(Commands.startEnd(() -> {
+                intake.stop();
+                indexer.setTunnelRPM(0);
+                indexer.setFloorRPM(-Constants.IndexerConstants.FLOOR_RUNNING_RPM);
+            }, () -> {
+                intake.stop();
+                indexer.stop();
+            }, intake, indexer));
         rackRetract
             .and(DriverStation::isTeleopEnabled).and(() -> !pitCoastMode)
-            .onTrue(Commands.runOnce(intake::requestForceRetracted, intake))
+            .onTrue(Commands.runOnce(() -> {
+                if (outtake.getAsBoolean()) return;
+                cancelShotCommand();
+                intake.requestForceRetracted();
+            }))
             .onFalse(Commands.runOnce(() -> {
                 if (DriverStation.isTeleopEnabled()) intake.stop();
             }));
         rackExtend
             .and(DriverStation::isTeleopEnabled).and(() -> !pitCoastMode)
             .onTrue(Commands.runOnce(() -> {
-                if (rackRetract.getAsBoolean() || rackForceExtend.getAsBoolean()) return;
+                if (rackRetract.getAsBoolean() || outtake.getAsBoolean()) return;
+                cancelShotCommand();
                 intake.requestForceExtended();
                 intake.setRollersRequested(true);
-            }, intake))
+            }))
             .onFalse(Commands.runOnce(() -> {
                 // Mode-transition releases must not clear an autonomous intake request.
                 if (DriverStation.isTeleopEnabled()) intake.stop();
@@ -274,7 +280,7 @@ public class RobotContainer {
             .onTrue(Commands.runOnce(() -> manualControlsSuppressedAfterAim = false).ignoringDisable(true));
         floor.or(feed)
             .and(DriverStation::isTeleopEnabled)
-            .and(() -> !pitCoastMode && !driverXbox.rightTrigger().getAsBoolean() && !manualControlsSuppressedAfterAim)
+            .and(() -> !pitCoastMode && !driverXbox.rightTrigger().getAsBoolean() && !manualControlsSuppressedAfterAim && !outtake.getAsBoolean())
             .whileTrue(manualShotCommand(floor, feed));
 
         driverXbox.start().
@@ -292,7 +298,8 @@ public class RobotContainer {
 
         // --- SHOTS ---
         
-        Trigger driverAimedShootTrigger = driverXbox.rightTrigger().and(DriverStation::isTeleopEnabled).and(() -> !pitCoastMode);
+        Trigger driverAimedShootTrigger = driverXbox.rightTrigger().and(DriverStation::isTeleopEnabled)
+            .and(() -> !pitCoastMode && !outtake.getAsBoolean());
 
         // One held command owns drivetrain, shooter and indexer. Releasing RT cancels all three.
         Command aimedShot = createAimedShotCommand();
