@@ -15,7 +15,6 @@ import frc.robot.subsystems.indexer.Indexer;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import frc.robot.utility.shooting.FuelShotModel;
-import frc.robot.utility.shooting.LaunchSpeedTuning;
 import frc.robot.utility.telemetry.RateLimitedTelemetry;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
@@ -23,30 +22,29 @@ import java.util.function.Function;
 /** Generates a B-Line retreat from the measured pose, then unloads through the normal shot gates. */
 public final class BackUpAndShootCommand extends Command {
     public static final double REVERSE_SPEED_MPS = 1.0;
-    public static final double ACCELERATION_MPS2 = 0.5;
+    public static final double TRANSLATION_KP = 4.0;
+    public static final double ACCELERATION_MPS2 = 0.75;
     public static final double RETREAT_DISTANCE_METERS = 2.4;
     private static final double END_TOLERANCE_METERS = 0.03;
     public static final double FEED_SECONDS = 6.0;
-    public static final double AUTO_TIMEOUT_SECONDS = 15.0;
-    private static final double FIELD_MARGIN_METERS = 0.5;
     private static final double STOPPED_MPS = 0.05;
-    private enum Phase { AIM, RETREAT, SETTLE, SHOOT, DONE, ABORTED }
+    private enum Phase { PREPARE, RETREAT, SETTLE, SHOOT, DONE, ABORTED }
 
     private final SwerveSubsystem drive;
     private final Shooter shooter;
     private final Indexer indexer;
-    private final FuelShotModel model;
     private final BooleanSupplier pitCoast;
     private final Function<Path, FollowPath> pathFactory;
     private final AimAtHub aim;
     private final FuelShootCommand shot;
     private Phase phase;
+    private String abortReason = "";
     private Pose2d start;
     private Translation2d retreatDirection;
     private FollowPath retreat;
     private boolean retreatActive;
     private DriverStation.Alliance alliance;
-    private double started, previousTime, feedSeconds;
+    private double previousTime, feedSeconds;
 
     public BackUpAndShootCommand(SwerveSubsystem drive, Shooter shooter, Indexer indexer,
             FuelShotModel model, BooleanSupplier pitCoast, String calibrationStatus,
@@ -54,7 +52,6 @@ public final class BackUpAndShootCommand extends Command {
         this.drive = drive;
         this.shooter = shooter;
         this.indexer = indexer;
-        this.model = model;
         this.pitCoast = pitCoast;
         this.pathFactory = pathFactory;
         aim = new AimAtHub(drive, ChassisSpeeds::new,
@@ -69,16 +66,16 @@ public final class BackUpAndShootCommand extends Command {
     }
 
     @Override public void initialize() {
-        phase = Phase.AIM;
+        phase = Phase.PREPARE;
+        abortReason = "";
         start = drive.getPose();
-        alliance = DriverStation.getAlliance().orElse(null);
-        started = previousTime = Timer.getFPGATimestamp();
+        alliance = DriverStation.getAlliance().orElse(DriverStation.Alliance.Blue);
+        previousTime = Timer.getFPGATimestamp();
         feedSeconds = 0;
         retreat = null;
         retreatActive = false;
         retreatDirection = new Translation2d();
         shot.initialize();
-        aim.initialize();
         publish();
     }
 
@@ -93,18 +90,16 @@ public final class BackUpAndShootCommand extends Command {
             && Double.isFinite(measured.vxMetersPerSecond)
             && Double.isFinite(measured.vyMetersPerSecond)
             && Double.isFinite(measured.omegaRadiansPerSecond);
-        if (!DriverStation.isAutonomousEnabled() || pitCoast.getAsBoolean() || !finite
-                || alliance == null || DriverStation.getAlliance().orElse(null) != alliance
-                || !allowedPosition(pose.getTranslation(), alliance)
-                || now - started >= AUTO_TIMEOUT_SECONDS) {
-            abort();
+        String blocked = !DriverStation.isAutonomousEnabled() ? "Autonomous is not enabled"
+            : pitCoast.getAsBoolean() ? "Pit coast is enabled"
+            : !finite ? "Invalid pose or velocity" : "";
+        if (!blocked.isEmpty()) {
+            abort(blocked);
             return;
         }
-        model.setLaunchSpeedCoefficient(LaunchSpeedTuning.update());
-        if (phase == Phase.AIM) {
+        if (phase == Phase.PREPARE) {
             if (retreat == null) {
-                Pose2d end = findRetreatEnd(start, alliance, model);
-                if (end == null) { abort(); return; }
+                Pose2d end = findRetreatEnd(start, alliance);
                 Translation2d displacement = end.getTranslation().minus(start.getTranslation());
                 retreatDirection = displacement.div(displacement.getNorm());
                 Path path = new Path(new Path.PathConstraints()
@@ -115,13 +110,10 @@ public final class BackUpAndShootCommand extends Command {
                     new Path.Waypoint(end, false));
                 retreat = pathFactory.apply(path);
             }
-            aim.execute();
-            if (aim.isAtTarget()) {
-                aim.end(false);
-                retreat.initialize();
-                retreatActive = true;
-                phase = Phase.RETREAT;
-            }
+            retreat.initialize();
+            retreatActive = true;
+            phase = Phase.RETREAT;
+            retreat.execute();
         } else if (phase == Phase.RETREAT) {
             retreat.execute();
             if (retreat.isFinished()) {
@@ -133,13 +125,6 @@ public final class BackUpAndShootCommand extends Command {
         } else {
             aim.execute();
             if (phase == Phase.SETTLE && measuredSpeed() <= STOPPED_MPS) {
-                double range = FuelShootCommand.releasePosition(pose).getDistance(hub(alliance));
-                // Confirm the measured retreat agrees with the fixed endpoint before feeding.
-                if (Math.abs(retreatProgress() - RETREAT_DISTANCE_METERS) > END_TOLERANCE_METERS + 1e-6
-                        || !model.solve(range).valid()) {
-                    abort();
-                    return;
-                }
                 phase = Phase.SHOOT;
             }
         }
@@ -153,31 +138,23 @@ public final class BackUpAndShootCommand extends Command {
         publish();
     }
 
-    /** Fixed total retreat along the hub-to-robot ray; never extend travel to find a shot. */
-    static Pose2d findRetreatEnd(Pose2d start, DriverStation.Alliance alliance, FuelShotModel model) {
+    /** Always produce the fixed retreat, without field, zone, or predicted-shot rejection. */
+    static Pose2d findRetreatEnd(Pose2d start, DriverStation.Alliance alliance) {
+        Translation2d position = retreatEndPosition(start, alliance);
+        return new Pose2d(position, start.getTranslation().minus(position).getAngle());
+    }
+
+    private static Translation2d retreatEndPosition(Pose2d start, DriverStation.Alliance alliance) {
         Translation2d away = start.getTranslation().minus(hub(alliance));
-        if (!Double.isFinite(away.getNorm()) || away.getNorm() < 0.01) return null;
-        away = away.div(away.getNorm());
-        Translation2d position = start.getTranslation().plus(away.times(RETREAT_DISTANCE_METERS));
-        if (!allowedPosition(position, alliance)) return null;
-        Pose2d end = new Pose2d(position, away.unaryMinus().getAngle());
-        double range = FuelShootCommand.releasePosition(end).getDistance(hub(alliance));
-        return model.solve(range).valid() && model.solve(range - 0.10).valid() ? end : null;
+        if (away.getNorm() < 0.01) {
+            away = new Translation2d(-start.getRotation().getCos(), -start.getRotation().getSin());
+        }
+        return start.getTranslation().plus(away.div(away.getNorm()).times(RETREAT_DISTANCE_METERS));
     }
 
     private static Translation2d hub(DriverStation.Alliance alliance) {
         return alliance == DriverStation.Alliance.Blue
             ? FieldConstants.BLUE_HUB_CENTER : FieldConstants.RED_HUB_CENTER;
-    }
-
-    private static boolean allowedPosition(Translation2d position, DriverStation.Alliance alliance) {
-        return position.getX() >= FIELD_MARGIN_METERS
-            && position.getX() <= FieldConstants.FIELD_LENGTH - FIELD_MARGIN_METERS
-            && position.getY() >= FIELD_MARGIN_METERS
-            && position.getY() <= FieldConstants.FIELD_WIDTH - FIELD_MARGIN_METERS
-            && (alliance == DriverStation.Alliance.Blue
-                ? position.getX() < FieldConstants.BLUE_ZONE_X
-                : position.getX() > FieldConstants.RED_ZONE_X);
     }
 
     private double measuredSpeed() {
@@ -190,7 +167,8 @@ public final class BackUpAndShootCommand extends Command {
         return offset.getX() * retreatDirection.getX() + offset.getY() * retreatDirection.getY();
     }
 
-    private void abort() {
+    private void abort(String reason) {
+        abortReason = reason;
         phase = Phase.ABORTED;
         stop(true);
         publish();
@@ -208,6 +186,16 @@ public final class BackUpAndShootCommand extends Command {
 
     private void publish() {
         RateLimitedTelemetry.putString("Auto/Back Up and Shoot/Phase", phase.name());
+        RateLimitedTelemetry.putString("Auto/Back Up and Shoot/Abort Reason", abortReason);
+        RateLimitedTelemetry.recordOutput("Auto/Back Up and Shoot/Abort Reason", abortReason);
+        RateLimitedTelemetry.recordOutput("Auto/Back Up and Shoot/Start Pose", start);
+        if (alliance != null) {
+            Translation2d planned = retreatEndPosition(start, alliance);
+            if (planned != null) {
+                RateLimitedTelemetry.putNumber("Auto/Back Up and Shoot/Planned End X", planned.getX());
+                RateLimitedTelemetry.putNumber("Auto/Back Up and Shoot/Planned End Y", planned.getY());
+            }
+        }
         RateLimitedTelemetry.putNumber("Auto/Back Up and Shoot/Feed Seconds", feedSeconds);
         RateLimitedTelemetry.putNumber("Auto/Back Up and Shoot/Retreat Meters", retreatProgress());
     }

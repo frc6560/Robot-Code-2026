@@ -139,13 +139,17 @@ public class AutoCommands {
     }
 
     private FollowPath.Builder createPathBuilder() {
+        return createPathBuilder(BLineConstants.TRANSLATION_KP);
+    }
+
+    private FollowPath.Builder createPathBuilder(double translationKP) {
         return new FollowPath.Builder(
             drivetrain,
             drivetrain::getPose,
             drivetrain::getRobotVelocity,
             this::setBLineChassisSpeeds,
             new PIDController(
-                BLineConstants.TRANSLATION_KP,
+                translationKP,
                 BLineConstants.TRANSLATION_KI,
                 BLineConstants.TRANSLATION_KD),
             new PIDController(
@@ -164,7 +168,8 @@ public class AutoCommands {
     /** Follows a generated path already expressed in the measured field frame, without a pose reset. */
     public FollowPath followFieldPath(Path path) {
         bLinePauseUntilSeconds = 0.0;
-        return createPathBuilder().withShouldFlip(() -> false).build(path);
+        return createPathBuilder(frc.robot.commands.scoring.BackUpAndShootCommand.TRANSLATION_KP)
+            .withShouldFlip(() -> false).build(path);
     }
 
     /**

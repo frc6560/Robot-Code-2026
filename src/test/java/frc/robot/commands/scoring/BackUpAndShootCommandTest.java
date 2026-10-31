@@ -91,7 +91,7 @@ class BackUpAndShootCommandTest {
         assertFalse(((Path.Waypoint) plannedPath.getElement(0)).rotationTarget().profiledRotation());
         assertFalse(((Path.Waypoint) plannedPath.getElement(1)).rotationTarget().profiledRotation());
         assertEquals(1.0, plannedPath.getPathConstraints().getMaxVelocityMetersPerSec().get().get(0).value());
-        assertEquals(0.5, plannedPath.getPathConstraints().getMaxAccelerationMetersPerSec2().get().get(0).value());
+        assertEquals(0.75, plannedPath.getPathConstraints().getMaxAccelerationMetersPerSec2().get().get(0).value());
         assertEquals(0, indexer.getTunnelTargetRPM());
         // A reachable shot before reaching the fixed endpoint must still not feed.
         pose(2.5);
@@ -120,39 +120,63 @@ class BackUpAndShootCommandTest {
         assertEquals(0, shooter.getGoalRPM());
     }
 
-    @Test void plannerUsesFixedDistanceOnBothAlliancesAndRejectsInsufficientSpace() {
+    @Test void plannerUsesFixedDistanceOnBothAlliancesWithoutFieldRejection() {
         var model = new FuelShotModel(LaunchCalibration.ideal());
         for (var alliance : DriverStation.Alliance.values()) {
             boolean blue = alliance == DriverStation.Alliance.Blue;
             var hub = blue ? Constants.FieldConstants.BLUE_HUB_CENTER : Constants.FieldConstants.RED_HUB_CENTER;
             var start = new Pose2d(hub.getX() + (blue ? -0.8 : 0.8), hub.getY(), new Rotation2d());
-            var end = BackUpAndShootCommand.findRetreatEnd(start, alliance, model);
+            var end = BackUpAndShootCommand.findRetreatEnd(start, alliance);
             assertNotNull(end);
             assertEquals(2.4, end.getTranslation().getDistance(start.getTranslation()), 1e-9);
             assertTrue(model.solve(FuelShootCommand.releasePosition(end).getDistance(hub)).valid());
         }
         var tooCloseToWall = new Pose2d(1.0, 4.03, new Rotation2d());
-        assertNull(BackUpAndShootCommand.findRetreatEnd(tooCloseToWall, DriverStation.Alliance.Blue, model));
+        var beyondWall = BackUpAndShootCommand.findRetreatEnd(tooCloseToWall, DriverStation.Alliance.Blue);
+        assertNotNull(beyondWall);
+        assertEquals(-1.4, beyondWall.getX(), 1e-9);
     }
 
-    @Test void unknownAlliancePitAndTimeoutStopEverything() {
-        pose(0.8);
-        indexerReady = false;
+    @Test void leftStartInitializesFollowerEvenWhenEndpointIsOutsideField() {
+        var source = new Path("non-human");
+        var start = (Path.Waypoint) source.getElement(0);
+        drive.resetOdometry(new Pose2d(start.translationTarget().translation(), start.rotationTarget().rotation()));
         command.initialize();
-        cycles(20);
-        drive.resetOdometry(new Pose2d(plannedPath.getTranslations().get(1), new Rotation2d()));
-        cycles(800);
-        assertEquals("ABORTED", phase());
+        cycles(1);
+        assertFalse(command.isFinished());
+        assertEquals("RETREAT", phase());
+        assertNotNull(plannedPath);
+        assertEquals("", SmartDashboard.getString("Auto/Back Up and Shoot/Abort Reason", ""));
+        assertEquals(2.569935956, plannedPath.getTranslations().get(1).getX(), 1e-6);
+        assertEquals(8.181616370, plannedPath.getTranslations().get(1).getY(), 1e-6);
         assertEquals(0, indexer.getTunnelTargetRPM());
+    }
+
+    @Test void unknownAllianceAndOffFieldPoseDoNotBlockRetreatButDisableAndPitStillStop() {
         DriverStationSim.setAllianceStationId(AllianceStationID.Unknown);
         DriverStationSim.notifyNewData();
+        drive.resetOdometry(new Pose2d(-1, -1, new Rotation2d()));
         command.initialize(); cycles(1);
-        assertEquals("ABORTED", phase());
-        DriverStationSim.setAllianceStationId(AllianceStationID.Blue1);
-        DriverStationSim.notifyNewData();
+        assertEquals("RETREAT", phase());
+        assertNotNull(plannedPath);
+        command.end(true);
+        pose(0.8);
         command.initialize(); pit = true; cycles(1);
         assertEquals("ABORTED", phase());
         assertEquals(0, shooter.getGoalRPM());
+        pit = false;
+        command.initialize();
+        DriverStationSim.setEnabled(false);
+        DriverStationSim.notifyNewData(); cycles(1);
+        assertEquals("ABORTED", phase());
+        assertEquals(0, indexer.getTunnelTargetRPM());
+    }
+
+    @Test void retreatAtHubCenterFallsBackToChassisBackwardDirection() {
+        var pose = new Pose2d(Constants.FieldConstants.BLUE_HUB_CENTER, new Rotation2d());
+        var end = BackUpAndShootCommand.findRetreatEnd(pose, DriverStation.Alliance.Blue);
+        assertEquals(pose.getX() - 2.4, end.getX(), 1e-9);
+        assertEquals(pose.getY(), end.getY(), 1e-9);
     }
 
     @AfterEach void cleanup() {

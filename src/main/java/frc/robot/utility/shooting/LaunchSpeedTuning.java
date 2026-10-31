@@ -6,7 +6,7 @@ import frc.robot.utility.telemetry.RateLimitedTelemetry;
 
 /** Dashboard edit is a request; the last accepted value has a separate persistent home. */
 public final class LaunchSpeedTuning {
-    public static final double DEFAULT_COEFFICIENT = 1.05;
+    public static final double DEFAULT_COEFFICIENT = 1.03;
     public static final String REQUEST_KEY = "Shooter/Launch Speed Coefficient";
     public static final String PREFERENCE_KEY = "ShooterLaunchSpeedCoefficientV2";
     private static double nextTelemetry;
@@ -19,7 +19,7 @@ public final class LaunchSpeedTuning {
     public static void initialize() {
         double saved = Preferences.getDouble(PREFERENCE_KEY, Double.NaN);
         if (!valid(saved)) {
-            // Start this calibration at 1.05; subsequent dashboard edits persist.
+            // Start at the default coefficient; subsequent dashboard edits persist.
             saved = DEFAULT_COEFFICIENT;
             Preferences.setDouble(PREFERENCE_KEY, saved);
         }
