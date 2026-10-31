@@ -294,7 +294,7 @@ public class RobotContainer {
           .and(DriverStation::isTeleopEnabled)
           .onTrue(Commands.runOnce(() -> vision.hardReset("limelight-br"), vision));
         driverXbox.start().
-          onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
+          onTrue(Commands.runOnce(drivebase::zeroNoAprilTagsGyro, drivebase).ignoringDisable(true));
         driverXbox.a()
           .onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
 

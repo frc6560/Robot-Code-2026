@@ -525,21 +525,21 @@ public class SwerveSubsystem extends SubsystemBase {
   }
 
   /**
-   * Resets the gyro angle to zero and resets odometry to the same position, but facing toward 0.
+   * Resets field heading toward the opposing alliance wall, preserving position.
    */
   public void zeroGyro()
   {
-    swerveDrive.zeroGyro();
+    zeroNoAprilTagsGyro();
   }
 
   public void zeroNoAprilTagsGyro() {
-    // 1. Zero the gyro sensor itself
-    zeroGyro();
-    Pose2d currentPose = getPose();
-    resetOdometry(new Pose2d(
-        currentPose.getTranslation(),
-        Rotation2d.fromDegrees(0)
-    ));
+    var alliance = DriverStation.getAlliance();
+    if (alliance.isEmpty()) {
+      DriverStation.reportWarning("Heading reset skipped: Driver Station alliance unknown", false);
+      return;
+    }
+    resetOdometry(new Pose2d(getPose().getTranslation(),
+        Rotation2d.fromDegrees(alliance.get() == Alliance.Red ? 180 : 0)));
   }
 
 
