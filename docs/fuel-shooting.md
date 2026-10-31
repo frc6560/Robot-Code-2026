@@ -20,7 +20,7 @@ from ideal wheel/hood launch conditions. All flight aerodynamics are provisional
 - Release RB: stop the tunnel and shooter. Both indexers remain stopped. No second button is needed.
 - Translation remains driver controlled. Formula shots compensate aim and RPM while translating;
   the fixed-RPM calibration/fallback and alliance pass still pause feeding above 0.15 m/s.
-  At/below 0.05 m/s, formula shots retain the original stationary calculation and release checks.
+  At/below 0.25 m/s, formula shots retain the original stationary calculation and release checks.
 - Driver Station alliance and a finite, correctly localized pose are required. Only shots from
   your own alliance zone are allowed. Start by resetting localization at a known position.
 - Pit coast, disconnected flywheel motors, or a disconnected/misconfigured tunnel block feeding.
@@ -79,7 +79,7 @@ update the moving solution every command cycle, even when the physical range is 
 
 The aim controller tracks the changing bearing while translating. Its angular readiness gate compares
 measured turn rate with the required tracking rate. Pure rotation does not activate compensation;
-zero translation keeps the original stationary RPM, aiming, dwell, and scoring checks. A 0.05 m/s
+zero translation keeps the original stationary RPM, aiming, dwell, and scoring checks. A 0.25 m/s
 noise threshold prevents tiny velocity estimates from activating lead. Transitions between stationary
 and moving solutions restart the normal 0.10-second feed dwell. The backup autonomous routine keeps
 its separate stopped-at-endpoint requirement.

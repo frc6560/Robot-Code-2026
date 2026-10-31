@@ -14,7 +14,7 @@ public final class FuelShotConfig {
     public static final double READY_DWELL_SECONDS = 0.10;
     public static final double MAX_TRANSLATION_MPS = 0.15;
     /** Ignore velocity-estimator noise; at/below this speed use the original stationary path. */
-    public static final double MOVING_SHOT_MIN_SPEED_MPS = 0.05;
+    public static final double MOVING_SHOT_MIN_SPEED_MPS = 0.25;
     /** Measure feed-to-ball-exit delay on the robot. Zero until measured; used only in motion. */
     public static final double MOVING_SHOT_RELEASE_DELAY_SECONDS = 0.0;
     public static final double MIN_ENTRY_DEGREES = 10.0;

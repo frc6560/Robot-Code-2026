@@ -99,5 +99,8 @@ class MovingShotSolverTest {
             Rotation2d.fromDegrees(90), original.shot().rpm()));
         assertFalse(MovingShotSolver.isMoving(new Translation2d()));
         assertFalse(MovingShotSolver.isMoving(new Translation2d(0.03, 0.03)));
+        assertFalse(MovingShotSolver.isMoving(new Translation2d(0.25, 0)));
+        assertTrue(MovingShotSolver.isMoving(new Translation2d(0.2501, 0)));
+        assertTrue(MovingShotSolver.isMoving(new Translation2d(0.18, 0.18)));
     }
 }
