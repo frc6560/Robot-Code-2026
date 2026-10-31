@@ -139,6 +139,7 @@ public class SwerveSubsystem extends SubsystemBase {
   }
 
   private double nextFuelPoseLog;
+  private double nextEncoderTelemetry;
 
   @Override
   public void periodic() {
@@ -148,10 +149,14 @@ public class SwerveSubsystem extends SubsystemBase {
       nextFuelPoseLog = poseLogTime + 0.5;
       RateLimitedTelemetry.recordOutput("Fuel/RobotPose", getPose());
     }
+    if (poseLogTime >= nextEncoderTelemetry) {
+      nextEncoderTelemetry = poseLogTime + 0.5;
+      publishAbsoluteEncoderTelemetry();
+    }
 
     SwerveDriveTelemetry.verbosity = TelemetryVerbosity.NONE;
     // Pose2d is published as structured AdvantageKit data. In AdvantageScope, add
-    // Swerve/Pose to a 2D Field tab and BLine/FollowPath/pathTranslations as the path.
+    // Swerve/Pose to a 2D Field tab.
     RateLimitedTelemetry.recordOutput("Swerve/Pose", getPose());
     Pose2d diagnosticPose = getPose();
     RateLimitedTelemetry.recordOutput("Swerve/XMeters", diagnosticPose.getX());
@@ -190,6 +195,19 @@ public class SwerveSubsystem extends SubsystemBase {
     RateLimitedTelemetry.putNumber("DistToBlueHub",
         frc.robot.commands.scoring.FuelShootCommand.releasePosition(getPose())
             .getDistance(FieldConstants.BLUE_HUB_CENTER));
+  }
+
+  /** Keep the original YAGSL encoder dashboard keys without enabling bulk telemetry. */
+  private void publishAbsoluteEncoderTelemetry() {
+    for (var module : swerveDrive.getModules()) {
+      String key = "swerve/modules/" + module.configuration.name + "/";
+      var encoder = module.getAbsoluteEncoder();
+      if (encoder != null) {
+        RateLimitedTelemetry.putNumber(key + "Raw Absolute Encoder", encoder.getAbsolutePosition());
+      }
+      RateLimitedTelemetry.putNumber(key + "Adjusted Absolute Encoder", module.getAbsolutePosition());
+      RateLimitedTelemetry.putBoolean(key + "Absolute Encoder Read Issue", module.getAbsoluteEncoderReadIssue());
+    }
   }
 
   /** Rotates to a specified angle while inheriting the chassis's original translational velocity */
