@@ -66,9 +66,9 @@ public final class Constants {
     public static final double ALIGN_ROTATION_KD = 0.2;
 
     /** Heading controller gains used while the driver holds the aim-at-hub button. */
-    public static final double HUB_AIM_KP = 6.0;
+    public static final double HUB_AIM_KP = 1.2;
     public static final double HUB_AIM_KI = 0.0;
-    public static final double HUB_AIM_KD = 0.0;
+    public static final double HUB_AIM_KD = 0.2;
 
     /**
      * Shared maximum velocity for the shooting auto-turn profile. Path-specific overrides do not

@@ -271,14 +271,10 @@ The cached stationary selection and stationary release gates are unchanged.
 
 ### Selected aim-at-hub gains
 
-The production hub-aim controller uses P=6.0, I=0.0, D=0.0. In the nine-configuration desktop
-sweep, this setting gave the highest mean moving feed availability (about 53%) and 109/109
-sampled moving releases passed the independent flight check. These are single-run simulation
-results, not measured hardware performance. Flywheel gains remain P=2.0, I=0.0, D=0.0.
+The production hub-aim controller uses its original gains: P=1.2, I=0.0, D=0.2.
+The experimental P=6.0, I=0.0, D=0.0 setting was reverted because aiming was too jerky.
+Flywheel gains remain P=2.0, I=0.0, D=0.0; moving-shot compensation is unchanged.
 
-A repeat run at the selected aim gains produced one marginal moving predicted miss (43.5 cm
-from center against a 42.9 cm usable limit). This reinforces that the single-run 109/109 result
-is not a guarantee; the modeled release gate still has edge sensitivity to simulated pose/motion.
-The original straight-line simulation also failed its moving-release assertion in the final
-P=6, D=0 verification. Both failures are recorded rather than weakening the assertions or
-silently changing the selected gains. Shooting/aim unit regression checks passed (36 tests).
+The earlier desktop sweep favored the experimental gains for feed availability, but subsequent
+runs produced marginal predicted misses. Simulation throughput did not establish smooth physical
+aiming or guaranteed scoring, so those results do not justify retaining the higher aim gain.
