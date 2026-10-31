@@ -16,13 +16,13 @@ Competition-path profiled rotations are disabled and intermediate waypoint hando
 
 Event behavior:
 
-- `intake`: request extension and latch the intake roller request at 2500 mechanism RPM. Rollers start once extension reaches 40% (or a sustained current spike confirms the physical endpoint), and continue until retraction or auto cancellation.
+- `intake`: request extension and latch the intake roller request at 2500 mechanism RPM. Rollers start when extension is requested and the rack continuous-current limit is confirmed, and continue until retraction or auto cancellation.
 - `rev`: run `FuelShootCommand`'s trajectory/RPM calculation and flywheel ramp, with feeding blocked. B-Line continues owning the drivetrain.
 - `shoot`: stop path following and run the shared `FuelShootCommand.aimedShot` factory used by teleop right trigger, with zero requested translation. It aims at the alliance hub, then runs the same floor/tunnel RPMs and release gates. It remains active until autonomous ends; it has no timed unload cutoff. Reaching the final waypoint also starts shooting, so B-Line's endpoint tolerance cannot skip a marker at t=1.
 
 All auto event actions are owned by the autonomous command. Cancellation ends the follower, aiming, feeding, intake and rev command; no separately scheduled event command survives the auto. The flywheel returns to idle when enabled and coasts while disabled/pit coast is active.
 
-The default flywheel goal is 1000 RPM in both enabled teleop and auto. Right trigger requests the shooting RPM; releasing it returns to idle. Auto stays idle until `rev`/`shoot`. Manual indexer controls retain idle speed; the previous operator A/button-board 11 spin-up shortcuts are removed. The 2.4 m backup stays idle during its retreat and requests shooting RPM once stopped.
+The default flywheel goal is 1000 RPM only inside the known alliance zone, and 0 RPM outside it or when alliance/position is unknown, in both enabled teleop and auto. Blue owns x < 4.70 m; red owns x > 11.80 m. Crossing out stops idle output. Explicit right-trigger shooting/passing still requests shooting RPM outside the zone. Right trigger requests the shooting RPM; releasing it returns to idle. Auto stays idle until `rev`/`shoot`. Manual indexer controls retain idle speed; the previous operator A/button-board 11 spin-up shortcuts are removed. The 2.4 m backup stays idle during its retreat and requests shooting RPM once stopped.
 
 The active shooting RPM tolerance is `FuelShotConfig.RPM_TOLERANCE = 60.0` (absolute measured error must be less than 60 RPM), with `READY_DWELL_SECONDS = 0.10`. The measured trajectory scoring-band check can impose a tighter restriction. `ShooterConstants.FLYWHEEL_RPM_TOLERANCE = 200.0` is a legacy/simulation-test tolerance and does not control aimed-shot feeding.
 
@@ -30,7 +30,7 @@ Teleop intake controls:
 
 | Control | Action while held |
 | --- | --- |
-| Left trigger | Drive outward independently of encoder position and request rollers at `IntakeConstants.ROLLER_RPM`, gated by 40% extension and the confirmed continuous current limit. |
+| Left trigger | Drive outward independently of encoder position and request rollers at `IntakeConstants.ROLLER_RPM`, gated by the confirmed continuous current limit, with no encoder-extension threshold. |
 | Right bumper | Force retract inward until the wall-current stop; stop rollers. |
 | Left bumper | Force extend outward until the sustained-current stop; stop rollers. |
 | Right trigger | Aim, spin and shoot while force retracting the intake fully. Retraction starts alongside alignment and stops at the wall. |
@@ -50,4 +50,4 @@ A wall/current spike requires stator current **strictly above 40 A for two conti
 - Right-trigger retraction stops and stays latched off after the spike even while the shooting/aiming command remains active; it does not repeatedly restart the retraction.
 - New requests, release, disable, pit coast and auto cancellation clear endpoint latches and current timers. Feedback/configuration faults block output.
 
-Both driver triggers now use direct actuator drive rather than encoder-position control. Left trigger drives outward and requests collection; right trigger drives inward alongside aiming/shooting. Encoder position cannot stop either trigger move or establish arrival. `FullyExtended`, `FullyRetracted` and `atDeployTarget()` require the corresponding sustained-current endpoint latch; A remains the explicitly requested manual extension-confirmation override. Encoder feedback remains available for telemetry and the 40% roller interlock. Autonomous position requests retain their existing control path.
+Both driver triggers now use direct actuator drive rather than encoder-position control. Left trigger drives outward and requests collection; right trigger drives inward alongside aiming/shooting. Encoder position cannot stop either trigger move or establish arrival. `FullyExtended`, `FullyRetracted` and `atDeployTarget()` require the corresponding sustained-current endpoint latch; A remains the explicitly requested manual extension-confirmation override. Encoder feedback remains available for telemetry; neither roller-control layer checks an encoder extension fraction. Autonomous position requests retain their existing control path.

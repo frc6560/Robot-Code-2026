@@ -66,7 +66,7 @@ public final class Constants {
     public static final double ALIGN_ROTATION_KD = 0.2;
 
     /** Heading controller gains used while the driver holds the aim-at-hub button. */
-    public static final double HUB_AIM_KP = 1.2;
+    public static final double HUB_AIM_KP = 2.4;
     public static final double HUB_AIM_KI = 0.0;
     public static final double HUB_AIM_KD = 0.2;
 
@@ -83,7 +83,7 @@ public final class Constants {
         MAX_ANGULAR_ACCELERATION_RAD_PER_SEC_SQ;
 
     /** Stops small heading corrections once the chassis is pointed at the hub. */
-    public static final double HUB_AIM_TOLERANCE_RADIANS = Units.degreesToRadians(7.5);
+    public static final double HUB_AIM_TOLERANCE_RADIANS = Units.degreesToRadians(20.0);
 
     /** Required angular speed before hub alignment reports that it has settled. */
     public static final double HUB_AIM_VELOCITY_TOLERANCE_RAD_PER_SEC =
@@ -477,7 +477,6 @@ public final class Constants {
     // 9.5 motor rotations exceeds the 7.81 rotations calculated from measured travel.
     public static final double EXTENDED_POSITION_ROTATIONS = 9.5;
     public static final double DEPLOY_POSITION_TOLERANCE_ROTATIONS = 0.25;
-    public static final double ROLLER_MIN_EXTENSION_FRACTION = 0.40;
     public static final double DEPLOY_SPIKE_AMPS = 40.0;
     public static final double DEPLOY_SPIKE_SECONDS = 2.0;
     public static final double ROLLER_EXTENSION_SETTLE_SECONDS = 0.15;

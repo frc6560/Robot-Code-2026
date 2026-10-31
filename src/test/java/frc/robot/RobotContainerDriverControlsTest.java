@@ -46,12 +46,18 @@ class RobotContainerDriverControlsTest {
         Shooter shooter = getField(container, "shooter", Shooter.class);
         Indexer indexer = getField(container, "indexer", Indexer.class);
         runCycles(4);
-        assertEquals(1000, shooter.getGoalRPM(), 1e-6);
+        assertEquals(0, shooter.getGoalRPM(), 1e-6);
         setBoard(11, true);
-        assertEquals(1000, shooter.getGoalRPM(), 1e-6);
+        assertEquals(0, shooter.getGoalRPM(), 1e-6);
         setBoard(11, false);
         assertEquals(0, indexer.getFloorTargetRPM());
         assertEquals(0, indexer.getTunnelTargetRPM());
+
+        assertIdleAt(container, shooter, AllianceStationID.Blue1, 0.0, 1000);
+        assertIdleAt(container, shooter, AllianceStationID.Blue1, 4.70, 0);
+        assertIdleAt(container, shooter, AllianceStationID.Red1, 16.0, 1000);
+        assertIdleAt(container, shooter, AllianceStationID.Red1, 11.80, 0);
+        assertIdleAt(container, shooter, AllianceStationID.Unknown, 0.0, 0);
 
         // Driver X routes the explicit reset to the front camera only.
         for (String camera : new String[] {"Front", "Left", "Right"}) {
@@ -144,7 +150,7 @@ class RobotContainerDriverControlsTest {
         setTrigger(XboxController.Axis.kRightTrigger, false);
         runCycles(3); // Releasing RT stops retraction and resets its current allowance.
         assertFalse(SmartDashboard.getBoolean("Intake/RackRequested", true));
-        assertEquals(1000, shooter.getGoalRPM(), 1e-6);
+        assertEquals(0, shooter.getGoalRPM(), 1e-6);
         assertEquals(0, indexer.getTunnelTargetRPM());
         assertEquals(0, indexer.getFloorTargetRPM());
 
@@ -166,6 +172,14 @@ class RobotContainerDriverControlsTest {
         assertEquals(800, indexer.getFloorTargetRPM());
         setBoard(3, false);
 
+        // Midzone has zero idle, but explicit RT still requests the passing flywheel RPM.
+        assertIdleAt(container, shooter, AllianceStationID.Blue1, 8.0, 0);
+        setTrigger(XboxController.Axis.kRightTrigger, true);
+        assertEquals(frc.robot.utility.shooting.AlliancePass.RPM, shooter.getGoalRPM(), 1e-6);
+        setTrigger(XboxController.Axis.kRightTrigger, false);
+        runCycles(3);
+        assertEquals(0, shooter.getGoalRPM(), 1e-6);
+
         // A held teleop intake trigger must not cancel the newly scheduled autonomous.
         DriverStationSim.setJoystickAxis(DRIVER_PORT, XboxController.Axis.kLeftTrigger.value, 1.0);
         DriverStationSim.notifyNewData(); runCycles(3);
@@ -183,6 +197,14 @@ class RobotContainerDriverControlsTest {
         DriverStationSim.notifyNewData(); runCycles(4);
         assertEquals(0, indexer.getFloorTargetRPM());
         assertEquals(0, indexer.getTunnelTargetRPM());
+    }
+    private static void assertIdleAt(RobotContainer container, Shooter shooter,
+            AllianceStationID alliance, double x, double expected) {
+        DriverStationSim.setAllianceStationId(alliance);
+        DriverStationSim.notifyNewData();
+        container.getDrivebase().resetOdometry(new Pose2d(x, 4.0, new edu.wpi.first.math.geometry.Rotation2d()));
+        runCycles(4);
+        assertEquals(expected, shooter.getGoalRPM(), 1e-6);
     }
     private static void setTrigger(XboxController.Axis axis, boolean pressed) {
         DriverStationSim.setJoystickAxis(DRIVER_PORT, axis.value, pressed ? 1.0 : 0.0);

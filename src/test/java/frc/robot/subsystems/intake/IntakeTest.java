@@ -127,7 +127,7 @@ class IntakeTest {
         assertEquals("Intake trigger not held", SmartDashboard.getString("Intake/RollerBlockedReason", ""));
     }
 
-    @Test void rackSelectionsHoldAndRollersStartAtFortyPercentWhileMoving() {
+    @Test void rackSelectionsHoldAndRollersIgnoreEncoderExtension() {
         teleop(true);
         intake.requestRackExtended();
         intake.setRollersRequested(true);
@@ -137,8 +137,8 @@ class IntakeTest {
         SimHooks.stepTiming(20.0);
         intake.periodic();
         assertEquals(IntakeConstants.EXTENDED_POSITION_ROTATIONS, io.target);
-        assertEquals(Intake.State.EXTENDED_STOPPED, intake.getState());
-        assertEquals(0, io.roller);
+        assertEquals(Intake.State.EXTENDED_SPINNING, intake.getState());
+        assertEquals(IntakeConstants.ROLLER_RPM, io.roller);
         io.position = IntakeConstants.EXTENDED_POSITION_ROTATIONS * 0.4;
         io.velocity = 2.0;
         intake.periodic();
@@ -245,7 +245,7 @@ class IntakeTest {
     }
 
 
-    @Test void rollersRequireFortyPercentAndHealthyControllers() {
+    @Test void rollersIgnoreEncoderButRequireHealthyControllers() {
         teleop(true);
         intake.requestRackExtended();
         intake.setRollersRequested(true);
@@ -267,13 +267,13 @@ class IntakeTest {
         SimHooks.stepTiming(IntakeConstants.ROLLER_EXTENSION_SETTLE_SECONDS + 0.01);
         intake.periodic(); assertEquals(IntakeConstants.ROLLER_RPM, io.roller);
         io.position = IntakeConstants.EXTENDED_POSITION_ROTATIONS * 0.39;
-        intake.periodic(); assertEquals(0, io.roller); // Slipping out of extension stops them again.
+        intake.periodic(); assertEquals(IntakeConstants.ROLLER_RPM, io.roller); // Encoder position no longer gates rollers.
         io.position = IntakeConstants.EXTENDED_POSITION_ROTATIONS;
         io.velocity = 1;
         intake.periodic();
         SimHooks.stepTiming(1); intake.periodic(); assertEquals(2500, io.roller);
         io.position = Double.NaN; io.velocity = 0;
-        intake.periodic(); assertEquals(0, io.roller);
+        intake.periodic(); assertEquals(IntakeConstants.ROLLER_RPM, io.roller);
     }
 
     private void currentFor(double amps, double seconds) {
@@ -332,7 +332,7 @@ class IntakeTest {
         intake.setRollersRequested(true);
         io.position = 1.0;
         intake.periodic();
-        assertEquals(0, io.roller);
+        assertEquals(IntakeConstants.ROLLER_RPM, io.roller);
         int requests = io.positionRequests;
         intake.confirmFullyExtended();
         assertTrue(io.stopped); // Immediate stop, without waiting for periodic.
@@ -607,7 +607,7 @@ class IntakeTest {
         assertFalse(io.stopped);
         assertEquals(IntakeConstants.EXTENDED_POSITION_ROTATIONS, io.target);
         assertFalse(SmartDashboard.getBoolean("Intake/DeployStallFault", true));
-        assertEquals(0, io.roller); // Extension interlock remains active.
+        assertEquals(IntakeConstants.ROLLER_RPM, io.roller); // No encoder extension gate.
         intake.requestRackRetracted(); intake.periodic();
         assertFalse(io.stopped);
         assertEquals(IntakeConstants.RETRACTED_POSITION_ROTATIONS, io.target);

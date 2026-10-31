@@ -207,11 +207,7 @@ public class IntakeIOTalonFX implements IntakeIO {
             double requestedPosition, double measuredPosition, double measuredVelocity,
             boolean extensionLimitReached) {
         return homed && fresh && (!stopped || extensionLimitReached)
-            && requestedPosition == IntakeConstants.EXTENDED_POSITION_ROTATIONS
-            && (extensionLimitReached || Double.isFinite(measuredPosition)
-                && measuredPosition >= IntakeConstants.RETRACTED_POSITION_ROTATIONS
-                    + IntakeConstants.ROLLER_MIN_EXTENSION_FRACTION
-                        * (IntakeConstants.EXTENDED_POSITION_ROTATIONS - IntakeConstants.RETRACTED_POSITION_ROTATIONS));
+            && requestedPosition == IntakeConstants.EXTENDED_POSITION_ROTATIONS;
     }
 
     @Override
@@ -226,7 +222,7 @@ public class IntakeIOTalonFX implements IntakeIO {
             leftRoller.stopMotor();
             rightRoller.stopMotor();
             rollerControlStatus = rpm == 0 ? "Stopped"
-                : "Blocked: rack not confirmed extended / motor configuration";
+                : "Blocked: rack not ready or extension not requested / motor configuration";
             return;
         }
         StatusCode left = leftRoller.setControl(leftRollerRequest.withVelocity(rpm / 60.0));

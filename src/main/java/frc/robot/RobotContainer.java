@@ -98,14 +98,14 @@ public class RobotContainer {
       };
 
       if (Robot.isReal()) {
-        shooter = new Shooter(new ShooterIOTalonFX());
+        shooter = new Shooter(new ShooterIOTalonFX(), this::inOwnAllianceZone);
 
 
         intake = new Intake(new IntakeIOTalonFX());
         led = new LED(new LEDIOAddressable(3, 65), () -> shotWithIntake != null && shotWithIntake.isScheduled(),
             () -> shotCommand != null && shotCommand.isReadyToFeed());
       } else {
-          shooter = new Shooter(new ShooterIOSim());
+          shooter = new Shooter(new ShooterIOSim(), this::inOwnAllianceZone);
 
 
           intake = new Intake(new IntakeIOSim());
@@ -129,7 +129,7 @@ public class RobotContainer {
       RateLimitedTelemetry.putString("Vision/ConfigurationID", LimelightConstants.CONFIGURATION_ID);
       RateLimitedTelemetry.putNumber("Vision/ConfiguredCameraCount", limelights.size());
 
-      // Hold 1000 RPM in teleop and auto until an explicit rev/shoot command takes ownership.
+      // Idle only inside our alliance zone; crossing out stops idle output.
       shooter.setDefaultCommand(Commands.run(shooter::setIdle, shooter));
       led.setDefaultCommand(Commands.run(() -> {}, led));
 
@@ -154,6 +154,13 @@ public class RobotContainer {
 
 
     private static final double MAX_SHOOTING_VELOCITY_MPS = 1.2;
+
+    private boolean inOwnAllianceZone() {
+        double x = drivebase.getPose().getX();
+        return Double.isFinite(x) && DriverStation.getAlliance()
+            .map(alliance -> !frc.robot.utility.shooting.AlliancePass.outsideZone(alliance, x))
+            .orElse(false);
+    }
 
     private boolean isShotCommandActive() {
         return driverXbox.rightTrigger().getAsBoolean()

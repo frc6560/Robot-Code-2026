@@ -108,14 +108,14 @@ class EventPathAutoTest {
         assertEquals(floor, indexer.getFloorTargetRPM());
         teleop.end(true);
     }
-    @Test void intakeEventPersistsRollersAtFortyPercentAndCancellationClearsIt() {
+    @Test void intakeEventRunsRollersWithoutEncoderExtensionAndCancellationClearsIt() {
         auto = factory.getCompetitionAuto("non-human", false, indexer, () -> false, model, "Ideal");
         var path = new Path("non-human");
         auto.initialize();
         var start = path.getTranslations().get(0);
         var next = path.getTranslations().get(1);
         drive.resetOdometry(new Pose2d(start.interpolate(next, 0.3), new edu.wpi.first.math.geometry.Rotation2d(Math.PI)));
-        extension = frc.robot.Constants.IntakeConstants.EXTENDED_POSITION_ROTATIONS * 0.4;
+        extension = 0.0; // No encoder-extension gate, including in autonomous.
         cycles(10);
         assertEquals(2500, roller);
         cycles(20);

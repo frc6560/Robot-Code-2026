@@ -2,6 +2,7 @@ package frc.robot.subsystems.shooter;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BooleanSupplier;
 
 import frc.robot.utility.telemetry.RateLimitedTelemetry;
 
@@ -30,6 +31,7 @@ public class Shooter extends SubsystemBase {
     private static final double LOOP_PERIOD_SECS = 0.02;
 
     private final ShooterIO io;
+    private final BooleanSupplier idleAllowed;
     private final ShooterIOInputsAutoLogged inputs = new ShooterIOInputsAutoLogged();
     private final ShooterIOOutputs outputs = new ShooterIOOutputs();
 
@@ -55,7 +57,12 @@ public class Shooter extends SubsystemBase {
     private boolean withinTolerancekV = false;
 
     public Shooter(ShooterIO io) {
+        this(io, () -> true);
+    }
+
+    public Shooter(ShooterIO io, BooleanSupplier idleAllowed) {
         this.io = io;
+        this.idleAllowed = idleAllowed;
     }
 
     /**
@@ -79,7 +86,7 @@ public class Shooter extends SubsystemBase {
 
     /** Hold the enabled idle speed with the same velocity loop used for shooting. */
     public void setIdle() {
-        if (!DriverStation.isEnabled() || pitCoastMode) {
+        if (!DriverStation.isEnabled() || pitCoastMode || !idleAllowed.getAsBoolean()) {
             stop();
             return;
         }
@@ -140,6 +147,7 @@ public class Shooter extends SubsystemBase {
 
     @Override
     public void periodic() {
+        if (idle && !idleAllowed.getAsBoolean()) stop();
         io.updateInputs(inputs);
         RateLimitedTelemetry.processInputs("Shooter", inputs);
 

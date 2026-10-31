@@ -7,7 +7,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.IntakeConstants;
 
-/** Rack requests with a 40% roller gate and sustained-current physical endpoint stops. */
+/** Rack requests with sustained-current physical endpoint stops and requested rollers. */
 public class Intake extends SubsystemBase {
     private final IntakeIO io;
     private final IntakeIO.IntakeIOInputs inputs = new IntakeIO.IntakeIOInputs();
@@ -178,21 +178,16 @@ public class Intake extends SubsystemBase {
             && requestedDeployTarget == IntakeConstants.EXTENDED_POSITION_ROTATIONS;
         boolean fullyExtended = extending && extensionLimitReached;
         boolean fullyRetracted = rackRequested && isReady() && retractionLimitReached;
-        boolean enoughExtension = extending && (extensionLimitReached
-            || Double.isFinite(inputs.deployPositionRotations)
-                && inputs.deployPositionRotations >= IntakeConstants.RETRACTED_POSITION_ROTATIONS
-                    + IntakeConstants.ROLLER_MIN_EXTENSION_FRACTION
-                        * (IntakeConstants.EXTENDED_POSITION_ROTATIONS - IntakeConstants.RETRACTED_POSITION_ROTATIONS));
         boolean continuousLimit = inputs.deployCurrentLimitOK
             && inputs.deployStatorLimitAmps <= IntakeConstants.DEPLOY_STATOR_CURRENT_LIMIT;
-        boolean rollerPermitted = enabled && !pitCoastMode && rollerRequested && enoughExtension
+        boolean rollerPermitted = enabled && !pitCoastMode && rollerRequested && extending
             && continuousLimit && inputs.rollerConnected && inputs.rollerConfigured;
         rollerTargetRPM = rollerPermitted ? IntakeConstants.ROLLER_RPM : 0.0;
         io.setRollerRPM(rollerTargetRPM);
         String rollerBlockedReason = !enabled ? "Robot is disabled"
             : pitCoastMode ? "Pit coast mode is on"
             : !rollerRequested ? "Intake trigger not held"
-            : !enoughExtension ? "Waiting for 40% rack extension"
+            : !extending ? "Rack not ready or extension not requested"
             : !inputs.rollerConnected ? "Check Canivore roller IDs " + IntakeConstants.LEFT_ROLLER_MOTOR_ID
                 + " and " + IntakeConstants.RIGHT_ROLLER_MOTOR_ID + ", power and wiring"
             : !inputs.rollerConfigured ? "Roller configuration failed; correct and restart code"

@@ -92,6 +92,25 @@ class ShooterTest {
         assertEquals(1000.0, shooter.getCurrentRPM(), 150.0);
     }
 
+    @Test void idleZoneGateStopsExistingIdleButAllowsExplicitShootingGoals() {
+        boolean[] ownZone = {true};
+        Shooter shooter = new Shooter(new ShooterIOSim(), () -> ownZone[0]);
+        shooter.setIdle();
+        step(shooter, 20);
+        assertEquals(1000, shooter.getGoalRPM(), 1e-6);
+        ownZone[0] = false;
+        step(shooter, 1);
+        assertEquals(0, shooter.getGoalRPM(), 1e-6);
+        shooter.setIdle();
+        assertEquals(0, shooter.getGoalRPM(), 1e-6);
+        shooter.setGoal(SHOT_RPM);
+        step(shooter, 1);
+        assertEquals(SHOT_RPM, shooter.getGoalRPM(), 1e-6);
+        ownZone[0] = true;
+        shooter.setIdle();
+        assertEquals(1000, shooter.getGoalRPM(), 1e-6);
+    }
+
     @Test
     void returnsToIdleAfterShotEvenWhenBatterySags() {
         DriverStationSim.setAutonomous(true);
