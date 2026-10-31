@@ -17,6 +17,7 @@ public class Intake extends SubsystemBase {
     private boolean rackRequested;
     private double nextTelemetry;
     private boolean rollerRequested;
+    private java.util.function.BooleanSupplier teleopRollerRequest;
     private double rollerTargetRPM;
     private int deploySpikeCount;
     private boolean extensionLimitReached;
@@ -43,6 +44,11 @@ public class Intake extends SubsystemBase {
         resetExtensionLimit();
         requestedDeployTarget = IntakeConstants.EXTENDED_POSITION_ROTATIONS;
         rackRequested = true;
+    }
+
+    /** Teleop rollers follow the physical trigger independently of rack commands. */
+    public void setTeleopRollerRequest(java.util.function.BooleanSupplier request) {
+        teleopRollerRequest = request;
     }
 
     public void setRollersRequested(boolean requested) {
@@ -172,28 +178,20 @@ public class Intake extends SubsystemBase {
             else if (forceExtendRequested) io.forceExtend();
             else io.setDeployPosition(target);
         } else {
-            io.stop();
+            io.stopDeploy();
         }
         boolean extending = rackRequested && isReady()
             && requestedDeployTarget == IntakeConstants.EXTENDED_POSITION_ROTATIONS;
         boolean fullyExtended = extending && extensionLimitReached;
         boolean fullyRetracted = rackRequested && isReady() && retractionLimitReached;
-        boolean continuousLimit = inputs.deployCurrentLimitOK
-            && inputs.deployStatorLimitAmps <= IntakeConstants.DEPLOY_STATOR_CURRENT_LIMIT;
-        boolean rollerPermitted = enabled && !pitCoastMode && rollerRequested && extending
-            && continuousLimit && inputs.rollerConnected && inputs.rollerConfigured;
+        if (DriverStation.isTeleopEnabled() && teleopRollerRequest != null)
+            rollerRequested = teleopRollerRequest.getAsBoolean();
+        boolean rollerPermitted = enabled && !pitCoastMode && rollerRequested;
         rollerTargetRPM = rollerPermitted ? IntakeConstants.ROLLER_RPM : 0.0;
         io.setRollerRPM(rollerTargetRPM);
         String rollerBlockedReason = !enabled ? "Robot is disabled"
             : pitCoastMode ? "Pit coast mode is on"
-            : !rollerRequested ? "Intake trigger not held"
-            : !extending ? "Rack not ready or extension not requested"
-            : !inputs.rollerConnected ? "Check Canivore roller IDs " + IntakeConstants.LEFT_ROLLER_MOTOR_ID
-                + " and " + IntakeConstants.RIGHT_ROLLER_MOTOR_ID + ", power and wiring"
-            : !inputs.rollerConfigured ? "Roller configuration failed; correct and restart code"
-            : !inputs.deployCurrentLimitOK ? "Rack current-limit update not confirmed"
-            : !continuousLimit ? "Rack continuous current limit not confirmed"
-            : "None";
+            : !rollerRequested ? "Intake trigger not held" : "None";
         // Outputs/interlocks above remain at control-loop frequency.
         if (edu.wpi.first.wpilibj.RobotBase.isReal() && extensionNow < nextTelemetry) return;
         nextTelemetry = extensionNow + 0.5;

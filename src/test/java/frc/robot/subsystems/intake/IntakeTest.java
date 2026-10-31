@@ -155,32 +155,27 @@ class IntakeTest {
         assertEquals(0, io.roller);
     }
 
-    @Test void rollersRequireConfirmedContinuousCurrentLimit() {
+    @Test void rollersIgnoreAllRackAndRollerReadinessGatesWhileTriggerIsHeld() {
         teleop(true);
-        intake.requestRackExtended();
-        intake.setRollersRequested(true);
-        io.position = IntakeConstants.EXTENDED_POSITION_ROTATIONS;
-        io.statorLimit = 60.0;
-        intake.periodic();
-        SimHooks.stepTiming(2.0);
-        intake.periodic();
-        assertEquals(0, io.roller);
-        assertEquals("Rack continuous current limit not confirmed",
-            SmartDashboard.getString("Intake/RollerBlockedReason", ""));
-        io.statorLimit = IntakeConstants.DEPLOY_STATOR_CURRENT_LIMIT;
+        boolean[] held = {true};
+        intake.setTeleopRollerRequest(() -> held[0]);
+        io.ready = io.configured = io.homed = false;
+        io.rollersConnected = io.rollersConfigured = false;
         io.currentLimitOK = false;
-        intake.periodic();
-        SimHooks.stepTiming(1.0);
-        intake.periodic();
-        assertEquals(0, io.roller);
-        io.currentLimitOK = true;
-        intake.periodic();
-        assertEquals(2500, io.roller);
-        SimHooks.stepTiming(IntakeConstants.ROLLER_EXTENSION_SETTLE_SECONDS + 0.01);
+        io.statorLimit = 60;
+        io.position = Double.NaN;
         intake.periodic();
         assertEquals(IntakeConstants.ROLLER_RPM, io.roller);
-        io.statorLimit = 60.0;
+        intake.requestForceRetracted();
         intake.periodic();
+        assertEquals(IntakeConstants.ROLLER_RPM, io.roller);
+        held[0] = false;
+        intake.periodic();
+        assertEquals(0, io.roller);
+        held[0] = true;
+        intake.periodic();
+        assertEquals(IntakeConstants.ROLLER_RPM, io.roller);
+        teleop(false);
         assertEquals(0, io.roller);
     }
 
@@ -244,37 +239,6 @@ class IntakeTest {
         assertFalse(io.stopped);
     }
 
-
-    @Test void rollersIgnoreEncoderButRequireHealthyControllers() {
-        teleop(true);
-        intake.requestRackExtended();
-        intake.setRollersRequested(true);
-        io.position = IntakeConstants.EXTENDED_POSITION_ROTATIONS;
-        intake.periodic();
-        assertEquals(2500, io.roller);
-        SimHooks.stepTiming(IntakeConstants.ROLLER_EXTENSION_SETTLE_SECONDS + 0.01);
-        intake.periodic();
-        assertEquals(IntakeConstants.ROLLER_RPM, io.roller);
-        io.homed = false;
-        intake.periodic();
-        assertEquals(0, io.roller);
-        io.homed = true; io.rollersConnected = false;
-        intake.periodic(); assertEquals(0, io.roller);
-        io.rollersConnected = true; io.rollersConfigured = false;
-        intake.periodic(); assertEquals(0, io.roller);
-        io.rollersConfigured = true;
-        intake.periodic();
-        SimHooks.stepTiming(IntakeConstants.ROLLER_EXTENSION_SETTLE_SECONDS + 0.01);
-        intake.periodic(); assertEquals(IntakeConstants.ROLLER_RPM, io.roller);
-        io.position = IntakeConstants.EXTENDED_POSITION_ROTATIONS * 0.39;
-        intake.periodic(); assertEquals(IntakeConstants.ROLLER_RPM, io.roller); // Encoder position no longer gates rollers.
-        io.position = IntakeConstants.EXTENDED_POSITION_ROTATIONS;
-        io.velocity = 1;
-        intake.periodic();
-        SimHooks.stepTiming(1); intake.periodic(); assertEquals(2500, io.roller);
-        io.position = Double.NaN; io.velocity = 0;
-        intake.periodic(); assertEquals(IntakeConstants.ROLLER_RPM, io.roller);
-    }
 
     private void currentFor(double amps, double seconds) {
         io.stator = amps;

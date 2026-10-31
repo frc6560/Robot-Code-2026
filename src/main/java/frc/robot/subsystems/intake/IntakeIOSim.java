@@ -112,14 +112,12 @@ public class IntakeIOSim implements IntakeIO {
     public void setCoastMode(boolean coast) { coastMode = coast; }
 
     @Override public void forceRetract() {
-        rollerRPM = 0.0;
         forceExtending = false;
         forceRetracting = true;
         closedLoop = false;
     }
 
     @Override public void forceExtend() {
-        rollerRPM = 0.0;
         forceRetracting = false;
         forceExtending = true;
         closedLoop = false;

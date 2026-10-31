@@ -68,18 +68,4 @@ class IntakeRollerConfigurationTest {
         assertTrue(force.IgnoreSoftwareLimits);
         assertFalse(force.IgnoreHardwareLimits);
     }
-    @Test void hardwareBoundaryRequiresHealthyRackAndExtensionRequestWithoutPositionGate() {
-        double end = IntakeConstants.EXTENDED_POSITION_ROTATIONS;
-        assertTrue(IntakeIOTalonFX.rackAllowsRollers(true, true, false, end, end, 0));
-        assertTrue(IntakeIOTalonFX.rackAllowsRollers(true, true, false, end, 0, 0));
-        assertFalse(IntakeIOTalonFX.rackAllowsRollers(true, true, false, 0, end, 0));
-        assertFalse(IntakeIOTalonFX.rackAllowsRollers(false, true, false, end, end, 0));
-        assertFalse(IntakeIOTalonFX.rackAllowsRollers(true, false, false, end, end, 0));
-        assertFalse(IntakeIOTalonFX.rackAllowsRollers(true, true, true, end, end, 0));
-        assertTrue(IntakeIOTalonFX.rackAllowsRollers(true, true, false, end, end * 0.4, 1));
-        assertTrue(IntakeIOTalonFX.rackAllowsRollers(true, true, false, end, end * 0.39, 1));
-        assertTrue(IntakeIOTalonFX.rackAllowsRollers(true, true, true, end, end * 0.2, 0, true));
-        assertTrue(IntakeIOTalonFX.rackAllowsRollers(true, true, false, end, Double.NaN, 0));
-        assertTrue(IntakeIOTalonFX.rackAllowsRollers(true, true, false, end, end, Double.NaN));
-    }
 }

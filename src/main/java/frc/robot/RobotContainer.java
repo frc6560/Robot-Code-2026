@@ -220,6 +220,7 @@ public class RobotContainer {
     }
 
     private void configureBindings() {
+        intake.setTeleopRollerRequest(() -> driverXbox.leftTrigger().getAsBoolean());
         // Both indexers stay stopped unless an explicit command owns them.
         indexer.setDefaultCommand(Commands.run(indexer::stop, indexer));
 
