@@ -457,7 +457,7 @@ public final class Constants {
     public static final double DEPLOY_SUPPLY_CURRENT_LIMIT = 30.0;
     public static final double DEPLOY_STATOR_CURRENT_LIMIT = 40.0;
     public static final double DEPLOY_STARTUP_STATOR_CURRENT_LIMIT = 60.0;
-    public static final double DEPLOY_STARTUP_SECONDS = 3.0;
+    public static final double DEPLOY_STARTUP_SECONDS = 1.5;
     public static final double DEPLOY_CURRENT_CONFIG_TIMEOUT_SECONDS = 0.005;
     public static final double DEPLOY_FORCE_RETRACT_VOLTS = -12.0;
     public static final double DEPLOY_FORCE_EXTEND_VOLTS = 12.0;

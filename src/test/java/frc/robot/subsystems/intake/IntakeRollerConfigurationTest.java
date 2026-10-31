@@ -54,7 +54,7 @@ class IntakeRollerConfigurationTest {
         assertEquals(30.0, boost.SupplyCurrentLimit);
         assertEquals(30.0, continuous.SupplyCurrentLimit);
         assertTrue(boost.StatorCurrentLimitEnable && boost.SupplyCurrentLimitEnable);
-        assertEquals(3.0, IntakeConstants.DEPLOY_STARTUP_SECONDS);
+        assertEquals(1.5, IntakeConstants.DEPLOY_STARTUP_SECONDS);
     }
     @Test void forcedRetractionUsesNegativeVoltageAndBypassesOnlySoftwareLimits() {
         var force = IntakeIOTalonFX.forceRetractControl();

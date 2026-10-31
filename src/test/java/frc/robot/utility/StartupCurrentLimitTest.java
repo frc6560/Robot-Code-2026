@@ -14,35 +14,35 @@ class StartupCurrentLimitTest {
     StartupCurrentLimit limit = new StartupCurrentLimit(40, 60, 1, () -> now,
         amps -> { writes.add(amps); return accept; }, () -> stops++);
 
-    @Test void intakeUsesThreeSecondsAndReleaseRearmsTheSameTarget() {
+    @Test void intakeUsesOnePointFiveSecondsAndReleaseRearmsTheSameTarget() {
         var intakeLimit = new StartupCurrentLimit(IntakeConstants.DEPLOY_STATOR_CURRENT_LIMIT,
             IntakeConstants.DEPLOY_STARTUP_STATOR_CURRENT_LIMIT, IntakeConstants.DEPLOY_STARTUP_SECONDS,
             () -> now, amps -> { writes.add(amps); return true; }, () -> stops++);
         intakeLimit.update(true, true, true);
-        now = 2.999;
+        now = 1.499;
         intakeLimit.update(true, false, true);
         assertEquals(60, intakeLimit.appliedAmps());
-        now = 3.0;
+        now = 1.5;
         intakeLimit.update(true, false, true);
         assertEquals(40, intakeLimit.appliedAmps());
         intakeLimit.update(false, false, false); // Release.
-        now = 3.1;
+        now = 1.6;
         intakeLimit.update(true, false, true); // Same target, new press.
         assertEquals(60, intakeLimit.appliedAmps());
-        now = 6.1;
+        now = 3.1;
         intakeLimit.update(true, false, true);
         assertEquals(40, intakeLimit.appliedAmps());
         assertEquals(List.of(60.0, 40.0, 60.0, 40.0), writes);
     }
 
-    @Test void continuouslyRequestedForceMoveDropsToFortyAfterThreeSecondsWithoutRenewingBoost() {
-        var intakeLimit = new StartupCurrentLimit(40, 60, 3, () -> now,
+    @Test void continuouslyRequestedForceMoveDropsToFortyAfterOnePointFiveSecondsWithoutRenewingBoost() {
+        var intakeLimit = new StartupCurrentLimit(40, 60, IntakeConstants.DEPLOY_STARTUP_SECONDS, () -> now,
             amps -> { writes.add(amps); return true; }, () -> stops++);
         intakeLimit.update(true, true, true);
-        now = 2.999;
+        now = 1.499;
         intakeLimit.update(true, false, true);
         assertEquals(60, intakeLimit.appliedAmps());
-        now = 3.0;
+        now = 1.5;
         intakeLimit.update(true, false, true);
         assertEquals(40, intakeLimit.appliedAmps());
         now = 10.0;
