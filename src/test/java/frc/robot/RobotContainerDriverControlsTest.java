@@ -67,8 +67,27 @@ class RobotContainerDriverControlsTest {
         assertEquals(Constants.IntakeConstants.EXTENDED_POSITION_ROTATIONS,
             SmartDashboard.getNumber("Intake/DeployTargetRotations", -1));
         assertEquals(0, indexer.getTunnelTargetRPM());
+        // Retraction must take over even if the bumpers overlap. Releasing LB
+        // while RB remains held must not synthesize a new extension press.
+        setButton(XboxController.Button.kLeftBumper, true);
+        assertEquals(Constants.IntakeConstants.RETRACTED_POSITION_ROTATIONS,
+            SmartDashboard.getNumber("Intake/DeployTargetRotations", -1));
+        setButton(XboxController.Button.kLeftBumper, false);
+        assertEquals(Constants.IntakeConstants.RETRACTED_POSITION_ROTATIONS,
+            SmartDashboard.getNumber("Intake/DeployTargetRotations", -1));
         DriverStationSim.setJoystickButton(DRIVER_PORT, XboxController.Button.kRightBumper.value, false);
         DriverStationSim.notifyNewData(); runCycles(3);
+
+        setButton(XboxController.Button.kLeftBumper, true);
+        setButton(XboxController.Button.kRightBumper, true);
+        setButton(XboxController.Button.kLeftBumper, false);
+        assertEquals(Constants.IntakeConstants.RETRACTED_POSITION_ROTATIONS,
+            SmartDashboard.getNumber("Intake/DeployTargetRotations", -1));
+        setButton(XboxController.Button.kRightBumper, false);
+        setButton(XboxController.Button.kRightBumper, true);
+        assertEquals(Constants.IntakeConstants.EXTENDED_POSITION_ROTATIONS,
+            SmartDashboard.getNumber("Intake/DeployTargetRotations", -1));
+        setButton(XboxController.Button.kRightBumper, false);
 
         setTrigger(XboxController.Axis.kLeftTrigger, true);
         assertEquals(1500, indexer.getTunnelTargetRPM()); // Standalone manual feed, independent of alliance/aim.

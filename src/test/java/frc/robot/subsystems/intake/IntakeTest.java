@@ -307,6 +307,22 @@ class IntakeTest {
         assertEquals(0, intake.getDeploySpikeCount());
     }
 
+    @Test void retractionKeepsZeroTargetDespiteRepeatedHighCurrentSpikes() {
+        teleop(true);
+        intake.requestRackExtended();
+        io.position = 7.0;
+        intake.periodic();
+        intake.requestRackRetracted();
+        currentFor(35, 0.10);
+        currentFor(10, 0.15);
+        currentFor(35, 0.10);
+        assertEquals(0, intake.getDeploySpikeCount());
+        assertFalse(intake.isExtensionLimitReached());
+        assertEquals(IntakeConstants.RETRACTED_POSITION_ROTATIONS, io.target);
+        assertFalse(io.stopped);
+        assertEquals(0, io.roller);
+    }
+
     @Test void thirtyFourAmpsDoesNotCountButThirtyFiveAmpsDoes() {
         teleop(true);
         intake.requestRackExtended();

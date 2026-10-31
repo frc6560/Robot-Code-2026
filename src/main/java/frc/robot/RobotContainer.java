@@ -226,16 +226,18 @@ public class RobotContainer {
         Trigger feed = driverXbox.leftTrigger().or(driver2Indexer);
         Trigger floor = feed;
 
-        // Triggers select rack endpoints without running the wall indexer.
-        // Ignore simultaneous presses so neither direction wins unexpectedly.
+        // Bumper presses select rack endpoints. Retraction takes priority on overlap.
+        // Check the opposite bumper inside the action: composing it into the trigger
+        // would turn a bumper RELEASE into a new press of the still-held bumper.
         Trigger rackRetract = driverXbox.leftBumper();
         Trigger rackExtend = driverXbox.rightBumper();
-        rackRetract.and(rackExtend.negate())
+        rackRetract
             .and(DriverStation::isTeleopEnabled).and(() -> !pitCoastMode)
             .onTrue(Commands.runOnce(intake::requestRackRetracted, intake));
-        rackExtend.and(rackRetract.negate())
+        rackExtend
             .and(DriverStation::isTeleopEnabled).and(() -> !pitCoastMode)
             .onTrue(Commands.runOnce(() -> {
+                if (rackRetract.getAsBoolean()) return;
                 intake.requestRackExtended();
                 intake.setRollersRequested(true);
             }, intake))
