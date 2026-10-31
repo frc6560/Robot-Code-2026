@@ -136,7 +136,7 @@ public class RobotContainer {
       // Takes the shooter from its idle default until cancelled from the dashboard.
       SmartDashboard.putData("Shooter/FF Characterization", shooter.feedforwardCharacterizationCommand());
 
-      fuelShotModel = new FuelShotModel(LaunchCalibration.ideal());
+      fuelShotModel = frc.robot.utility.shooting.PrecomputedShots.load();
       fuelCalibrationStatus = "Ideal wheel/hood formula with tunable speed, spin and aero coefficients";
       RateLimitedTelemetry.putString("Fuel/Calibration Status", fuelCalibrationStatus);
       FuelShootCommand.publishLaunchSpeedCoefficient();
@@ -401,6 +401,11 @@ public class RobotContainer {
         double now = edu.wpi.first.wpilibj.Timer.getFPGATimestamp();
         if (now < nextShotDashboard) return;
         nextShotDashboard = now + 0.5;
+        RateLimitedTelemetry.putNumber("Memory/Shooter/CachedFlights", fuelShotModel.cachedFlightCount());
+        RateLimitedTelemetry.putNumber("Memory/Shooter/EstimatedCacheBytes", fuelShotModel.estimatedCacheBytes());
+        RateLimitedTelemetry.putNumber("Memory/Shooter/FlightCalculations", fuelShotModel.flightCalculations());
+
+
         var pose = drivebase.getPose();
         var alliance = DriverStation.getAlliance();
         var hub = alliance.orElse(DriverStation.Alliance.Blue) == DriverStation.Alliance.Blue

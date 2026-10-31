@@ -10,6 +10,18 @@ public final class FuelShotModel {
                        boolean valid) {
         public static Shot invalid() { return new Shot(0, 0, 0, 0, false); }
     }
+    private Flight[] precomputed;
+    // Owned scratch storage: the robot model is used only on the scheduler thread.
+    private final double[] state = new double[5], a = new double[5], b = new double[5],
+        c = new double[5], d = new double[5], tmp = new double[5];
+    private long flightCalculations;
+    public long flightCalculations() { return flightCalculations; }
+    public int cachedFlightCount() { return sampledFlights.size(); }
+    /** Approximation including the full 5 RPM table and the 10 RPM solver references. */
+    public long estimatedCacheBytes() {
+        return precomputed == null ? sampledFlights.size() * 96L
+            : precomputed.length * 64L + sampledFlights.size() * 40L;
+    }
     private final LaunchCalibration calibration;
     public record SolveDiagnostics(double rangeMeters, int sampled, int reachedHeight,
         int clearedNearRim, int landedInOpening, int passedEntryAngle, String reason) {}
@@ -21,6 +33,7 @@ public final class FuelShotModel {
     public boolean setLaunchSpeedCoefficient(double coefficient) {
         if (!Double.isFinite(coefficient) || coefficient < 0.5 || coefficient > 1.5
                 || coefficient == launchSpeedCoefficient) return false;
+        if (precomputed != null) throw new IllegalStateException("Regenerate the shot table for a new coefficient");
         launchSpeedCoefficient = coefficient;
         sampledFlights.clear();
         for (double rpm : sampledRPM) sampledFlights.add(flight(rpm));
@@ -37,7 +50,12 @@ public final class FuelShotModel {
     private static final double AERO = 0.5 * 1.225 * Math.PI * RADIUS * RADIUS / ShotModelConstants.BALL_MASS_KG;
 
     public FuelShotModel(LaunchCalibration calibration) {
+        this(calibration, null);
+    }
+
+    FuelShotModel(LaunchCalibration calibration, Flight[] table) {
         this.calibration = calibration;
+        precomputed = table;
         for (double rpm = calibration.minRPM(); ; rpm = Math.min(calibration.maxRPM(), rpm + 10)) {
             sampledRPM.add(rpm);
             sampledFlights.add(flight(rpm));
@@ -94,7 +112,7 @@ public final class FuelShotModel {
         double high = bestHigh;
         double target = (low + high) / 2;
         Flight flight = flight(target);
-        boolean valid = scores(range, target);
+        boolean valid = flightScores(range, flight);
         if (!valid) diagnostics = new SolveDiagnostics(range, sampledRPM.size(), reached, cleared,
             landed, entered, "Refined RPM failed trajectory check");
         return new Shot(target, low, high, flight.time(), valid);
@@ -112,6 +130,13 @@ public final class FuelShotModel {
     public boolean scores(double range, double rpm) {
         if (!Double.isFinite(range) || range < 0.75 || range > 8 || !Double.isFinite(rpm)
                 || rpm < calibration.minRPM() || rpm > calibration.maxRPM()) return false;
+        if (precomputed != null) {
+            double index = (rpm - calibration.minRPM()) / 5.0;
+            int low = (int) Math.floor(index), high = (int) Math.ceil(index);
+            // Measured RPM is continuous. Require both bounding predictions to score;
+            // this conservative check needs neither interpolation objects nor integration.
+            return flightScores(range, precomputed[low]) && flightScores(range, precomputed[high]);
+        }
         Flight f = flight(rpm);
         return flightScores(range, f);
     }
@@ -125,6 +150,15 @@ public final class FuelShotModel {
 
     /** RK4 gravity + quadratic drag + backspin lift. Positive backspin gives upward lift. */
     public Flight flight(double rpm) {
+        if (precomputed != null) {
+            double index = (rpm - calibration.minRPM()) / 5.0;
+            int slot = (int) Math.round(index);
+            if (!Double.isFinite(index) || Math.abs(slot - index) > 1e-7
+                    || slot < 0 || slot >= precomputed.length)
+                throw new IllegalArgumentException("RPM outside precomputed grid");
+            return precomputed[slot];
+        }
+        flightCalculations++;
         LaunchCalibration.Launch base = calibration.at(rpm);
         LaunchCalibration.Launch launch = new LaunchCalibration.Launch(
             base.speed() * launchSpeedCoefficient, base.backspinRps());
@@ -132,9 +166,12 @@ public final class FuelShotModel {
             + FuelShotConfig.LAUNCH_ANGLE_OFFSET_DEGREES);
         double spin = Double.isFinite(launch.backspinRps()) ? launch.backspinRps() * 2 * Math.PI
             : launch.speed() / RADIUS; // Explicit rolling estimate until spin is measured.
-        double[] s = {0, ShotModelConstants.RELEASE_HEIGHT_METERS,
-            launch.speed() * Math.cos(angle), launch.speed() * Math.sin(angle), spin};
-        double[] a = new double[5], b = new double[5], c = new double[5], d = new double[5], tmp = new double[5];
+        double[] s = state;
+        s[0] = 0;
+        s[1] = ShotModelConstants.RELEASE_HEIGHT_METERS;
+        s[2] = launch.speed() * Math.cos(angle);
+        s[3] = launch.speed() * Math.sin(angle);
+        s[4] = spin;
         double risingX = Double.POSITIVE_INFINITY;
         for (int n = 0; n < 800; n++) {
             double oldX = s[0], oldZ = s[1], oldVX = s[2], oldVZ = s[3];

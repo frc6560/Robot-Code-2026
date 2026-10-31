@@ -17,11 +17,16 @@ import frc.robot.utility.telemetry.RateLimitedTelemetry;
 public final class CurrentUsageMonitor {
     public record Reading(String name, double supplyAmps) {}
     private record MotorSignals(String bus, StatusSignal<Current> current, StatusSignal<Temperature> temperature) {}
+    private static final Map<String, List<BaseStatusSignal>> byBus = new LinkedHashMap<>();
+    private static final List<Reading> readings = new ArrayList<>();
+    private static final List<TemperatureReading> temperatures = new ArrayList<>();
+    private static boolean busGroupsDirty = true;
     private static final Map<String, MotorSignals> signals = new LinkedHashMap<>();
     public record TemperatureReading(String name, double celsius) {}
     private CurrentUsageMonitor() {}
 
     public static void register(String name, TalonFX motor) {
+        busGroupsDirty = true;
         StatusSignal<Current> signal = motor.getSupplyCurrent();
         signal.setUpdateFrequency(20);
         StatusSignal<Temperature> temperature = motor.getDeviceTemp();
@@ -69,16 +74,19 @@ public final class CurrentUsageMonitor {
 
     private static void updateReadings() {
         // Phoenix rejects a combined refresh spanning roboRIO and CANivore networks.
-        Map<String, List<BaseStatusSignal>> byBus = new LinkedHashMap<>();
-        signals.values().forEach(m -> {
+        if (busGroupsDirty) {
+          byBus.clear();
+          signals.values().forEach(m -> {
             var group = byBus.computeIfAbsent(m.bus(), ignored -> new ArrayList<>());
             group.add(m.current());
             group.add(m.temperature());
-        });
+          });
+          busGroupsDirty = false;
+        }
         byBus.forEach((bus, group) -> RateLimitedTelemetry.recordOutput("Power/RefreshStatus/" + bus,
             BaseStatusSignal.refreshAll(group).toString()));
-        List<Reading> readings = new ArrayList<>();
-        List<TemperatureReading> temperatures = new ArrayList<>();
+        readings.clear();
+        temperatures.clear();
         signals.forEach((name, motor) -> {
             var signal = motor.current();
             var temperature = motor.temperature();

@@ -17,6 +17,7 @@ import frc.robot.utility.telemetry.RateLimitedTelemetry;
 public class LimelightVision {
     private Pose2d robotPose2d = new Pose2d();
     private double latency;
+    private final double[] orientation = new double[6];
     private final String name;
     private final String logKey;
     private final Pose3d cameraPose;
@@ -137,7 +138,10 @@ public class LimelightVision {
         double yawRate = Units.radiansToDegrees(drivebase.getRobotVelocity().omegaRadiansPerSecond);
         RateLimitedTelemetry.recordOutput(logKey + "/HeadingSentDeg", rotation.getDegrees());
         RateLimitedTelemetry.recordOutput(logKey + "/YawRateSentDegPerSec", yawRate);
-        LimelightHelpers.SetRobotOrientation(name, rotation.getDegrees(), yawRate, 0, 0, 0, 0);
+        orientation[0] = rotation.getDegrees();
+        orientation[1] = yawRate;
+        LimelightHelpers.setLimelightNTDoubleArray(name, "robot_orientation_set", orientation);
+        LimelightHelpers.Flush();
     }
 
     public void disableVision(boolean disabled) {
