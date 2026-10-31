@@ -13,6 +13,41 @@ class FuelShotModelTest {
             new LaunchCalibration.Point(3800, 10.11, Double.NaN)), 1500);
     }
 
+    @Test void zeroTranslation3DMatchesOriginalFlightAtAnyHeading() {
+        var model = new FuelShotModel(fixture());
+        model.setLaunchSpeedCoefficient(1.05);
+        for (double rpm : new double[] {1000, 2400, 2800, 3500}) {
+            var stationary = model.flight(rpm);
+            for (double heading : new double[] {0, 0.7, Math.PI / 2, -2.4}) {
+                var moving = model.movingFlight(rpm, heading, 0, 0);
+                assertEquals(stationary.reached(), moving.reached());
+                if (!stationary.reached()) continue;
+                assertEquals(stationary.crossingX() * Math.cos(heading), moving.crossingX(), 1e-7);
+                assertEquals(stationary.crossingX() * Math.sin(heading), moving.crossingY(), 1e-7);
+                assertEquals(stationary.entryDegrees(), moving.entryDegrees(), 1e-7);
+                assertEquals(stationary.time(), moving.time(), 1e-7);
+            }
+        }
+    }
+
+    @Test void inheritedVelocityUses3DAerodynamicsAndRotatesWithTheField() {
+        var model = new FuelShotModel(fixture());
+        var stationary = model.flight(3000);
+        var moving = model.movingFlight(3000, 0, 0.3, 0.8);
+        var rotated = model.movingFlight(3000, Math.PI / 2, -0.8, 0.3);
+        assertTrue(moving.reached());
+        assertTrue(rotated.reached());
+        assertEquals(-moving.crossingY(), rotated.crossingX(), 1e-7);
+        assertEquals(moving.crossingX(), rotated.crossingY(), 1e-7);
+        assertEquals(moving.time(), rotated.time(), 1e-7);
+        assertEquals(moving.entryDegrees(), rotated.entryDegrees(), 1e-7);
+        // Drag/lift must act on inherited motion; a simple displacement shift is insufficient.
+        assertNotEquals(stationary.crossingX() + 0.3 * stationary.time(), moving.crossingX(), 0.01);
+        assertTrue(moving.crossingY() < 0.8 * moving.time());
+        model.setLaunchSpeedCoefficient(1.05);
+        assertNotEquals(moving.crossingX(), model.movingFlight(3000, 0, 0.3, 0.8).crossingX());
+    }
+
     @Test void liveCoefficientUpdatesFlightAndRejectsInvalidValues() {
         var model = new FuelShotModel(fixture());
         var baseline = model.flight(3000);

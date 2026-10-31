@@ -152,8 +152,10 @@ class FuelShootCommandTest {
         assertEquals(1.08, edu.wpi.first.wpilibj.Preferences.getDouble(LaunchSpeedTuning.PREFERENCE_KEY, 0));
     }
 
-    @Test void startupDoesNotOverwriteDashboardTuningAndMarksItPersistent() {
-        SmartDashboard.putNumber(FuelShootCommand.LAUNCH_COEFFICIENT_KEY, 1.06);
+    @Test void startupRestoresSavedTuningAndMarksItPersistent() {
+        // Startup restores Preferences; an unsaved dashboard value is only a request.
+        edu.wpi.first.wpilibj.Preferences.setDouble(LaunchSpeedTuning.PREFERENCE_KEY, 1.06);
+        SmartDashboard.putNumber(FuelShootCommand.LAUNCH_COEFFICIENT_KEY, 1.0);
         try {
             FuelShootCommand.publishLaunchSpeedCoefficient();
             assertEquals(1.06, SmartDashboard.getNumber(FuelShootCommand.LAUNCH_COEFFICIENT_KEY, 0));
@@ -217,6 +219,67 @@ class FuelShootCommandTest {
             SmartDashboard.getString("Fuel/Status", ""));
         assertEquals("Reachable",
             SmartDashboard.getString("Fuel/Trajectory Status", ""));
+    }
+
+    @Test void stationaryAndRotationOnlyKeepOriginalRpmAndReleaseChecks() {
+        var model = new FuelShotModel(LaunchCalibration.ideal());
+        var baseline = model.solve(3.5);
+        SmartDashboard.putBoolean("Fuel/Calibration Mode", false);
+        start(model);
+        shooter.measured = baseline.rpm();
+        aimReady = true;
+        cycles(15);
+        assertEquals(baseline.rpm(), shooter.getGoalRPM());
+        assertTrue(command.isFeeding());
+        speeds = new ChassisSpeeds(0, 0, 0.5);
+        // The real aim command owns the existing angular alignment gate.
+        aimReady = false;
+        cycles(1);
+        assertEquals(baseline.rpm(), shooter.getGoalRPM());
+        assertFalse(command.isFeeding());
+    }
+
+    @Test void movingShotFeedsTracksVelocityEveryLoopAndReturnsToStationaryRpm() {
+        var model = new FuelShotModel(LaunchCalibration.ideal());
+        double stationary = model.solve(3.5).rpm();
+        SmartDashboard.putBoolean("Fuel/Calibration Mode", false);
+        start(model);
+        aimReady = true;
+        speeds = new ChassisSpeeds(0.5, 0, 0);
+        cycles(1);
+        double approaching = shooter.getGoalRPM();
+        assertTrue(approaching < stationary);
+        shooter.measured = approaching;
+        cycles(15);
+        assertTrue(command.isFeeding());
+        // Same position, different velocity: must not wait for the old range/100-ms gate.
+        speeds = new ChassisSpeeds(-0.5, 0, 0);
+        cycles(1);
+        assertTrue(shooter.getGoalRPM() > stationary);
+        assertFalse(command.isFeeding());
+        speeds = new ChassisSpeeds();
+        cycles(1);
+        assertEquals(stationary, shooter.getGoalRPM());
+        shooter.measured = stationary;
+        cycles(15);
+        assertTrue(command.isFeeding());
+    }
+
+    @Test void robotRelativeYVelocityIsConvertedToFieldCoordinates() {
+        var model = new FuelShotModel(LaunchCalibration.ideal());
+        SmartDashboard.putBoolean("Fuel/Calibration Mode", false);
+        pose = new Pose2d(pose.getTranslation(), Rotation2d.fromDegrees(90));
+        speeds = new ChassisSpeeds(0, -0.5, 0); // Field +X: toward the blue hub.
+        start(model);
+        cycles(1);
+        double expected = MovingShotSolver.solve(model,
+            Constants.FieldConstants.BLUE_HUB_CENTER.minus(FuelShootCommand.releasePosition(pose)),
+            new edu.wpi.first.math.geometry.Translation2d(0.5, 0)).shot().rpm();
+        assertEquals(expected, shooter.getGoalRPM());
+        speeds = new ChassisSpeeds(Double.NaN, 0, 0);
+        cycles(1);
+        assertEquals(0, shooter.getGoalRPM());
+        assertFalse(command.isFeeding());
     }
 
     @Test void normalModeCommandsCalibratedShotAndUsesRealTunnel() {

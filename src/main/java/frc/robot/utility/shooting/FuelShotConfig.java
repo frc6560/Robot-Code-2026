@@ -1,6 +1,6 @@
 package frc.robot.utility.shooting;
 
-/** Stationary auto-turn shooting. Aerodynamic values require field validation. */
+/** Auto-turn shooting with translation lead. Aerodynamic values require field validation. */
 public final class FuelShotConfig {
     private FuelShotConfig() {}
     /** Multiply ideal exit speed; increase if actual balls launch faster than predicted. */
@@ -13,6 +13,10 @@ public final class FuelShotConfig {
     public static final double RPM_TOLERANCE = 60.0;
     public static final double READY_DWELL_SECONDS = 0.10;
     public static final double MAX_TRANSLATION_MPS = 0.15;
+    /** Ignore velocity-estimator noise; at/below this speed use the original stationary path. */
+    public static final double MOVING_SHOT_MIN_SPEED_MPS = 0.05;
+    /** Measure feed-to-ball-exit delay on the robot. Zero until measured; used only in motion. */
+    public static final double MOVING_SHOT_RELEASE_DELAY_SECONDS = 0.0;
     public static final double MIN_ENTRY_DEGREES = 10.0;
     public static final double LAUNCH_ANGLE_OFFSET_DEGREES = 0.0;
     public static final double DRAG_COEFFICIENT = 0.47;

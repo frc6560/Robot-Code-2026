@@ -5,6 +5,8 @@ import frc.robot.Constants.ShotModelConstants;
 
 /** Fresh stationary fixed-hood model driven by measured exit speeds, not motor surface speed. */
 public final class FuelShotModel {
+    public record MovingFlight(double crossingX, double crossingY, double entryDegrees,
+        double time, double risingX, double risingY, boolean reached) {}
     public record Flight(double crossingX, double entryDegrees, double time, double risingX, boolean reached) {}
     public record Shot(double rpm, double minimumRPM, double maximumRPM, double flightSeconds,
                        boolean valid) {
@@ -48,6 +50,15 @@ public final class FuelShotModel {
 
     /** Bounded work: scan the calibrated RPM span, then refine the selected contiguous band. */
     public Shot solve(double range) {
+        return solve(range, false);
+    }
+
+    /** Cache-only estimate for bounded moving-shot lead iterations; final shots use solve(). */
+    public Shot estimate(double range) {
+        return solve(range, true);
+    }
+
+    private Shot solve(double range, boolean cacheOnly) {
         if (!Double.isFinite(range) || range < 0.75 || range > 8.0) {
             diagnostics = new SolveDiagnostics(range, 0, 0, 0, 0, 0, "Range outside solver limits (0.75–8 m)");
             return Shot.invalid();
@@ -93,6 +104,17 @@ public final class FuelShotModel {
         double low = bestLow;
         double high = bestHigh;
         double target = (low + high) / 2;
+        if (cacheOnly) {
+            int index = Math.min(sampledRPM.size() - 2,
+                (int) ((target - calibration.minRPM()) / 10));
+            double fraction = (target - sampledRPM.get(index))
+                / (sampledRPM.get(index + 1) - sampledRPM.get(index));
+            double time = fraction == 0 ? sampledFlights.get(index).time()
+                : fraction == 1 ? sampledFlights.get(index + 1).time()
+                : sampledFlights.get(index).time() * (1 - fraction)
+                    + sampledFlights.get(index + 1).time() * fraction;
+            return new Shot(target, low, high, time, Double.isFinite(time));
+        }
         Flight flight = flight(target);
         boolean valid = scores(range, target);
         if (!valid) diagnostics = new SolveDiagnostics(range, sampledRPM.size(), reached, cleared,
@@ -158,6 +180,69 @@ public final class FuelShotModel {
             if (s[1] < 0 || s[0] > 15) break;
         }
         return new Flight(Double.NaN, Double.NaN, Double.NaN, Double.NaN, false);
+    }
+
+    /** Bounded 3D release validation. Drag/lift use air-relative velocity including chassis motion.
+     * Heading defines the launch direction and horizontal backspin axis. Stationary solve/flight
+     * continue to use the original 2D path and cache without calling this method.
+     */
+    public MovingFlight movingFlight(double rpm, double heading, double fieldVX, double fieldVY) {
+        LaunchCalibration.Launch base = calibration.at(rpm);
+        double speed = base.speed() * launchSpeedCoefficient;
+        double elevation = Math.toRadians(ShotModelConstants.LAUNCH_ELEVATION_DEGREES
+            + FuelShotConfig.LAUNCH_ANGLE_OFFSET_DEGREES);
+        double spin = Double.isFinite(base.backspinRps()) ? base.backspinRps() * 2 * Math.PI
+            : speed / RADIUS;
+        double[] state = {0, 0, ShotModelConstants.RELEASE_HEIGHT_METERS,
+            speed * Math.cos(elevation) * Math.cos(heading) + fieldVX,
+            speed * Math.cos(elevation) * Math.sin(heading) + fieldVY,
+            speed * Math.sin(elevation), spin};
+        double[] a = new double[7], b = new double[7], c = new double[7], d = new double[7], temp = new double[7];
+        double axisX = Math.sin(heading), axisY = -Math.cos(heading);
+        double risingX = Double.NaN, risingY = Double.NaN;
+        for (int n = 0; n < 800; n++) {
+            double oldX = state[0], oldY = state[1], oldZ = state[2];
+            double oldVX = state[3], oldVY = state[4], oldVZ = state[5];
+            movingDerivative(state, a, axisX, axisY);
+            for (int i = 0; i < 7; i++) temp[i] = state[i] + a[i] * DT / 2;
+            movingDerivative(temp, b, axisX, axisY);
+            for (int i = 0; i < 7; i++) temp[i] = state[i] + b[i] * DT / 2;
+            movingDerivative(temp, c, axisX, axisY);
+            for (int i = 0; i < 7; i++) temp[i] = state[i] + c[i] * DT;
+            movingDerivative(temp, d, axisX, axisY);
+            for (int i = 0; i < 7; i++) state[i] += DT * (a[i] + 2*b[i] + 2*c[i] + d[i]) / 6;
+            if (oldZ < PLANE && state[2] >= PLANE) {
+                double fraction = (PLANE - oldZ) / (state[2] - oldZ);
+                risingX = oldX + fraction * (state[0] - oldX);
+                risingY = oldY + fraction * (state[1] - oldY);
+            }
+            if (oldZ >= PLANE && state[2] <= PLANE && state[5] < 0) {
+                double fraction = (oldZ - PLANE) / (oldZ - state[2]);
+                double vx = oldVX + fraction * (state[3] - oldVX);
+                double vy = oldVY + fraction * (state[4] - oldVY);
+                double vz = oldVZ + fraction * (state[5] - oldVZ);
+                return new MovingFlight(oldX + fraction * (state[0] - oldX),
+                    oldY + fraction * (state[1] - oldY),
+                    Math.toDegrees(Math.atan2(-vz, Math.hypot(vx, vy))), (n + fraction) * DT,
+                    risingX, risingY, Double.isFinite(risingX) && Double.isFinite(risingY));
+            }
+            if (state[2] < 0 || Math.hypot(state[0], state[1]) > 15) break;
+        }
+        return new MovingFlight(Double.NaN, Double.NaN, Double.NaN, Double.NaN,
+            Double.NaN, Double.NaN, false);
+    }
+
+    private static void movingDerivative(double[] state, double[] out, double axisX, double axisY) {
+        double speed = Math.sqrt(state[3]*state[3] + state[4]*state[4] + state[5]*state[5]);
+        double drag = AERO * FuelShotConfig.DRAG_COEFFICIENT * speed;
+        double cl = speed < 1e-6 ? 0 : Math.min(0.35,
+            FuelShotConfig.LIFT_SLOPE * RADIUS * Math.abs(state[6]) / speed);
+        double lift = AERO * cl * speed * Math.signum(state[6]);
+        out[0] = state[3]; out[1] = state[4]; out[2] = state[5];
+        out[3] = -drag * state[3] + lift * axisY * state[5];
+        out[4] = -drag * state[4] - lift * axisX * state[5];
+        out[5] = -9.80665 - drag * state[5] + lift * (axisX * state[4] - axisY * state[3]);
+        out[6] = -FuelShotConfig.SPIN_DECAY_PER_SECOND * state[6];
     }
 
     private static void derivative(double[] s, double[] out) {

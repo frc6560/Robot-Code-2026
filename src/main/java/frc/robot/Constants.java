@@ -66,9 +66,9 @@ public final class Constants {
     public static final double ALIGN_ROTATION_KD = 0.2;
 
     /** Heading controller gains used while the driver holds the aim-at-hub button. */
-    public static final double HUB_AIM_KP = 1.2;
+    public static final double HUB_AIM_KP = 6.0;
     public static final double HUB_AIM_KI = 0.0;
-    public static final double HUB_AIM_KD = 0.2;
+    public static final double HUB_AIM_KD = 0.0;
 
     /**
      * Shared maximum velocity for the shooting auto-turn profile. Path-specific overrides do not
@@ -338,8 +338,8 @@ public final class Constants {
     public static final int LEFT_FLYWHEEL_ID = 24;
     public static final String CAN_BUS = "Canivore";
 
-    /** PID Gains */
-    public static final double kP = 0.6;
+    /** Flywheel velocity gains used by the real Talon IO and simulation; derivative is disabled. */
+    public static final double kP = 2.0;
     public static final double kI = 0.0;
     public static final double kD = 0.0;
     public static final double kV = 0.117; 

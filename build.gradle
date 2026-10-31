@@ -80,7 +80,7 @@ dependencies {
 }
 
 test {
-    useJUnitPlatform()
+    useJUnitPlatform { excludeTags 'moving-shot-simulation' }
     systemProperty 'junit.jupiter.extensions.autodetection.enabled', 'true'
 }
 
@@ -123,3 +123,26 @@ tasks.register('runPathGui', JavaExec) {
     mainClass = 'frc.robot.utility.Pathing.gui.PathGuiMain'
     workingDir = projectDir
 }
+
+// MapleSim has process-global arena/controller state; keep this diagnostic in its own JVM.
+tasks.register('movingShotSimulation', Test) {
+    group = 'verification'
+    description = 'Run production aiming/shooter controllers through moving-shot physics scenarios.'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform { includeTags 'moving-shot-simulation' }
+    outputs.upToDateWhen { false }
+}
+wpi.java.configureTestTasks(tasks.named('movingShotSimulation').get())
+
+// A separate process also isolates the longer curved-path diagnostic from the standard suite.
+tasks.register('movingShotStressSimulation', Test) {
+    group = 'verification'
+    description = 'Run longer shoot-on-the-move orbit, figure-eight and weaving scenarios.'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform { includeTags 'moving-shot-simulation' }
+    systemProperty 'movingShotSuite', 'stress'
+    outputs.upToDateWhen { false }
+}
+wpi.java.configureTestTasks(tasks.named('movingShotStressSimulation').get())
