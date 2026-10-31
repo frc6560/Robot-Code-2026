@@ -28,9 +28,8 @@ Removed logging work:
 - YAGSL's independent telemetry and the legacy Swerve/Field dashboard graphic.
 - Duplicate scalar swerve pose dashboard values; use the sampled Swerve/Pose log.
 
-Swerve raw/adjusted absolute encoder angles (degrees) and encoder read-error flags
-are explicitly published at 2 Hz under the original
-`/SmartDashboard/swerve/modules/<module>/` keys, including while disabled.
+Swerve raw/adjusted absolute encoder dashboard updates and encoder read-error
+telemetry are disabled. Encoder feedback remains active for drivetrain control.
 
 Sensors, scheduler execution, vision fusion, shooting readiness checks, motor
 commands and physical LED updates retain their normal control-loop frequency.
