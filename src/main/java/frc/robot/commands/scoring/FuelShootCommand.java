@@ -156,8 +156,8 @@ public final class FuelShootCommand extends Command {
             : !aligned.getAsBoolean() ? "Aiming"
             : !indexer.isTunnelReady() ? "Tunnel disconnected or configuration failed"
             : !shooter.isHardwareReady() ? "Flywheel disconnected or pit coast"
-            : (passing ? !shooter.withinTolerance(AlliancePass.RPM_TOLERANCE)
-                : !shooter.atTarget() || !shooter.withinTolerance(FuelShotConfig.RPM_TOLERANCE))
+            : !shooter.withinTolerance(FuelShotConfig.RPM_TOLERANCE)
+                || (!passing && !shooter.atTarget())
                 ? "Waiting for measured flywheel RPM"
             : !passing && !fixedRPM && !model.scores(range, shooter.getCurrentRPM()) ? "Measured RPM outside scoring band"
             : "Ready";

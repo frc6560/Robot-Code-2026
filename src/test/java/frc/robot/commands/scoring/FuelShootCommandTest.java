@@ -92,15 +92,15 @@ class FuelShootCommandTest {
         aimReady = true; cycles(10); command.end(false);
         assertEquals(0, indexer.getTunnelTargetRPM()); assertEquals(0, shooter.getGoalRPM());
     }
-    @Test void outsideZonePassUsesFixedSpeedAndRelaxedRpmGate() {
+    @Test void outsideZonePassUsesFixedSpeedAndSharedSixtyRpmGate() {
         pose = new Pose2d(Constants.FieldConstants.BLUE_ZONE_X + 1, 4, new Rotation2d(Math.PI));
         start(new FuelShotModel(LaunchCalibration.ideal()));
         aimReady = true;
-        shooter.measured = 2450;
+        shooter.measured = 2541;
         cycles(15);
         assertEquals(2600, shooter.getGoalRPM());
         assertTrue(command.isFeeding());
-        shooter.measured = 2399;
+        shooter.measured = 2539;
         cycles(1);
         assertFalse(command.isFeeding());
         aimReady = false;

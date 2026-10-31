@@ -194,8 +194,10 @@ Right trigger takes priority while both are held; outtake and pit-coast still bl
 
 ## Driver B: raw fixed-speed shooting
 
-Hold B to request flywheel **2700 RPM**, floor **1200 RPM**, and tunnel **1500 RPM** immediately.
-This does not run the calculator, aim, check heading/range/alliance/speed, wait for flywheel
-readiness, retract the intake, or take drivetrain control. B overrides RT/Y calculator shots.
+Hold B to request flywheel **2700 RPM** immediately. Floor **1200 RPM** and tunnel **1500 RPM**
+start only once measured flywheel speed is within **60 RPM** of the goal, and pause immediately
+if it leaves that band. The same 60-RPM requirement applies to Y/RT, including passing shots.
+B does not run the calculator, aim, check heading/range/alliance/translation speed, retract the
+intake, or take drivetrain control. B overrides RT/Y calculator shots.
 Release B to stop its outputs. Teleop enable, pit-coast and outtake priority remain in force.
 The shared floor running-speed constant is now 1200 RPM everywhere, including reverse outtake.

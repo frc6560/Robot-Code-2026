@@ -210,12 +210,14 @@ public class RobotContainer {
         }
     }
 
-    /** Raw fixed-speed shot: no calculator, aim, intake motion, or release-readiness checks. */
+    /** Fixed-speed shot: no calculator or aim; feed only within the shared RPM tolerance. */
     private Command createRawShotCommand() {
         return Commands.run(() -> {
             shooter.setGoal(2700.0);
-            indexer.setFloorRPM(Constants.IndexerConstants.FLOOR_RUNNING_RPM);
-            indexer.setTunnelRPM(Constants.IndexerConstants.TUNNEL_RUNNING_RPM);
+            boolean ready = shooter.isHardwareReady() && shooter.withinTolerance(
+                frc.robot.utility.shooting.FuelShotConfig.RPM_TOLERANCE);
+            indexer.setFloorRPM(ready ? Constants.IndexerConstants.FLOOR_RUNNING_RPM : 0);
+            indexer.setTunnelRPM(ready ? Constants.IndexerConstants.TUNNEL_RUNNING_RPM : 0);
         }, shooter, indexer).finallyDo(interrupted -> {
             indexer.stop();
             shooter.stop();

@@ -251,7 +251,7 @@ class RobotContainerDriverControlsTest {
 
     }
 
-    @Test void bShootsRawImmediatelyWithoutAimOrIntakeAndStopsOnRelease() throws Exception {
+    @Test void bWaitsForSixtyRpmToleranceWithoutAimOrIntakeAndStopsOnRelease() throws Exception {
         DriverStationSim.setDsAttached(true);
         DriverStationSim.setEnabled(true);
         DriverStationSim.setAutonomous(false);
@@ -267,10 +267,28 @@ class RobotContainerDriverControlsTest {
         runCycles(4);
         setButton(XboxController.Button.kB, true);
         assertEquals(2700, shooter.getGoalRPM(), 1e-6);
-        assertEquals(1200, indexer.getFloorTargetRPM());
-        assertEquals(1500, indexer.getTunnelTargetRPM());
+        assertEquals(0, indexer.getFloorTargetRPM());
+        assertEquals(0, indexer.getTunnelTargetRPM());
         var raw = CommandScheduler.getInstance().requiring(indexer);
         assertEquals("FuelShootRaw2700", raw.getName());
+        Field inputsField = Shooter.class.getDeclaredField("inputs");
+        inputsField.setAccessible(true);
+        var inputs = (frc.robot.subsystems.shooter.ShooterIO.ShooterIOInputs) inputsField.get(shooter);
+        inputs.leaderConnected = inputs.followerConnected = true;
+        inputs.velocityRadsPerSec = edu.wpi.first.math.util.Units.rotationsPerMinuteToRadiansPerSecond(2641);
+        raw.execute();
+        assertEquals(1200, indexer.getFloorTargetRPM());
+        assertEquals(1500, indexer.getTunnelTargetRPM());
+        inputs.velocityRadsPerSec = edu.wpi.first.math.util.Units.rotationsPerMinuteToRadiansPerSecond(2639);
+        raw.execute();
+        assertEquals(0, indexer.getFloorTargetRPM());
+        assertEquals(0, indexer.getTunnelTargetRPM());
+        inputs.velocityRadsPerSec = edu.wpi.first.math.util.Units.rotationsPerMinuteToRadiansPerSecond(2759);
+        raw.execute();
+        assertEquals(1500, indexer.getTunnelTargetRPM());
+        inputs.velocityRadsPerSec = edu.wpi.first.math.util.Units.rotationsPerMinuteToRadiansPerSecond(2761);
+        raw.execute();
+        assertEquals(0, indexer.getTunnelTargetRPM());
         assertNotSame(raw, CommandScheduler.getInstance().requiring(container.getDrivebase()));
         assertNotSame(raw, CommandScheduler.getInstance().requiring(intake));
         assertFalse(SmartDashboard.getBoolean("Intake/ForceRetractRequested", false));
