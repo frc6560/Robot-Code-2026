@@ -1,53 +1,37 @@
 package frc.robot.utility.shooting;
 
-import edu.wpi.first.wpilibj.Preferences;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.utility.telemetry.RateLimitedTelemetry;
 
-/** Dashboard edit is a request; the last accepted value has a separate persistent home. */
+/** Fixed launch-speed scale. Dashboard and legacy saved preferences never select this value. */
 public final class LaunchSpeedTuning {
-    public static final double DEFAULT_COEFFICIENT = 1.03;
+    public static final double DEFAULT_COEFFICIENT = 1.025;
+    /** Legacy dashboard key, now published for display only. */
     public static final String REQUEST_KEY = "Shooter/Launch Speed Coefficient";
+    /** Legacy preference key, retained for compatibility; never read or written. */
     public static final String PREFERENCE_KEY = "ShooterLaunchSpeedCoefficientV2";
     private static double nextTelemetry;
     private LaunchSpeedTuning() {}
 
-    private static boolean valid(double value) {
-        return Double.isFinite(value) && value >= 0.5 && value <= 1.5;
-    }
-
     public static void initialize() {
-        double saved = Preferences.getDouble(PREFERENCE_KEY, Double.NaN);
-        if (!valid(saved)) {
-            // Start at the default coefficient; subsequent dashboard edits persist.
-            saved = DEFAULT_COEFFICIENT;
-            Preferences.setDouble(PREFERENCE_KEY, saved);
-        }
-        SmartDashboard.putNumber(REQUEST_KEY, saved);
-        SmartDashboard.getEntry(REQUEST_KEY).setPersistent();
-        RateLimitedTelemetry.putNumber("Shooter/Saved Launch Speed Coefficient", saved);
+        SmartDashboard.getEntry(REQUEST_KEY).clearPersistent();
+        publish();
     }
 
-    /** Runs while disabled as well as enabled; no shoot-button press is needed to save. */
+    /** The same fixed scale applies before shooting, while disabled, and during every shot. */
     public static double update() {
-        double saved = Preferences.getDouble(PREFERENCE_KEY, DEFAULT_COEFFICIENT);
-        if (!valid(saved)) saved = DEFAULT_COEFFICIENT;
-        double requested = SmartDashboard.getNumber(REQUEST_KEY, Double.NaN);
-        boolean accepted = valid(requested);
-        if (accepted && requested != saved) {
-            saved = requested;
-            Preferences.setDouble(PREFERENCE_KEY, saved);
-        }
         double now = edu.wpi.first.wpilibj.Timer.getFPGATimestamp();
         if (now >= nextTelemetry) {
             nextTelemetry = now + 0.5;
-        RateLimitedTelemetry.putNumber("Shooter/Saved Launch Speed Coefficient", saved);
-        RateLimitedTelemetry.putString("Shooter/Launch Speed Coefficient Status", accepted
-            ? "Saved on robot" : "Edit not received as a number in [0.5, 1.5]; keeping saved value");
-        RateLimitedTelemetry.recordOutput("Fuel/Tuning/RequestedCoefficient", requested);
-        RateLimitedTelemetry.recordOutput("Fuel/Tuning/SavedCoefficient", saved);
-        RateLimitedTelemetry.recordOutput("Fuel/Tuning/RequestValid", accepted);
+            publish();
         }
-        return saved;
+        return DEFAULT_COEFFICIENT;
+    }
+
+    private static void publish() {
+        RateLimitedTelemetry.putNumber(REQUEST_KEY, DEFAULT_COEFFICIENT);
+        RateLimitedTelemetry.putString("Shooter/Launch Speed Coefficient Status",
+            "Fixed in code: 1.025; dashboard edits ignored");
+        RateLimitedTelemetry.recordOutput("Fuel/Tuning/AppliedCoefficient", DEFAULT_COEFFICIENT);
     }
 }

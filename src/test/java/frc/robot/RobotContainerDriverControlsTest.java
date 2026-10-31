@@ -123,7 +123,7 @@ class RobotContainerDriverControlsTest {
 
         setBoard(3, true);
         assertEquals(1500, indexer.getTunnelTargetRPM());
-        assertEquals(800, indexer.getFloorTargetRPM());
+        assertEquals(1200, indexer.getFloorTargetRPM());
         setTrigger(XboxController.Axis.kRightTrigger, true);
         runCycles(150);
         assertEquals("FuelShootCommand", CommandScheduler.getInstance().requiring(indexer).getName());
@@ -170,14 +170,14 @@ class RobotContainerDriverControlsTest {
         // Explicit operator feed runs both indexers; RB still takes ownership.
         setBoard(3, true);
         assertEquals(1500, indexer.getTunnelTargetRPM());
-        assertEquals(800, indexer.getFloorTargetRPM());
+        assertEquals(1200, indexer.getFloorTargetRPM());
         setTrigger(XboxController.Axis.kRightTrigger, true);
         assertEquals("FuelShootCommand", CommandScheduler.getInstance().requiring(indexer).getName());
         setTrigger(XboxController.Axis.kRightTrigger, false);
         assertEquals(0, indexer.getTunnelTargetRPM()); // Held board input cannot resume after RB release.
         setBoard(3, false); setBoard(3, true);
         assertEquals(1500, indexer.getTunnelTargetRPM());
-        assertEquals(800, indexer.getFloorTargetRPM());
+        assertEquals(1200, indexer.getFloorTargetRPM());
         setBoard(3, false);
 
         // Midzone has zero idle, but explicit RT still requests the passing flywheel RPM.
@@ -206,6 +206,89 @@ class RobotContainerDriverControlsTest {
         assertEquals(0, indexer.getFloorTargetRPM());
         assertEquals(0, indexer.getTunnelTargetRPM());
     }
+    @Test void yUsesCalculatorWithoutTakingDrivetrain() throws Exception {
+        DriverStationSim.setDsAttached(true);
+        DriverStationSim.setEnabled(true);
+        DriverStationSim.setAutonomous(false);
+        DriverStationSim.setAllianceStationId(AllianceStationID.Blue1);
+        DriverStationSim.setJoystickAxisCount(DRIVER_PORT, 6);
+        DriverStationSim.setJoystickButtonCount(DRIVER_PORT, 10);
+        DriverStationSim.setJoystickIsXbox(DRIVER_PORT, true);
+        DriverStationSim.notifyNewData();
+        RobotContainer container = new RobotContainer();
+        Shooter shooter = getField(container, "shooter", Shooter.class);
+        Indexer indexer = getField(container, "indexer", Indexer.class);
+        Intake intake = getField(container, "intake", Intake.class);
+        runCycles(4);
+        // Y uses the real calculator while manual steering retains the drivetrain.
+        DriverStationSim.setAllianceStationId(AllianceStationID.Blue1);
+        DriverStationSim.notifyNewData();
+        SmartDashboard.putBoolean("Fuel/Calibration Mode", false);
+        container.getDrivebase().resetOdometry(new Pose2d(
+            Constants.FieldConstants.BLUE_HUB_CENTER.getX() - 3.5,
+            Constants.FieldConstants.BLUE_HUB_CENTER.getY(),
+            edu.wpi.first.math.geometry.Rotation2d.fromDegrees(180)));
+        var model = getField(container, "fuelShotModel", frc.robot.utility.shooting.FuelShotModel.class);
+        model.setLaunchSpeedCoefficient(frc.robot.utility.shooting.LaunchSpeedTuning.update());
+        double calculatedRPM = model.solve(3.5).rpm();
+        SmartDashboard.putBoolean("Hub Aim/Active", false);
+        setButton(XboxController.Button.kY, true);
+        assertEquals("FuelShootManuallyAligned", CommandScheduler.getInstance().requiring(indexer).getName());
+        assertEquals(calculatedRPM, shooter.getGoalRPM(), 1e-6);
+        assertNotSame(CommandScheduler.getInstance().requiring(indexer),
+            CommandScheduler.getInstance().requiring(container.getDrivebase()));
+        assertSame(CommandScheduler.getInstance().requiring(indexer),
+            CommandScheduler.getInstance().requiring(intake));
+        assertFalse(SmartDashboard.getBoolean("Hub Aim/Active", true));
+        // Switching from Y to RT takes ownership; releasing RT resumes a still-held Y.
+        setTrigger(XboxController.Axis.kRightTrigger, true);
+        assertEquals("FuelShootCommand", CommandScheduler.getInstance().requiring(indexer).getName());
+        setTrigger(XboxController.Axis.kRightTrigger, false);
+        assertEquals("FuelShootManuallyAligned", CommandScheduler.getInstance().requiring(indexer).getName());
+        setButton(XboxController.Button.kY, false);
+        assertEquals(0, indexer.getTunnelTargetRPM());
+        assertEquals(0, indexer.getFloorTargetRPM());
+
+    }
+
+    @Test void bShootsRawImmediatelyWithoutAimOrIntakeAndStopsOnRelease() throws Exception {
+        DriverStationSim.setDsAttached(true);
+        DriverStationSim.setEnabled(true);
+        DriverStationSim.setAutonomous(false);
+        DriverStationSim.setAllianceStationId(AllianceStationID.Unknown);
+        DriverStationSim.setJoystickAxisCount(DRIVER_PORT, 6);
+        DriverStationSim.setJoystickButtonCount(DRIVER_PORT, 10);
+        DriverStationSim.setJoystickIsXbox(DRIVER_PORT, true);
+        DriverStationSim.notifyNewData();
+        RobotContainer container = new RobotContainer();
+        Shooter shooter = getField(container, "shooter", Shooter.class);
+        Indexer indexer = getField(container, "indexer", Indexer.class);
+        Intake intake = getField(container, "intake", Intake.class);
+        runCycles(4);
+        setButton(XboxController.Button.kB, true);
+        assertEquals(2700, shooter.getGoalRPM(), 1e-6);
+        assertEquals(1200, indexer.getFloorTargetRPM());
+        assertEquals(1500, indexer.getTunnelTargetRPM());
+        var raw = CommandScheduler.getInstance().requiring(indexer);
+        assertEquals("FuelShootRaw2700", raw.getName());
+        assertNotSame(raw, CommandScheduler.getInstance().requiring(container.getDrivebase()));
+        assertNotSame(raw, CommandScheduler.getInstance().requiring(intake));
+        assertFalse(SmartDashboard.getBoolean("Intake/ForceRetractRequested", false));
+        setTrigger(XboxController.Axis.kRightTrigger, true);
+        assertSame(raw, CommandScheduler.getInstance().requiring(indexer));
+        assertEquals(2700, shooter.getGoalRPM(), 1e-6);
+        setTrigger(XboxController.Axis.kRightTrigger, false);
+        setButton(XboxController.Button.kB, false);
+        assertEquals(0, shooter.getGoalRPM(), 1e-6);
+        assertEquals(0, indexer.getFloorTargetRPM());
+        assertEquals(0, indexer.getTunnelTargetRPM());
+        setButton(XboxController.Button.kB, true);
+        DriverStationSim.setEnabled(false);
+        DriverStationSim.notifyNewData(); runCycles(4);
+        assertEquals(0, indexer.getFloorTargetRPM());
+        assertEquals(0, indexer.getTunnelTargetRPM());
+    }
+
     private static void assertIdleAt(RobotContainer container, Shooter shooter,
             AllianceStationID alliance, double x, double expected) {
         DriverStationSim.setAllianceStationId(alliance);

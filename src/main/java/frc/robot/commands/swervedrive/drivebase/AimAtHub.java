@@ -27,14 +27,6 @@ public class AimAtHub extends Command {
   private final Supplier<ChassisSpeeds> driverSpeeds;
   private final Supplier<Translation2d> releasePosition;
   private boolean atTarget;
-  private Translation2d translationLead = new Translation2d();
-  private Translation2d fieldVelocity = new Translation2d();
-
-  /** Supplied by the shot command before execute(); zero restores original stationary aiming. */
-  public void setTranslationCompensation(Translation2d lead, Translation2d velocity) {
-    translationLead = lead;
-    fieldVelocity = velocity;
-  }
 
   /** Actual heading error and measured angular speed must both be within tolerance. */
   public boolean isAtTarget() { return atTarget; }
@@ -67,7 +59,6 @@ public class AimAtHub extends Command {
   @Override
   public void initialize() {
     atTarget = false;
-    setTranslationCompensation(new Translation2d(), new Translation2d());
     headingController.reset(
         drivebase.getPose().getRotation().getRadians(),
         drivebase.getRobotVelocity().omegaRadiansPerSecond);
@@ -97,29 +88,28 @@ public class AimAtHub extends Command {
         alliance.get() == Alliance.Blue
             ? FieldConstants.BLUE_HUB_CENTER
             : FieldConstants.RED_HUB_CENTER;
-    Translation2d robotToHub = hub.minus(releasePosition.get()).minus(translationLead);
+    Translation2d robotToHub = hub.minus(releasePosition.get());
     boolean passing = DriverStation.isTeleopEnabled()
         && AlliancePass.outsideZone(alliance.get(), robotPose.getX());
     double targetHeading = passing ? AlliancePass.heading(alliance.get())
         : Math.atan2(robotToHub.getY(), robotToHub.getX());
     double headingError =
         MathUtil.angleModulus(targetHeading - robotPose.getRotation().getRadians());
-    double trackingOmega = passing ? 0 : trackingOmega(robotToHub, fieldVelocity);
     atTarget = passing
         ? Double.isFinite(headingError) && Math.abs(headingError) <= AlliancePass.ANGLE_TOLERANCE
             && Math.abs(drivebase.getRobotVelocity().omegaRadiansPerSecond)
                 <= DrivebaseConstants.HUB_AIM_VELOCITY_TOLERANCE_RAD_PER_SEC
-        : isSettled(headingError, drivebase.getRobotVelocity().omegaRadiansPerSecond - trackingOmega);
+        : isSettled(headingError, drivebase.getRobotVelocity().omegaRadiansPerSecond);
     double feedbackOmega =
         headingController.calculate(robotPose.getRotation().getRadians(), targetHeading);
     double profileOmega = headingController.getSetpoint().velocity;
     // ProfiledPIDController returns feedback for the profiled position setpoint, but it does not
     // include the setpoint velocity. Add that velocity as feedforward so the chassis actually
     // follows the requested fast trapezoidal profile instead of slowly chasing it with PID alone.
-    double omega = feedbackOmega + profileOmega + trackingOmega;
+    double omega = feedbackOmega + profileOmega;
 
     if (atTarget) {
-      omega = trackingOmega;
+      omega = 0.0;
     }
     // Keep a final safety bound even if PID feedback briefly exceeds the profile velocity.
     omega =
@@ -146,12 +136,6 @@ public class AimAtHub extends Command {
 
   }
 
-  static double trackingOmega(Translation2d toTarget, Translation2d velocity) {
-    double distanceSquared = toTarget.getX() * toTarget.getX() + toTarget.getY() * toTarget.getY();
-    return distanceSquared < 1e-9 ? 0
-        : (toTarget.getY() * velocity.getX() - toTarget.getX() * velocity.getY()) / distanceSquared;
-  }
-
   static boolean isSettled(double headingError, double measuredOmega) {
     return Double.isFinite(headingError) && Double.isFinite(measuredOmega)
         && Math.abs(headingError) <= DrivebaseConstants.HUB_AIM_TOLERANCE_RADIANS
@@ -161,7 +145,6 @@ public class AimAtHub extends Command {
   @Override
   public void end(boolean interrupted) {
     atTarget = false;
-    setTranslationCompensation(new Translation2d(), new Translation2d());
     drivebase.driveFieldOriented(new ChassisSpeeds());
     RateLimitedTelemetry.putBoolean("Hub Aim/Active", false);
     RateLimitedTelemetry.putBoolean("Hub Aim/At Target", false);

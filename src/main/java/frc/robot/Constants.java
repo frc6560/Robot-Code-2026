@@ -427,7 +427,7 @@ public final class Constants {
     public static final boolean FLOOR_SECONDARY_MOTOR_INVERTED = false;
     public static final int TUNNEL_MOTOR_ID = 16;
     public static final String CAN_BUS = "Canivore";
-    public static final double FLOOR_RUNNING_RPM = 800.0;
+    public static final double FLOOR_RUNNING_RPM = 1200.0;
     public static final double FLOOR_STATOR_CURRENT_LIMIT = 40.0;
     public static final double FLOOR_SUPPLY_CURRENT_LIMIT = 40.0;
     public static final double TUNNEL_RUNNING_RPM = 1500.0;

@@ -1,6 +1,6 @@
 # Fuel shooting: setup, measurement, and tuning
 
-This is the **driver auto-turn shooting** path with translation lead compensation (see the latest trigger mapping below). It does not use the old video calibrator,
+This is the new stationary **driver right-bumper auto-turn** path. It does not use the old video calibrator,
 its files, or its fitted distance policy. `FuelShotModel` integrates gravity, drag and backspin lift
 from ideal wheel/hood launch conditions. All flight aerodynamics are provisional until basket tests.
 
@@ -11,16 +11,14 @@ from ideal wheel/hood launch conditions. All flight aerodynamics are provisional
   Without it, use the explicit fixed-speed fallback: `Fuel/Test Flywheel RPM` defaults to **3000**,
   and `Fuel/Test Tunnel RPM` defaults to **1500**. `Fuel/Mode` identifies the uncalibrated fallback;
   its range/trajectory has not been validated.
-- Once actual heading error is within the configured aim tolerance, actual turn rate is within **5 deg/s**
-  of the required tracking rate (zero for stationary shots),
+- Once actual heading error is within **1.5 degrees**, actual turn rate is within **5 deg/s**,
   measured flywheel speed is within **60 RPM** of the request, and those conditions remain true
-  for **0.10 s**, the command runs the real wall/tunnel and the floor indexer (**800 RPM**).
+  for **0.10 s**, the command runs the real wall/tunnel and the floor indexer (**1200 RPM**).
 - With the formula model, measured RPM must also produce a scoring trajectory at the current range. Losing any
   release condition closes the gate immediately; regaining it requires another settling period.
 - Release RB: stop the tunnel and shooter. Both indexers remain stopped. No second button is needed.
-- Translation remains driver controlled. Formula shots compensate aim and RPM while translating;
-  the fixed-RPM calibration/fallback and alliance pass still pause feeding above 0.15 m/s.
-  At/below 0.25 m/s, formula shots retain the original stationary calculation and release checks.
+- Translation remains driver controlled, but **feeding pauses above 0.15 m/s**. This version does
+  not claim moving-shot compensation. Measured release delay and flight validation come first.
 - Driver Station alliance and a finite, correctly localized pose are required. Only shots from
   your own alliance zone are allowed. Start by resetting localization at a known position.
 - Pit coast, disconnected flywheel motors, or a disconnected/misconfigured tunnel block feeding.
@@ -67,42 +65,9 @@ For fixed-speed experiments enable Fuel/Calibration Mode and set Fuel/Test Flywh
 Fuel/Test Tunnel RPM. Release RB before changing values; disable calibration mode to restore
 formula shooting. No data submission or external tool is needed.
 
-## Shooting while translating
-
-Formula shooting converts measured robot-relative X/Y velocity into field coordinates and computes
-`lead = field_velocity * (flight_time + release_delay)`. Both aim and RPM use the hub displacement
-minus that lead. Six bounded cache-only iterations estimate the flight time; the final selected RPM
-uses the existing trajectory validation. Measured-RPM readiness integrates a 3D trajectory using
-measured heading, RPM and inherited field velocity. Drag and lift act on the combined launch and chassis velocity, so a simple translated
-stationary flight cannot incorrectly clear a marginal moving release. A failed or nonconverging solution blocks feeding. Velocity changes
-update the moving solution every command cycle, even when the physical range is unchanged.
-
-The aim controller tracks the changing bearing while translating. Its angular readiness gate compares
-measured turn rate with the required tracking rate. Pure rotation does not activate compensation;
-zero translation keeps the original stationary RPM, aiming, dwell, and scoring checks. A 0.25 m/s
-noise threshold prevents tiny velocity estimates from activating lead. Transitions between stationary
-and moving solutions restart the normal 0.10-second feed dwell. The backup autonomous routine keeps
-its separate stopped-at-endpoint requirement.
-
-Aim/RPM selection uses a constant-velocity lead approximation with the cached stationary trajectories.
-Before each moving release, one bounded 3D integration checks the actual predicted landing, near-rim
-clearance and entry angle. This validation does not optimize aim/RPM again; marginal solutions pause
-feeding. All aerodynamic coefficients remain provisional. Validate approach, retreat, and sideways
-shots on the robot, especially at higher speeds or during acceleration. Set
-`FuelShotConfig.MOVING_SHOT_RELEASE_DELAY_SECONDS` to the measured delay from a feed command to
-ball exit; it defaults to zero until measured and affects only moving shots. Existing stationary
-calibration and speed multipliers are unchanged. Calibration mode, missing-model fallback, and
-alliance passing retain their existing motion restrictions.
-
-`Fuel/MovingShot/Active`, `Valid`, `LeadX`, `LeadY`, and `EffectiveRange` in the recorded telemetry
-show whether compensation is active and the lead used (meters in field coordinates). The cache is
-reused rather than regenerated for each velocity. Each moving cycle uses seven cache estimates,
-one final solve (two stationary trajectory integrations), and one 3D measured-RPM integration when the other
-release gates pass. Measure loop time on the roboRIO before relying on a particular CPU budget.
-
 ## Floor and intake current limits
 
-The floor target remains **800 RPM**. Only the intake rack has a startup boost.
+The floor target remains **1200 RPM**. Only the intake rack has a startup boost.
 
 | Mechanism | Stator limit | Supply limit |
 |---|---|---|
@@ -145,7 +110,7 @@ before relying on the roller interlock, since the earlier measured-travel calcul
 
 ## When the wall does not run
 
-Release both bumpers, then hold **left bumper alone** to request manual floor (800 RPM) and tunnel
+Release both bumpers, then hold **left bumper alone** to request manual floor (1200 RPM) and tunnel
 (1500 RPM) without alliance/aim/flywheel gates. This is an explicit ungated manual control; do not
 use it to judge automatic shot readiness. Right bumper still owns the mechanisms when held and
 waits for its release conditions. After releasing RB, release any held manual input before retrying.
@@ -159,32 +124,16 @@ feed is requested until those conditions pass; the timed current limits are inde
 `Indexer/TunnelStatorAmps`, `Indexer/TunnelConfigurationStatus`, and `Indexer/TunnelControlStatus`
 to distinguish a motor/controller problem from a stalled mechanism.
 
-## Live dashboard coefficient
+## Fixed launch-speed coefficient
 
-`Shooter/Launch Speed Coefficient` defaults to 1.00 and accepts 0.5–1.5.
-It multiplies modeled exit speed and updates trajectories and scoring checks live, including
-while RB is held. Too far: try 1.03; too short: try 0.97. Restart resets it to 1.00.
-Keep `Fuel/Calibration Mode=false` for automatic formula shooting; fixed-RPM mode bypasses
-trajectory selection. The spin multiplier remains independently configured in FuelShotConfig.
+The modeled launch-speed coefficient is fixed in code at **1.025**. Dashboard edits and legacy
+saved Preferences cannot override it, including during an active shot or after restart.
+`Shooter/Launch Speed Coefficient` is now display-only; `Shooter/Applied Launch Speed Coefficient`
+shows the fixed value while shooting. Changing this coefficient requires editing code and redeploying.
+This applies to both right-trigger and Y calculator shots. Fixed-RPM calibration mode still bypasses
+trajectory selection as before.
 
-
-## Persistent live launch-speed adjustment
-
-Edit the numeric NetworkTables input `/SmartDashboard/Shooter/Launch Speed Coefficient`
-from Elastic and commit the edit. Do not edit the read-only logged trajectory
-coefficient or the separate Applied/Saved displays. Supported range: 0.5 to 1.5.
-The last accepted value now has its own Preferences key,
-`ShooterLaunchSpeedCoefficient`, separate from the dashboard request. Robot startup
-restores that saved value; a valid old dashboard value is migrated on first use.
-Edits are validated and saved every cycle, even while disabled and before shooting.
-Invalid or missing requests do not overwrite the saved value or force the input to 1.
-
-Check `Shooter/Saved Launch Speed Coefficient` while disabled; it should follow an
-accepted edit. Check `Shooter/Applied Launch Speed Coefficient` while shooting.
-`Shooter/Launch Speed Coefficient Status` describes request validation.
-`Fuel/Tuning` records requested/saved values and validity continuously.
-The NetworkTables server persists Preferences to disk; abrupt power loss before
-it saves a recent edit may still lose that edit.
+## Runtime diagnostics
 
 For intermittent shutdowns, inspect `Power/BatteryVoltage`, `Power/BrownedOut`,
 `Power/ControllerTemperatureCelsius`, and `Runtime/CodeUptimeSeconds`, together
@@ -235,46 +184,18 @@ Right trigger now aims/shoots (formerly RB); left trigger manually feeds floor/t
 left bumper retracts the intake. Release right trigger before resuming held manual feed.
 This mapping supersedes the older button names above.
 
-## Closed-loop desktop simulation
+## Driver Y: calculator shot with manual alignment
 
-Run `./gradlew movingShotSimulation` to exercise the
-production aim command, shot solver, feed gates, and shooter controller with the configured gains.
-The harness uses the YAGSL/MapleSim physical drivetrain and WPILib FlywheelSim with a 1 ms
-P/D motor-controller stand-in (the stock ShooterIOSim ignores D). It exports nine motion/readiness scenarios plus a stationary control
-case to `build/reports/moving-shot-simulation`, with actual RPM, heading error, feed state,
-command timing, and sampled ball landings. A separate 3D RK4 ball integration adds measured field
-velocity at release and applies drag/lift to the resulting ground velocity; a stationary cross-check
-verifies it against the existing trajectory model. It samples releases every 0.2 s while feeding;
-it does not model actual ball inventory, spacing, flywheel loading or indexer dynamics.
-It reports stationary releases after stops separately from moving releases, so the preserved
-stationary heading tolerance is also visible in the flight check.
+Hold Y to run the same distance/RPM calculator, flywheel readiness, stationary-speed gate,
+feed dwell, indexers and intake retraction as the right-trigger shot. Y assumes the driver has
+already pointed the shooter at the hub: it skips automatic turning and the heading-alignment
+check, and leaves the drivetrain under normal joystick control. Release Y to stop feeding.
+Right trigger takes priority while both are held; outtake and pit-coast still block shooting.
 
-These runs use a flat field, 12 V supply, the saved-default launch coefficient, ideal indexer
-readiness, and no vision noise or release delay. YAGSL's module motor loops are simplified; the
-production hub-aim PID/profile and shooter P/D gains/feedforward/ramp are exercised. The motor
-stand-in omits Talon firmware filtering, CAN latency and supply-current limiting. This is
-software validation, not a measured success probability or a roboRIO CPU benchmark. The desktop
-results and plots can be regenerated with `tools/analyze-moving-shot-simulation.py`.
+## Driver B: raw fixed-speed shooting
 
-### Additional curved-path simulation
-
-`./gradlew movingShotStressSimulation` runs eight 10-second cases in a separate process: stationary,
-curved arcs and figure-eight motion on both alliances, near weaving at 2.7 m, far weaving at 4 m,
-and a duplicate stationary control. Translation runs from 1.5 to 8.5 seconds. The harness exports
-all results before checking them, so predicted misses remain inspectable when a scenario fails.
-Every moving case must produce releases, and every sampled moving release must pass the independent
-3D flight check. Reports are under `build/reports/moving-shot-stress-simulation`.
-
-The flywheel gains in `Constants.ShooterConstants` are P=2.0, I=0.0, D=0.0. These shared constants
-are used by the production Talon configuration and shooter subsystem output as well as simulation.
-The cached stationary selection and stationary release gates are unchanged.
-
-### Selected aim-at-hub gains
-
-The production hub-aim controller uses its original gains: P=1.2, I=0.0, D=0.2.
-The experimental P=6.0, I=0.0, D=0.0 setting was reverted because aiming was too jerky.
-Flywheel gains remain P=2.0, I=0.0, D=0.0; moving-shot compensation is unchanged.
-
-The earlier desktop sweep favored the experimental gains for feed availability, but subsequent
-runs produced marginal predicted misses. Simulation throughput did not establish smooth physical
-aiming or guaranteed scoring, so those results do not justify retaining the higher aim gain.
+Hold B to request flywheel **2700 RPM**, floor **1200 RPM**, and tunnel **1500 RPM** immediately.
+This does not run the calculator, aim, check heading/range/alliance/speed, wait for flywheel
+readiness, retract the intake, or take drivetrain control. B overrides RT/Y calculator shots.
+Release B to stop its outputs. Teleop enable, pit-coast and outtake priority remain in force.
+The shared floor running-speed constant is now 1200 RPM everywhere, including reverse outtake.

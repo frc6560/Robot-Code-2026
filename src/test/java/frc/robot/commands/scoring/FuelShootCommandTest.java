@@ -122,7 +122,7 @@ class FuelShootCommandTest {
             new Command() {}, () -> aimReady, () -> pit, model, "Ideal", true, () -> stopped[0]);
         command.initialize();
         cycles(15);
-        assertEquals(solution.rpm(), shooter.getGoalRPM());
+        assertEquals(solution.rpm(), shooter.getGoalRPM(), 1e-6);
         assertEquals(0, indexer.getTunnelTargetRPM());
         stopped[0] = true;
         cycles(15);
@@ -139,35 +139,39 @@ class FuelShootCommandTest {
         assertEquals(0, shooter.getGoalRPM());
     }
 
-    @Test void savesWithoutShootingAndRestoresAfterDashboardValueIsLost() {
+    @Test void fixedCoefficientIgnoresDashboardAndLegacyPreferences() {
+        edu.wpi.first.wpilibj.Preferences.setDouble(LaunchSpeedTuning.PREFERENCE_KEY, 1.4);
+        SmartDashboard.putNumber(FuelShootCommand.LAUNCH_COEFFICIENT_KEY, 0.8);
+        SmartDashboard.getEntry(FuelShootCommand.LAUNCH_COEFFICIENT_KEY).setPersistent();
         FuelShootCommand.publishLaunchSpeedCoefficient();
-        SmartDashboard.putNumber(FuelShootCommand.LAUNCH_COEFFICIENT_KEY, 1.08);
-        assertEquals(1.08, LaunchSpeedTuning.update());
-        assertEquals(1.08, edu.wpi.first.wpilibj.Preferences.getDouble(LaunchSpeedTuning.PREFERENCE_KEY, 0));
-        SmartDashboard.putNumber(FuelShootCommand.LAUNCH_COEFFICIENT_KEY, 1.0);
-        FuelShootCommand.publishLaunchSpeedCoefficient();
-        assertEquals(1.08, SmartDashboard.getNumber(FuelShootCommand.LAUNCH_COEFFICIENT_KEY, 0));
-        SmartDashboard.putNumber(FuelShootCommand.LAUNCH_COEFFICIENT_KEY, Double.NaN);
-        assertEquals(1.08, LaunchSpeedTuning.update());
-        assertEquals(1.08, edu.wpi.first.wpilibj.Preferences.getDouble(LaunchSpeedTuning.PREFERENCE_KEY, 0));
+        assertEquals(1.025, LaunchSpeedTuning.update());
+        assertFalse(SmartDashboard.getEntry(FuelShootCommand.LAUNCH_COEFFICIENT_KEY).isPersistent());
+        for (double request : new double[] {0.5, 1.5, Double.NaN}) {
+            SmartDashboard.putNumber(FuelShootCommand.LAUNCH_COEFFICIENT_KEY, request);
+            assertEquals(1.025, LaunchSpeedTuning.update());
+        }
+        assertEquals(1.4, edu.wpi.first.wpilibj.Preferences.getDouble(LaunchSpeedTuning.PREFERENCE_KEY, 0));
     }
 
-    @Test void startupRestoresSavedTuningAndMarksItPersistent() {
-        // Startup restores Preferences; an unsaved dashboard value is only a request.
-        edu.wpi.first.wpilibj.Preferences.setDouble(LaunchSpeedTuning.PREFERENCE_KEY, 1.06);
-        SmartDashboard.putNumber(FuelShootCommand.LAUNCH_COEFFICIENT_KEY, 1.0);
-        try {
-            FuelShootCommand.publishLaunchSpeedCoefficient();
-            assertEquals(1.06, SmartDashboard.getNumber(FuelShootCommand.LAUNCH_COEFFICIENT_KEY, 0));
-            assertTrue(SmartDashboard.getEntry(FuelShootCommand.LAUNCH_COEFFICIENT_KEY).isPersistent());
-            start(null); cycles(1);
-            assertEquals(1.06, SmartDashboard.getNumber("Shooter/Applied Launch Speed Coefficient", 0));
-            assertEquals(1.06, SmartDashboard.getNumber(FuelShootCommand.LAUNCH_COEFFICIENT_KEY, 0));
-        } finally {
-            SmartDashboard.getEntry(FuelShootCommand.LAUNCH_COEFFICIENT_KEY).clearPersistent();
-            SmartDashboard.putNumber(FuelShootCommand.LAUNCH_COEFFICIENT_KEY, 1.0);
-        }
+    @Test void dashboardEditsCannotChangeAnActiveCalculatorShot() {
+        SmartDashboard.putBoolean("Fuel/Calibration Mode", false);
+        var model = new FuelShotModel(LaunchCalibration.ideal());
+        var expected = model.solve(3.5);
+        assertTrue(expected.valid());
+        start(model);
+        aimReady = true;
+        shooter.measured = expected.rpm();
+        cycles(15);
+        assertEquals(expected.rpm(), shooter.getGoalRPM(), 1e-6);
+        assertTrue(command.isFeeding());
+        SmartDashboard.putNumber(FuelShootCommand.LAUNCH_COEFFICIENT_KEY, 1.5);
+        edu.wpi.first.wpilibj.Preferences.setDouble(LaunchSpeedTuning.PREFERENCE_KEY, .5);
+        cycles(15);
+        assertEquals(expected.rpm(), shooter.getGoalRPM(), 1e-6);
+        assertEquals(1.025, SmartDashboard.getNumber("Shooter/Applied Launch Speed Coefficient", 0));
+        assertTrue(command.isFeeding());
     }
+
     @Test void motionAlliancePitFaultsAndDisableBlockFeed() {
         start(null); aimReady = true;
         speeds = new ChassisSpeeds(0.3, 0, 0); cycles(10);
@@ -193,7 +197,7 @@ class FuelShootCommandTest {
         start(null); aimReady = true; cycles(20);
         assertEquals(1500, indexer.getTunnelTargetRPM());
         assertEquals("Fixed RPM (uncalibrated)", SmartDashboard.getString("Fuel/Mode", ""));
-        assertEquals(800, indexer.getFloorTargetRPM());
+        assertEquals(1200, indexer.getFloorTargetRPM());
         command.end(false);
         SmartDashboard.putBoolean("Fuel/Calibration Mode", true);
         SmartDashboard.putNumber("Fuel/Test Flywheel RPM", Double.NaN);
@@ -214,7 +218,7 @@ class FuelShootCommandTest {
         aimReady = true;
         cycles(15);
         assertEquals(1500, indexer.getTunnelTargetRPM());
-        assertEquals(800, indexer.getFloorTargetRPM());
+        assertEquals(1200, indexer.getFloorTargetRPM());
         assertEquals("Ready",
             SmartDashboard.getString("Fuel/Status", ""));
         assertEquals("Reachable",
@@ -229,56 +233,13 @@ class FuelShootCommandTest {
         shooter.measured = baseline.rpm();
         aimReady = true;
         cycles(15);
-        assertEquals(baseline.rpm(), shooter.getGoalRPM());
+        assertEquals(baseline.rpm(), shooter.getGoalRPM(), 1e-6);
         assertTrue(command.isFeeding());
         speeds = new ChassisSpeeds(0, 0, 0.5);
         // The real aim command owns the existing angular alignment gate.
         aimReady = false;
         cycles(1);
-        assertEquals(baseline.rpm(), shooter.getGoalRPM());
-        assertFalse(command.isFeeding());
-    }
-
-    @Test void movingShotFeedsTracksVelocityEveryLoopAndReturnsToStationaryRpm() {
-        var model = new FuelShotModel(LaunchCalibration.ideal());
-        double stationary = model.solve(3.5).rpm();
-        SmartDashboard.putBoolean("Fuel/Calibration Mode", false);
-        start(model);
-        aimReady = true;
-        speeds = new ChassisSpeeds(0.5, 0, 0);
-        cycles(1);
-        double approaching = shooter.getGoalRPM();
-        assertTrue(approaching < stationary);
-        shooter.measured = approaching;
-        cycles(15);
-        assertTrue(command.isFeeding());
-        // Same position, different velocity: must not wait for the old range/100-ms gate.
-        speeds = new ChassisSpeeds(-0.5, 0, 0);
-        cycles(1);
-        assertTrue(shooter.getGoalRPM() > stationary);
-        assertFalse(command.isFeeding());
-        speeds = new ChassisSpeeds();
-        cycles(1);
-        assertEquals(stationary, shooter.getGoalRPM());
-        shooter.measured = stationary;
-        cycles(15);
-        assertTrue(command.isFeeding());
-    }
-
-    @Test void robotRelativeYVelocityIsConvertedToFieldCoordinates() {
-        var model = new FuelShotModel(LaunchCalibration.ideal());
-        SmartDashboard.putBoolean("Fuel/Calibration Mode", false);
-        pose = new Pose2d(pose.getTranslation(), Rotation2d.fromDegrees(90));
-        speeds = new ChassisSpeeds(0, -0.5, 0); // Field +X: toward the blue hub.
-        start(model);
-        cycles(1);
-        double expected = MovingShotSolver.solve(model,
-            Constants.FieldConstants.BLUE_HUB_CENTER.minus(FuelShootCommand.releasePosition(pose)),
-            new edu.wpi.first.math.geometry.Translation2d(0.5, 0)).shot().rpm();
-        assertEquals(expected, shooter.getGoalRPM());
-        speeds = new ChassisSpeeds(Double.NaN, 0, 0);
-        cycles(1);
-        assertEquals(0, shooter.getGoalRPM());
+        assertEquals(baseline.rpm(), shooter.getGoalRPM(), 1e-6);
         assertFalse(command.isFeeding());
     }
 
@@ -294,7 +255,7 @@ class FuelShootCommandTest {
         cycles(15);
         assertEquals(shot.rpm(), shooter.getGoalRPM(), 1e-6);
         assertEquals(1400, indexer.getTunnelTargetRPM());
-        assertEquals(800, indexer.getFloorTargetRPM());
+        assertEquals(1200, indexer.getFloorTargetRPM());
         shooter.measured = 1000; cycles(1);
         assertEquals(0, indexer.getTunnelTargetRPM());
         assertEquals(0, indexer.getFloorTargetRPM());

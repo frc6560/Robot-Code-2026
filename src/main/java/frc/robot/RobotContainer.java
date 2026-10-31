@@ -63,6 +63,8 @@ public class RobotContainer {
 
     private FuelShootCommand shotCommand;
     private Command shotWithIntake;
+    private FuelShootCommand manualAlignedShotCommand;
+    private Command manualAlignedShotWithIntake;
     private boolean pitCoastMode = false;
     private boolean manualControlsSuppressedAfterAim;
     private FuelShotModel fuelShotModel;
@@ -102,15 +104,13 @@ public class RobotContainer {
 
 
         intake = new Intake(new IntakeIOTalonFX());
-        led = new LED(new LEDIOAddressable(3, 65), () -> shotWithIntake != null && shotWithIntake.isScheduled(),
-            () -> shotCommand != null && shotCommand.isReadyToFeed());
+        led = new LED(new LEDIOAddressable(3, 65), this::isShootingScheduled, this::isShotReady);
       } else {
           shooter = new Shooter(new ShooterIOSim(), this::inOwnAllianceZone);
 
 
           intake = new Intake(new IntakeIOSim());
-          led = new LED(new LEDIOSim(65), () -> shotWithIntake != null && shotWithIntake.isScheduled(),
-            () -> shotCommand != null && shotCommand.isReadyToFeed());
+          led = new LED(new LEDIOSim(65), this::isShootingScheduled, this::isShotReady);
       }
 
       factory = new AutoCommands(drivebase, intake, shooter);
@@ -163,9 +163,31 @@ public class RobotContainer {
     }
 
     private boolean isShotCommandActive() {
-        return driverXbox.rightTrigger().getAsBoolean()
-            || (shotWithIntake != null
-                && CommandScheduler.getInstance().isScheduled(shotWithIntake));
+        return !driverXbox.b().getAsBoolean()
+            && (driverXbox.rightTrigger().getAsBoolean() || driverXbox.y().getAsBoolean()
+                || isShootingScheduled());
+    }
+
+    private boolean isShootingScheduled() {
+        return (shotWithIntake != null && shotWithIntake.isScheduled())
+            || (manualAlignedShotWithIntake != null && manualAlignedShotWithIntake.isScheduled());
+    }
+
+    private boolean isShotReady() {
+        return manualAlignedShotWithIntake != null && manualAlignedShotWithIntake.isScheduled()
+            ? manualAlignedShotCommand.isReadyToFeed()
+            : shotCommand != null && shotCommand.isReadyToFeed();
+    }
+
+    /** Same calculator/feed gates as RT; the driver supplies heading and retains drivetrain control. */
+    private Command createManualAlignedShotCommand() {
+        manualAlignedShotCommand = new FuelShootCommand(shooter, indexer,
+            drivebase::getPose, drivebase::getRobotVelocity, Commands.none(), () -> true,
+            () -> pitCoastMode, fuelShotModel, fuelCalibrationStatus);
+        manualAlignedShotWithIntake = manualAlignedShotCommand
+            .alongWith(Commands.startEnd(intake::requestForceRetracted, intake::stop, intake))
+            .withName("FuelShootManuallyAligned");
+        return manualAlignedShotWithIntake;
     }
 
     /** Gated shot plus BLine's AimAtHub, which turns the chassis to the hub while the driver translates. */
@@ -183,6 +205,21 @@ public class RobotContainer {
         if (shotWithIntake != null) {
             CommandScheduler.getInstance().cancel(shotWithIntake);
         }
+        if (manualAlignedShotWithIntake != null) {
+            CommandScheduler.getInstance().cancel(manualAlignedShotWithIntake);
+        }
+    }
+
+    /** Raw fixed-speed shot: no calculator, aim, intake motion, or release-readiness checks. */
+    private Command createRawShotCommand() {
+        return Commands.run(() -> {
+            shooter.setGoal(2700.0);
+            indexer.setFloorRPM(Constants.IndexerConstants.FLOOR_RUNNING_RPM);
+            indexer.setTunnelRPM(Constants.IndexerConstants.TUNNEL_RUNNING_RPM);
+        }, shooter, indexer).finallyDo(interrupted -> {
+            indexer.stop();
+            shooter.stop();
+        }).withName("FuelShootRaw2700");
     }
 
     /** One owner samples the controls so simultaneous holds cannot cancel each other. */
@@ -275,12 +312,12 @@ public class RobotContainer {
             }));
         // Releasing right trigger must stop feeding even if an operator control is held.
         // Require all manual holds to release before an ungated manual shot can start again.
-        new Trigger(() -> !driverXbox.rightTrigger().getAsBoolean()
+        new Trigger(() -> !driverXbox.rightTrigger().getAsBoolean() && !driverXbox.y().getAsBoolean() && !driverXbox.b().getAsBoolean()
             && !floor.getAsBoolean() && !feed.getAsBoolean())
             .onTrue(Commands.runOnce(() -> manualControlsSuppressedAfterAim = false).ignoringDisable(true));
         floor.or(feed)
             .and(DriverStation::isTeleopEnabled)
-            .and(() -> !pitCoastMode && !driverXbox.rightTrigger().getAsBoolean() && !manualControlsSuppressedAfterAim && !outtake.getAsBoolean())
+            .and(() -> !pitCoastMode && !driverXbox.rightTrigger().getAsBoolean() && !driverXbox.y().getAsBoolean() && !driverXbox.b().getAsBoolean() && !manualControlsSuppressedAfterAim && !outtake.getAsBoolean())
             .whileTrue(manualShotCommand(floor, feed));
 
         driverXbox.start().
@@ -299,12 +336,26 @@ public class RobotContainer {
         // --- SHOTS ---
         
         Trigger driverAimedShootTrigger = driverXbox.rightTrigger().and(DriverStation::isTeleopEnabled)
-            .and(() -> !pitCoastMode && !outtake.getAsBoolean());
+            .and(() -> !pitCoastMode && !outtake.getAsBoolean() && !driverXbox.b().getAsBoolean());
 
         // One held command owns drivetrain, shooter and indexer. Releasing RT cancels all three.
         Command aimedShot = createAimedShotCommand();
         driverAimedShootTrigger.onTrue(Commands.runOnce(() -> manualControlsSuppressedAfterAim = true));
         driverAimedShootTrigger.whileTrue(aimedShot);
+
+        // RT takes priority if both are held; Y never owns or commands the drivetrain.
+        Trigger manuallyAlignedShootTrigger = driverXbox.y().and(DriverStation::isTeleopEnabled)
+            .and(() -> !pitCoastMode && !outtake.getAsBoolean()
+                && !driverXbox.rightTrigger().getAsBoolean() && !driverXbox.b().getAsBoolean());
+        Command manuallyAlignedShot = createManualAlignedShotCommand();
+        manuallyAlignedShootTrigger.onTrue(Commands.runOnce(() -> manualControlsSuppressedAfterAim = true));
+        manuallyAlignedShootTrigger.whileTrue(manuallyAlignedShot);
+
+        // B overrides calculator shots; global disable/pit-coast and outtake still take priority.
+        Trigger rawShootTrigger = driverXbox.b().and(DriverStation::isTeleopEnabled)
+            .and(() -> !pitCoastMode && !outtake.getAsBoolean());
+        rawShootTrigger.onTrue(Commands.runOnce(() -> manualControlsSuppressedAfterAim = true));
+        rawShootTrigger.whileTrue(createRawShotCommand());
 
         // Button-board 3 requests manual floor/tunnel feed outside the aimed shot.
 
