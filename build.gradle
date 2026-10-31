@@ -76,6 +76,9 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
     def akitJson = new groovy.json.JsonSlurper().parseText(new File(projectDir.getAbsolutePath() + "/vendordeps/AdvantageKit.json").text)
+    if (akitJson.version != '26.0.2') {
+        throw new GradleException('Review the local AdvantageKit Logger queue adaptation before upgrading AdvantageKit.')
+    }
     annotationProcessor "org.littletonrobotics.akit:akit-autolog:$akitJson.version"
 }
 
@@ -97,7 +100,15 @@ wpi.sim.addDriverstation()
 // in order to make them all available at runtime. Also adding the manifest so WPILib
 // knows where to look for our Robot Class.
 jar {
-    from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+    // Our pinned AdvantageKit Logger adaptation must be the only Logger in the deployed JAR.
+    from {
+        configurations.runtimeClasspath.collect { dependency ->
+            dependency.isDirectory() ? dependency : zipTree(dependency).matching {
+                exclude 'org/littletonrobotics/junction/Logger.class'
+                exclude 'org/littletonrobotics/junction/Logger$*.class'
+            }
+        }
+    }
     from('src') { into 'backup/src' }
     from('vendordeps') { into 'backup/vendordeps' }
     from('build.gradle') { into 'backup' }

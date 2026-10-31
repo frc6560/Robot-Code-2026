@@ -38,6 +38,7 @@ public class SampledLoggedRobot extends LoggedRobot {
 
   private boolean useTiming = true;
   private long nextLogUs;
+  private long previousCycleStartUs = -1;
   // Hardware capture and queue admission are both limited to 2 Hz.
   // Desktop replay retains the original every-cycle semantics.
 
@@ -124,6 +125,10 @@ public class SampledLoggedRobot extends LoggedRobot {
           gcStatsCollector.update();
           Logger.periodicAfterUser(userCodeEnd - userCodeStart, userCodeStart - periodicBeforeStart);
         }
+        frc.robot.utility.CpuMonitor.recordCycle(
+            RobotController.getFPGATime() - periodicBeforeStart, periodUs,
+            previousCycleStartUs >= 0 ? periodicBeforeStart - previousCycleStartUs : -1);
+        previousCycleStartUs = periodicBeforeStart;
       }
     } catch (Exception exception) {
       // Exception thrown, log crash information

@@ -137,6 +137,8 @@ public class Robot extends SampledLoggedRobot
     // and running subsystem periodic() methods.  This must be called from the robot's periodic
     // block in order for anything in the Command-based framework to work.
     frc.robot.utility.MemoryMonitor.update();
+    frc.robot.utility.CpuMonitor.update();
+    frc.robot.utility.StorageMonitor.update();
     frc.robot.utility.shooting.LaunchSpeedTuning.update();
     CommandScheduler.getInstance().run();
     m_robotContainer.updateShotDashboard();

@@ -1,0 +1,93 @@
+--- AdvantageKit-26.0.2/Logger.java
++++ src/main/java/org/littletonrobotics/junction/Logger.java
+@@ -22,8 +22,6 @@
+ import java.util.HashMap;
+ import java.util.List;
+ import java.util.Map;
+-import java.util.concurrent.ArrayBlockingQueue;
+-import java.util.concurrent.BlockingQueue;
+ import java.util.function.BooleanSupplier;
+ import java.util.function.DoubleSupplier;
+ import java.util.function.IntSupplier;
+@@ -38,7 +36,8 @@
+ 
+ /** Central class for recording and replaying log data. */
+ public class Logger {
+-  private static final int receiverQueueCapacity = 500; // 10s at 50Hz
++  // Local adaptation of AdvantageKit 26.0.2: small hardware backlog, latest-frame policy.
++  private static final int receiverQueueCapacity = RobotBase.isReal() ? LatestFrameQueue.HARDWARE_CAPACITY : 500;
+ 
+   private static boolean running = false;
+   private static long cycleCount = 0;
+@@ -52,8 +51,7 @@
+   private static boolean checkRobotBase = true;
+ 
+   private static LogReplaySource replaySource;
+-  private static final BlockingQueue<LogTable> receiverQueue =
+-      new ArrayBlockingQueue<LogTable>(receiverQueueCapacity);
++  private static final LatestFrameQueue receiverQueue = new LatestFrameQueue(receiverQueueCapacity);
+   private static final ReceiverThread receiverThread = new ReceiverThread(receiverQueue);
+   private static boolean receiverQueueFault = false;
+ 
+@@ -379,16 +377,25 @@
+           (periodicBeforeLength + userCodeLength + periodicAfterLength) / 1000.0);
+       recordOutput("Logger/QueuedCycles", receiverQueue.size());
+ 
+-      try {
+-        // Send a copy of the data to the receivers. The original object will be
+-        // kept and updated with the next timestamp (and new data if replaying).
+-        receiverQueue.add(LogTable.clone(entry));
+-        receiverQueueFault = false;
+-      } catch (IllegalStateException exception) {
+-        receiverQueueFault = true;
+-        DriverStation.reportError(
+-            "[AdvantageKit] Capacity of receiver queue exceeded, data will NOT be logged.", false);
+-      }
++      recordOutput("Logger/QueueCapacity", receiverQueueCapacity);
++      recordOutput("Logger/DroppedFrames", receiverQueue.droppedFrames());
++      if (RobotBase.isReal()) {
++        long droppedBefore = receiverQueue.droppedFrames();
++        // A saturated hardware receiver retains the newest bounded window.
++        receiverQueue.offerLatest(LogTable.clone(entry));
++        receiverQueueFault = receiverQueue.droppedFrames() != droppedBefore;
++      } else {
++        // Preserve upstream desktop/replay behavior for accelerated playback.
++        try {
++          receiverQueue.add(LogTable.clone(entry));
++          receiverQueueFault = false;
++        } catch (IllegalStateException exception) {
++          receiverQueueFault = true;
++          DriverStation.reportError(
++              "[AdvantageKit] Capacity of receiver queue exceeded, data will NOT be logged.", false);
++        }
++      }
++
+     }
+   }
+ 
+@@ -442,11 +449,20 @@
+   }
+ 
+   /**
+-   * Returns the state of the receiver queue fault. This is tripped when the receiver queue fills
+-   * up, meaning that data is no longer being saved.
+-   *
+-   * @return Whether the receiver queue is full.
+-   */
++   * Returns whether the last capture evicted an old frame because the queue was full.
++   * New frames continue to be admitted; old history is discarded.
++   *
++   * @return Whether the last capture evicted an old frame.
++   */
++  /** Current backlog, excluding the frame being processed by the receiver. */
++  public static int getReceiverQueueSize() { return receiverQueue.size(); }
++
++  /** Hardware uses eight frames; desktop simulation/replay retains the upstream capacity. */
++  public static int getReceiverQueueCapacity() { return receiverQueueCapacity; }
++
++  /** Total queued snapshots evicted to keep the most recent data. */
++  public static long getDroppedFrameCount() { return receiverQueue.droppedFrames(); }
++
+   public static boolean getReceiverQueueFault() {
+     return receiverQueueFault;
+   }

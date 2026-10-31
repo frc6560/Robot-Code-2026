@@ -49,3 +49,7 @@ it does not establish that logging caused the memory exhaustion.
 
 Brief faults between samples, including final console output before a crash, may be
 absent from the sampled log; retain the Driver Station console when diagnosing a failure.
+
+Production queue follow-up: hardware now retains at most eight queued snapshots
+and evicts oldest frames under receiver backpressure. See `log-queue.md` for
+queue metrics, the pinned AdvantageKit adaptation and packaging requirements.
