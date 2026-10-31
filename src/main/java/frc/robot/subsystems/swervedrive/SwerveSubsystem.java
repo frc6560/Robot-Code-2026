@@ -24,7 +24,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.FunctionalCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import org.littletonrobotics.junction.Logger;
+import frc.robot.utility.telemetry.RateLimitedTelemetry;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Config;
 import frc.robot.Constants;
 import frc.robot.Constants.DrivebaseConstants;
@@ -76,10 +76,11 @@ public class SwerveSubsystem extends SubsystemBase {
         .getStringTopic("/SmartDashboard/Auto Chooser/selected")
         .subscribe("Idle");
 
-    Pose2d startingPose = FieldConstants.BLUE_TESTING_START;
-    SmartDashboard.setDefaultBoolean("Swerve/DetailedTelemetry", false);
-    SwerveDriveTelemetry.verbosity = RobotBase.isSimulation()
-        ? TelemetryVerbosity.HIGH : TelemetryVerbosity.LOW;
+    Pose2d startingPose = RobotBase.isSimulation()
+        && frc.robot.simulation.CompetitionAutoDiagnostic.requested()
+            ? frc.robot.simulation.CompetitionAutoDiagnostic.initialPose()
+            : FieldConstants.BLUE_TESTING_START;
+    SwerveDriveTelemetry.verbosity = TelemetryVerbosity.NONE;
     try
     {
       swerveDrive = new SwerveParser(directory).createSwerveDrive(Constants.MAX_SPEED, startingPose);
@@ -95,7 +96,6 @@ public class SwerveSubsystem extends SubsystemBase {
     swerveDrive.setModuleEncoderAutoSynchronize(false,
                                                 1); 
     swerveDrive.replaceSwerveModuleFeedforward(driveFF);
-    SmartDashboard.putData("Swerve/Field", swerveDrive.field);
     registerCurrentMonitoring();
     setMotorBrake(true);
   }
@@ -118,7 +118,6 @@ public class SwerveSubsystem extends SubsystemBase {
                                   Constants.MAX_SPEED,
                                   new Pose2d(new Translation2d(Meter.of(2), Meter.of(0)),
                                   Rotation2d.fromDegrees(0)));
-    SmartDashboard.putData("Swerve/Field", swerveDrive.field);
     registerCurrentMonitoring();
     setMotorBrake(true);
   }
@@ -147,25 +146,20 @@ public class SwerveSubsystem extends SubsystemBase {
     double poseLogTime = edu.wpi.first.wpilibj.Timer.getFPGATimestamp();
     if (poseLogTime >= nextFuelPoseLog) {
       nextFuelPoseLog = poseLogTime + 0.5;
-      Logger.recordOutput("Fuel/RobotPose", getPose());
+      RateLimitedTelemetry.recordOutput("Fuel/RobotPose", getPose());
     }
 
-    SwerveDriveTelemetry.verbosity = RobotBase.isSimulation()
-        || SmartDashboard.getBoolean("Swerve/DetailedTelemetry", false)
-            ? TelemetryVerbosity.HIGH : TelemetryVerbosity.LOW;
+    SwerveDriveTelemetry.verbosity = TelemetryVerbosity.NONE;
     // Pose2d is published as structured AdvantageKit data. In AdvantageScope, add
     // Swerve/Pose to a 2D Field tab and BLine/FollowPath/pathTranslations as the path.
-    Logger.recordOutput("Swerve/Pose", getPose());
+    RateLimitedTelemetry.recordOutput("Swerve/Pose", getPose());
     Pose2d diagnosticPose = getPose();
-    Logger.recordOutput("Swerve/XMeters", diagnosticPose.getX());
-    Logger.recordOutput("Swerve/YMeters", diagnosticPose.getY());
-    Logger.recordOutput("Swerve/HeadingDeg", diagnosticPose.getRotation().getDegrees());
-    SmartDashboard.putNumber("Swerve/XMeters", diagnosticPose.getX());
-    SmartDashboard.putNumber("Swerve/YMeters", diagnosticPose.getY());
-    SmartDashboard.putNumber("Swerve/HeadingDeg", diagnosticPose.getRotation().getDegrees());
-    Logger.recordOutput("Swerve/RobotVelocity", getRobotVelocity());
-    Logger.recordOutput("Swerve/FieldVelocity", getFieldVelocity());
-    Logger.recordOutput("Swerve/PitCoastMode", pitCoastMode);
+    RateLimitedTelemetry.recordOutput("Swerve/XMeters", diagnosticPose.getX());
+    RateLimitedTelemetry.recordOutput("Swerve/YMeters", diagnosticPose.getY());
+    RateLimitedTelemetry.recordOutput("Swerve/HeadingDeg", diagnosticPose.getRotation().getDegrees());
+    RateLimitedTelemetry.recordOutput("Swerve/RobotVelocity", getRobotVelocity());
+    RateLimitedTelemetry.recordOutput("Swerve/FieldVelocity", getFieldVelocity());
+    RateLimitedTelemetry.recordOutput("Swerve/PitCoastMode", pitCoastMode);
     Command activeCommand = getCurrentCommand();
     int driverPort = Constants.OperatorConstants.DRIVER_CONTROLLER_PORT;
     String controlStatus = !DriverStation.isEnabled() ? "Robot disabled"
@@ -174,14 +168,14 @@ public class SwerveSubsystem extends SubsystemBase {
         : !DriverStation.isTeleopEnabled() ? "Outside Teleop: joystick drive inactive"
         : activeCommand == null ? "Waiting for drive command"
         : "Active: " + activeCommand.getName();
-    SmartDashboard.putString("Swerve/ControlStatus", controlStatus);
-    SmartDashboard.putBoolean("Swerve/PitCoastMode", pitCoastMode);
-    SmartDashboard.putNumber("Swerve/DriverControllerPort", driverPort);
+    RateLimitedTelemetry.putString("Swerve/ControlStatus", controlStatus);
+    RateLimitedTelemetry.putBoolean("Swerve/PitCoastMode", pitCoastMode);
+    RateLimitedTelemetry.putNumber("Swerve/DriverControllerPort", driverPort);
     int driverAxisCount = DriverStation.getStickAxisCount(driverPort);
-    SmartDashboard.putNumber("Swerve/DriverLeftX", driverAxisCount > 0 ? DriverStation.getStickAxis(driverPort, 0) : 0);
-    SmartDashboard.putNumber("Swerve/DriverLeftY", driverAxisCount > 1 ? DriverStation.getStickAxis(driverPort, 1) : 0);
-    SmartDashboard.putNumber("Swerve/DriverRightX", driverAxisCount > 4 ? DriverStation.getStickAxis(driverPort, 4) : 0);
-    Logger.recordOutput("Swerve/ControlStatus", controlStatus);
+    RateLimitedTelemetry.putNumber("Swerve/DriverLeftX", driverAxisCount > 0 ? DriverStation.getStickAxis(driverPort, 0) : 0);
+    RateLimitedTelemetry.putNumber("Swerve/DriverLeftY", driverAxisCount > 1 ? DriverStation.getStickAxis(driverPort, 1) : 0);
+    RateLimitedTelemetry.putNumber("Swerve/DriverRightX", driverAxisCount > 4 ? DriverStation.getStickAxis(driverPort, 4) : 0);
+    RateLimitedTelemetry.recordOutput("Swerve/ControlStatus", controlStatus);
 
     // Set initial pose once based on auto selection (only while disabled)
     if (!initialPoseSet && DriverStation.isDisabled()) {
@@ -193,8 +187,7 @@ public class SwerveSubsystem extends SubsystemBase {
       initialPoseSet = true;  // Lock in the pose once auto starts
     }
 
-    swerveDrive.field.getObject("BlueHub").setPose(new Pose2d(FieldConstants.BLUE_HUB_CENTER, new Rotation2d()));
-    SmartDashboard.putNumber("DistToBlueHub",
+    RateLimitedTelemetry.putNumber("DistToBlueHub",
         frc.robot.commands.scoring.FuelShootCommand.releasePosition(getPose())
             .getDistance(FieldConstants.BLUE_HUB_CENTER));
   }
@@ -211,13 +204,13 @@ public class SwerveSubsystem extends SubsystemBase {
     double headingError = MathUtil.angleModulus(targetInRadians - currentHeading);
     double commandedOmega = m_pidControllerTheta.calculate(currentHeading, targetInRadians);
 
-    SmartDashboard.getEntry("Yaw error").setDouble(headingError);
-    SmartDashboard.getEntry("Pose in radians").setDouble(currentHeading);
-    Logger.recordOutput("HeadingAlign/TargetHeadingDeg", Math.toDegrees(targetInRadians));
-    Logger.recordOutput("HeadingAlign/CurrentHeadingDeg", Math.toDegrees(currentHeading));
-    Logger.recordOutput("HeadingAlign/HeadingErrorDeg", Math.toDegrees(headingError));
-    Logger.recordOutput("HeadingAlign/CommandedOmegaRadPerSec", commandedOmega);
-    Logger.recordOutput(
+    RateLimitedTelemetry.putNumber("Yaw error", headingError);
+    RateLimitedTelemetry.putNumber("Pose in radians", currentHeading);
+    RateLimitedTelemetry.recordOutput("HeadingAlign/TargetHeadingDeg", Math.toDegrees(targetInRadians));
+    RateLimitedTelemetry.recordOutput("HeadingAlign/CurrentHeadingDeg", Math.toDegrees(currentHeading));
+    RateLimitedTelemetry.recordOutput("HeadingAlign/HeadingErrorDeg", Math.toDegrees(headingError));
+    RateLimitedTelemetry.recordOutput("HeadingAlign/CommandedOmegaRadPerSec", commandedOmega);
+    RateLimitedTelemetry.recordOutput(
         "HeadingAlign/MeasuredOmegaRadPerSec", getRobotVelocity().omegaRadiansPerSecond);
 
     ChassisSpeeds targetSpeeds = new ChassisSpeeds(
@@ -235,7 +228,7 @@ public class SwerveSubsystem extends SubsystemBase {
 
       final double ROT_TOLERANCE = Units.degreesToRadians(2.0);
       double target = MathUtil.angleModulus(getPose().getRotation().getRadians() - (MathUtil.inputModulus(getPose().getRotation().getRadians(), - Math.PI/2 , Math.PI/2)));
-      SmartDashboard.getEntry("Target pose").setDouble(target);
+      RateLimitedTelemetry.putNumber("Target pose", target);
 
       Command alignToTrenchCommand = new FunctionalCommand(
         () -> {},
@@ -270,6 +263,19 @@ public class SwerveSubsystem extends SubsystemBase {
 
     Pose2d startPose;
     switch (selectedAuto) {
+      case "Back Up and Shoot":
+      case "Backup - Back Up and Shoot":
+      case "Blue Left":
+      case "Blue Center":
+      case "Blue Right":
+      case "Red Left":
+      case "Red Center":
+      case "Red Right":
+      case "hub":
+      case "human":
+      case "non-human":
+        // Backup uses the measured pose; competition paths reset their own start when initialized.
+        return;
       case "HP Turkish Delight":
         startPose = isRed ? FieldConstants.RED_RIGHT_START : FieldConstants.BLUE_RIGHT_START;
         break;
@@ -443,10 +449,10 @@ public class SwerveSubsystem extends SubsystemBase {
    */
   public void driveFieldOriented(ChassisSpeeds velocity)
   {
-    Logger.recordOutput("Swerve/RequestedFieldVelocity", velocity);
-    SmartDashboard.putNumber("Swerve/RequestedVxMPS", velocity.vxMetersPerSecond);
-    SmartDashboard.putNumber("Swerve/RequestedVyMPS", velocity.vyMetersPerSecond);
-    SmartDashboard.putNumber("Swerve/RequestedOmegaRadPerSec", velocity.omegaRadiansPerSecond);
+    RateLimitedTelemetry.recordOutput("Swerve/RequestedFieldVelocity", velocity);
+    RateLimitedTelemetry.putNumber("Swerve/RequestedVxMPS", velocity.vxMetersPerSecond);
+    RateLimitedTelemetry.putNumber("Swerve/RequestedVyMPS", velocity.vyMetersPerSecond);
+    RateLimitedTelemetry.putNumber("Swerve/RequestedOmegaRadPerSec", velocity.omegaRadiansPerSecond);
     if (pitCoastMode) {
       stopAllMotors();
       return;

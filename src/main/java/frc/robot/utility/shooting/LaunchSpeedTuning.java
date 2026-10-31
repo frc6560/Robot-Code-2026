@@ -2,7 +2,7 @@ package frc.robot.utility.shooting;
 
 import edu.wpi.first.wpilibj.Preferences;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import org.littletonrobotics.junction.Logger;
+import frc.robot.utility.telemetry.RateLimitedTelemetry;
 
 /** Dashboard edit is a request; the last accepted value has a separate persistent home. */
 public final class LaunchSpeedTuning {
@@ -25,7 +25,7 @@ public final class LaunchSpeedTuning {
         }
         SmartDashboard.putNumber(REQUEST_KEY, saved);
         SmartDashboard.getEntry(REQUEST_KEY).setPersistent();
-        SmartDashboard.putNumber("Shooter/Saved Launch Speed Coefficient", saved);
+        RateLimitedTelemetry.putNumber("Shooter/Saved Launch Speed Coefficient", saved);
     }
 
     /** Runs while disabled as well as enabled; no shoot-button press is needed to save. */
@@ -40,13 +40,13 @@ public final class LaunchSpeedTuning {
         }
         double now = edu.wpi.first.wpilibj.Timer.getFPGATimestamp();
         if (now >= nextTelemetry) {
-            nextTelemetry = now + 0.2;
-        SmartDashboard.putNumber("Shooter/Saved Launch Speed Coefficient", saved);
-        SmartDashboard.putString("Shooter/Launch Speed Coefficient Status", accepted
+            nextTelemetry = now + 0.5;
+        RateLimitedTelemetry.putNumber("Shooter/Saved Launch Speed Coefficient", saved);
+        RateLimitedTelemetry.putString("Shooter/Launch Speed Coefficient Status", accepted
             ? "Saved on robot" : "Edit not received as a number in [0.5, 1.5]; keeping saved value");
-        Logger.recordOutput("Fuel/Tuning/RequestedCoefficient", requested);
-        Logger.recordOutput("Fuel/Tuning/SavedCoefficient", saved);
-        Logger.recordOutput("Fuel/Tuning/RequestValid", accepted);
+        RateLimitedTelemetry.recordOutput("Fuel/Tuning/RequestedCoefficient", requested);
+        RateLimitedTelemetry.recordOutput("Fuel/Tuning/SavedCoefficient", saved);
+        RateLimitedTelemetry.recordOutput("Fuel/Tuning/RequestValid", accepted);
         }
         return saved;
     }

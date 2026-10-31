@@ -1,0 +1,116 @@
+> Task :extractReleaseNative UP-TO-DATE
+> Task :compileJava UP-TO-DATE
+> Task :processResources NO-SOURCE
+> Task :classes UP-TO-DATE
+> Task :downloadDepsPreemptively
+> Task :jar UP-TO-DATE
+
+> Task :simulateJavaRelease
+HAL Extensions: No extensions found
+********** Robot program starting **********
+NT: Listening on NT3 port 1735, NT4 port 5810
+[AdvantageKit] Logging to "/Users/andrei/Robot-Code-2026/artifacts/competition-auto-simulation/2026-10-30/verified/red-center/akit_29314e4eca3d4912.wpilog"
+[phoenix] CANbus Connected: sim
+[phoenix] CANbus Network Up: sim
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 5 ("rio") Status Signal MagnetHealth
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 2 ("rio") Status Signal MagnetHealth
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 2 ("rio") Status Signal AbsolutePosition
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 2 ("rio") Status Signal Velocity
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 8 ("rio") Status Signal MagnetHealth
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 8 ("rio") Status Signal AbsolutePosition
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 8 ("rio") Status Signal Velocity
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 12 ("rio") Status Signal MagnetHealth
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 12 ("rio") Status Signal AbsolutePosition
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 12 ("rio") Status Signal Velocity
+[phoenix] Library initialization is complete.
+	
+Warning at edu.wpi.first.wpilibj.DriverStation.reportJoystickUnpluggedWarning(DriverStation.java:1345): Joystick axis 2 on port 1 not available, check if controller is plugged in
+BLINE_HEADLESS: Enabled Red Center autonomous on Red alliance
+********** Robot program startup complete **********
+Resetting odometry to: Pose2d(Translation2d(X: 12.94, Y: 4.11), Rotation2d(Rads: 3.14, Deg: 180.00))
+Warning at edu.wpi.first.wpilibj.IterativeRobotBase.printLoopOverrunMessage(IterativeRobotBase.java:436): Loop time of 0.02s overrun
+
+CommandScheduler loop overrun
+Warning at edu.wpi.first.wpilibj.Tracer.lambda$printEpochs$0(Tracer.java:62): 	SwerveSubsystem.periodic(): 0.002533s
+	VisionSubsystem.periodic(): 0.009119s
+	Red Center.execute(): 0.009832s
+	RunCommand.initialize(): 0.000142s
+	buttons.run(): 0.001552s
+	Shooter.periodic(): 0.000334s
+	Intake.periodic(): 0.001117s
+	Indexer.periodic(): 0.008618s
+	LED.periodic(): 0.001102s
+
+Warning at edu.wpi.first.wpilibj.Tracer.lambda$printEpochs$0(Tracer.java:62): 	autonomousInit(): 0.012861s
+	SmartDashboard.updateValues(): 0.004115s
+	robotPeriodic(): 0.050950s
+	LiveWindow.updateValues(): 0.000009s
+	Shuffleboard.update(): 0.000006s
+	simulationPeriodic(): 0.008346s
+	autonomousPeriodic(): 0.000796s
+
+[AdvantageKit] Renaming log to "/Users/andrei/Robot-Code-2026/artifacts/competition-auto-simulation/2026-10-30/verified/red-center/akit_26-10-30_20-29-13.wpilog"
+[phoenix-diagnostics] Server 2026.1.2 (Mar 11 2026, 19:37:44) running on port: 1250
+	
+Warning at edu.wpi.first.wpilibj.IterativeRobotBase.printLoopOverrunMessage(IterativeRobotBase.java:436): Loop time of 0.02s overrun
+
+Warning at edu.wpi.first.wpilibj.Tracer.lambda$printEpochs$0(Tracer.java:62): 	SmartDashboard.updateValues(): 0.000647s
+	robotPeriodic(): 0.018319s
+	LiveWindow.updateValues(): 0.000001s
+	Shuffleboard.update(): 0.000007s
+	simulationPeriodic(): 0.003663s
+	autonomousPeriodic(): 0.000952s
+
+Warning at edu.wpi.first.wpilibj.IterativeRobotBase.printLoopOverrunMessage(IterativeRobotBase.java:436): Loop time of 0.02s overrun
+
+CommandScheduler loop overrun
+Warning at edu.wpi.first.wpilibj.Tracer.lambda$printEpochs$0(Tracer.java:62): 	SwerveSubsystem.periodic(): 0.007545s
+	VisionSubsystem.periodic(): 0.000050s
+	Red Center.execute(): 0.000388s
+	RunCommand.execute(): 0.000003s
+	buttons.run(): 0.000245s
+	Shooter.periodic(): 0.000038s
+	Intake.periodic(): 0.016597s
+	Indexer.periodic(): 0.001651s
+	LED.periodic(): 0.000020s
+
+Warning at edu.wpi.first.wpilibj.Tracer.lambda$printEpochs$0(Tracer.java:62): 	SmartDashboard.updateValues(): 0.000394s
+	robotPeriodic(): 0.029311s
+	LiveWindow.updateValues(): 0.000000s
+	Shuffleboard.update(): 0.000003s
+	simulationPeriodic(): 0.000822s
+	autonomousPeriodic(): 0.000807s
+
+Warning at edu.wpi.first.wpilibj.IterativeRobotBase.printLoopOverrunMessage(IterativeRobotBase.java:436): Loop time of 0.02s overrun
+
+Warning at edu.wpi.first.wpilibj.Tracer.lambda$printEpochs$0(Tracer.java:62): 	SmartDashboard.updateValues(): 0.000187s
+	robotPeriodic(): 0.015987s
+	LiveWindow.updateValues(): 0.000001s
+	Shuffleboard.update(): 0.000144s
+	simulationPeriodic(): 0.005189s
+	autonomousPeriodic(): 0.000475s
+
+COMPETITION_SIM_RESULT: selection=red-center minWallMeters=1.90473 minWall0812Meters=1.84163 minHubSeparationMeters=0.07669 wallContactSamples=0 hubContactSamples=0 firstShotSeconds=2.109 feedingSeconds=12.740
+Warning at edu.wpi.first.wpilibj.RobotBase.runRobot(RobotBase.java:450): The robot program quit unexpectedly. This is usually due to a code error.
+  The above stacktrace can help determine where the error occurred.
+  See https://wpilib.org/stacktrace for more information.
+Error at edu.wpi.first.wpilibj.RobotBase.runRobot(RobotBase.java:462): Unexpected return from startCompetition() method.
+[phoenix-diagnostics] Server shutdown cleanly. (dur:3)
+	
+[phoenix] Library shutdown cleanly
+	
+
+> Task :simulateJava
+
+BUILD SUCCESSFUL in 22s
+5 actionable tasks: 2 executed, 3 up-to-date

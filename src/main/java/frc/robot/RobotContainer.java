@@ -21,10 +21,10 @@ import frc.robot.Constants.LimelightConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.autonomous.AutoModeChooser;
 import frc.robot.commands.scoring.FuelShootCommand;
+import frc.robot.commands.scoring.BackUpAndShootCommand;
 import frc.robot.utility.shooting.FuelShotModel;
 import frc.robot.utility.shooting.LaunchCalibration;
 import frc.robot.autonomous.AutoCommands;
-import frc.robot.commands.swervedrive.drivebase.AimAtHub;
 
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.shooter.ShooterIOSim;
@@ -43,15 +43,13 @@ import frc.robot.subsystems.led.LEDIOSim;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import frc.robot.subsystems.vision.LimelightVision;
 import frc.robot.subsystems.vision.VisionSubsystem;
-import org.littletonrobotics.junction.Logger;
+import frc.robot.utility.telemetry.RateLimitedTelemetry;
 
 
 public class RobotContainer {
     // Controllers
     private final CommandXboxController driverXbox =
         new CommandXboxController(OperatorConstants.DRIVER_CONTROLLER_PORT);
-    private final CommandXboxController operatorXbox =
-        new CommandXboxController(OperatorConstants.OPERATOR_CONTROLLER_PORT);
     private final ManualControls m_Controls = new ManualControls(OperatorConstants.BUTTON_BOARD_PORT);
 
      // The robot's subsystems and commands are defined here...
@@ -116,9 +114,7 @@ public class RobotContainer {
       }
 
       factory = new AutoCommands(drivebase, intake, shooter);
-      autoChooser = new AutoModeChooser(factory, indexer);
-      SmartDashboard.putData("Auto Chooser", autoChooser.getAutoChooser());
-      SmartDashboard.putBoolean("Pit Coast Mode", false);
+      RateLimitedTelemetry.putBoolean("Pit Coast Mode", false);
 
       List<LimelightVision> limelights = new ArrayList<LimelightVision>();
       for(String name : LimelightConstants.LIMELIGHT_NAMES) {
@@ -127,14 +123,14 @@ public class RobotContainer {
       }
 
       vision = new VisionSubsystem(limelights);
-      Logger.recordOutput("Vision/ConfigurationID", LimelightConstants.CONFIGURATION_ID);
-      Logger.recordOutput("Vision/ConfiguredCameraNames", LimelightConstants.LIMELIGHT_NAMES);
-      Logger.recordOutput("Vision/ConfiguredCameraCount", limelights.size());
-      SmartDashboard.putString("Vision/ConfigurationID", LimelightConstants.CONFIGURATION_ID);
-      SmartDashboard.putNumber("Vision/ConfiguredCameraCount", limelights.size());
+      RateLimitedTelemetry.recordOutput("Vision/ConfigurationID", LimelightConstants.CONFIGURATION_ID);
+      RateLimitedTelemetry.recordOutput("Vision/ConfiguredCameraNames", LimelightConstants.LIMELIGHT_NAMES);
+      RateLimitedTelemetry.recordOutput("Vision/ConfiguredCameraCount", limelights.size());
+      RateLimitedTelemetry.putString("Vision/ConfigurationID", LimelightConstants.CONFIGURATION_ID);
+      RateLimitedTelemetry.putNumber("Vision/ConfiguredCameraCount", limelights.size());
 
-      // Temporary no-vision behavior: keep the flywheel warm at idle until a command takes it.
-      shooter.setDefaultCommand(Commands.run(this::trackFlywheelTarget, shooter));
+      // Hold 1000 RPM in teleop and auto until an explicit rev/shoot command takes ownership.
+      shooter.setDefaultCommand(Commands.run(shooter::setIdle, shooter));
       led.setDefaultCommand(Commands.run(() -> {}, led));
 
       // Takes the shooter from its idle default until cancelled from the dashboard.
@@ -142,59 +138,34 @@ public class RobotContainer {
 
       fuelShotModel = new FuelShotModel(LaunchCalibration.ideal());
       fuelCalibrationStatus = "Ideal wheel/hood formula with tunable speed, spin and aero coefficients";
-      SmartDashboard.putString("Fuel/Calibration Status", fuelCalibrationStatus);
+      RateLimitedTelemetry.putString("Fuel/Calibration Status", fuelCalibrationStatus);
       FuelShootCommand.publishLaunchSpeedCoefficient();
-      SmartDashboard.putBoolean("Fuel/Calibration Mode", false);
-      SmartDashboard.putNumber("Fuel/Test Flywheel RPM", Constants.ShooterConstants.FIXED_SHOT_RPM);
-      SmartDashboard.putNumber("Fuel/Test Tunnel RPM", Constants.IndexerConstants.TUNNEL_RUNNING_RPM);
-      SmartDashboard.putBoolean("Fuel/Feeding", false);
+      RateLimitedTelemetry.putBoolean("Fuel/Calibration Mode", false);
+      RateLimitedTelemetry.putNumber("Fuel/Test Flywheel RPM", Constants.ShooterConstants.FIXED_SHOT_RPM);
+      RateLimitedTelemetry.putNumber("Fuel/Test Tunnel RPM", Constants.IndexerConstants.TUNNEL_RUNNING_RPM);
+      RateLimitedTelemetry.putBoolean("Fuel/Feeding", false);
+      autoChooser = new AutoModeChooser(factory, (name, red) -> factory.getCompetitionAuto(name, red, indexer,
+          () -> pitCoastMode, fuelShotModel, fuelCalibrationStatus),
+          new BackUpAndShootCommand(drivebase, shooter, indexer,
+              fuelShotModel, () -> pitCoastMode, fuelCalibrationStatus, factory::followFieldPath));
+      SmartDashboard.putData("Auto Chooser", autoChooser.getAutoChooser());
       configureBindings();
     }
 
 
-    private double nextFlywheelSolve;
-    private double continuousFlywheelRPM = Constants.ShooterConstants.FIXED_SHOT_RPM;
-
-    /** Teleop default: keep the wheel ready without requesting aim or feed. */
-    private void trackFlywheelTarget() {
-        if (!DriverStation.isTeleopEnabled() || pitCoastMode) {
-            shooter.stop();
-            return;
-        }
-        double now = edu.wpi.first.wpilibj.Timer.getFPGATimestamp();
-        if (now >= nextFlywheelSolve) {
-            nextFlywheelSolve = now + 0.1;
-            fuelShotModel.setLaunchSpeedCoefficient(frc.robot.utility.shooting.LaunchSpeedTuning.update());
-            var alliance = DriverStation.getAlliance();
-            var hub = alliance.orElse(DriverStation.Alliance.Blue) == DriverStation.Alliance.Blue
-                ? Constants.FieldConstants.BLUE_HUB_CENTER : Constants.FieldConstants.RED_HUB_CENTER;
-            var solution = fuelShotModel.solve(FuelShootCommand.releasePosition(drivebase.getPose()).getDistance(hub));
-            continuousFlywheelRPM = SmartDashboard.getBoolean("Fuel/Calibration Mode", false) || !solution.valid()
-                ? SmartDashboard.getNumber("Fuel/Test Flywheel RPM", Constants.ShooterConstants.FIXED_SHOT_RPM)
-                : solution.rpm();
-        }
-        if (Double.isFinite(continuousFlywheelRPM)
-                && continuousFlywheelRPM >= Constants.ShooterConstants.FLYWHEEL_IDLE_RPM
-                && continuousFlywheelRPM <= Constants.ShooterConstants.MAX_RPM) shooter.setGoal(continuousFlywheelRPM);
-        else shooter.stop();
-    }
-
     private static final double MAX_SHOOTING_VELOCITY_MPS = 1.2;
 
     private boolean isShotCommandActive() {
-        return driverXbox.rightBumper().getAsBoolean()
+        return driverXbox.rightTrigger().getAsBoolean()
             || (shotCommand != null
                 && CommandScheduler.getInstance().isScheduled(shotCommand));
     }
 
     /** Gated shot plus BLine's AimAtHub, which turns the chassis to the hub while the driver translates. */
     private Command createAimedShotCommand() {
-        AimAtHub aim = new AimAtHub(drivebase,
+        shotCommand = FuelShootCommand.aimedShot(drivebase, shooter, indexer,
             () -> clampSpeedsForShooting(driveAngularVelocity.get()),
-            () -> FuelShootCommand.releasePosition(drivebase.getPose()));
-        shotCommand = new FuelShootCommand(shooter, indexer, drivebase::getPose,
-            drivebase::getRobotVelocity, aim, aim::isAtTarget,
-            () -> pitCoastMode, fuelShotModel, fuelCalibrationStatus);
+            () -> pitCoastMode, fuelShotModel, fuelCalibrationStatus, false);
         return shotCommand;
     }
 
@@ -205,13 +176,9 @@ public class RobotContainer {
     }
 
     /** One owner samples the controls so simultaneous holds cannot cancel each other. */
-    private Command manualShotCommand(Trigger spinUp, Trigger floor, Trigger feed) {
+    private Command manualShotCommand(Trigger floor, Trigger feed) {
         return Commands.run(() -> {
-            if (spinUp.getAsBoolean()) {
-                shooter.setGoal(Constants.ShooterConstants.FIXED_SHOT_RPM);
-            } else {
-                shooter.setIdle();
-            }
+            shooter.setIdle();
             indexer.setFloorRPM(floor.getAsBoolean()
                 ? Constants.IndexerConstants.FLOOR_RUNNING_RPM : 0.0);
             indexer.setTunnelRPM(feed.getAsBoolean()
@@ -253,17 +220,16 @@ public class RobotContainer {
         drivebase.setDefaultCommand(driveFieldOrientedAnglularVelocity);
         driveFieldOrientedAnglularVelocity.setName("Driver field-oriented drive");
 
-        // Driver right bumper owns aim/spin/feed. Left bumper retains standalone manual indexer feed.
-        // Keep separate operator/button-board controls for explicit manual testing.
-        Trigger spinUp = operatorXbox.a().or(new Trigger(() -> m_Controls.getButtonActivated(11)));
+        // Driver right trigger owns aim/spin/feed. Left trigger retains standalone manual indexer feed.
+        // Manual floor/tunnel controls retain idle; right trigger is the teleop spin-up request.
         Trigger driver2Indexer = new Trigger(() -> m_Controls.getButtonActivated(3));
-        Trigger feed = driverXbox.leftBumper().or(driver2Indexer);
+        Trigger feed = driverXbox.leftTrigger().or(driver2Indexer);
         Trigger floor = feed;
 
         // Triggers select rack endpoints without running the wall indexer.
         // Ignore simultaneous presses so neither direction wins unexpectedly.
-        Trigger rackRetract = driverXbox.leftTrigger();
-        Trigger rackExtend = driverXbox.rightTrigger();
+        Trigger rackRetract = driverXbox.leftBumper();
+        Trigger rackExtend = driverXbox.rightBumper();
         rackRetract.and(rackExtend.negate())
             .and(DriverStation::isTeleopEnabled).and(() -> !pitCoastMode)
             .onTrue(Commands.runOnce(intake::requestRackRetracted, intake));
@@ -273,16 +239,20 @@ public class RobotContainer {
                 intake.requestRackExtended();
                 intake.setRollersRequested(true);
             }, intake))
-            .onFalse(Commands.runOnce(() -> intake.setRollersRequested(false), intake));
-        // Releasing right bumper must stop feeding even if an operator control is held.
+            .onFalse(Commands.runOnce(() -> {
+                // A teleop trigger falling on the mode transition must not cancel an auto
+                // that now owns the intake, or clear its persistent intake event request.
+                if (DriverStation.isTeleopEnabled()) intake.setRollersRequested(false);
+            }));
+        // Releasing right trigger must stop feeding even if an operator control is held.
         // Require all manual holds to release before an ungated manual shot can start again.
-        new Trigger(() -> !driverXbox.rightBumper().getAsBoolean() && !spinUp.getAsBoolean()
+        new Trigger(() -> !driverXbox.rightTrigger().getAsBoolean()
             && !floor.getAsBoolean() && !feed.getAsBoolean())
             .onTrue(Commands.runOnce(() -> manualControlsSuppressedAfterAim = false).ignoringDisable(true));
-        spinUp.or(floor).or(feed)
+        floor.or(feed)
             .and(DriverStation::isTeleopEnabled)
-            .and(() -> !pitCoastMode && !driverXbox.rightBumper().getAsBoolean() && !manualControlsSuppressedAfterAim)
-            .whileTrue(manualShotCommand(spinUp, floor, feed));
+            .and(() -> !pitCoastMode && !driverXbox.rightTrigger().getAsBoolean() && !manualControlsSuppressedAfterAim)
+            .whileTrue(manualShotCommand(floor, feed));
 
         driverXbox.start().
           onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
@@ -298,14 +268,14 @@ public class RobotContainer {
 
         // --- SHOTS ---
         
-        Trigger driverAimedShootTrigger = driverXbox.rightBumper().and(DriverStation::isTeleopEnabled).and(() -> !pitCoastMode);
+        Trigger driverAimedShootTrigger = driverXbox.rightTrigger().and(DriverStation::isTeleopEnabled).and(() -> !pitCoastMode);
 
-        // One held command owns drivetrain, shooter and indexer. Releasing RB cancels all three.
+        // One held command owns drivetrain, shooter and indexer. Releasing RT cancels all three.
         Command aimedShot = createAimedShotCommand();
         driverAimedShootTrigger.onTrue(Commands.runOnce(() -> manualControlsSuppressedAfterAim = true));
         driverAimedShootTrigger.whileTrue(aimedShot);
 
-        // Driver left bumper and button-board 3 request manual floor/tunnel feed outside the aimed shot.
+        // Driver left trigger and button-board 3 request manual floor/tunnel feed outside the aimed shot.
 
         // --- RESETS ---
         Trigger resetPoseTrigger = driverXbox.x().and(DriverStation::isTeleopEnabled);
@@ -323,8 +293,8 @@ public class RobotContainer {
         intake.setPitCoastMode(enabled);
         indexer.stop();
 
-        SmartDashboard.putBoolean("Pit Coast Mode", enabled);
-        Logger.recordOutput("Robot/PitCoastMode", enabled);
+        RateLimitedTelemetry.putBoolean("Pit Coast Mode", enabled);
+        RateLimitedTelemetry.recordOutput("Robot/PitCoastMode", enabled);
     }
 
     /** Restore normal motor control before an autonomous or teleop period begins. */
@@ -337,6 +307,37 @@ public class RobotContainer {
 
     public Command getAutonomousCommand() {
       return autoChooser.getAutoChooser().getSelected();
+    }
+
+    private double nextShotDashboard;
+
+    /** Passive Elastic readiness summary, available before any shoot-button press. */
+    public void updateShotDashboard() {
+        double now = edu.wpi.first.wpilibj.Timer.getFPGATimestamp();
+        if (now < nextShotDashboard) return;
+        nextShotDashboard = now + 0.5;
+        var pose = drivebase.getPose();
+        var alliance = DriverStation.getAlliance();
+        var hub = alliance.orElse(DriverStation.Alliance.Blue) == DriverStation.Alliance.Blue
+            ? Constants.FieldConstants.BLUE_HUB_CENTER : Constants.FieldConstants.RED_HUB_CENTER;
+        var delta = hub.minus(FuelShootCommand.releasePosition(pose));
+        double range = delta.getNorm();
+        boolean passing = alliance.isPresent() && frc.robot.utility.shooting.AlliancePass.outsideZone(alliance.get(), pose.getX());
+        double heading = passing ? frc.robot.utility.shooting.AlliancePass.heading(alliance.get())
+            : Math.atan2(delta.getY(), delta.getX());
+        double error = edu.wpi.first.math.MathUtil.angleModulus(heading - pose.getRotation().getRadians());
+        boolean known = alliance.isPresent() && Double.isFinite(range) && Double.isFinite(error);
+        boolean reachable = known && (passing || fuelShotModel.solve(range).valid());
+        boolean aligned = known && delta.getNorm() > 1e-6
+            && Math.abs(error) <= (passing ? frc.robot.utility.shooting.AlliancePass.ANGLE_TOLERANCE
+                : Constants.DrivebaseConstants.HUB_AIM_TOLERANCE_RADIANS)
+            && Math.abs(drivebase.getRobotVelocity().omegaRadiansPerSecond)
+                <= Constants.DrivebaseConstants.HUB_AIM_VELOCITY_TOLERANCE_RAD_PER_SEC;
+        SmartDashboard.putBoolean("Fuel/Passing Mode", passing);
+        SmartDashboard.putBoolean("Fuel/Target Reachable", reachable);
+        SmartDashboard.putBoolean("Fuel/Aligned", aligned);
+        SmartDashboard.putNumber("Fuel/Alignment Error Deg", known ? Math.toDegrees(error) : Double.NaN);
+        SmartDashboard.putNumber("Fuel/Range M", range);
     }
 
     public SwerveSubsystem getDrivebase() {

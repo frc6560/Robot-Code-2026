@@ -52,6 +52,7 @@ public class IntakeIOSim implements IntakeIO {
         inputs.deployAppliedVolts = volts;
         inputs.deployCurrentAmps = Math.abs(deploySim.getCurrentDrawAmps());
         inputs.deployStatorCurrentAmps = inputs.deployCurrentAmps;
+        inputs.deployCurrentFresh = true;
         inputs.deployTempCelsius = 25.0;
         inputs.rollerConnected = true;
         inputs.rollerConfigured = true;
@@ -79,6 +80,11 @@ public class IntakeIOSim implements IntakeIO {
 
     @Override
     public void setRollerRPM(double rpm) { rollerRPM = rpm; }
+
+    @Override public void stopDeploy() {
+        closedLoop = false;
+        deploySim.setInputVoltage(0.0);
+    }
 
     @Override
     public void stop() {

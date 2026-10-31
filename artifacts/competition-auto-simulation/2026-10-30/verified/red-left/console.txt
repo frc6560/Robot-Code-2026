@@ -1,0 +1,105 @@
+> Task :extractReleaseNative UP-TO-DATE
+> Task :compileJava UP-TO-DATE
+> Task :processResources NO-SOURCE
+> Task :classes UP-TO-DATE
+> Task :downloadDepsPreemptively
+> Task :jar UP-TO-DATE
+
+> Task :simulateJavaRelease
+HAL Extensions: No extensions found
+********** Robot program starting **********
+NT: Listening on NT3 port 1735, NT4 port 5810
+[AdvantageKit] Logging to "/Users/andrei/Robot-Code-2026/artifacts/competition-auto-simulation/2026-10-30/verified/red-left/akit_77ae82b94aedcde1.wpilog"
+[phoenix] CANbus Connected: sim
+[phoenix] CANbus Network Up: sim
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 2 ("rio") Status Signal MagnetHealth
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 8 ("rio") Status Signal MagnetHealth
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 8 ("rio") Status Signal AbsolutePosition
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 8 ("rio") Status Signal Velocity
+[phoenix] Library initialization is complete.
+	
+Warning at edu.wpi.first.wpilibj.DriverStation.reportJoystickUnpluggedWarning(DriverStation.java:1345): Joystick axis 2 on port 1 not available, check if controller is plugged in
+BLINE_HEADLESS: Enabled Red Left autonomous on Red alliance
+********** Robot program startup complete **********
+Resetting odometry to: Pose2d(Translation2d(X: 12.91, Y: 2.04), Rotation2d(Rads: -0.00, Deg: -0.00))
+Warning at edu.wpi.first.wpilibj.IterativeRobotBase.printLoopOverrunMessage(IterativeRobotBase.java:436): Loop time of 0.02s overrun
+
+CommandScheduler loop overrun
+Warning at edu.wpi.first.wpilibj.Tracer.lambda$printEpochs$0(Tracer.java:62): 	SwerveSubsystem.periodic(): 0.003614s
+	VisionSubsystem.periodic(): 0.007298s
+	RunCommand.initialize(): 0.000277s
+	buttons.run(): 0.000924s
+	Shooter.periodic(): 0.000366s
+	Intake.periodic(): 0.000998s
+	Red Left.execute(): 0.005747s
+	Indexer.periodic(): 0.006736s
+	LED.periodic(): 0.001046s
+
+Warning at edu.wpi.first.wpilibj.Tracer.lambda$printEpochs$0(Tracer.java:62): 	autonomousInit(): 0.010470s
+	SmartDashboard.updateValues(): 0.004311s
+	robotPeriodic(): 0.049772s
+	LiveWindow.updateValues(): 0.000010s
+	Shuffleboard.update(): 0.000006s
+	simulationPeriodic(): 0.007286s
+	autonomousPeriodic(): 0.000765s
+
+[AdvantageKit] Renaming log to "/Users/andrei/Robot-Code-2026/artifacts/competition-auto-simulation/2026-10-30/verified/red-left/akit_26-10-30_20-28-51.wpilog"
+CommandScheduler loop overrun
+[phoenix-diagnostics] Server 2026.1.2 (Mar 11 2026, 19:37:44) running on port: 1250
+	
+Warning at edu.wpi.first.wpilibj.IterativeRobotBase.printLoopOverrunMessage(IterativeRobotBase.java:436): Loop time of 0.02s overrun
+
+CommandScheduler loop overrun
+Warning at edu.wpi.first.wpilibj.Tracer.lambda$printEpochs$0(Tracer.java:62): 	SwerveSubsystem.periodic(): 0.007247s
+	VisionSubsystem.periodic(): 0.000041s
+	RunCommand.execute(): 0.000004s
+	buttons.run(): 0.000247s
+	Shooter.periodic(): 0.000027s
+	Intake.periodic(): 0.016990s
+	Red Left.execute(): 0.000285s
+	Indexer.periodic(): 0.001567s
+	LED.periodic(): 0.000087s
+
+Warning at edu.wpi.first.wpilibj.Tracer.lambda$printEpochs$0(Tracer.java:62): 	SmartDashboard.updateValues(): 0.000443s
+	robotPeriodic(): 0.030488s
+	LiveWindow.updateValues(): 0.000006s
+	Shuffleboard.update(): 0.000003s
+	simulationPeriodic(): 0.000570s
+	autonomousPeriodic(): 0.000571s
+
+Warning at edu.wpi.first.wpilibj.IterativeRobotBase.printLoopOverrunMessage(IterativeRobotBase.java:436): Loop time of 0.02s overrun
+
+Warning at edu.wpi.first.wpilibj.Tracer.lambda$printEpochs$0(Tracer.java:62): 	SmartDashboard.updateValues(): 0.000373s
+	robotPeriodic(): 0.014970s
+	LiveWindow.updateValues(): 0.000178s
+	Shuffleboard.update(): 0.000053s
+	simulationPeriodic(): 0.006266s
+	autonomousPeriodic(): 0.000553s
+
+COMPETITION_SIM_RESULT: selection=red-left minWallMeters=0.22823 minWall0812Meters=0.16513 minHubSeparationMeters=1.03433 wallContactSamples=0 hubContactSamples=0 firstShotSeconds=7.253 feedingSeconds=7.380
+Warning at edu.wpi.first.wpilibj.IterativeRobotBase.printLoopOverrunMessage(IterativeRobotBase.java:436): Loop time of 0.02s overrun
+
+Warning at edu.wpi.first.wpilibj.Tracer.lambda$printEpochs$0(Tracer.java:62): 	SmartDashboard.updateValues(): 0.000045s
+	robotPeriodic(): 0.000896s
+	LiveWindow.updateValues(): 0.000000s
+	Shuffleboard.update(): 0.000001s
+	simulationPeriodic(): 0.020343s
+	autonomousPeriodic(): 0.000005s
+
+Warning at edu.wpi.first.wpilibj.RobotBase.runRobot(RobotBase.java:450): The robot program quit unexpectedly. This is usually due to a code error.
+  The above stacktrace can help determine where the error occurred.
+  See https://wpilib.org/stacktrace for more information.
+Error at edu.wpi.first.wpilibj.RobotBase.runRobot(RobotBase.java:462): Unexpected return from startCompetition() method.
+[phoenix-diagnostics] Server shutdown cleanly. (dur:90)
+	
+[phoenix] Library shutdown cleanly
+	
+
+> Task :simulateJava
+
+BUILD SUCCESSFUL in 22s
+5 actionable tasks: 2 executed, 3 up-to-date

@@ -3,7 +3,7 @@ package frc.robot.subsystems.led;
 import java.util.Optional;
 import java.util.function.BooleanSupplier;
 
-import org.littletonrobotics.junction.Logger;
+import frc.robot.utility.telemetry.RateLimitedTelemetry;
 
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
@@ -88,7 +88,7 @@ public class LED extends SubsystemBase {
     @Override
     public void periodic() {
         io.updateInputs(inputs);
-        Logger.processInputs("LED", inputs);
+        RateLimitedTelemetry.processInputs("LED", inputs);
 
         shootIntent = shooting.getAsBoolean();
         readyToShoot = shotReady.getAsBoolean();
@@ -101,16 +101,16 @@ public class LED extends SubsystemBase {
         renderState();
         io.setData();
 
-        Logger.recordOutput("LED/State", currentState.name());
-        Logger.recordOutput("LED/ShootIntent", shootIntent);
-        Logger.recordOutput("LED/ReadyToShoot", readyToShoot);
+        RateLimitedTelemetry.recordOutput("LED/State", currentState.name());
+        RateLimitedTelemetry.recordOutput("LED/ShootIntent", shootIntent);
+        RateLimitedTelemetry.recordOutput("LED/ReadyToShoot", readyToShoot);
 
         publishHubShiftInfo();
     }
 
     private void publishHubShiftInfo() {
         double matchTime = DriverStation.getMatchTime();
-        Logger.recordOutput("HubShift/MatchTimeRemaining", matchTime);
+        RateLimitedTelemetry.recordOutput("HubShift/MatchTimeRemaining", matchTime);
 
         // Determine current shift (1-4) based on match time
         int currentShift = 0;
@@ -125,7 +125,7 @@ public class LED extends SubsystemBase {
         } else {
             currentShift = 4; // Endgame
         }
-        Logger.recordOutput("HubShift/CurrentShift", currentShift);
+        RateLimitedTelemetry.recordOutput("HubShift/CurrentShift", currentShift);
 
         // Parse game data to determine which alliance is inactive first
         String gameData = DriverStation.getGameSpecificMessage();
@@ -155,12 +155,12 @@ public class LED extends SubsystemBase {
             }
         }
 
-        Logger.recordOutput("HubShift/InactiveFirstAlliance", inactiveFirstAlliance);
-        Logger.recordOutput("HubShift/MyHubActive", myHubActive);
-        Logger.recordOutput("HubShift/Shift1EndTime", SHIFT_1_END);
-        Logger.recordOutput("HubShift/Shift2EndTime", SHIFT_2_END);
-        Logger.recordOutput("HubShift/Shift3EndTime", SHIFT_3_END);
-        Logger.recordOutput("HubShift/Shift4EndTime", SHIFT_4_END);
+        RateLimitedTelemetry.recordOutput("HubShift/InactiveFirstAlliance", inactiveFirstAlliance);
+        RateLimitedTelemetry.recordOutput("HubShift/MyHubActive", myHubActive);
+        RateLimitedTelemetry.recordOutput("HubShift/Shift1EndTime", SHIFT_1_END);
+        RateLimitedTelemetry.recordOutput("HubShift/Shift2EndTime", SHIFT_2_END);
+        RateLimitedTelemetry.recordOutput("HubShift/Shift3EndTime", SHIFT_3_END);
+        RateLimitedTelemetry.recordOutput("HubShift/Shift4EndTime", SHIFT_4_END);
     }
 
     private LEDState resolveState() {
@@ -198,39 +198,30 @@ public class LED extends SubsystemBase {
             case PREGAME_NOT_STOWED -> {
                 renderPoliceLights();
                 // animateSwipe(SwipeDirection.LEFT,255, 0, 0);
-                Logger.recordOutput("LED/Color", "hi michael");
             }
             case PREGAME_READY -> {
                 animateSwipe(SwipeDirection.LEFT,0, 0, 255);
-                Logger.recordOutput("LED/Color", "Blue (0,0,255)");
             }
             case PREGAME_SHIFT_LEFT -> {
                 animateSwipe(SwipeDirection.LEFT, 255, 255, 255);
-                Logger.recordOutput("LED/Color", "White Swipe Left");
             }
             case PREGAME_SHIFT_RIGHT -> {
                 animateSwipe(SwipeDirection.RIGHT, 255, 255, 255);
-                Logger.recordOutput("LED/Color", "White Swipe Right");
             }
             case PREGAME_SHIFT_FORWARD -> {
                 animateSwipe(SwipeDirection.INWARD, 255, 255, 255);
-                Logger.recordOutput("LED/Color", "White Swipe Inward");
             }
             case PREGAME_SHIFT_BACK -> {
                 animateSwipe(SwipeDirection.OUTWARD, 255, 255, 255);
-                Logger.recordOutput("LED/Color", "White Swipe Outward");
             }
             case SHOOT_READY -> {
                 renderShootState(READY_R, READY_G, READY_B);
-                Logger.recordOutput("LED/Color", "Cyan/Ready (0,182,174)");
             }
             case SHOOT_NOT_READY -> {
                 renderShootState(NOT_READY_R, NOT_READY_G, NOT_READY_B);
-                Logger.recordOutput("LED/Color", "White/Not Ready (255,255,255)");
             }
             case OFF -> {
                 setSolid(0, 0, 0);
-                Logger.recordOutput("LED/Color", "Off (0,0,0)");
             }
         }
     }

@@ -1,0 +1,130 @@
+[
+  {
+    "selection": "blue-left",
+    "minWallMeters": 0.23105,
+    "minWall0812Meters": 0.16795,
+    "minHubSeparationMeters": 1.04406,
+    "wallContactSamples": 0.0,
+    "hubContactSamples": 0.0,
+    "firstShotSeconds": 7.262,
+    "feedingSeconds": 7.32,
+    "closest_wall_time_seconds": 4.037,
+    "closest_wall_robot_center": [
+      0.573954,
+      5.97916
+    ],
+    "closest_wall_heading_degrees": 179.99996255206332,
+    "front_extension_margin_to_wall_meters": 0.167954,
+    "min_hub_clearance_0812_meters": 0.980960328643099,
+    "final_robot_center": [
+      2.046608,
+      3.879305
+    ]
+  },
+  {
+    "selection": "blue-center",
+    "minWallMeters": 1.90372,
+    "minWall0812Meters": 1.84062,
+    "minHubSeparationMeters": 0.07669,
+    "wallContactSamples": 0.0,
+    "hubContactSamples": 0.0,
+    "firstShotSeconds": 2.13,
+    "feedingSeconds": 12.72,
+    "closest_wall_time_seconds": 4.626,
+    "closest_wall_robot_center": [
+      2.246622,
+      3.956662
+    ],
+    "closest_wall_heading_degrees": -0.00011459155902616463,
+    "min_hub_clearance_0812_meters": 0.013590000000000102,
+    "final_robot_center": [
+      2.246624,
+      3.956663
+    ]
+  },
+  {
+    "selection": "blue-right",
+    "minWallMeters": 1.5367,
+    "minWall0812Meters": 1.45156,
+    "minHubSeparationMeters": 0.30974,
+    "wallContactSamples": 0.0,
+    "hubContactSamples": 0.0,
+    "firstShotSeconds": 9.324,
+    "feedingSeconds": 5.58,
+    "closest_wall_time_seconds": 9.004,
+    "closest_wall_robot_center": [
+      2.000654,
+      2.692374
+    ],
+    "closest_wall_heading_degrees": 28.00543218086097,
+    "min_hub_clearance_0812_meters": 0.24664347968324274,
+    "final_robot_center": [
+      1.992177,
+      2.69259
+    ]
+  },
+  {
+    "selection": "red-left",
+    "minWallMeters": 0.22823,
+    "minWall0812Meters": 0.16513,
+    "minHubSeparationMeters": 1.03433,
+    "wallContactSamples": 0.0,
+    "hubContactSamples": 0.0,
+    "firstShotSeconds": 7.253,
+    "feedingSeconds": 7.38,
+    "closest_wall_time_seconds": 4.043,
+    "closest_wall_robot_center": [
+      15.968869,
+      2.091605
+    ],
+    "closest_wall_heading_degrees": 0.00045836623610465854,
+    "front_extension_margin_to_wall_meters": 0.165128,
+    "min_hub_clearance_0812_meters": 0.9712310000000002,
+    "final_robot_center": [
+      14.489515,
+      4.190738
+    ]
+  },
+  {
+    "selection": "red-center",
+    "minWallMeters": 1.90473,
+    "minWall0812Meters": 1.84163,
+    "minHubSeparationMeters": 0.07669,
+    "wallContactSamples": 0.0,
+    "hubContactSamples": 0.0,
+    "firstShotSeconds": 2.109,
+    "feedingSeconds": 12.74,
+    "closest_wall_time_seconds": 4.966,
+    "closest_wall_robot_center": [
+      14.292373,
+      4.113831
+    ],
+    "closest_wall_heading_degrees": 179.9998479605043,
+    "min_hub_clearance_0812_meters": 0.013589859357479694,
+    "final_robot_center": [
+      14.292373,
+      4.113831
+    ]
+  },
+  {
+    "selection": "red-right",
+    "minWallMeters": 1.54353,
+    "minWall0812Meters": 1.45871,
+    "minHubSeparationMeters": 0.32755,
+    "wallContactSamples": 0.0,
+    "hubContactSamples": 0.0,
+    "firstShotSeconds": 9.386,
+    "feedingSeconds": 5.48,
+    "closest_wall_time_seconds": 9.063,
+    "closest_wall_robot_center": [
+      14.533576,
+      5.35462
+    ],
+    "closest_wall_heading_degrees": -152.4597721008486,
+    "min_hub_clearance_0812_meters": 0.2644476657603635,
+    "final_robot_center": [
+      14.54288,
+      5.354327
+    ]
+  }
+]

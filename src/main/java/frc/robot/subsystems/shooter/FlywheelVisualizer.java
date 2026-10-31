@@ -3,7 +3,7 @@ package frc.robot.subsystems.shooter;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.wpilibj.simulation.RoboRioSim;
 import edu.wpi.first.wpilibj.util.Color8Bit;
-import org.littletonrobotics.junction.Logger;
+import frc.robot.utility.telemetry.RateLimitedTelemetry;
 import org.littletonrobotics.junction.mechanism.LoggedMechanism2d;
 import org.littletonrobotics.junction.mechanism.LoggedMechanismLigament2d;
 import org.littletonrobotics.junction.mechanism.LoggedMechanismRoot2d;
@@ -267,9 +267,9 @@ public class FlywheelVisualizer {
     double supply = MOTOR_COUNT * Math.abs(stator) * duty;
     RoboRioSim.setVInVoltage(OPEN_CIRCUIT_VOLTS - supply * BATTERY_RESISTANCE);
 
-    Logger.recordOutput("Flywheel/StatorCurrentAmps", Math.abs(stator));
-    Logger.recordOutput("Flywheel/SupplyCurrentAmps", supply);
-    Logger.recordOutput("Flywheel/BusVoltage", OPEN_CIRCUIT_VOLTS - supply * BATTERY_RESISTANCE);
+    RateLimitedTelemetry.recordOutput("Flywheel/StatorCurrentAmps", Math.abs(stator));
+    RateLimitedTelemetry.recordOutput("Flywheel/SupplyCurrentAmps", supply);
+    RateLimitedTelemetry.recordOutput("Flywheel/BusVoltage", OPEN_CIRCUIT_VOLTS - supply * BATTERY_RESISTANCE);
   }
 
   private void publish(double rpm, double commandRpm) {
@@ -298,17 +298,16 @@ public class FlywheelVisualizer {
     tachNeedle.setColor(color);
     targetNeedle.setAngle(commandRpm * sweep);
 
-    Logger.recordOutput("Flywheel/Mechanism", mechanism);
-    Logger.recordOutput("Flywheel/RPM", rpm);
-    Logger.recordOutput("Flywheel/CommandRPM", commandRpm);
-    Logger.recordOutput("Flywheel/BandLowRPM", bandLow);
-    Logger.recordOutput("Flywheel/BandHighRPM", bandHigh);
-    Logger.recordOutput("Flywheel/InBand", inBand);
-    Logger.recordOutput("Flywheel/LastDroopRPM", lastDroopRpm);
-    Logger.recordOutput("Flywheel/BallsRemaining", ballsRemaining);
-    Logger.recordOutput("Flywheel/ShotDistanceMeters", SHOTS[shotIndex][0]);
-    Logger.recordOutput("Flywheel/Phase", phase.toString());
-    Logger.recordOutput("Flywheel/InertiaKgM2", inertia);
-    Logger.recordOutput("Flywheel/VolleysFired", volleysFired);
+    RateLimitedTelemetry.recordOutput("Flywheel/RPM", rpm);
+    RateLimitedTelemetry.recordOutput("Flywheel/CommandRPM", commandRpm);
+    RateLimitedTelemetry.recordOutput("Flywheel/BandLowRPM", bandLow);
+    RateLimitedTelemetry.recordOutput("Flywheel/BandHighRPM", bandHigh);
+    RateLimitedTelemetry.recordOutput("Flywheel/InBand", inBand);
+    RateLimitedTelemetry.recordOutput("Flywheel/LastDroopRPM", lastDroopRpm);
+    RateLimitedTelemetry.recordOutput("Flywheel/BallsRemaining", ballsRemaining);
+    RateLimitedTelemetry.recordOutput("Flywheel/ShotDistanceMeters", SHOTS[shotIndex][0]);
+    RateLimitedTelemetry.recordOutput("Flywheel/Phase", phase.toString());
+    RateLimitedTelemetry.recordOutput("Flywheel/InertiaKgM2", inertia);
+    RateLimitedTelemetry.recordOutput("Flywheel/VolleysFired", volleysFired);
   }
 }

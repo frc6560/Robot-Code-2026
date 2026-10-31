@@ -1,0 +1,92 @@
+{
+  "path_elements": [
+    {
+      "type": "waypoint",
+      "translation_target": {
+        "x_meters": 3.63256,
+        "y_meters": 6.02968,
+        "intermediate_handoff_radius_meters": 0.3
+      },
+      "rotation_target": {
+        "rotation_radians": 3.14159,
+        "profiled_rotation": false
+      }
+    },
+    {
+      "type": "event_trigger",
+      "t_ratio": 0.15735,
+      "lib_key": "intake"
+    },
+    {
+      "type": "waypoint",
+      "translation_target": {
+        "x_meters": 0.37584,
+        "y_meters": 5.97573,
+        "intermediate_handoff_radius_meters": 0.3
+      },
+      "rotation_target": {
+        "rotation_radians": 3.14159,
+        "profiled_rotation": false
+      }
+    },
+    {
+      "type": "waypoint",
+      "translation_target": {
+        "x_meters": 2.02497,
+        "y_meters": 5.97112,
+        "intermediate_handoff_radius_meters": 0.3
+      },
+      "rotation_target": {
+        "rotation_radians": 3.14159,
+        "profiled_rotation": false
+      }
+    },
+    {
+      "type": "rotation",
+      "rotation_radians": -1.56064,
+      "t_ratio": 0.41853,
+      "profiled_rotation": false
+    },
+    {
+      "type": "event_trigger",
+      "t_ratio": 0.23948,
+      "lib_key": "rev"
+    },
+    {
+      "type": "event_trigger",
+      "t_ratio": 1.0,
+      "lib_key": "shoot"
+    },
+    {
+      "type": "waypoint",
+      "translation_target": {
+        "x_meters": 2.02438,
+        "y_meters": 3.87568,
+        "intermediate_handoff_radius_meters": 0.3
+      },
+      "rotation_target": {
+        "rotation_radians": -0.00173,
+        "profiled_rotation": false
+      }
+    }
+  ],
+  "constraints": {
+    "max_velocity_meters_per_sec": [
+      {
+        "value": 1.0,
+        "start_ordinal": 1,
+        "end_ordinal": 1
+      },
+      {
+        "value": 2.0,
+        "start_ordinal": 2,
+        "end_ordinal": 2
+      },
+      {
+        "value": 2.0,
+        "start_ordinal": 3,
+        "end_ordinal": 3
+      }
+    ]
+  }
+}

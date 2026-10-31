@@ -82,14 +82,14 @@ class ShooterTest {
     }
 
     @Test
-    void teleopIdleIsZeroAndNeverReady() {
+    void teleopIdleHoldsOneThousandAndNeverReady() {
         Shooter shooter = new Shooter(new ShooterIOSim());
         shooter.setIdle();
         step(shooter, 150);
 
         assertFalse(shooter.atTarget());
-        assertEquals(0.0, shooter.getGoalRPM(), 1.0);
-        assertEquals(0.0, shooter.getCurrentRPM(), 150.0);
+        assertEquals(1000.0, shooter.getGoalRPM(), 1.0);
+        assertEquals(1000.0, shooter.getCurrentRPM(), 150.0);
     }
 
     @Test

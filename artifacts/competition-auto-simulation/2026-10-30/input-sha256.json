@@ -1,0 +1,8 @@
+{
+  "src/main/deploy/autos/config.json": "2cf65ee476626749acce58165b0200bd25eb0b1ed0e5edd44fb545a73bd1dc9b",
+  "src/main/java/frc/robot/Constants.java": "cb376e0ef26e5976ad983877955eb949dd014cd8c05811fcbd97d6c21defbba0",
+  "src/main/java/frc/robot/autonomous/AutoCommands.java": "570a32273dad79489ec5861e7c720206dedae8968866fca82ddc705045c3a495",
+  "src/main/deploy/autos/paths/hub.json": "ce6e5b096572aa9c8f8089a466e679b340797e64666851eb251067b1be4fa3e1",
+  "src/main/deploy/autos/paths/human.json": "01b1241b522bd2cd58640a952448fafa0c2221b855a724b583bbe7062b67af9b",
+  "src/main/deploy/autos/paths/non-human.json": "9979a89fd6ccb9658153ec37af59f9ec681853bc652b11c7ffdfd0984eb87528"
+}

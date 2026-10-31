@@ -11,7 +11,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import org.littletonrobotics.junction.Logger;
+import frc.robot.utility.telemetry.RateLimitedTelemetry;
 
 /** Rank battery-side current across existing controllers, never creates duplicate devices. */
 public final class CurrentUsageMonitor {
@@ -53,13 +53,13 @@ public final class CurrentUsageMonitor {
 
         try {
             updateReadings();
-            Logger.recordOutput("Power/MonitorStatus", "Running");
-            SmartDashboard.putString("Power/MonitorStatus", "Running");
+            RateLimitedTelemetry.recordOutput("Power/MonitorStatus", "Running");
+            RateLimitedTelemetry.putString("Power/MonitorStatus", "Running");
             lastError = "";
         } catch (RuntimeException error) {
             String message = error.toString();
-            Logger.recordOutput("Power/MonitorStatus", message);
-            SmartDashboard.putString("Power/MonitorStatus", message);
+            RateLimitedTelemetry.recordOutput("Power/MonitorStatus", message);
+            RateLimitedTelemetry.putString("Power/MonitorStatus", message);
             if (!message.equals(lastError)) {
                 edu.wpi.first.wpilibj.DriverStation.reportError("Power monitor: " + message, error.getStackTrace());
                 lastError = message;
@@ -75,7 +75,7 @@ public final class CurrentUsageMonitor {
             group.add(m.current());
             group.add(m.temperature());
         });
-        byBus.forEach((bus, group) -> Logger.recordOutput("Power/RefreshStatus/" + bus,
+        byBus.forEach((bus, group) -> RateLimitedTelemetry.recordOutput("Power/RefreshStatus/" + bus,
             BaseStatusSignal.refreshAll(group).toString()));
         List<Reading> readings = new ArrayList<>();
         List<TemperatureReading> temperatures = new ArrayList<>();
@@ -83,14 +83,14 @@ public final class CurrentUsageMonitor {
             var signal = motor.current();
             var temperature = motor.temperature();
             boolean tempFresh = temperature.getStatus().isOK() && temperature.getTimestamp().getLatency() < 2.0;
-            Logger.recordOutput("Power/Motors/" + name + "/TemperatureFresh", tempFresh);
-            Logger.recordOutput("Power/Motors/" + name + "/TemperatureStatus", temperature.getStatus().toString());
-            Logger.recordOutput("Power/Motors/" + name + "/DeviceTempCelsius",
+            RateLimitedTelemetry.recordOutput("Power/Motors/" + name + "/TemperatureFresh", tempFresh);
+            RateLimitedTelemetry.recordOutput("Power/Motors/" + name + "/TemperatureStatus", temperature.getStatus().toString());
+            RateLimitedTelemetry.recordOutput("Power/Motors/" + name + "/DeviceTempCelsius",
                 tempFresh ? temperature.getValueAsDouble() : Double.NaN);
             if (tempFresh) temperatures.add(new TemperatureReading(name, temperature.getValueAsDouble()));
             boolean fresh = signal.getStatus().isOK() && signal.getTimestamp().getLatency() < 0.5;
-            Logger.recordOutput("Power/Motors/" + name + "/Fresh", fresh);
-            Logger.recordOutput("Power/Motors/" + name + "/SupplyAmps", fresh ? signal.getValueAsDouble() : Double.NaN);
+            RateLimitedTelemetry.recordOutput("Power/Motors/" + name + "/Fresh", fresh);
+            RateLimitedTelemetry.recordOutput("Power/Motors/" + name + "/SupplyAmps", fresh ? signal.getValueAsDouble() : Double.NaN);
             if (fresh) readings.add(new Reading(name, Math.max(0, signal.getValueAsDouble())));
         });
         List<Reading> sorted = rank(readings);
@@ -100,10 +100,10 @@ public final class CurrentUsageMonitor {
             double amps = i < sorted.size() ? sorted.get(i).supplyAmps() : 0;
             String summary = i < sorted.size()
                 ? String.format(java.util.Locale.ROOT, "%s: %.1f A", name, amps) : name;
-            SmartDashboard.putString(key, summary);
-            SmartDashboard.putNumber(key + "Amps", amps);
-            Logger.recordOutput(key, summary);
-            Logger.recordOutput(key + "Amps", amps);
+            RateLimitedTelemetry.putString(key, summary);
+            RateLimitedTelemetry.putNumber(key + "Amps", amps);
+            RateLimitedTelemetry.recordOutput(key, summary);
+            RateLimitedTelemetry.recordOutput(key + "Amps", amps);
         }
         List<TemperatureReading> hottest = rankTemperatures(temperatures);
         for (int i = 0; i < 3; i++) {
@@ -111,16 +111,16 @@ public final class CurrentUsageMonitor {
             String summary = i < hottest.size() ? String.format(java.util.Locale.ROOT,
                 "%s: %.1f C", hottest.get(i).name(), hottest.get(i).celsius()) : "No fresh temperature data";
             double celsius = i < hottest.size() ? hottest.get(i).celsius() : Double.NaN;
-            SmartDashboard.putString(key, summary);
-            SmartDashboard.putNumber(key + "Celsius", celsius);
-            Logger.recordOutput(key, summary);
-            Logger.recordOutput(key + "Celsius", celsius);
+            RateLimitedTelemetry.putString(key, summary);
+            RateLimitedTelemetry.putNumber(key + "Celsius", celsius);
+            RateLimitedTelemetry.recordOutput(key, summary);
+            RateLimitedTelemetry.recordOutput(key + "Celsius", celsius);
         }
-        SmartDashboard.putNumber("Power/FreshTemperatureCount", hottest.size());
-        SmartDashboard.putNumber("Power/TrackedMotorCount", signals.size());
-        SmartDashboard.putNumber("Power/FreshMotorCount", sorted.size());
-        Logger.recordOutput("Power/TrackedMotorCount", signals.size());
-        Logger.recordOutput("Power/FreshMotorCount", sorted.size());
-        Logger.recordOutput("Power/TotalTrackedSupplyAmps", sorted.stream().mapToDouble(Reading::supplyAmps).sum());
+        RateLimitedTelemetry.putNumber("Power/FreshTemperatureCount", hottest.size());
+        RateLimitedTelemetry.putNumber("Power/TrackedMotorCount", signals.size());
+        RateLimitedTelemetry.putNumber("Power/FreshMotorCount", sorted.size());
+        RateLimitedTelemetry.recordOutput("Power/TrackedMotorCount", signals.size());
+        RateLimitedTelemetry.recordOutput("Power/FreshMotorCount", sorted.size());
+        RateLimitedTelemetry.recordOutput("Power/TotalTrackedSupplyAmps", sorted.stream().mapToDouble(Reading::supplyAmps).sum());
     }
 }

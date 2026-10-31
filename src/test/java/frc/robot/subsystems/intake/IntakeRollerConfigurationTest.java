@@ -54,8 +54,10 @@ class IntakeRollerConfigurationTest {
         assertFalse(IntakeIOTalonFX.rackAllowsRollers(false, true, false, end, end, 0));
         assertFalse(IntakeIOTalonFX.rackAllowsRollers(true, false, false, end, end, 0));
         assertFalse(IntakeIOTalonFX.rackAllowsRollers(true, true, true, end, end, 0));
-        assertFalse(IntakeIOTalonFX.rackAllowsRollers(true, true, false, end, end, 1));
+        assertTrue(IntakeIOTalonFX.rackAllowsRollers(true, true, false, end, end * 0.4, 1));
+        assertFalse(IntakeIOTalonFX.rackAllowsRollers(true, true, false, end, end * 0.39, 1));
+        assertTrue(IntakeIOTalonFX.rackAllowsRollers(true, true, true, end, end * 0.2, 0, true));
         assertFalse(IntakeIOTalonFX.rackAllowsRollers(true, true, false, end, Double.NaN, 0));
-        assertFalse(IntakeIOTalonFX.rackAllowsRollers(true, true, false, end, end, Double.NaN));
+        assertTrue(IntakeIOTalonFX.rackAllowsRollers(true, true, false, end, end, Double.NaN));
     }
 }

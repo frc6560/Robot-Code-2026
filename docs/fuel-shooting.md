@@ -192,3 +192,10 @@ is reported without propagating into the robot loop; this does not catch crashes
 elsewhere or native/process failures. A stale device-temperature warning by itself
 does not establish an overtemperature condition. Preserve the Driver Station error
 and stack trace to investigate an actual program termination.
+
+## Driver control swap
+
+Right trigger now aims/shoots (formerly RB); left trigger manually feeds floor/tunnel
+(formerly LB). Right bumper extends the intake and requests rollers while held;
+left bumper retracts the intake. Release right trigger before resuming held manual feed.
+This mapping supersedes the older button names above.

@@ -2,21 +2,26 @@ package frc.robot.autonomous;
 
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
-import org.littletonrobotics.junction.Logger;
+import frc.robot.utility.telemetry.RateLimitedTelemetry;
 import frc.robot.lib.BLine.FlippingUtil;
 import frc.robot.lib.BLine.FollowPath;
 import frc.robot.lib.BLine.Path;
 import frc.robot.Constants.BLineConstants;
+import frc.robot.Constants.FieldConstants;
 import frc.robot.subsystems.indexer.Indexer;
 import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import java.util.List;
+import java.util.function.BooleanSupplier;
+import frc.robot.commands.scoring.FuelShootCommand;
+import frc.robot.utility.shooting.FuelShotModel;
 
 
 /** Creates autonomous commands: BLine path following and the fixed-speed center autonomous. */
@@ -50,30 +55,87 @@ public class AutoCommands {
 
         firstPathBuilder = createPathBuilder().withPoseReset(drivetrain::resetOdometry);
 
+        registerLegacyEvents();
+    }
+
+    private void registerLegacyEvents() {
         FollowPath.registerEventTrigger("intake", intake());
         FollowPath.registerEventTrigger("retract", retract());
+        FollowPath.registerEventTrigger("rev", (Runnable) () -> {});
+        FollowPath.registerEventTrigger("shoot", (Runnable) () -> {});
         FollowPath.registerEventTrigger("wait", this::startBLineWait);
         FollowPath.registerEventTrigger("Wait", this::startBLineWait);
     }
 
+    public Command getCompetitionAuto(String name, boolean red, Indexer indexer,
+            BooleanSupplier pitCoast,
+            FuelShotModel model, String calibrationStatus) {
+        var shoot = FuelShootCommand.aimedShot(drivetrain, shooter,
+            indexer, ChassisSpeeds::new, pitCoast, model, calibrationStatus, true);
+        var rev = new FuelShootCommand(shooter, indexer,
+            drivetrain::getPose, drivetrain::getRobotVelocity, Commands.none(), () -> false,
+            pitCoast, model, calibrationStatus, true, () -> false);
+        // These six chooser entries are already authored in their selected field frame.
+        // Disable both automatic transforms to avoid mirroring or rotating red a second time.
+        var follower = createPathBuilder().withShouldFlip(() -> false)
+            .withShouldMirror(() -> false).withPoseReset(drivetrain::resetOdometry)
+            .build(competitionPath(name, red));
+        var auto = new EventPathAuto(follower, rev, shoot,
+            shooter, indexer, intake, pitCoast, this::registerLegacyEvents);
+        auto.setName((red ? "Red " : "Blue ") + switch (name) {
+                case "non-human" -> "Left";
+                case "hub" -> "Center";
+                case "human" -> "Right";
+                default -> throw new IllegalArgumentException("Unknown competition path: " + name);
+            });
+        return auto;
+    }
+
+    /** Rotate every geometric target 180 degrees about field center; keep order/events/constraints. */
+    public static Path competitionPath(String name, boolean red) {
+        Path path = new Path(name);
+        if (red) {
+            path.setPathElements(path.getPathElements().stream()
+                .map(AutoCommands::rotateHalfTurn).toList());
+        }
+        return path;
+    }
+
+    private static Path.PathElement rotateHalfTurn(Path.PathElement element) {
+        if (element instanceof Path.Waypoint waypoint) {
+            return new Path.Waypoint(
+                (Path.TranslationTarget) rotateHalfTurn(waypoint.translationTarget()),
+                (Path.RotationTarget) rotateHalfTurn(waypoint.rotationTarget()));
+        }
+        if (element instanceof Path.TranslationTarget target) {
+            Translation2d point = target.translation();
+            return new Path.TranslationTarget(new Translation2d(
+                FieldConstants.FIELD_LENGTH - point.getX(),
+                FieldConstants.FIELD_WIDTH - point.getY()), target.intermediateHandoffRadiusMeters());
+        }
+        if (element instanceof Path.RotationTarget target) {
+            return new Path.RotationTarget(target.rotation().plus(Rotation2d.fromDegrees(180)),
+                target.t_ratio(), target.profiledRotation());
+        }
+        return element.copy();
+    }
+
     /**
-     * Connects BLine's built-in telemetry hooks to AdvantageKit. FollowPath calculates and publishes
-     * these values inside its execute() method while a trajectory is running. They appear beneath
-     * BLine/FollowPath in AdvantageScope and in the WPILOG written by Robot.
+     * Retains BLine scalar diagnostics at 2 Hz. Bulk pose/path graphics are discarded to avoid
+     * repeatedly serializing trajectory arrays; these consumers do not control path following.
      */
     private static void configureBLineLogging() {
         FollowPath.setDoubleLoggingConsumer(value -> {
             String key = value.getFirst();
             double measurement = value.getSecond();
-            Logger.recordOutput("BLine/" + key, measurement);
+            RateLimitedTelemetry.recordOutput("BLine/" + key, measurement);
 
         });
         FollowPath.setBooleanLoggingConsumer(
-            value -> Logger.recordOutput("BLine/" + value.getFirst(), value.getSecond()));
+            value -> RateLimitedTelemetry.recordOutput("BLine/" + value.getFirst(), value.getSecond()));
         FollowPath.setPoseLoggingConsumer(
-            value -> Logger.recordOutput("BLine/" + value.getFirst(), value.getSecond()));
-        FollowPath.setTranslationListLoggingConsumer(
-            value -> Logger.recordOutput("BLine/" + value.getFirst(), value.getSecond()));
+            value -> {});
+        FollowPath.setTranslationListLoggingConsumer(value -> {});
     }
 
     private FollowPath.Builder createPathBuilder() {
@@ -99,6 +161,12 @@ public class AutoCommands {
                 BLineConstants.USE_T_RATIO_BASED_TRANSLATION_HANDOFFS);
     }
 
+    /** Follows a generated path already expressed in the measured field frame, without a pose reset. */
+    public FollowPath followFieldPath(Path path) {
+        bLinePauseUntilSeconds = 0.0;
+        return createPathBuilder().withShouldFlip(() -> false).build(path);
+    }
+
     /**
      * Starts a non-blocking five-second pause when a BLine event with lib_key "wait" is reached.
      * Using a timestamp instead of Thread.sleep() keeps the robot loop, watchdog, logging, and
@@ -117,18 +185,18 @@ public class AutoCommands {
         boolean waiting = Timer.getFPGATimestamp() < bLinePauseUntilSeconds;
         ChassisSpeeds appliedSpeeds = waiting ? new ChassisSpeeds() : requestedSpeeds;
         ChassisSpeeds measuredSpeeds = drivetrain.getRobotVelocity();
-        Logger.recordOutput("BLine/Wait/Active", waiting);
-        Logger.recordOutput(
+        RateLimitedTelemetry.recordOutput("BLine/Wait/Active", waiting);
+        RateLimitedTelemetry.recordOutput(
             "BLine/Wait/RemainingSeconds",
             waiting ? bLinePauseUntilSeconds - Timer.getFPGATimestamp() : 0.0);
-        Logger.recordOutput("BLine/Drive/RequestedRobotVxMetersPerSec", requestedSpeeds.vxMetersPerSecond);
-        Logger.recordOutput("BLine/Drive/RequestedRobotVyMetersPerSec", requestedSpeeds.vyMetersPerSecond);
-        Logger.recordOutput("BLine/Drive/RequestedOmegaRadPerSec", requestedSpeeds.omegaRadiansPerSecond);
-        Logger.recordOutput("BLine/Drive/AppliedRobotVxMetersPerSec", appliedSpeeds.vxMetersPerSecond);
-        Logger.recordOutput("BLine/Drive/AppliedRobotVyMetersPerSec", appliedSpeeds.vyMetersPerSecond);
-        Logger.recordOutput("BLine/Drive/AppliedOmegaRadPerSec", appliedSpeeds.omegaRadiansPerSecond);
-        Logger.recordOutput("BLine/Drive/MeasuredRobotVxMetersPerSec", measuredSpeeds.vxMetersPerSecond);
-        Logger.recordOutput("BLine/Drive/MeasuredRobotVyMetersPerSec", measuredSpeeds.vyMetersPerSecond);
+        RateLimitedTelemetry.recordOutput("BLine/Drive/RequestedRobotVxMetersPerSec", requestedSpeeds.vxMetersPerSecond);
+        RateLimitedTelemetry.recordOutput("BLine/Drive/RequestedRobotVyMetersPerSec", requestedSpeeds.vyMetersPerSecond);
+        RateLimitedTelemetry.recordOutput("BLine/Drive/RequestedOmegaRadPerSec", requestedSpeeds.omegaRadiansPerSecond);
+        RateLimitedTelemetry.recordOutput("BLine/Drive/AppliedRobotVxMetersPerSec", appliedSpeeds.vxMetersPerSecond);
+        RateLimitedTelemetry.recordOutput("BLine/Drive/AppliedRobotVyMetersPerSec", appliedSpeeds.vyMetersPerSecond);
+        RateLimitedTelemetry.recordOutput("BLine/Drive/AppliedOmegaRadPerSec", appliedSpeeds.omegaRadiansPerSecond);
+        RateLimitedTelemetry.recordOutput("BLine/Drive/MeasuredRobotVxMetersPerSec", measuredSpeeds.vxMetersPerSecond);
+        RateLimitedTelemetry.recordOutput("BLine/Drive/MeasuredRobotVyMetersPerSec", measuredSpeeds.vyMetersPerSecond);
         drivetrain.setChassisSpeeds(appliedSpeeds);
     }
 
@@ -199,8 +267,8 @@ public class AutoCommands {
             (startToRobot.getX() * finalSegment.getX()
                 + startToRobot.getY() * finalSegment.getY()) / segmentLengthSquared;
         boolean passedFinishPlane = progress >= 1.0;
-        Logger.recordOutput("BLine/Zigzag/FinalSegmentProgress", progress);
-        Logger.recordOutput("BLine/Zigzag/PassedFinishPlane", passedFinishPlane);
+        RateLimitedTelemetry.recordOutput("BLine/Zigzag/FinalSegmentProgress", progress);
+        RateLimitedTelemetry.recordOutput("BLine/Zigzag/PassedFinishPlane", passedFinishPlane);
         return passedFinishPlane;
     }
 

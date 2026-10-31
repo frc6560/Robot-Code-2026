@@ -31,6 +31,7 @@ public class IntakeIOTalonFX implements IntakeIO {
     private String zeroStatus;
     private String controlStatus = "No request";
     private boolean stopped = true;
+    private boolean extensionLimitReached;
     private boolean rackFeedbackFresh;
     private double requestedRackPosition = Double.NaN;
 
@@ -126,6 +127,7 @@ public class IntakeIOTalonFX implements IntakeIO {
         inputs.deployAppliedVolts = motor.getMotorVoltage().getValueAsDouble();
         inputs.deployCurrentAmps = motor.getSupplyCurrent().getValueAsDouble();
         inputs.deployStatorCurrentAmps = motor.getStatorCurrent().getValueAsDouble();
+        inputs.deployCurrentFresh = motor.getStatorCurrent().getStatus().isOK();
         inputs.deployTempCelsius = motor.getDeviceTemp().getValueAsDouble();
         boolean rollersFresh = BaseStatusSignal.refreshAll(
             leftRoller.getVelocity(), rightRoller.getVelocity()).isOK();
@@ -153,12 +155,19 @@ public class IntakeIOTalonFX implements IntakeIO {
 
     static boolean rackAllowsRollers(boolean homed, boolean fresh, boolean stopped,
             double requestedPosition, double measuredPosition, double measuredVelocity) {
-        return homed && fresh && !stopped
+        return rackAllowsRollers(homed, fresh, stopped, requestedPosition, measuredPosition,
+            measuredVelocity, false);
+    }
+
+    static boolean rackAllowsRollers(boolean homed, boolean fresh, boolean stopped,
+            double requestedPosition, double measuredPosition, double measuredVelocity,
+            boolean extensionLimitReached) {
+        return homed && fresh && (!stopped || extensionLimitReached)
             && requestedPosition == IntakeConstants.EXTENDED_POSITION_ROTATIONS
-            && Double.isFinite(measuredPosition) && Double.isFinite(measuredVelocity)
-            && Math.abs(measuredPosition - IntakeConstants.EXTENDED_POSITION_ROTATIONS)
-                <= IntakeConstants.DEPLOY_POSITION_TOLERANCE_ROTATIONS
-            && Math.abs(measuredVelocity) <= IntakeConstants.ROLLER_MAX_DEPLOY_VELOCITY_RPS;
+            && (extensionLimitReached || Double.isFinite(measuredPosition)
+                && measuredPosition >= IntakeConstants.RETRACTED_POSITION_ROTATIONS
+                    + IntakeConstants.ROLLER_MIN_EXTENSION_FRACTION
+                        * (IntakeConstants.EXTENDED_POSITION_ROTATIONS - IntakeConstants.RETRACTED_POSITION_ROTATIONS));
     }
 
     @Override
@@ -166,7 +175,7 @@ public class IntakeIOTalonFX implements IntakeIO {
         // A second interlock at the hardware boundary rejects roller commands even if a caller errs.
         boolean allowed = configurationStatus.isOK()
             && rackAllowsRollers(homed, rackFeedbackFresh, stopped, requestedRackPosition,
-                motor.getPosition().getValueAsDouble(), motor.getVelocity().getValueAsDouble());
+                motor.getPosition().getValueAsDouble(), motor.getVelocity().getValueAsDouble(), extensionLimitReached);
         if (!Double.isFinite(rpm) || rpm == 0.0 || !allowed || !leftRollerConfigurationStatus.isOK()
                 || !rightRollerConfigurationStatus.isOK()) {
             leftRoller.stopMotor();
@@ -198,6 +207,14 @@ public class IntakeIOTalonFX implements IntakeIO {
         } else {
             stop();
         }
+    }
+
+    @Override public void setExtensionLimitReached(boolean reached) { extensionLimitReached = reached; }
+
+    @Override public void stopDeploy() {
+        motor.stopMotor();
+        stopped = true;
+        controlStatus = "Stopped at second extension current spike";
     }
 
     @Override

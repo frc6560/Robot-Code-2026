@@ -83,7 +83,7 @@ public final class Constants {
         MAX_ANGULAR_ACCELERATION_RAD_PER_SEC_SQ;
 
     /** Stops small heading corrections once the chassis is pointed at the hub. */
-    public static final double HUB_AIM_TOLERANCE_RADIANS = Units.degreesToRadians(2.5);
+    public static final double HUB_AIM_TOLERANCE_RADIANS = Units.degreesToRadians(7.5);
 
     /** Required angular speed before hub alignment reports that it has settled. */
     public static final double HUB_AIM_VELOCITY_TOLERANCE_RAD_PER_SEC =
@@ -443,7 +443,7 @@ public final class Constants {
     private IntakeConstants() {}
 
     // CAN IDs. The rack is a Kraken X44; the separate rollers are Kraken X60s.
-    public static final int DEPLOY_MOTOR_ID = 26;
+    public static final int DEPLOY_MOTOR_ID = 20;
     public static final int LEFT_ROLLER_MOTOR_ID = 36;
     public static final int RIGHT_ROLLER_MOTOR_ID = 18;
     public static final String CAN_BUS = "Canivore";
@@ -472,6 +472,11 @@ public final class Constants {
     // 9.5 motor rotations exceeds the 7.81 rotations calculated from measured travel.
     public static final double EXTENDED_POSITION_ROTATIONS = 9.5;
     public static final double DEPLOY_POSITION_TOLERANCE_ROTATIONS = 0.25;
+    public static final double ROLLER_MIN_EXTENSION_FRACTION = 0.40;
+    public static final double DEPLOY_SPIKE_AMPS = 35.0;
+    public static final double DEPLOY_SPIKE_SECONDS = 0.06;
+    public static final double DEPLOY_SPIKE_RESET_AMPS = 15.0;
+    public static final double DEPLOY_SPIKE_RESET_SECONDS = 0.10;
     public static final double ROLLER_EXTENSION_SETTLE_SECONDS = 0.15;
     public static final double ROLLER_MAX_DEPLOY_VELOCITY_RPS = 0.1;
 

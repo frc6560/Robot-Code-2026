@@ -3,7 +3,7 @@ package frc.robot.subsystems.shooter;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.littletonrobotics.junction.Logger;
+import frc.robot.utility.telemetry.RateLimitedTelemetry;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.filter.Debouncer;
@@ -77,9 +77,9 @@ public class Shooter extends SubsystemBase {
         idle = false;
     }
 
-    /** Hold idle speed open-loop on feedforward alone. */
+    /** Hold the enabled idle speed with the same velocity loop used for shooting. */
     public void setIdle() {
-        if (DriverStation.isTeleopEnabled()) {
+        if (!DriverStation.isEnabled() || pitCoastMode) {
             stop();
             return;
         }
@@ -141,7 +141,7 @@ public class Shooter extends SubsystemBase {
     @Override
     public void periodic() {
         io.updateInputs(inputs);
-        Logger.processInputs("Shooter", inputs);
+        RateLimitedTelemetry.processInputs("Shooter", inputs);
 
         leaderDisconnected.set(!leaderConnectedDebouncer.calculate(inputs.leaderConnected));
         followerDisconnected.set(!followerConnectedDebouncer.calculate(inputs.followerConnected));
@@ -162,9 +162,9 @@ public class Shooter extends SubsystemBase {
 
         io.applyOutputs(outputs);
 
-        Logger.recordOutput("Shooter/GoalRPM", getGoalRPM());
-        Logger.recordOutput("Shooter/CurrentRPM", getCurrentRPM());
-        Logger.recordOutput("Shooter/AtTarget", atTarget());
+        RateLimitedTelemetry.recordOutput("Shooter/GoalRPM", getGoalRPM());
+        RateLimitedTelemetry.recordOutput("Shooter/CurrentRPM", getCurrentRPM());
+        RateLimitedTelemetry.recordOutput("Shooter/AtTarget", atTarget());
     }
 
     private void runVelocity(double goal, boolean bangBang, boolean idle) {
@@ -227,7 +227,7 @@ public class Shooter extends SubsystemBase {
 
         atGoal = Math.abs(setpointRadsPerSec - goal) <= ShooterConstants.AT_GOAL_EPSILON;
 
-        outputs.mode = bangBang || idle ? ShooterIOOutputMode.VOLTAGE : ShooterIOOutputMode.VELOCITY;
+        outputs.mode = bangBang ? ShooterIOOutputMode.VOLTAGE : ShooterIOOutputMode.VELOCITY;
         outputs.velocityRadsPerSec = setpointRadsPerSec;
         outputs.feedforwardVolts = Math.signum(setpointRadsPerSec) * ShooterConstants.FF_kS
             + setpointRadsPerSec * ShooterConstants.FF_kV

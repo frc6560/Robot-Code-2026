@@ -22,6 +22,7 @@ public interface IntakeIO {
         public double deployAppliedVolts = 0.0;
         public double deployCurrentAmps = 0.0; // supply current, retained for log compatibility
         public double deployStatorCurrentAmps = 0.0;
+        public boolean deployCurrentFresh = false;
         public double deployStatorLimitAmps = 40.0;
         public boolean deployCurrentLimitOK = true;
         public double deployTempCelsius = 0.0;
@@ -54,6 +55,7 @@ public interface IntakeIO {
             table.put("DeployAppliedVolts", deployAppliedVolts);
             table.put("DeployCurrentAmps", deployCurrentAmps);
             table.put("DeployStatorCurrentAmps", deployStatorCurrentAmps);
+            table.put("DeployCurrentFresh", deployCurrentFresh);
             table.put("DeployStatorLimitAmps", deployStatorLimitAmps);
             table.put("DeployCurrentLimitOK", deployCurrentLimitOK);
             table.put("DeployTempCelsius", deployTempCelsius);
@@ -86,6 +88,7 @@ public interface IntakeIO {
             deployAppliedVolts = table.get("DeployAppliedVolts", deployAppliedVolts);
             deployCurrentAmps = table.get("DeployCurrentAmps", deployCurrentAmps);
             deployStatorCurrentAmps = table.get("DeployStatorCurrentAmps", deployStatorCurrentAmps);
+            deployCurrentFresh = table.get("DeployCurrentFresh", deployCurrentFresh);
             deployStatorLimitAmps = table.get("DeployStatorLimitAmps", deployStatorLimitAmps);
             deployCurrentLimitOK = table.get("DeployCurrentLimitOK", deployCurrentLimitOK);
             deployTempCelsius = table.get("DeployTempCelsius", deployTempCelsius);
@@ -109,6 +112,12 @@ public interface IntakeIO {
     default void setDeployPosition(double motorRotations) {}
 
     default void stop() {}
+
+    /** Stop only the extension motor; keep requested rollers available. */
+    default void stopDeploy() {}
+
+    /** Physical end inferred from two distinct extension-current spikes. */
+    default void setExtensionLimitReached(boolean reached) {}
 
     /** Select rack coast mode. */
     default void setCoastMode(boolean coast) {}

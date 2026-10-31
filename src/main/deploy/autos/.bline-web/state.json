@@ -25,7 +25,7 @@
       "default_auto_velocity_merge_tolerance_meters_per_sec": 0.3
     }
   },
-  "active_path_file_name": "zigzag.json",
+  "active_path_file_name": "human.json",
   "active_path_group_id": null,
   "path_groups": [],
   "linked_targets": [
@@ -63,6 +63,10 @@
     }
   ],
   "paths": {
+    "hub.json": {
+      "display_name": "hub",
+      "editor_metadata": null
+    },
     "phase-1-canvas-draft.json": {
       "display_name": "Phase 1 Canvas Draft",
       "editor_metadata": {
@@ -82,7 +86,7 @@
           },
           {
             "key": "max_velocity_meters_per_sec",
-            "value": 4.1,
+            "value": 2.0,
             "start_ordinal": 5,
             "end_ordinal": 5,
             "source": "auto_velocity",
@@ -174,6 +178,14 @@
           }
         ]
       }
+    },
+    "human.json": {
+      "display_name": "human",
+      "editor_metadata": null
+    },
+    "non-human.json": {
+      "display_name": "non human",
+      "editor_metadata": null
     }
   },
   "field_assets": {}

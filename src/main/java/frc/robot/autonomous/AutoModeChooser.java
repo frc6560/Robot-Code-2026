@@ -1,35 +1,40 @@
 package frc.robot.autonomous;
 
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
-import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj2.command.Command;
-import frc.robot.subsystems.indexer.Indexer;
+import java.util.function.BiFunction;
 
-/** Publishes the available BLine autonomous commands. */
+/** Primary competition paths plus a clearly labeled backup. */
 public class AutoModeChooser {
     private final SendableChooser<Command> autoChooser = new SendableChooser<>();
 
-    public AutoModeChooser(AutoCommands factory, Indexer indexer) {
-        autoChooser.addOption("center_auto", factory.getCenterAuto(indexer));
-        if (RobotBase.isSimulation()) {
-            // Make desktop BLine simulation work immediately without requiring a separate
-            // dashboard just to change the chooser selection.
-            if ("1".equals(System.getenv("BLINE_HEADLESS_DIAGNOSTIC"))
-                    && "editor".equals(System.getenv("BLINE_HEADLESS_AUTO"))) {
+    public AutoModeChooser(AutoCommands factory, BiFunction<String, Boolean, Command> competitionAuto, Command backup) {
+        var choices = new java.util.LinkedHashMap<String, Command>();
+        choices.put("Blue Left", competitionAuto.apply("non-human", false));
+        choices.put("Blue Center", competitionAuto.apply("hub", false));
+        choices.put("Blue Right", competitionAuto.apply("human", false));
+        choices.put("Red Left", competitionAuto.apply("non-human", true));
+        choices.put("Red Center", competitionAuto.apply("hub", true));
+        choices.put("Red Right", competitionAuto.apply("human", true));
+        choices.forEach(autoChooser::addOption);
+        autoChooser.setDefaultOption("Blue Center", choices.get("Blue Center"));
+        autoChooser.addOption("Backup - Back Up and Shoot", backup);
+        autoChooser.addOption("Idle", factory.getNoAuto());
+        // Preserve explicit desktop diagnostics for the old tuning paths.
+        if ("1".equals(System.getenv("BLINE_HEADLESS_DIAGNOSTIC"))) {
+            String selection = System.getenv("BLINE_HEADLESS_AUTO");
+            String label = selection == null ? "" : selection.replace('-', ' ');
+            var selected = choices.entrySet().stream()
+                .filter(e -> e.getKey().equalsIgnoreCase(label)).findFirst();
+            if (selected.isPresent()) {
+                autoChooser.setDefaultOption(selected.get().getKey(), selected.get().getValue());
+            } else if ("editor".equals(selection)) {
                 autoChooser.setDefaultOption("BLine Editor Path", factory.getBLineEditorPath());
-                autoChooser.addOption("Zigzag", factory.getZigzagPath());
             } else {
                 autoChooser.setDefaultOption("Zigzag", factory.getZigzagPath());
             }
-            autoChooser.addOption("Idle", factory.getNoAuto());
-        } else {
-            autoChooser.setDefaultOption("Idle", factory.getNoAuto());
-            autoChooser.addOption("Zigzag", factory.getZigzagPath());
         }
-        autoChooser.addOption("BLine Editor Path", factory.getBLineEditorPath());
     }
 
-    public SendableChooser<Command> getAutoChooser() {
-        return autoChooser;
-    }
+    public SendableChooser<Command> getAutoChooser() { return autoChooser; }
 }

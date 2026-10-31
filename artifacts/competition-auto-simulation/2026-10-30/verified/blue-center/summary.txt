@@ -1,0 +1,1 @@
+selection=blue-center minWallMeters=1.90372 minWall0812Meters=1.84062 minHubSeparationMeters=0.07669 wallContactSamples=0 hubContactSamples=0 firstShotSeconds=2.130 feedingSeconds=12.720

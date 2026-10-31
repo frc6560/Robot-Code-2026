@@ -1,0 +1,18 @@
+{
+  "src/main/deploy/autos/config.json": "2cf65ee476626749acce58165b0200bd25eb0b1ed0e5edd44fb545a73bd1dc9b",
+  "src/main/java/frc/robot/Constants.java": "cb376e0ef26e5976ad983877955eb949dd014cd8c05811fcbd97d6c21defbba0",
+  "src/main/java/frc/robot/autonomous/AutoCommands.java": "3964365aee4895c09a2625b9e7633168d06a158d151bc23e21c57d8a06a925d6",
+  "src/main/java/frc/robot/autonomous/EventPathAuto.java": "22f143523a6661f18611c943050c03c004a70c211e056f97e10cb894b9002663",
+  "src/main/java/frc/robot/simulation/CompetitionAutoDiagnostic.java": "9ea9fd153ac34bf2d0fc2eebb33b2d215d17f1a5e7a297f82529d2b71f7fa87c",
+  "src/main/deploy/swerve/falcon/swervedrive.json": "4d953e1cc2b56fce4a5bb31e7148d20aaf8b351d4f059ef8896d735d40c36a92",
+  "src/main/deploy/swerve/falcon/controllerproperties.json": "a8002dbb15c622b25966f6f6d8a494d804bc575c7a257a334413fb7097236ec0",
+  "src/main/deploy/swerve/falcon/modules/frontright.json": "1b02ce096787c3a922818569d9b6af01b19d8dcd5d6f66c72c4dcb30a1428b16",
+  "src/main/deploy/swerve/falcon/modules/backright.json": "429beac6f5fd838389b86a6b73d16a1d17ea01b305c158e73ee45a340f42d9ef",
+  "src/main/deploy/swerve/falcon/modules/frontleft.json": "26a4b732bad7f7c10ab4abfe4b7db408f3ed9bf6bde8755e12c8f4b6c452ca2d",
+  "src/main/deploy/swerve/falcon/modules/pidfproperties.json": "67b9e5780bdd9fceac699bfb80d2305da14c5b8a7cb9ca70ce7dfba735cfc58d",
+  "src/main/deploy/swerve/falcon/modules/backleft.json": "0dffc839a430042ffa1402ecd20df55b0b5e0a01ae95fc54ef0856e64f1ed258",
+  "src/main/deploy/swerve/falcon/modules/physicalproperties.json": "2da96044fefe6d49ae7534f7ad8072359918efa95c46c79b533458669c52ce17",
+  "src/main/deploy/autos/paths/hub.json": "ce6e5b096572aa9c8f8089a466e679b340797e64666851eb251067b1be4fa3e1",
+  "src/main/deploy/autos/paths/human.json": "01b1241b522bd2cd58640a952448fafa0c2221b855a724b583bbe7062b67af9b",
+  "src/main/deploy/autos/paths/non-human.json": "9979a89fd6ccb9658153ec37af59f9ec681853bc652b11c7ffdfd0984eb87528"
+}

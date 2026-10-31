@@ -12,7 +12,7 @@ import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import frc.robot.utility.LimelightHelpers;
 import frc.robot.utility.LimelightHelpers.PoseEstimate;
 import java.util.Arrays;
-import org.littletonrobotics.junction.Logger;
+import frc.robot.utility.telemetry.RateLimitedTelemetry;
 
 public class LimelightVision {
     private Pose2d robotPose2d = new Pose2d();
@@ -78,16 +78,16 @@ public class LimelightVision {
             lastUsedTime = now;
             status = "Used";
         }
-        // Vision fusion above still runs every loop; publish only a compact 5 Hz summary.
+        // Vision fusion above still runs every loop; publish only a compact 2 Hz summary.
         if (now < nextTelemetry) return;
-        nextTelemetry = now + 0.2;
-        SmartDashboard.putString(logKey + "/Status", status);
-        SmartDashboard.putBoolean(logKey + "/Connected", connected);
-        SmartDashboard.putNumber(logKey + "/TagCount", estimate == null ? 0 : estimate.tagCount);
-        SmartDashboard.putBoolean(name + "/MeasurementAccepted", used);
-        Logger.recordOutput(logKey + "/Status", status);
-        Logger.recordOutput(logKey + "/Connected", connected);
-        Logger.recordOutput(logKey + "/UsedThisLoop", used);
+        nextTelemetry = now + 0.5;
+        RateLimitedTelemetry.putString(logKey + "/Status", status);
+        RateLimitedTelemetry.putBoolean(logKey + "/Connected", connected);
+        RateLimitedTelemetry.putNumber(logKey + "/TagCount", estimate == null ? 0 : estimate.tagCount);
+        RateLimitedTelemetry.putBoolean(name + "/MeasurementAccepted", used);
+        RateLimitedTelemetry.recordOutput(logKey + "/Status", status);
+        RateLimitedTelemetry.recordOutput(logKey + "/Connected", connected);
+        RateLimitedTelemetry.recordOutput(logKey + "/UsedThisLoop", used);
     }
 
     private double nextTelemetry;
@@ -127,15 +127,15 @@ public class LimelightVision {
             drivebase.resetOdometry(robotPose2d);
             status = "Reset to MegaTag1";
         }
-        Logger.recordOutput(logKey + "/ResetStatus", status);
-        SmartDashboard.putString(logKey + "/ResetStatus", status);
+        RateLimitedTelemetry.recordOutput(logKey + "/ResetStatus", status);
+        RateLimitedTelemetry.putString(logKey + "/ResetStatus", status);
     }
 
     public void updateRotation() {
         Rotation2d rotation = drivebase.getPose().getRotation();
         double yawRate = Units.radiansToDegrees(drivebase.getRobotVelocity().omegaRadiansPerSecond);
-        Logger.recordOutput(logKey + "/HeadingSentDeg", rotation.getDegrees());
-        Logger.recordOutput(logKey + "/YawRateSentDegPerSec", yawRate);
+        RateLimitedTelemetry.recordOutput(logKey + "/HeadingSentDeg", rotation.getDegrees());
+        RateLimitedTelemetry.recordOutput(logKey + "/YawRateSentDegPerSec", yawRate);
         LimelightHelpers.SetRobotOrientation(name, rotation.getDegrees(), yawRate, 0, 0, 0, 0);
     }
 

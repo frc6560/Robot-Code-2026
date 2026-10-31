@@ -36,6 +36,7 @@ class RobotContainerDriverControlsTest {
         DriverStationSim.setJoystickButtonCount(BUTTON_BOARD_PORT, 11);
         DriverStationSim.notifyNewData();
         RobotContainer container = new RobotContainer();
+        assertEquals("Blue Center", container.getAutonomousCommand().getName());
         // This test checks button ownership and fixed-RPM feeding, not the trajectory solver.
         SmartDashboard.putBoolean("Fuel/Calibration Mode", true);
         SmartDashboard.putNumber("Fuel/Test Flywheel RPM", 3000);
@@ -43,6 +44,10 @@ class RobotContainerDriverControlsTest {
         Shooter shooter = getField(container, "shooter", Shooter.class);
         Indexer indexer = getField(container, "indexer", Indexer.class);
         runCycles(4);
+        assertEquals(1000, shooter.getGoalRPM(), 1e-6);
+        setBoard(11, true);
+        assertEquals(1000, shooter.getGoalRPM(), 1e-6);
+        setBoard(11, false);
         assertEquals(0, indexer.getFloorTargetRPM());
         assertEquals(0, indexer.getTunnelTargetRPM());
 
@@ -57,18 +62,18 @@ class RobotContainerDriverControlsTest {
         setButton(XboxController.Button.kX, false);
 
         // Rack triggers keep their independent endpoint selection.
-        DriverStationSim.setJoystickAxis(DRIVER_PORT, XboxController.Axis.kRightTrigger.value, 1);
+        DriverStationSim.setJoystickButton(DRIVER_PORT, XboxController.Button.kRightBumper.value, true);
         DriverStationSim.notifyNewData(); runCycles(3);
         assertEquals(Constants.IntakeConstants.EXTENDED_POSITION_ROTATIONS,
             SmartDashboard.getNumber("Intake/DeployTargetRotations", -1));
         assertEquals(0, indexer.getTunnelTargetRPM());
-        DriverStationSim.setJoystickAxis(DRIVER_PORT, XboxController.Axis.kRightTrigger.value, 0);
+        DriverStationSim.setJoystickButton(DRIVER_PORT, XboxController.Button.kRightBumper.value, false);
         DriverStationSim.notifyNewData(); runCycles(3);
 
-        setButton(XboxController.Button.kLeftBumper, true);
+        setTrigger(XboxController.Axis.kLeftTrigger, true);
         assertEquals(1500, indexer.getTunnelTargetRPM()); // Standalone manual feed, independent of alliance/aim.
         assertEquals(800, indexer.getFloorTargetRPM());
-        setButton(XboxController.Button.kRightBumper, true);
+        setTrigger(XboxController.Axis.kRightTrigger, true);
         runCycles(150);
         assertEquals("FuelShootCommand", CommandScheduler.getInstance().requiring(indexer).getName());
         assertSame(CommandScheduler.getInstance().requiring(indexer),
@@ -76,40 +81,53 @@ class RobotContainerDriverControlsTest {
         assertEquals(3000, shooter.getGoalRPM(), 1e-6);
         assertEquals(0, indexer.getTunnelTargetRPM()); // Unknown alliance: spin, but do not feed.
         assertEquals(0, indexer.getFloorTargetRPM());
-        setButton(XboxController.Button.kLeftBumper, false);
+        setTrigger(XboxController.Axis.kLeftTrigger, false);
         assertEquals("FuelShootCommand", CommandScheduler.getInstance().requiring(indexer).getName());
-        setButton(XboxController.Button.kRightBumper, false);
-        runCycles(3); // Default tracking resumes after RB releases its requirements.
-        assertEquals(3000, shooter.getGoalRPM(), 1e-6);
+        setTrigger(XboxController.Axis.kRightTrigger, false);
+        runCycles(3); // Return to idle when RB releases its requirements.
+        assertEquals(1000, shooter.getGoalRPM(), 1e-6);
         assertEquals(0, indexer.getTunnelTargetRPM());
         assertEquals(0, indexer.getFloorTargetRPM());
 
         // A new hold starts the combined command again; Y is no longer needed.
-        setButton(XboxController.Button.kRightBumper, true);
+        setTrigger(XboxController.Axis.kRightTrigger, true);
         assertEquals(3000, shooter.getGoalRPM(), 1e-6);
-        setButton(XboxController.Button.kRightBumper, false);
+        setTrigger(XboxController.Axis.kRightTrigger, false);
 
         // Explicit operator feed runs both indexers; RB still takes ownership.
         setBoard(3, true);
         assertEquals(1500, indexer.getTunnelTargetRPM());
         assertEquals(800, indexer.getFloorTargetRPM());
-        setButton(XboxController.Button.kRightBumper, true);
+        setTrigger(XboxController.Axis.kRightTrigger, true);
         assertEquals("FuelShootCommand", CommandScheduler.getInstance().requiring(indexer).getName());
-        setButton(XboxController.Button.kRightBumper, false);
+        setTrigger(XboxController.Axis.kRightTrigger, false);
         assertEquals(0, indexer.getTunnelTargetRPM()); // Held board input cannot resume after RB release.
         setBoard(3, false); setBoard(3, true);
         assertEquals(1500, indexer.getTunnelTargetRPM());
         assertEquals(800, indexer.getFloorTargetRPM());
         setBoard(3, false);
 
+        // A held teleop intake trigger must not cancel the newly scheduled autonomous.
+        DriverStationSim.setJoystickButton(DRIVER_PORT, XboxController.Button.kRightBumper.value, true);
+        DriverStationSim.notifyNewData(); runCycles(3);
+        DriverStationSim.setAllianceStationId(AllianceStationID.Blue1);
         DriverStationSim.setAutonomous(true);
-        DriverStationSim.notifyNewData(); runCycles(4);
+        DriverStationSim.notifyNewData();
+        var auto = container.getAutonomousCommand();
+        auto.schedule();
+        runCycles(4);
+        assertTrue(auto.isScheduled());
+        assertEquals(1000, shooter.getGoalRPM(), 1e-6);
         assertEquals(0, indexer.getFloorTargetRPM());
         assertEquals(0, indexer.getTunnelTargetRPM());
         DriverStationSim.setEnabled(false);
         DriverStationSim.notifyNewData(); runCycles(4);
         assertEquals(0, indexer.getFloorTargetRPM());
         assertEquals(0, indexer.getTunnelTargetRPM());
+    }
+    private static void setTrigger(XboxController.Axis axis, boolean pressed) {
+        DriverStationSim.setJoystickAxis(DRIVER_PORT, axis.value, pressed ? 1.0 : 0.0);
+        DriverStationSim.notifyNewData(); runCycles(4);
     }
     private static void setButton(XboxController.Button button, boolean pressed) {
         DriverStationSim.setJoystickButton(DRIVER_PORT, button.value, pressed);

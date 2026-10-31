@@ -92,6 +92,53 @@ class FuelShootCommandTest {
         aimReady = true; cycles(10); command.end(false);
         assertEquals(0, indexer.getTunnelTargetRPM()); assertEquals(0, shooter.getGoalRPM());
     }
+    @Test void outsideZonePassUsesFixedSpeedAndRelaxedRpmGate() {
+        pose = new Pose2d(Constants.FieldConstants.BLUE_ZONE_X + 1, 4, new Rotation2d(Math.PI));
+        start(new FuelShotModel(LaunchCalibration.ideal()));
+        aimReady = true;
+        shooter.measured = 2450;
+        cycles(15);
+        assertEquals(2600, shooter.getGoalRPM());
+        assertTrue(command.isFeeding());
+        shooter.measured = 2399;
+        cycles(1);
+        assertFalse(command.isFeeding());
+        aimReady = false;
+        shooter.measured = 2600;
+        cycles(15);
+        assertFalse(command.isFeeding());
+    }
+
+    @Test void autonomousUsesTrajectoryEvenInCalibrationAndStopsOutsideAuto() {
+        DriverStationSim.setAutonomous(true);
+        DriverStationSim.notifyNewData();
+        var model = new FuelShotModel(LaunchCalibration.ideal());
+        var solution = model.solve(3.5);
+        assertTrue(solution.valid());
+        boolean[] stopped = {false};
+        aimReady = true;
+        shooter.measured = solution.rpm();
+        command = new FuelShootCommand(shooter, indexer, () -> pose, () -> speeds,
+            new Command() {}, () -> aimReady, () -> pit, model, "Ideal", true, () -> stopped[0]);
+        command.initialize();
+        cycles(15);
+        assertEquals(solution.rpm(), shooter.getGoalRPM());
+        assertEquals(0, indexer.getTunnelTargetRPM());
+        stopped[0] = true;
+        cycles(15);
+        assertTrue(command.isFeeding());
+        assertEquals(1500, indexer.getTunnelTargetRPM());
+        pose = new Pose2d(Constants.FieldConstants.BLUE_HUB_CENTER.getX() - 0.5,
+            Constants.FieldConstants.BLUE_HUB_CENTER.getY(), new Rotation2d());
+        cycles(15);
+        assertFalse(command.isFeeding());
+        assertEquals(0, indexer.getTunnelTargetRPM());
+        DriverStationSim.setAutonomous(false);
+        DriverStationSim.notifyNewData();
+        cycles(1);
+        assertEquals(0, shooter.getGoalRPM());
+    }
+
     @Test void savesWithoutShootingAndRestoresAfterDashboardValueIsLost() {
         FuelShootCommand.publishLaunchSpeedCoefficient();
         SmartDashboard.putNumber(FuelShootCommand.LAUNCH_COEFFICIENT_KEY, 1.08);

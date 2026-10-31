@@ -16,7 +16,7 @@ import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Voltage;
-import org.littletonrobotics.junction.Logger;
+import frc.robot.utility.telemetry.RateLimitedTelemetry;
 import frc.robot.Constants.IndexerConstants;
 
 public class IndexerIOTalonFX implements IndexerIO {
@@ -185,9 +185,9 @@ public class IndexerIOTalonFX implements IndexerIO {
             + "; ID0 follower=" + floorSecondaryConfigurationStatus;
         inputs.floorControlStatus = floorControlStatus;
 
-        Logger.recordOutput("Indexer/Connected/FloorLeader", floorLeader.isConnected());
-        Logger.recordOutput("Indexer/Connected/FloorSecondary", floorSecondary.isConnected());
-        Logger.recordOutput("Indexer/Connected/TunnelMotor", tunnelMotor.isConnected());
+        RateLimitedTelemetry.recordOutput("Indexer/Connected/FloorLeader", floorLeader.isConnected());
+        RateLimitedTelemetry.recordOutput("Indexer/Connected/FloorSecondary", floorSecondary.isConnected());
+        RateLimitedTelemetry.recordOutput("Indexer/Connected/TunnelMotor", tunnelMotor.isConnected());
     }
 
     @Override

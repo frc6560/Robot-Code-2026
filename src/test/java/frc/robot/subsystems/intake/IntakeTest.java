@@ -23,10 +23,13 @@ class IntakeTest {
         double position, stator, velocity;
         double statorLimit = IntakeConstants.DEPLOY_STATOR_CURRENT_LIMIT;
         boolean currentLimitOK = true;
+        boolean currentFresh = true;
+        int deployStops;
         @Override public void updateInputs(IntakeIOInputs inputs) {
             inputs.deployPositionRotations = position;
             inputs.deployVelocityRPS = velocity;
             inputs.deployStatorCurrentAmps = stator;
+            inputs.deployCurrentFresh = currentFresh;
             inputs.deployStatorLimitAmps = statorLimit;
             inputs.deployCurrentLimitOK = currentLimitOK;
             inputs.deployConnected = ready;
@@ -41,6 +44,7 @@ class IntakeTest {
             positionRequests++;
         }
         @Override public void setRollerRPM(double rpm) { roller = rpm; }
+        @Override public void stopDeploy() { stopped = true; deployStops++; }
         @Override public void stop() { stopped = true; roller = 0.0; }
     }
     private FakeIO io;
@@ -114,7 +118,7 @@ class IntakeTest {
         assertEquals("Right trigger not held", SmartDashboard.getString("Intake/RollerBlockedReason", ""));
     }
 
-    @Test void rackSelectionsHoldAndRollersWaitForMeasuredFullExtension() {
+    @Test void rackSelectionsHoldAndRollersStartAtFortyPercentWhileMoving() {
         teleop(true);
         intake.requestRackExtended();
         intake.setRollersRequested(true);
@@ -126,9 +130,10 @@ class IntakeTest {
         assertEquals(IntakeConstants.EXTENDED_POSITION_ROTATIONS, io.target);
         assertEquals(Intake.State.EXTENDED_STOPPED, intake.getState());
         assertEquals(0, io.roller);
-        io.position = IntakeConstants.EXTENDED_POSITION_ROTATIONS;
+        io.position = IntakeConstants.EXTENDED_POSITION_ROTATIONS * 0.4;
+        io.velocity = 2.0;
         intake.periodic();
-        assertEquals(0, io.roller); // Endpoint must settle before rollers can start.
+        assertEquals(2500, io.roller);
         SimHooks.stepTiming(IntakeConstants.ROLLER_EXTENSION_SETTLE_SECONDS + 0.01);
         intake.periodic();
         assertEquals(IntakeConstants.ROLLER_RPM, io.roller);
@@ -141,7 +146,7 @@ class IntakeTest {
         assertEquals(0, io.roller);
     }
 
-    @Test void rollersWaitForStartupPushToEndAndConfirmedContinuousLimit() {
+    @Test void rollersRequireConfirmedContinuousCurrentLimit() {
         teleop(true);
         intake.requestRackExtended();
         intake.setRollersRequested(true);
@@ -151,7 +156,7 @@ class IntakeTest {
         SimHooks.stepTiming(2.0);
         intake.periodic();
         assertEquals(0, io.roller);
-        assertEquals("Waiting for rack startup push to end",
+        assertEquals("Rack continuous current limit not confirmed",
             SmartDashboard.getString("Intake/RollerBlockedReason", ""));
         io.statorLimit = IntakeConstants.DEPLOY_STATOR_CURRENT_LIMIT;
         io.currentLimitOK = false;
@@ -161,7 +166,7 @@ class IntakeTest {
         assertEquals(0, io.roller);
         io.currentLimitOK = true;
         intake.periodic();
-        assertEquals(0, io.roller);
+        assertEquals(2500, io.roller);
         SimHooks.stepTiming(IntakeConstants.ROLLER_EXTENSION_SETTLE_SECONDS + 0.01);
         intake.periodic();
         assertEquals(IntakeConstants.ROLLER_RPM, io.roller);
@@ -231,13 +236,13 @@ class IntakeTest {
     }
 
 
-    @Test void rollersRequireHomingFullPositionAndHealthyRollerControllers() {
+    @Test void rollersRequireFortyPercentAndHealthyControllers() {
         teleop(true);
         intake.requestRackExtended();
         intake.setRollersRequested(true);
         io.position = IntakeConstants.EXTENDED_POSITION_ROTATIONS;
         intake.periodic();
-        assertEquals(0, io.roller); // Endpoint must settle before rollers can start.
+        assertEquals(2500, io.roller);
         SimHooks.stepTiming(IntakeConstants.ROLLER_EXTENSION_SETTLE_SECONDS + 0.01);
         intake.periodic();
         assertEquals(IntakeConstants.ROLLER_RPM, io.roller);
@@ -252,14 +257,82 @@ class IntakeTest {
         intake.periodic();
         SimHooks.stepTiming(IntakeConstants.ROLLER_EXTENSION_SETTLE_SECONDS + 0.01);
         intake.periodic(); assertEquals(IntakeConstants.ROLLER_RPM, io.roller);
-        io.position -= 1;
+        io.position = IntakeConstants.EXTENDED_POSITION_ROTATIONS * 0.39;
         intake.periodic(); assertEquals(0, io.roller); // Slipping out of extension stops them again.
         io.position = IntakeConstants.EXTENDED_POSITION_ROTATIONS;
         io.velocity = 1;
         intake.periodic();
-        SimHooks.stepTiming(1); intake.periodic(); assertEquals(0, io.roller);
+        SimHooks.stepTiming(1); intake.periodic(); assertEquals(2500, io.roller);
         io.position = Double.NaN; io.velocity = 0;
         intake.periodic(); assertEquals(0, io.roller);
+    }
+
+    private void currentFor(double amps, double seconds) {
+        io.stator = amps;
+        intake.periodic();
+        SimHooks.stepTiming(seconds);
+        intake.periodic();
+    }
+
+    @Test void secondDistinctSpikeLatchesRackOffDespiteEncoderAndKeepsRollersRunning() {
+        teleop(true);
+        intake.requestRackExtended();
+        intake.setRollersRequested(true);
+        io.position = IntakeConstants.EXTENDED_POSITION_ROTATIONS * 0.2;
+        currentFor(35, 0.06);
+        assertEquals(1, intake.getDeploySpikeCount());
+        assertFalse(intake.isExtensionLimitReached());
+        currentFor(35, 1.0); // A long startup spike is still only one spike.
+        assertEquals(1, intake.getDeploySpikeCount());
+        currentFor(10, 0.10);
+        currentFor(35, 0.06);
+        assertEquals(2, intake.getDeploySpikeCount());
+        assertTrue(intake.isExtensionLimitReached());
+        assertTrue(io.stopped);
+        assertEquals(2500, io.roller); // Physical limit overrides the inaccurate encoder fraction.
+        int requests = io.positionRequests;
+        currentFor(0, 1.0);
+        assertEquals(requests, io.positionRequests); // Must not resume pushing the hard stop.
+        intake.setRollersRequested(false);
+        intake.periodic();
+        assertEquals(0, io.roller);
+        assertEquals(requests, io.positionRequests);
+        intake.requestRackRetracted();
+        intake.periodic();
+        assertFalse(intake.isExtensionLimitReached());
+        assertFalse(io.stopped);
+        intake.requestRackExtended();
+        intake.setRollersRequested(true);
+        intake.periodic();
+        assertEquals(0, intake.getDeploySpikeCount());
+    }
+
+    @Test void thirtyFourAmpsDoesNotCountButThirtyFiveAmpsDoes() {
+        teleop(true);
+        intake.requestRackExtended();
+        currentFor(34, 1.0);
+        assertEquals(0, intake.getDeploySpikeCount());
+        currentFor(35, 0.06);
+        assertEquals(1, intake.getDeploySpikeCount());
+    }
+
+    @Test void shortNoiseStaleCurrentAndInsufficientRearmDoNotCountAsTwoSpikes() {
+        teleop(true);
+        intake.requestRackExtended();
+        currentFor(35, 0.02);
+        currentFor(0, 0.10);
+        assertEquals(0, intake.getDeploySpikeCount());
+        io.currentFresh = false;
+        currentFor(35, 1.0);
+        assertEquals(0, intake.getDeploySpikeCount());
+        io.currentFresh = true;
+        currentFor(35, 0.06);
+        currentFor(10, 0.04);
+        currentFor(35, 1.0);
+        assertEquals(1, intake.getDeploySpikeCount());
+        assertFalse(intake.isExtensionLimitReached());
+        intake.requestRackExtended(); // A new trigger press starts a fresh count.
+        assertEquals(0, intake.getDeploySpikeCount());
     }
 
     @Test void sustainedLowSpeedAndHighCurrentDoNotCancelRackRequest() {
