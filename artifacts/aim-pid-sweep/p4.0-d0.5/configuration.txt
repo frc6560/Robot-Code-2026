@@ -1,0 +1,5 @@
+Aim PID: 4.000, 0.000, 0.500; angular limits: 12.500 rad/s, 24.000 rad/s^2
+Aim tolerance: 7.500 deg; tracking-rate tolerance: 5.000 deg/s
+Shooter PID: 2.000, 0.000, 0.000; FF kS=0.150000 kV=0.027932 kA=0.003836
+Launch coefficient: 1.050; battery: 12.0 V; robot loop: 20 ms; motor loop: 1 ms; MapleSim substeps: 5
+Indexer idealized ready; flat field; no vision noise, wheel impacts, supply sag, release delay or ball loading. Motor P/D stand-in omits firmware filtering and CAN latency.

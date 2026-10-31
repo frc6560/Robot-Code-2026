@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import frc.robot.Constants.IntakeConstants;
 
 class StartupCurrentLimitTest {
     double now;
@@ -12,6 +13,44 @@ class StartupCurrentLimitTest {
     List<Double> writes = new ArrayList<>();
     StartupCurrentLimit limit = new StartupCurrentLimit(40, 60, 1, () -> now,
         amps -> { writes.add(amps); return accept; }, () -> stops++);
+
+    @Test void intakeUsesThreeSecondsAndReleaseRearmsTheSameTarget() {
+        var intakeLimit = new StartupCurrentLimit(IntakeConstants.DEPLOY_STATOR_CURRENT_LIMIT,
+            IntakeConstants.DEPLOY_STARTUP_STATOR_CURRENT_LIMIT, IntakeConstants.DEPLOY_STARTUP_SECONDS,
+            () -> now, amps -> { writes.add(amps); return true; }, () -> stops++);
+        intakeLimit.update(true, true, true);
+        now = 2.999;
+        intakeLimit.update(true, false, true);
+        assertEquals(60, intakeLimit.appliedAmps());
+        now = 3.0;
+        intakeLimit.update(true, false, true);
+        assertEquals(40, intakeLimit.appliedAmps());
+        intakeLimit.update(false, false, false); // Release.
+        now = 3.1;
+        intakeLimit.update(true, false, true); // Same target, new press.
+        assertEquals(60, intakeLimit.appliedAmps());
+        now = 6.1;
+        intakeLimit.update(true, false, true);
+        assertEquals(40, intakeLimit.appliedAmps());
+        assertEquals(List.of(60.0, 40.0, 60.0, 40.0), writes);
+    }
+
+    @Test void forceRetractRetainsSixtyUntilWallStopOrReleaseAndNormalMovesStillExpire() {
+        var intakeLimit = new StartupCurrentLimit(40, 60, 3, () -> now,
+            amps -> { writes.add(amps); return true; }, () -> stops++);
+        intakeLimit.update(true, true, true, true);
+        now = 10.0;
+        intakeLimit.update(true, false, true, true);
+        assertEquals(60, intakeLimit.appliedAmps());
+        intakeLimit.update(false, false, false, false);
+        assertEquals(40, intakeLimit.appliedAmps());
+        now = 11.0;
+        intakeLimit.update(true, false, true, false);
+        assertEquals(60, intakeLimit.appliedAmps());
+        now = 14.0;
+        intakeLimit.update(true, false, true, false);
+        assertEquals(40, intakeLimit.appliedAmps());
+    }
 
     @Test void repeatedRequestsCannotExtendOneSecondAndNoRepeatedConfigWrites() {
         assertTrue(limit.update(true, false, true));

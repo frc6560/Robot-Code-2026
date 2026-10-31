@@ -26,7 +26,7 @@ class RobotContainerDriverControlsTest {
         DriverStationSim.notifyNewData();
     }
 
-    @Test void rightBumperOwnsAimSpinFeedAndIdleIndexersStayStopped() throws Exception {
+    @Test void driverControlsOwnIntakeAimAndManualFeed() throws Exception {
         DriverStationSim.setDsAttached(true);
         DriverStationSim.setEnabled(true);
         DriverStationSim.setAutonomous(false);
@@ -62,43 +62,47 @@ class RobotContainerDriverControlsTest {
         assertEquals("Not requested", SmartDashboard.getString("Vision/Right/ResetStatus", ""));
         setButton(XboxController.Button.kX, false);
 
-        // Rack triggers keep their independent endpoint selection.
-        DriverStationSim.setJoystickButton(DRIVER_PORT, XboxController.Button.kRightBumper.value, true);
-        DriverStationSim.notifyNewData(); runCycles(3);
+        Intake intake = getField(container, "intake", Intake.class);
+        // LT collects without feeding either indexer. Release stops the rack too.
+        setTrigger(XboxController.Axis.kLeftTrigger, true);
         assertEquals(Constants.IntakeConstants.EXTENDED_POSITION_ROTATIONS,
             SmartDashboard.getNumber("Intake/DeployTargetRotations", -1));
         assertEquals(0, indexer.getTunnelTargetRPM());
-        // Retraction must take over even if the bumpers overlap. Releasing LB
-        // while RB remains held must not synthesize a new extension press.
-        setButton(XboxController.Button.kLeftBumper, true);
-        assertEquals(Constants.IntakeConstants.RETRACTED_POSITION_ROTATIONS,
-            SmartDashboard.getNumber("Intake/DeployTargetRotations", -1));
-        setButton(XboxController.Button.kLeftBumper, false);
-        assertEquals(Constants.IntakeConstants.RETRACTED_POSITION_ROTATIONS,
-            SmartDashboard.getNumber("Intake/DeployTargetRotations", -1));
-        DriverStationSim.setJoystickButton(DRIVER_PORT, XboxController.Button.kRightBumper.value, false);
-        DriverStationSim.notifyNewData(); runCycles(3);
+        assertEquals(0, indexer.getFloorTargetRPM());
+        setTrigger(XboxController.Axis.kLeftTrigger, false);
+        assertFalse(SmartDashboard.getBoolean("Intake/RackRequested", true));
+        setTrigger(XboxController.Axis.kLeftTrigger, true);
+        setButton(XboxController.Button.kRightBumper, true);
+        assertEquals(0, SmartDashboard.getNumber("Intake/DeployTargetRotations", -1));
+        setButton(XboxController.Button.kRightBumper, false);
+        assertFalse(SmartDashboard.getBoolean("Intake/RackRequested", true));
+        assertEquals(0, SmartDashboard.getNumber("Intake/DeployTargetRotations", -1));
+        setTrigger(XboxController.Axis.kLeftTrigger, false);
+
+        // Releasing RB must not create a fresh extension press from a held LT.
+        setButton(XboxController.Button.kRightBumper, true);
+        setTrigger(XboxController.Axis.kLeftTrigger, true);
+        setButton(XboxController.Button.kRightBumper, false);
+        assertFalse(SmartDashboard.getBoolean("Intake/RackRequested", true));
+        assertEquals(0, SmartDashboard.getNumber("Intake/DeployTargetRotations", -1));
+        setTrigger(XboxController.Axis.kLeftTrigger, false);
 
         setButton(XboxController.Button.kLeftBumper, true);
-        setButton(XboxController.Button.kRightBumper, true);
+        assertTrue(SmartDashboard.getBoolean("Intake/ForceRetractRequested", false));
         setButton(XboxController.Button.kLeftBumper, false);
-        assertEquals(Constants.IntakeConstants.RETRACTED_POSITION_ROTATIONS,
-            SmartDashboard.getNumber("Intake/DeployTargetRotations", -1));
-        setButton(XboxController.Button.kRightBumper, false);
-        setButton(XboxController.Button.kRightBumper, true);
-        assertEquals(Constants.IntakeConstants.EXTENDED_POSITION_ROTATIONS,
-            SmartDashboard.getNumber("Intake/DeployTargetRotations", -1));
-        Intake intake = getField(container, "intake", Intake.class);
+        assertFalse(SmartDashboard.getBoolean("Intake/RackRequested", true));
+        assertFalse(SmartDashboard.getBoolean("Intake/ForceRetractRequested", true));
+
+        setTrigger(XboxController.Axis.kLeftTrigger, true);
         setButton(XboxController.Button.kA, true);
         assertTrue(intake.isExtensionLimitReached());
         assertTrue(intake.atDeployTarget());
-        assertFalse(CommandScheduler.getInstance().requiring(container.getDrivebase())
-            .getName().contains("Trench"));
         setButton(XboxController.Button.kA, false);
-        setButton(XboxController.Button.kRightBumper, false);
+        setTrigger(XboxController.Axis.kLeftTrigger, false);
+        assertFalse(intake.isExtensionLimitReached());
 
-        setTrigger(XboxController.Axis.kLeftTrigger, true);
-        assertEquals(1500, indexer.getTunnelTargetRPM()); // Standalone manual feed, independent of alliance/aim.
+        setBoard(3, true);
+        assertEquals(1500, indexer.getTunnelTargetRPM());
         assertEquals(800, indexer.getFloorTargetRPM());
         setTrigger(XboxController.Axis.kRightTrigger, true);
         runCycles(150);
@@ -108,10 +112,14 @@ class RobotContainerDriverControlsTest {
         assertEquals(3000, shooter.getGoalRPM(), 1e-6);
         assertEquals(0, indexer.getTunnelTargetRPM()); // Unknown alliance: spin, but do not feed.
         assertEquals(0, indexer.getFloorTargetRPM());
-        setTrigger(XboxController.Axis.kLeftTrigger, false);
+        assertTrue(SmartDashboard.getBoolean("Intake/ForceRetractRequested", false));
+        assertSame(CommandScheduler.getInstance().requiring(indexer),
+            CommandScheduler.getInstance().requiring(intake));
+        setBoard(3, false);
         assertEquals("FuelShootCommand", CommandScheduler.getInstance().requiring(indexer).getName());
         setTrigger(XboxController.Axis.kRightTrigger, false);
-        runCycles(3); // Return to idle when RB releases its requirements.
+        runCycles(3); // Releasing RT stops retraction and resets its current allowance.
+        assertFalse(SmartDashboard.getBoolean("Intake/RackRequested", true));
         assertEquals(1000, shooter.getGoalRPM(), 1e-6);
         assertEquals(0, indexer.getTunnelTargetRPM());
         assertEquals(0, indexer.getFloorTargetRPM());
@@ -135,7 +143,7 @@ class RobotContainerDriverControlsTest {
         setBoard(3, false);
 
         // A held teleop intake trigger must not cancel the newly scheduled autonomous.
-        DriverStationSim.setJoystickButton(DRIVER_PORT, XboxController.Button.kRightBumper.value, true);
+        DriverStationSim.setJoystickAxis(DRIVER_PORT, XboxController.Axis.kLeftTrigger.value, 1.0);
         DriverStationSim.notifyNewData(); runCycles(3);
         DriverStationSim.setAllianceStationId(AllianceStationID.Blue1);
         DriverStationSim.setAutonomous(true);

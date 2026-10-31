@@ -16,27 +16,35 @@ Competition-path profiled rotations are disabled and intermediate waypoint hando
 
 Event behavior:
 
-- `intake`: request extension and latch the intake roller request at 2500 mechanism RPM. Rollers start once extension reaches 40% (or the second current spike confirms the physical endpoint), and continue until retraction or auto cancellation.
+- `intake`: request extension and latch the intake roller request at 2500 mechanism RPM. Rollers start once extension reaches 40% (or a sustained current spike confirms the physical endpoint), and continue until retraction or auto cancellation.
 - `rev`: run `FuelShootCommand`'s trajectory/RPM calculation and flywheel ramp, with feeding blocked. B-Line continues owning the drivetrain.
-- `shoot`: stop path following and run the shared `FuelShootCommand.aimedShot` factory used by teleop right bumper, with zero requested translation. It aims at the alliance hub, then runs the same floor/tunnel RPMs and release gates. It remains active until autonomous ends; it has no timed unload cutoff. Reaching the final waypoint also starts shooting, so B-Line's endpoint tolerance cannot skip a marker at t=1.
+- `shoot`: stop path following and run the shared `FuelShootCommand.aimedShot` factory used by teleop right trigger, with zero requested translation. It aims at the alliance hub, then runs the same floor/tunnel RPMs and release gates. It remains active until autonomous ends; it has no timed unload cutoff. Reaching the final waypoint also starts shooting, so B-Line's endpoint tolerance cannot skip a marker at t=1.
 
 All auto event actions are owned by the autonomous command. Cancellation ends the follower, aiming, feeding, intake and rev command; no separately scheduled event command survives the auto. The flywheel returns to idle when enabled and coasts while disabled/pit coast is active.
 
-The default flywheel goal is 1000 RPM in both enabled teleop and auto. Right bumper requests the shooting RPM; releasing it returns to idle. Auto stays idle until `rev`/`shoot`. Manual indexer controls retain idle speed; the previous operator A/button-board 11 spin-up shortcuts are removed. The 2.4 m backup stays idle during its retreat and requests shooting RPM once stopped.
+The default flywheel goal is 1000 RPM in both enabled teleop and auto. Right trigger requests the shooting RPM; releasing it returns to idle. Auto stays idle until `rev`/`shoot`. Manual indexer controls retain idle speed; the previous operator A/button-board 11 spin-up shortcuts are removed. The 2.4 m backup stays idle during its retreat and requests shooting RPM once stopped.
 
 The active shooting RPM tolerance is `FuelShotConfig.RPM_TOLERANCE = 60.0` (absolute measured error must be less than 60 RPM), with `READY_DWELL_SECONDS = 0.10`. The measured trajectory scoring-band check can impose a tighter restriction. `ShooterConstants.FLYWHEEL_RPM_TOLERANCE = 200.0` is a legacy/simulation-test tolerance and does not control aimed-shot feeding.
 
-Teleop right bumper requests rack extension and rollers at `IntakeConstants.ROLLER_RPM` once encoder extension is at least 40%; releasing it stops rollers. Left bumper requests retraction and stops rollers, taking priority when the bumpers overlap. Releasing a bumper does not select a new endpoint.
+Teleop intake controls:
 
-Driver A replaces trench alignment with a manual fully-extended confirmation. In enabled teleop, with healthy rack feedback and a valid startup reference, it immediately stops the rack and latches the extended endpoint even if the encoder reports partial extension. It does not rewrite the encoder or start the rollers by itself; an existing roller request can continue. A new extension/retraction request, disable, pit coast or auto cancellation clears the endpoint latch.
+| Control | Action while held |
+| --- | --- |
+| Left trigger | Extend and request rollers at `IntakeConstants.ROLLER_RPM`, gated by 40% extension and the confirmed continuous current limit. |
+| Right bumper | Normal encoder-position retraction; stop rollers. |
+| Left bumper | Force retract inward past the encoder software limit until the wall-current stop; stop rollers. |
+| Right trigger | Aim, spin and shoot while force retracting the intake fully. Retraction starts alongside alignment and stops at the wall. |
+| A | Confirm the intake is already fully extended and stop rack output without changing its encoder reading. Does not start rollers by itself. |
 
-Each new extension or retraction target allows up to 60 A stator current for the first 1.0 second while motion is needed, then returns to 40 A. Repeating the same target does not restart the timer. Reaching the target or stopping the rack ends the allowance early. The rack supply-current limit remains 30 A. Rollers wait until the 40 A stator limit is confirmed, in addition to the extension gate. A failed current-limit change stops motor output and is retried; the timer is not extended by retries.
+Releasing either bumper or left trigger immediately stops rack and roller output and resets the boost and endpoint latches. The next press, including another attempt at the same target, gets a fresh boost. Releasing right trigger cancels shooting and its retraction, with the same reset. Releasing one control never creates a new press for a different held control. Force retraction takes priority over normal retraction, which takes priority over collection. Intake controls can interrupt the shooting command; the command owns the intake alongside drive, shooter and indexers. Mode-transition releases cannot cancel or clear an autonomous intake request.
 
-The extension motor's stator current is checked at control-loop frequency, independently of reduced-rate logging. Starting thresholds in `IntakeConstants`:
+Left trigger no longer runs the floor/tunnel indexers. Operator button-board 3 retains manual feed. Right trigger retains aimed shooting, and A no longer aligns to the trench. Driver controls are enabled only in teleop outside pit coast. Endpoint confirmation and forced motion still require healthy rack feedback and a valid startup reference.
 
-- Count a spike at or above 35 A for at least 60 ms.
-- Before counting another spike, require current below 15 A for at least 100 ms.
-- On the second distinct spike, latch the extension motor off even if its encoder reports partial extension. Treat that as the physical extension limit for roller permission. The rollers continue while requested.
-- A new extension request starts a fresh count. Retraction, disable, pit coast and auto cancellation clear the latch. Sustained high current counts once; short noise and stale current feedback do not count.
+Normal extension/retraction allows up to 60 A stator current for 3.0 seconds while motion is needed, then returns to 40 A. Repeated periodic requests do not extend the timer. Reaching the position target or stopping ends the allowance early. **Force retract, including the retraction accompanying right-trigger shooting, retains the 60 A stator allowance until the wall-current stop or release**, even beyond three seconds. The rack supply-current limit remains 30 A. Rollers wait for the 40 A stator limit to be confirmed in addition to their extension gate. Failed current-limit changes stop motor output and are retried.
 
-These thresholds are starting values approved for this change; verify them against measured extension current on the robot.
+A wall/current spike requires stator current **strictly above 40 A for two continuous seconds**, checked at control-loop frequency with fresh feedback. A reading at or below 40 A, invalid current, stale current or lost rack readiness resets the timer. This replaces the previous two-short-spike scheme with one sustained spike:
+
+- During extension, the spike latches rack output off and permits requested rollers even if the encoder reports partial extension. The encoder position target and manual A confirmation remain alternative stops. After the normal boost expires the 40 A cap prevents a guaranteed above-40 A stall signal; release/retry or A confirmation remains available.
+- During force retract, the spike stops the motor, sets the encoder to the physical retracted zero, and latches the motor off for the rest of that request. It does not stop merely because the old encoder zero was reached. Release before a confirmed stall does not re-zero.
+- Normal right-bumper position retraction keeps its encoder target; it does not use the force-retract wall detector.
+- New requests, release, disable, pit coast and auto cancellation clear endpoint latches and current timers. Feedback/configuration faults block output.

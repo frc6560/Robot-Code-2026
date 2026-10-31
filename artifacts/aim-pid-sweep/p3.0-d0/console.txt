@@ -1,0 +1,86 @@
+
+> Task :compileJava
+/Users/andrei/Robot-Code-2026/src/main/java/frc/robot/subsystems/shooter/ShooterIOTalonFX.java:47: warning: [removal] TalonFX(int,String) in TalonFX has been deprecated and marked for removal
+        leaderMotor = new TalonFX(ShooterConstants.RIGHT_FLYWHEEL_ID, ShooterConstants.CAN_BUS);
+                      ^
+/Users/andrei/Robot-Code-2026/src/main/java/frc/robot/subsystems/shooter/ShooterIOTalonFX.java:48: warning: [removal] TalonFX(int,String) in TalonFX has been deprecated and marked for removal
+        followerMotor = new TalonFX(ShooterConstants.LEFT_FLYWHEEL_ID, ShooterConstants.CAN_BUS);
+                        ^
+Note: /Users/andrei/Robot-Code-2026/src/main/java/frc/robot/utility/LimelightHelpers.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+2 warnings
+
+> Task :processResources NO-SOURCE
+> Task :classes
+> Task :compileTestJava
+> Task :extractReleaseNative UP-TO-DATE
+> Task :processTestResources NO-SOURCE
+> Task :testClasses
+HAL Extensions: No extensions found
+
+> Task :movingShotStressSimulation
+
+MovingShotClosedLoopSimulationTest > independentBallisticsMatchesStationaryModel() PASSED
+
+[phoenix] CANbus Connected: sim
+[phoenix] CANbus Network Up: sim
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 5 ("rio") Status Signal MagnetHealth
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 2 ("rio") Status Signal MagnetHealth
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 2 ("rio") Status Signal AbsolutePosition
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 2 ("rio") Status Signal Velocity
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 8 ("rio") Status Signal MagnetHealth
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 8 ("rio") Status Signal AbsolutePosition
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 8 ("rio") Status Signal Velocity
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 12 ("rio") Status Signal MagnetHealth
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 12 ("rio") Status Signal AbsolutePosition
+CAN frame not received/too-stale. Check the CAN bus wiring, CAN bus utilization, and power to the device.
+	cancoder 12 ("rio") Status Signal Velocity
+[phoenix] Library initialization is complete.
+	
+
+> Task :movingShotStressSimulation
+
+MovingShotClosedLoopSimulationTest > runConfiguredControllersAndExportTraces() STANDARD_OUT
+    Resetting odometry to: Pose2d(Translation2d(X: 1.12, Y: 4.03), Rotation2d(Rads: 0.61, Deg: 35.00))
+    Resetting odometry to: Pose2d(Translation2d(X: 1.12, Y: 4.03), Rotation2d(Rads: 0.61, Deg: 35.00))
+    Resetting odometry to: Pose2d(Translation2d(X: 15.42, Y: 4.03), Rotation2d(Rads: 3.75, Deg: 215.00))
+    Resetting odometry to: Pose2d(Translation2d(X: 1.12, Y: 4.03), Rotation2d(Rads: 0.61, Deg: 35.00))
+
+[phoenix-diagnostics] Server 2026.1.2 (Mar 11 2026, 19:37:44) running on port: 1250
+	
+[phoenix-diagnostics] Server shutdown cleanly. (dur:12)
+	
+[phoenix] Library shutdown cleanly
+	
+
+> Task :movingShotStressSimulation
+    Resetting odometry to: Pose2d(Translation2d(X: 15.42, Y: 4.03), Rotation2d(Rads: 3.75, Deg: 215.00))
+    Resetting odometry to: Pose2d(Translation2d(X: 1.92, Y: 4.03), Rotation2d(Rads: 0.61, Deg: 35.00))
+    Resetting odometry to: Pose2d(Translation2d(X: 0.62, Y: 4.03), Rotation2d(Rads: 0.61, Deg: 35.00))
+    Resetting odometry to: Pose2d(Translation2d(X: 1.12, Y: 4.03), Rotation2d(Rads: 0.61, Deg: 35.00))
+    MOVING_SHOT_SIMULATION
+    scenario,first_feed_s,moving_feed_fraction,moving_rpm_error_p95,moving_heading_error_p95_deg,shots,scored,moving_shots,moving_scored,mean_miss_m,max_miss_m,command_p95_ms,command_max_ms
+    stationary,1.020,NaN,NaN,NaN,44,44,0,0,0.1503,0.1506,1.0354,26.7953
+    blue-orbit,1.000,0.2736,5.028,7.698,16,16,9,9,0.1859,0.3884,0.9868,15.3285
+    red-orbit,1.020,0.2838,5.017,7.931,16,16,9,9,0.1913,0.3994,0.6493,6.5566
+    blue-figure-eight,1.020,0.3354,9.225,7.530,19,19,13,13,0.1507,0.3345,0.1685,1.8090
+    red-figure-eight,1.000,0.3354,9.330,7.571,22,16,13,13,0.2566,0.4534,0.1639,7.6967
+    near-weave,0.960,0.6487,5.005,6.907,35,35,22,22,0.1975,0.4265,0.2714,6.8327
+    far-weave,1.040,0.3758,9.670,7.597,23,23,14,14,0.1681,0.3867,0.2738,10.3056
+    stationary-p-only-reference,1.000,NaN,NaN,NaN,44,44,0,0,0.2305,0.2312,0.1188,1.9317
+
+
+MovingShotClosedLoopSimulationTest > runConfiguredControllersAndExportTraces() PASSED
+[Incubating] Problems report is available at: file:///Users/andrei/Robot-Code-2026/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 16s
+4 actionable tasks: 3 executed, 1 up-to-date

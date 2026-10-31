@@ -1,0 +1,1 @@
+stress: 10-second runs; move from 1.5 to 8.5 seconds; orbit/figure-eight/weave; near range 2.7 m, far range 4 m, otherwise 3.5 m.

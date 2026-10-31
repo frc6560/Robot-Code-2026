@@ -24,10 +24,15 @@ public final class StartupCurrentLimit {
 
     /** Repeated requests/speed changes do not restart the timer. Explicit new rack targets may. */
     public boolean update(boolean requested, boolean newMove, boolean needsMotion) {
+        return update(requested, newMove, needsMotion, false);
+    }
+
+    /** Explicit force-retract mode can retain the startup allowance until its wall stop. */
+    public boolean update(boolean requested, boolean newMove, boolean needsMotion, boolean forceRetracting) {
         double now = clock.getAsDouble();
         if (requested && (!active || newMove)) start = now;
         active = requested;
-        desired = requested && needsMotion && now < start + seconds ? startup : continuous;
+        desired = requested && needsMotion && (forceRetracting || now < start + seconds) ? startup : continuous;
         if (applied != desired) {
             if (!apply.test(desired)) {
                 applied = Double.NaN; // A partial multi-motor update must also be retried.

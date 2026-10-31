@@ -1,0 +1,9 @@
+scenario,first_feed_s,moving_feed_fraction,moving_rpm_error_p95,moving_heading_error_p95_deg,shots,scored,moving_shots,moving_scored,mean_miss_m,max_miss_m,command_p95_ms,command_max_ms
+stationary,1.020,NaN,NaN,NaN,44,44,0,0,0.1503,0.1506,1.0354,26.7953
+blue-orbit,1.000,0.2736,5.028,7.698,16,16,9,9,0.1859,0.3884,0.9868,15.3285
+red-orbit,1.020,0.2838,5.017,7.931,16,16,9,9,0.1913,0.3994,0.6493,6.5566
+blue-figure-eight,1.020,0.3354,9.225,7.530,19,19,13,13,0.1507,0.3345,0.1685,1.8090
+red-figure-eight,1.000,0.3354,9.330,7.571,22,16,13,13,0.2566,0.4534,0.1639,7.6967
+near-weave,0.960,0.6487,5.005,6.907,35,35,22,22,0.1975,0.4265,0.2714,6.8327
+far-weave,1.040,0.3758,9.670,7.597,23,23,14,14,0.1681,0.3867,0.2738,10.3056
+stationary-p-only-reference,1.000,NaN,NaN,NaN,44,44,0,0,0.2305,0.2312,0.1188,1.9317

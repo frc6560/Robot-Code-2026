@@ -62,6 +62,7 @@ public class RobotContainer {
     private final LED led;
 
     private FuelShootCommand shotCommand;
+    private Command shotWithIntake;
     private boolean pitCoastMode = false;
     private boolean manualControlsSuppressedAfterAim;
     private FuelShotModel fuelShotModel;
@@ -101,14 +102,14 @@ public class RobotContainer {
 
 
         intake = new Intake(new IntakeIOTalonFX());
-        led = new LED(new LEDIOAddressable(3, 65), () -> shotCommand != null && shotCommand.isScheduled(),
+        led = new LED(new LEDIOAddressable(3, 65), () -> shotWithIntake != null && shotWithIntake.isScheduled(),
             () -> shotCommand != null && shotCommand.isReadyToFeed());
       } else {
           shooter = new Shooter(new ShooterIOSim());
 
 
           intake = new Intake(new IntakeIOSim());
-          led = new LED(new LEDIOSim(65), () -> shotCommand != null && shotCommand.isScheduled(),
+          led = new LED(new LEDIOSim(65), () -> shotWithIntake != null && shotWithIntake.isScheduled(),
             () -> shotCommand != null && shotCommand.isReadyToFeed());
       }
 
@@ -156,8 +157,8 @@ public class RobotContainer {
 
     private boolean isShotCommandActive() {
         return driverXbox.rightTrigger().getAsBoolean()
-            || (shotCommand != null
-                && CommandScheduler.getInstance().isScheduled(shotCommand));
+            || (shotWithIntake != null
+                && CommandScheduler.getInstance().isScheduled(shotWithIntake));
     }
 
     /** Gated shot plus BLine's AimAtHub, which turns the chassis to the hub while the driver translates. */
@@ -165,12 +166,15 @@ public class RobotContainer {
         shotCommand = FuelShootCommand.aimedShot(drivebase, shooter, indexer,
             () -> clampSpeedsForShooting(driveAngularVelocity.get()),
             () -> pitCoastMode, fuelShotModel, fuelCalibrationStatus, false);
-        return shotCommand;
+        shotWithIntake = shotCommand
+            .alongWith(Commands.startEnd(intake::requestForceRetracted, intake::stop, intake))
+            .withName("FuelShootCommand");
+        return shotWithIntake;
     }
 
     private void cancelShotCommand() {
-        if (shotCommand != null) {
-            CommandScheduler.getInstance().cancel(shotCommand);
+        if (shotWithIntake != null) {
+            CommandScheduler.getInstance().cancel(shotWithIntake);
         }
     }
 
@@ -219,31 +223,41 @@ public class RobotContainer {
         drivebase.setDefaultCommand(driveFieldOrientedAnglularVelocity);
         driveFieldOrientedAnglularVelocity.setName("Driver field-oriented drive");
 
-        // Driver right trigger owns aim/spin/feed. Left trigger retains standalone manual indexer feed.
+        // Driver right trigger owns aim/spin/feed and full intake retraction.
         // Manual floor/tunnel controls retain idle; right trigger is the teleop spin-up request.
         Trigger driver2Indexer = new Trigger(() -> m_Controls.getButtonActivated(3));
-        Trigger feed = driverXbox.leftTrigger().or(driver2Indexer);
+        Trigger feed = driver2Indexer;
         Trigger floor = feed;
 
-        // Bumper presses select rack endpoints. Retraction takes priority on overlap.
-        // Check the opposite bumper inside the action: composing it into the trigger
-        // would turn a bumper RELEASE into a new press of the still-held bumper.
-        Trigger rackRetract = driverXbox.leftBumper();
-        Trigger rackExtend = driverXbox.rightBumper();
+        // Raw press edges prevent a release from reactivating another held control.
+        // Force retract takes priority over normal retract, which takes priority over intake.
+        Trigger rackForceRetract = driverXbox.leftBumper();
+        Trigger rackRetract = driverXbox.rightBumper();
+        Trigger rackExtend = driverXbox.leftTrigger();
+        rackForceRetract
+            .and(DriverStation::isTeleopEnabled).and(() -> !pitCoastMode)
+            .onTrue(Commands.runOnce(intake::requestForceRetracted, intake))
+            .onFalse(Commands.runOnce(() -> {
+                if (DriverStation.isTeleopEnabled()) intake.stop();
+            }));
         rackRetract
             .and(DriverStation::isTeleopEnabled).and(() -> !pitCoastMode)
-            .onTrue(Commands.runOnce(intake::requestRackRetracted, intake));
+            .onTrue(Commands.runOnce(() -> {
+                if (!rackForceRetract.getAsBoolean()) intake.requestRackRetracted();
+            }, intake))
+            .onFalse(Commands.runOnce(() -> {
+                if (DriverStation.isTeleopEnabled()) intake.stop();
+            }));
         rackExtend
             .and(DriverStation::isTeleopEnabled).and(() -> !pitCoastMode)
             .onTrue(Commands.runOnce(() -> {
-                if (rackRetract.getAsBoolean()) return;
+                if (rackRetract.getAsBoolean() || rackForceRetract.getAsBoolean()) return;
                 intake.requestRackExtended();
                 intake.setRollersRequested(true);
             }, intake))
             .onFalse(Commands.runOnce(() -> {
-                // A teleop trigger falling on the mode transition must not cancel an auto
-                // that now owns the intake, or clear its persistent intake event request.
-                if (DriverStation.isTeleopEnabled()) intake.setRollersRequested(false);
+                // Mode-transition releases must not clear an autonomous intake request.
+                if (DriverStation.isTeleopEnabled()) intake.stop();
             }));
         // Releasing right trigger must stop feeding even if an operator control is held.
         // Require all manual holds to release before an ungated manual shot can start again.
@@ -277,7 +291,7 @@ public class RobotContainer {
         driverAimedShootTrigger.onTrue(Commands.runOnce(() -> manualControlsSuppressedAfterAim = true));
         driverAimedShootTrigger.whileTrue(aimedShot);
 
-        // Driver left trigger and button-board 3 request manual floor/tunnel feed outside the aimed shot.
+        // Button-board 3 requests manual floor/tunnel feed outside the aimed shot.
 
         // --- RESETS ---
         Trigger resetPoseTrigger = driverXbox.x().and(DriverStation::isTeleopEnabled);

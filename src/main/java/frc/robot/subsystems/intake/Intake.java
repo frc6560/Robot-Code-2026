@@ -7,7 +7,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.IntakeConstants;
 
-/** Requested intake motion with a 40% roller gate and a latched second-current-spike stop. */
+/** Rack requests with a 40% roller gate and sustained-current physical endpoint stops. */
 public class Intake extends SubsystemBase {
     private final IntakeIO io;
     private final IntakeIO.IntakeIOInputs inputs = new IntakeIO.IntakeIOInputs();
@@ -19,9 +19,9 @@ public class Intake extends SubsystemBase {
     private boolean rollerRequested;
     private double rollerTargetRPM;
     private int deploySpikeCount;
-    private boolean spikeArmed = true;
     private boolean extensionLimitReached;
-    private double highCurrentSince = Double.NaN, lowCurrentSince = Double.NaN;
+    private boolean forceRetractRequested, retractionLimitReached;
+    private double highCurrentSince = Double.NaN;
 
     public enum State {
         RETRACTED_STOPPED, EXTENDED_STOPPED, EXTENDED_SPINNING, EXTENDED_OUTTAKING
@@ -49,13 +49,21 @@ public class Intake extends SubsystemBase {
         if (!requested) stopRollers();
     }
 
+    public void requestForceRetracted() {
+        requestRackRetracted();
+        forceRetractRequested = true;
+    }
+
+    public boolean isRetractionLimitReached() { return retractionLimitReached; }
+
     /** Driver confirms the physical endpoint without changing the encoder reference. */
     public void confirmFullyExtended() {
         if (!DriverStation.isTeleopEnabled() || pitCoastMode || !isReady()) return;
         requestedDeployTarget = target = IntakeConstants.EXTENDED_POSITION_ROTATIONS;
         rackRequested = true;
+        forceRetractRequested = retractionLimitReached = false;
         extensionLimitReached = true;
-        highCurrentSince = lowCurrentSince = Double.NaN;
+        highCurrentSince = Double.NaN;
         io.setExtensionLimitReached(true);
         io.stopDeploy();
     }
@@ -68,9 +76,9 @@ public class Intake extends SubsystemBase {
 
     private void resetExtensionLimit() {
         deploySpikeCount = 0;
-        spikeArmed = true;
         extensionLimitReached = false;
-        highCurrentSince = lowCurrentSince = Double.NaN;
+        forceRetractRequested = retractionLimitReached = false;
+        highCurrentSince = Double.NaN;
         io.setExtensionLimitReached(false);
     }
 
@@ -86,32 +94,24 @@ public class Intake extends SubsystemBase {
     public int getDeploySpikeCount() { return deploySpikeCount; }
 
     private void updateExtensionLimit(double now) {
-        if (!rackRequested || requestedDeployTarget != IntakeConstants.EXTENDED_POSITION_ROTATIONS
+        if (!rackRequested || (!forceRetractRequested
+                && requestedDeployTarget != IntakeConstants.EXTENDED_POSITION_ROTATIONS)
                 || !isReady() || !inputs.deployCurrentFresh
                 || !Double.isFinite(inputs.deployStatorCurrentAmps)) {
-            highCurrentSince = lowCurrentSince = Double.NaN;
+            highCurrentSince = Double.NaN;
             return;
         }
         double amps = Math.abs(inputs.deployStatorCurrentAmps);
-        if (spikeArmed) {
-            if (amps < IntakeConstants.DEPLOY_SPIKE_AMPS) highCurrentSince = Double.NaN;
-            else {
-                if (!Double.isFinite(highCurrentSince)) highCurrentSince = now;
-                if (now - highCurrentSince >= IntakeConstants.DEPLOY_SPIKE_SECONDS - 1e-9) {
-                    deploySpikeCount++;
-                    spikeArmed = false;
-                    highCurrentSince = Double.NaN;
-                    if (deploySpikeCount >= 2) extensionLimitReached = true;
-                }
-            }
-        } else {
-            if (amps >= IntakeConstants.DEPLOY_SPIKE_RESET_AMPS) lowCurrentSince = Double.NaN;
-            else {
-                if (!Double.isFinite(lowCurrentSince)) lowCurrentSince = now;
-                if (now - lowCurrentSince >= IntakeConstants.DEPLOY_SPIKE_RESET_SECONDS - 1e-9) {
-                    spikeArmed = true;
-                    lowCurrentSince = Double.NaN;
-                }
+        if (amps <= IntakeConstants.DEPLOY_SPIKE_AMPS) highCurrentSince = Double.NaN;
+        else {
+            if (!Double.isFinite(highCurrentSince)) highCurrentSince = now;
+            if (now - highCurrentSince >= IntakeConstants.DEPLOY_SPIKE_SECONDS - 1e-9) {
+                deploySpikeCount++;
+                highCurrentSince = Double.NaN;
+                if (forceRetractRequested) {
+                    retractionLimitReached = true;
+                    io.finishForceRetract();
+                } else extensionLimitReached = true;
             }
         }
     }
@@ -130,7 +130,9 @@ public class Intake extends SubsystemBase {
     }
 
     public boolean atDeployTarget() {
+        if (forceRetractRequested) return isReady() && retractionLimitReached;
         return isReady() && ((extensionLimitReached && target == IntakeConstants.EXTENDED_POSITION_ROTATIONS)
+            || retractionLimitReached
             || Math.abs(inputs.deployPositionRotations - target)
                 <= IntakeConstants.DEPLOY_POSITION_TOLERANCE_ROTATIONS);
     }
@@ -152,14 +154,16 @@ public class Intake extends SubsystemBase {
             resetExtensionLimit();
         }
         double extensionNow = Timer.getFPGATimestamp();
-        if (enabled && !pitCoastMode && !extensionLimitReached) updateExtensionLimit(extensionNow);
+        if (enabled && !pitCoastMode && !extensionLimitReached && !retractionLimitReached)
+            updateExtensionLimit(extensionNow);
         io.setExtensionLimitReached(extensionLimitReached);
         target = enabled
             ? requestedDeployTarget
             : IntakeConstants.RETRACTED_POSITION_ROTATIONS;
         if (enabled && !pitCoastMode && rackRequested && isReady()) {
-            if (extensionLimitReached && requestedDeployTarget == IntakeConstants.EXTENDED_POSITION_ROTATIONS)
+            if (retractionLimitReached || extensionLimitReached)
                 io.stopDeploy();
+            else if (forceRetractRequested) io.forceRetract();
             else io.setDeployPosition(target);
         } else {
             io.stop();
@@ -182,7 +186,7 @@ public class Intake extends SubsystemBase {
         io.setRollerRPM(rollerTargetRPM);
         String rollerBlockedReason = !enabled ? "Robot is disabled"
             : pitCoastMode ? "Pit coast mode is on"
-            : !rollerRequested ? "Right trigger not held"
+            : !rollerRequested ? "Intake trigger not held"
             : !enoughExtension ? "Waiting for 40% rack extension"
             : !inputs.rollerConnected ? "Check Canivore roller IDs " + IntakeConstants.LEFT_ROLLER_MOTOR_ID
                 + " and " + IntakeConstants.RIGHT_ROLLER_MOTOR_ID + ", power and wiring"
@@ -203,6 +207,8 @@ public class Intake extends SubsystemBase {
         RateLimitedTelemetry.putBoolean("Intake/DeployStallFault", extensionLimitReached);
         RateLimitedTelemetry.putNumber("Intake/DeploySpikeCount", deploySpikeCount);
         RateLimitedTelemetry.putBoolean("Intake/ExtensionLimitReached", extensionLimitReached);
+        RateLimitedTelemetry.putBoolean("Intake/ForceRetractRequested", forceRetractRequested);
+        RateLimitedTelemetry.putBoolean("Intake/RetractionLimitReached", retractionLimitReached);
         RateLimitedTelemetry.putNumber("Intake/DeployStatorLimitAmps", inputs.deployStatorLimitAmps);
         RateLimitedTelemetry.putBoolean("Intake/DeployCurrentLimitOK", inputs.deployCurrentLimitOK);
         RateLimitedTelemetry.putNumber("Intake/DeployStatorAmps", inputs.deployStatorCurrentAmps);
@@ -235,8 +241,9 @@ public class Intake extends SubsystemBase {
                 + " CAN ID " + IntakeConstants.DEPLOY_MOTOR_ID + ", power and wiring"
             : !inputs.configured ? "Motor configuration failed: see configuration status; restart after fixing"
             : !inputs.deployHomed ? "Startup zero failed or controller reset: retract and restart code"
-            : extensionLimitReached ? "Extension stopped: endpoint confirmed by current spikes or driver"
-            : !rackRequested ? "Waiting for LT/RT rack request"
+            : retractionLimitReached ? "Retraction stopped: wall current spike confirmed"
+            : extensionLimitReached ? "Extension stopped: endpoint confirmed by current spike or driver"
+            : !rackRequested ? "Waiting for intake control"
             : "None";
         RateLimitedTelemetry.putString("Intake/BlockedReason", blockedReason);
         RateLimitedTelemetry.putBoolean("Intake/RackRequested", rackRequested);

@@ -1,0 +1,11 @@
+scenario,first_feed_s,moving_feed_fraction,moving_rpm_error_p95,moving_heading_error_p95_deg,shots,scored,moving_shots,moving_scored,mean_miss_m,max_miss_m,command_p95_ms,command_max_ms
+stationary,-1.000,NaN,NaN,NaN,0,0,0,0,NaN,0.0000,1.2709,15.2292
+approach,-1.000,0.0000,604.077,0.083,0,0,0,0,NaN,0.0000,1.4291,22.3940
+retreat,-1.000,0.0000,295.234,2.005,0,0,0,0,NaN,0.0000,0.9783,34.0893
+sideways-1mps,-1.000,0.0000,295.090,6.007,0,0,0,0,NaN,0.0000,0.2231,8.8018
+sideways-2mps,-1.000,0.0000,306.257,9.194,0,0,0,0,NaN,0.0000,0.1635,0.4674
+diagonal,-1.000,0.0000,218.001,6.208,0,0,0,0,NaN,0.0000,0.1301,0.4190
+reversal,-1.000,0.0000,290.248,11.387,0,0,0,0,NaN,0.0000,0.1565,0.3064
+move-stop,-1.000,0.0000,290.991,6.850,0,0,0,0,NaN,0.0000,0.1299,7.1535
+red-sideways,-1.000,0.0000,295.083,5.457,0,0,0,0,NaN,0.0000,0.1790,2.4000
+stationary-p-only-reference,1.000,NaN,NaN,NaN,25,25,0,0,0.0051,0.0127,0.0952,0.2682

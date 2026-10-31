@@ -1,0 +1,92 @@
+[
+  {
+    "p": 1.2,
+    "i": 0,
+    "d": 0.2,
+    "passed": false,
+    "feed": 0.3183666666666667,
+    "shots": 66,
+    "scored": 65,
+    "heading_p95_mean": 8.715333333333334
+  },
+  {
+    "p": 2.0,
+    "i": 0,
+    "d": 0.2,
+    "passed": true,
+    "feed": 0.32434999999999997,
+    "shots": 71,
+    "scored": 71,
+    "heading_p95_mean": 7.938
+  },
+  {
+    "p": 3.0,
+    "i": 0,
+    "d": 0.2,
+    "passed": false,
+    "feed": 0.3815,
+    "shots": 84,
+    "scored": 83,
+    "heading_p95_mean": 7.575166666666667
+  },
+  {
+    "p": 4.0,
+    "i": 0,
+    "d": 0.2,
+    "passed": true,
+    "feed": 0.4160333333333333,
+    "shots": 87,
+    "scored": 87,
+    "heading_p95_mean": 7.3068333333333335
+  },
+  {
+    "p": 6.0,
+    "i": 0,
+    "d": 0.2,
+    "passed": true,
+    "feed": 0.4827666666666666,
+    "shots": 104,
+    "scored": 104,
+    "heading_p95_mean": 7.230333333333333
+  },
+  {
+    "p": 3.0,
+    "i": 0,
+    "d": 0,
+    "passed": true,
+    "feed": 0.37545,
+    "shots": 80,
+    "scored": 80,
+    "heading_p95_mean": 7.539000000000001
+  },
+  {
+    "p": 4.0,
+    "i": 0,
+    "d": 0,
+    "passed": true,
+    "feed": 0.43829999999999997,
+    "shots": 92,
+    "scored": 92,
+    "heading_p95_mean": 7.349
+  },
+  {
+    "p": 6.0,
+    "i": 0,
+    "d": 0,
+    "passed": true,
+    "feed": 0.5256500000000001,
+    "shots": 109,
+    "scored": 109,
+    "heading_p95_mean": 7.151166666666666
+  },
+  {
+    "p": 4.0,
+    "i": 0,
+    "d": 0.5,
+    "passed": true,
+    "feed": 0.4293,
+    "shots": 88,
+    "scored": 88,
+    "heading_p95_mean": 7.4510000000000005
+  }
+]

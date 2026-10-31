@@ -111,12 +111,18 @@ public interface IntakeIO {
 
     default void setDeployPosition(double motorRotations) {}
 
+    /** Drive inward past the encoder soft limit until a confirmed wall stall or release. */
+    default void forceRetract() {}
+
+    /** Stop at the confirmed retracted wall and establish the physical zero reference. */
+    default void finishForceRetract() { stopDeploy(); }
+
     default void stop() {}
 
     /** Stop only the extension motor; keep requested rollers available. */
     default void stopDeploy() {}
 
-    /** Physical end inferred from two distinct extension-current spikes. */
+    /** Physical extension end inferred from a sustained current spike or driver confirmation. */
     default void setExtensionLimitReached(boolean reached) {}
 
     /** Select rack coast mode. */

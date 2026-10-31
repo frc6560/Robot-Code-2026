@@ -10,6 +10,7 @@ import edu.wpi.first.wpilibj.Timer;
 import frc.robot.utility.StartupCurrentLimit;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.controls.VelocityVoltage;
+import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
@@ -39,6 +40,12 @@ public class IntakeIOTalonFX implements IntakeIO {
     private boolean rackFeedbackFresh;
     private double requestedRackPosition = Double.NaN;
     private final StartupCurrentLimit deployLimit;
+    private boolean forceRetracting;
+    private final VoltageOut forceRetractRequest = forceRetractControl();
+
+    static VoltageOut forceRetractControl() {
+        return new VoltageOut(IntakeConstants.DEPLOY_FORCE_RETRACT_VOLTS).withIgnoreSoftwareLimits(true);
+    }
 
     public IntakeIOTalonFX() {
         frc.robot.utility.CurrentUsageMonitor.register("Intake extension", motor);
@@ -144,7 +151,7 @@ public class IntakeIOTalonFX implements IntakeIO {
         }
         rackFeedbackFresh = fresh && motor.isConnected();
         deployLimit.update(DriverStation.isEnabled() && !stopped && homed && rackFeedbackFresh,
-            false, rackNeedsMotion());
+            false, forceRetracting || rackNeedsMotion(), forceRetracting);
         inputs.deployStatorLimitAmps = deployLimit.appliedAmps();
         inputs.deployCurrentLimitOK = configurationStatus.isOK() && deployLimit.confirmed();
         inputs.deployConnected = rackFeedbackFresh;
@@ -230,7 +237,9 @@ public class IntakeIOTalonFX implements IntakeIO {
         if (homed && configurationStatus.isOK() && Double.isFinite(rotations)) {
             double commandedTarget = MathUtil.clamp(rotations,
                 IntakeConstants.RETRACTED_POSITION_ROTATIONS, IntakeConstants.EXTENDED_POSITION_ROTATIONS);
-            boolean newMove = !Double.isFinite(requestedRackPosition) || requestedRackPosition != commandedTarget;
+            boolean newMove = forceRetracting || !Double.isFinite(requestedRackPosition)
+                || requestedRackPosition != commandedTarget;
+            forceRetracting = false;
             requestedRackPosition = commandedTarget;
             if (!deployLimit.update(DriverStation.isEnabled() && rackFeedbackFresh, newMove, rackNeedsMotion())) {
                 controlStatus = "Current-limit update failed; motor stopped";
@@ -251,15 +260,43 @@ public class IntakeIOTalonFX implements IntakeIO {
         if (reached) requestedRackPosition = IntakeConstants.EXTENDED_POSITION_ROTATIONS;
     }
 
+    @Override public void forceRetract() {
+        if (!DriverStation.isEnabled() || !homed || !rackFeedbackFresh || !configurationStatus.isOK()) {
+            stop();
+            return;
+        }
+        boolean newMove = !forceRetracting;
+        forceRetracting = true;
+        requestedRackPosition = IntakeConstants.RETRACTED_POSITION_ROTATIONS;
+        setRollerRPM(0.0);
+        if (!deployLimit.update(true, newMove, true, true)) {
+            controlStatus = "Force retract current-limit update failed; motor stopped";
+            return;
+        }
+        StatusCode control = motor.setControl(forceRetractRequest);
+        controlStatus = "Force retract: " + control;
+        if (!control.isOK()) { stop(); return; }
+        stopped = false;
+    }
+
+    @Override public void finishForceRetract() {
+        stopDeploy();
+        StatusCode zero = motor.setPosition(IntakeConstants.RETRACTED_POSITION_ROTATIONS);
+        homed = configurationStatus.isOK() && zero.isOK();
+        zeroStatus = "Retracted wall confirmed: " + zero;
+    }
+
     @Override public void stopDeploy() {
         motor.stopMotor();
+        forceRetracting = false;
         deployLimit.update(false, false, false);
         stopped = true;
-        controlStatus = "Stopped: extension endpoint confirmed";
+        controlStatus = "Stopped: rack endpoint confirmed";
     }
 
     @Override
     public void stop() {
+        forceRetracting = false;
         requestedRackPosition = Double.NaN;
         deployLimit.update(false, false, false);
         motor.stopMotor();

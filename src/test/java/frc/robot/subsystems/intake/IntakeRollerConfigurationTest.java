@@ -54,7 +54,13 @@ class IntakeRollerConfigurationTest {
         assertEquals(30.0, boost.SupplyCurrentLimit);
         assertEquals(30.0, continuous.SupplyCurrentLimit);
         assertTrue(boost.StatorCurrentLimitEnable && boost.SupplyCurrentLimitEnable);
-        assertEquals(1.0, IntakeConstants.DEPLOY_STARTUP_SECONDS);
+        assertEquals(3.0, IntakeConstants.DEPLOY_STARTUP_SECONDS);
+    }
+    @Test void forcedRetractionUsesNegativeVoltageAndBypassesOnlySoftwareLimits() {
+        var force = IntakeIOTalonFX.forceRetractControl();
+        assertTrue(force.Output < 0);
+        assertTrue(force.IgnoreSoftwareLimits);
+        assertFalse(force.IgnoreHardwareLimits);
     }
     @Test void hardwareBoundaryRejectsRollersUnlessRackFeedbackConfirmsExtension() {
         double end = IntakeConstants.EXTENDED_POSITION_ROTATIONS;

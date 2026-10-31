@@ -25,6 +25,7 @@ class IntakeTest {
         boolean currentLimitOK = true;
         boolean currentFresh = true;
         int deployStops;
+        int forceRequests, wallZeros;
         @Override public void updateInputs(IntakeIOInputs inputs) {
             inputs.deployPositionRotations = position;
             inputs.deployVelocityRPS = velocity;
@@ -46,6 +47,8 @@ class IntakeTest {
         @Override public void setRollerRPM(double rpm) { roller = rpm; }
         @Override public void stopDeploy() { stopped = true; deployStops++; }
         @Override public void stop() { stopped = true; roller = 0.0; }
+        @Override public void forceRetract() { target = 0; stopped = false; forceRequests++; }
+        @Override public void finishForceRetract() { stopDeploy(); position = 0; wallZeros++; }
     }
     private FakeIO io;
     private Intake intake;
@@ -82,7 +85,7 @@ class IntakeTest {
         assertTrue(io.stopped);
         assertEquals(0, io.positionRequests);
         assertFalse(SmartDashboard.getBoolean("Intake/RackRequested", true));
-        assertEquals("Waiting for LT/RT rack request", SmartDashboard.getString("Intake/BlockedReason", ""));
+        assertEquals("Waiting for intake control", SmartDashboard.getString("Intake/BlockedReason", ""));
         assertEquals(0, io.roller);
         DriverStationSim.setAutonomous(true);
         DriverStationSim.notifyNewData();
@@ -115,7 +118,7 @@ class IntakeTest {
         intake.periodic();
         assertEquals(0, io.roller);
         assertEquals(IntakeConstants.EXTENDED_POSITION_ROTATIONS, io.target);
-        assertEquals("Right trigger not held", SmartDashboard.getString("Intake/RollerBlockedReason", ""));
+        assertEquals("Intake trigger not held", SmartDashboard.getString("Intake/RollerBlockedReason", ""));
     }
 
     @Test void rackSelectionsHoldAndRollersStartAtFortyPercentWhileMoving() {
@@ -274,19 +277,13 @@ class IntakeTest {
         intake.periodic();
     }
 
-    @Test void secondDistinctSpikeLatchesRackOffDespiteEncoderAndKeepsRollersRunning() {
+    @Test void sustainedTwoSecondSpikeLatchesRackOffDespiteEncoderAndKeepsRollersRunning() {
         teleop(true);
         intake.requestRackExtended();
         intake.setRollersRequested(true);
         io.position = IntakeConstants.EXTENDED_POSITION_ROTATIONS * 0.2;
-        currentFor(35, 0.06);
+        currentFor(45, 2.0);
         assertEquals(1, intake.getDeploySpikeCount());
-        assertFalse(intake.isExtensionLimitReached());
-        currentFor(35, 1.0); // A long startup spike is still only one spike.
-        assertEquals(1, intake.getDeploySpikeCount());
-        currentFor(10, 0.10);
-        currentFor(35, 0.06);
-        assertEquals(2, intake.getDeploySpikeCount());
         assertTrue(intake.isExtensionLimitReached());
         assertTrue(io.stopped);
         assertEquals(2500, io.roller); // Physical limit overrides the inaccurate encoder fraction.
@@ -376,32 +373,121 @@ class IntakeTest {
         assertFalse(intake.isExtensionLimitReached());
     }
 
-    @Test void thirtyFourAmpsDoesNotCountButThirtyFiveAmpsDoes() {
+    @Test void fortyAmpsDoesNotCountButOverFortyForTwoSecondsDoes() {
         teleop(true);
         intake.requestRackExtended();
-        currentFor(34, 1.0);
+        currentFor(40, 3.0);
         assertEquals(0, intake.getDeploySpikeCount());
-        currentFor(35, 0.06);
+        currentFor(45, 2.0);
         assertEquals(1, intake.getDeploySpikeCount());
     }
 
-    @Test void shortNoiseStaleCurrentAndInsufficientRearmDoNotCountAsTwoSpikes() {
+    @Test void shortNoiseStaleCurrentAndDropsToFortyResetTheContinuousTimer() {
         teleop(true);
         intake.requestRackExtended();
-        currentFor(35, 0.02);
+        currentFor(45, 1.99);
         currentFor(0, 0.10);
         assertEquals(0, intake.getDeploySpikeCount());
         io.currentFresh = false;
-        currentFor(35, 1.0);
+        currentFor(45, 2.5);
         assertEquals(0, intake.getDeploySpikeCount());
         io.currentFresh = true;
-        currentFor(35, 0.06);
-        currentFor(10, 0.04);
-        currentFor(35, 1.0);
-        assertEquals(1, intake.getDeploySpikeCount());
+        currentFor(45, 1.99);
+        currentFor(40, 0.02);
+        currentFor(45, 1.99);
+        assertEquals(0, intake.getDeploySpikeCount());
         assertFalse(intake.isExtensionLimitReached());
+        currentFor(45, 0.01);
+        assertEquals(1, intake.getDeploySpikeCount());
+        assertTrue(intake.isExtensionLimitReached());
         intake.requestRackExtended(); // A new trigger press starts a fresh count.
         assertEquals(0, intake.getDeploySpikeCount());
+    }
+
+    @Test void forceRetractIgnoresEncoderEndpointAndStopsAndZerosOnlyOnSustainedWallSpike() {
+        teleop(true);
+        io.position = -1.0; // The old encoder zero must not stop forced retraction.
+        intake.requestForceRetracted();
+        intake.periodic();
+        assertEquals(1, io.forceRequests);
+        assertFalse(intake.atDeployTarget());
+        currentFor(45, 1.99);
+        assertFalse(io.stopped);
+        assertEquals(0, io.wallZeros);
+        currentFor(40, 0.02); // Break continuity.
+        currentFor(45, 1.99);
+        assertFalse(io.stopped);
+        currentFor(45, 0.01);
+        assertTrue(io.stopped);
+        assertTrue(intake.isRetractionLimitReached());
+        assertTrue(intake.atDeployTarget());
+        assertEquals(1, io.wallZeros);
+        assertEquals(0, io.position);
+        int requests = io.forceRequests;
+        currentFor(45, 5.0);
+        assertEquals(requests, io.forceRequests);
+        assertEquals(1, io.wallZeros);
+        intake.stop(); // Control release clears latch and stops immediately.
+        assertFalse(intake.isRetractionLimitReached());
+        intake.requestForceRetracted();
+        intake.periodic();
+        assertEquals(requests + 1, io.forceRequests);
+        assertFalse(io.stopped);
+        intake.stop();
+        intake.periodic();
+        assertTrue(io.stopped);
+        assertEquals(requests + 1, io.forceRequests);
+    }
+
+    @Test void simulatedForceRetractReachesWallAndStopsAfterTwoContinuousSeconds() {
+        teleop(true);
+        var simulatedIO = new IntakeIOSim();
+        var simulatedIntake = new Intake(simulatedIO);
+        try {
+            simulatedIntake.periodic();
+            simulatedIntake.requestForceRetracted();
+            for (int i = 0; i < 99; i++) {
+                SimHooks.stepTiming(0.02);
+                simulatedIntake.periodic();
+            }
+            assertFalse(simulatedIntake.isRetractionLimitReached());
+            for (int i = 0; i < 5; i++) {
+                SimHooks.stepTiming(0.02);
+                simulatedIntake.periodic();
+            }
+            assertTrue(simulatedIntake.isRetractionLimitReached());
+            assertTrue(simulatedIntake.atDeployTarget());
+            simulatedIntake.periodic();
+            var feedback = new IntakeIO.IntakeIOInputs();
+            simulatedIO.updateInputs(feedback);
+            assertEquals(0, feedback.deployAppliedVolts);
+            assertEquals(0, feedback.deployPositionRotations);
+        } finally {
+            simulatedIntake.stop();
+            CommandScheduler.getInstance().unregisterSubsystem(simulatedIntake);
+        }
+    }
+
+    @Test void forceRetractStopsOnLostFeedbackDisableAndPitCoast() {
+        teleop(true);
+        intake.requestForceRetracted();
+        intake.periodic();
+        io.ready = false;
+        intake.periodic();
+        assertTrue(io.stopped);
+        io.ready = true;
+        intake.periodic();
+        assertFalse(io.stopped);
+        intake.setPitCoastMode(true);
+        intake.periodic();
+        assertTrue(io.stopped);
+        intake.setPitCoastMode(false);
+        intake.requestForceRetracted();
+        intake.periodic();
+        teleop(false);
+        teleop(true);
+        assertTrue(io.stopped);
+        assertFalse(intake.isRetractionLimitReached());
     }
 
     @Test void sustainedLowSpeedAndHighCurrentDoNotCancelRackRequest() {

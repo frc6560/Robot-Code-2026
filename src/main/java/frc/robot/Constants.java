@@ -457,8 +457,9 @@ public final class Constants {
     public static final double DEPLOY_SUPPLY_CURRENT_LIMIT = 30.0;
     public static final double DEPLOY_STATOR_CURRENT_LIMIT = 40.0;
     public static final double DEPLOY_STARTUP_STATOR_CURRENT_LIMIT = 60.0;
-    public static final double DEPLOY_STARTUP_SECONDS = 1.0;
+    public static final double DEPLOY_STARTUP_SECONDS = 3.0;
     public static final double DEPLOY_CURRENT_CONFIG_TIMEOUT_SECONDS = 0.005;
+    public static final double DEPLOY_FORCE_RETRACT_VOLTS = -12.0;
     public static final double ROLLER_SUPPLY_CURRENT_LIMIT = 40.0;
     public static final double ROLLER_STATOR_CURRENT_LIMIT = 40.0;
 
@@ -476,10 +477,8 @@ public final class Constants {
     public static final double EXTENDED_POSITION_ROTATIONS = 9.5;
     public static final double DEPLOY_POSITION_TOLERANCE_ROTATIONS = 0.25;
     public static final double ROLLER_MIN_EXTENSION_FRACTION = 0.40;
-    public static final double DEPLOY_SPIKE_AMPS = 35.0;
-    public static final double DEPLOY_SPIKE_SECONDS = 0.06;
-    public static final double DEPLOY_SPIKE_RESET_AMPS = 15.0;
-    public static final double DEPLOY_SPIKE_RESET_SECONDS = 0.10;
+    public static final double DEPLOY_SPIKE_AMPS = 40.0;
+    public static final double DEPLOY_SPIKE_SECONDS = 2.0;
     public static final double ROLLER_EXTENSION_SETTLE_SECONDS = 0.15;
     public static final double ROLLER_MAX_DEPLOY_VELOCITY_RPS = 0.1;
 
