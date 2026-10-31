@@ -157,7 +157,7 @@ public class IntakeIOTalonFX implements IntakeIO {
         }
         rackFeedbackFresh = fresh && motor.isConnected();
         deployLimit.update(DriverStation.isEnabled() && !stopped && homed && rackFeedbackFresh,
-            false, forceRetracting || forceExtending || rackNeedsMotion(), forceRetracting || forceExtending);
+            false, forceRetracting || forceExtending || rackNeedsMotion());
         inputs.deployStatorLimitAmps = deployLimit.appliedAmps();
         inputs.deployCurrentLimitOK = configurationStatus.isOK() && deployLimit.confirmed();
         inputs.deployConnected = rackFeedbackFresh;
@@ -285,7 +285,7 @@ public class IntakeIOTalonFX implements IntakeIO {
         requestedRackPosition = extending ? IntakeConstants.EXTENDED_POSITION_ROTATIONS
             : IntakeConstants.RETRACTED_POSITION_ROTATIONS;
         setRollerRPM(0.0);
-        if (!deployLimit.update(true, newMove, true, true)) {
+        if (!deployLimit.update(true, newMove, true)) {
             controlStatus = "Forced motion current-limit update failed; motor stopped";
             return;
         }

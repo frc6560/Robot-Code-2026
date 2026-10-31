@@ -252,7 +252,7 @@ public class RobotContainer {
             .and(DriverStation::isTeleopEnabled).and(() -> !pitCoastMode)
             .onTrue(Commands.runOnce(() -> {
                 if (rackRetract.getAsBoolean() || rackForceExtend.getAsBoolean()) return;
-                intake.requestRackExtended();
+                intake.requestForceExtended();
                 intake.setRollersRequested(true);
             }, intake))
             .onFalse(Commands.runOnce(() -> {

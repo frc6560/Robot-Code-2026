@@ -445,6 +445,55 @@ class IntakeTest {
         assertEquals(requests + 1, io.forceRequests);
     }
 
+    @Test void triggerExtensionAndRetractionLatchFullyOffOnSpikeAfterBoostExpiry() {
+        teleop(true);
+        for (boolean extending : new boolean[] {true, false}) {
+            io.position = 5.0;
+            io.statorLimit = 40.0;
+            if (extending) intake.requestRackExtended();
+            else intake.requestForceRetracted();
+            currentFor(0, 3.1); // Boost expired, but no spike: motion remains requested at 40 A.
+            assertFalse(io.stopped);
+            currentFor(45, 1.99);
+            assertFalse(io.stopped);
+            currentFor(45, 0.01);
+            assertTrue(io.stopped);
+            assertEquals(extending, intake.isExtensionLimitReached());
+            assertEquals(!extending, intake.isRetractionLimitReached());
+            int requests = io.positionRequests + io.forceRequests;
+            currentFor(0, 10.0); // Current has fallen and the control is still held.
+            assertTrue(io.stopped);
+            assertEquals(requests, io.positionRequests + io.forceRequests);
+            intake.stop(); // Release clears the stop latch and rearms the next press.
+            assertFalse(intake.isExtensionLimitReached());
+            assertFalse(intake.isRetractionLimitReached());
+        }
+    }
+
+    @Test void encoderEndpointsCannotStopTriggerMotionOrConfirmArrival() {
+        teleop(true);
+        io.position = IntakeConstants.EXTENDED_POSITION_ROTATIONS;
+        intake.requestForceExtended();
+        intake.periodic();
+        assertFalse(intake.atDeployTarget());
+        assertFalse(SmartDashboard.getBoolean("Intake/FullyExtended", true));
+        assertEquals(1, io.forceExtendRequests);
+        currentFor(45, 2.0);
+        assertTrue(io.stopped);
+        assertTrue(intake.atDeployTarget());
+        intake.stop();
+        io.position = IntakeConstants.RETRACTED_POSITION_ROTATIONS;
+        intake.requestForceRetracted();
+        intake.periodic();
+        assertFalse(intake.atDeployTarget());
+        assertFalse(SmartDashboard.getBoolean("Intake/FullyRetracted", true));
+        assertEquals(1, io.forceRequests);
+        currentFor(45, 2.0);
+        assertTrue(io.stopped);
+        assertTrue(SmartDashboard.getBoolean("Intake/FullyRetracted", false));
+        assertTrue(intake.atDeployTarget());
+    }
+
     @Test void forceExtensionGoesOutFromHalfwayAndLatchesOffUntilRelease() {
         teleop(true);
         io.position = IntakeConstants.EXTENDED_POSITION_ROTATIONS / 2;

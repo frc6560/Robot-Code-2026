@@ -138,10 +138,8 @@ public class Intake extends SubsystemBase {
     public boolean atDeployTarget() {
         if (forceRetractRequested) return isReady() && retractionLimitReached;
         if (forceExtendRequested) return isReady() && extensionLimitReached;
-        return isReady() && ((extensionLimitReached && target == IntakeConstants.EXTENDED_POSITION_ROTATIONS)
-            || retractionLimitReached
-            || Math.abs(inputs.deployPositionRotations - target)
-                <= IntakeConstants.DEPLOY_POSITION_TOLERANCE_ROTATIONS);
+        return isReady() && (target == IntakeConstants.EXTENDED_POSITION_ROTATIONS
+            ? extensionLimitReached : retractionLimitReached);
     }
 
     public void setPitCoastMode(boolean enabled) {
@@ -178,9 +176,8 @@ public class Intake extends SubsystemBase {
         }
         boolean extending = rackRequested && isReady()
             && requestedDeployTarget == IntakeConstants.EXTENDED_POSITION_ROTATIONS;
-        boolean fullyExtended = extending && (extensionLimitReached
-            || Math.abs(inputs.deployPositionRotations - IntakeConstants.EXTENDED_POSITION_ROTATIONS)
-                <= IntakeConstants.DEPLOY_POSITION_TOLERANCE_ROTATIONS);
+        boolean fullyExtended = extending && extensionLimitReached;
+        boolean fullyRetracted = rackRequested && isReady() && retractionLimitReached;
         boolean enoughExtension = extending && (extensionLimitReached
             || Double.isFinite(inputs.deployPositionRotations)
                 && inputs.deployPositionRotations >= IntakeConstants.RETRACTED_POSITION_ROTATIONS
@@ -211,6 +208,7 @@ public class Intake extends SubsystemBase {
         RateLimitedTelemetry.recordOutput("Intake/RollerBlockedReason", rollerBlockedReason);
         RateLimitedTelemetry.putNumber("Intake/RollerRequestedRPM", rollerTargetRPM);
         RateLimitedTelemetry.putBoolean("Intake/FullyExtended", fullyExtended);
+        RateLimitedTelemetry.putBoolean("Intake/FullyRetracted", fullyRetracted);
         RateLimitedTelemetry.putBoolean("Intake/RollerPermitted", rollerPermitted);
         RateLimitedTelemetry.putBoolean("Intake/DeployStallFault", extensionLimitReached);
         RateLimitedTelemetry.putNumber("Intake/DeploySpikeCount", deploySpikeCount);

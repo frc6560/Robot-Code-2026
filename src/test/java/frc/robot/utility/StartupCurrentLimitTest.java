@@ -35,21 +35,21 @@ class StartupCurrentLimitTest {
         assertEquals(List.of(60.0, 40.0, 60.0, 40.0), writes);
     }
 
-    @Test void forceRetractRetainsSixtyUntilWallStopOrReleaseAndNormalMovesStillExpire() {
+    @Test void continuouslyRequestedForceMoveDropsToFortyAfterThreeSecondsWithoutRenewingBoost() {
         var intakeLimit = new StartupCurrentLimit(40, 60, 3, () -> now,
             amps -> { writes.add(amps); return true; }, () -> stops++);
-        intakeLimit.update(true, true, true, true);
+        intakeLimit.update(true, true, true);
+        now = 2.999;
+        intakeLimit.update(true, false, true);
+        assertEquals(60, intakeLimit.appliedAmps());
+        now = 3.0;
+        intakeLimit.update(true, false, true);
+        assertEquals(40, intakeLimit.appliedAmps());
         now = 10.0;
-        intakeLimit.update(true, false, true, true);
-        assertEquals(60, intakeLimit.appliedAmps());
-        intakeLimit.update(false, false, false, false);
+        intakeLimit.update(true, false, true);
         assertEquals(40, intakeLimit.appliedAmps());
-        now = 11.0;
-        intakeLimit.update(true, false, true, false);
-        assertEquals(60, intakeLimit.appliedAmps());
-        now = 14.0;
-        intakeLimit.update(true, false, true, false);
-        assertEquals(40, intakeLimit.appliedAmps());
+        assertEquals(0, stops); // Expiry lowers the allowance; endpoint detection stops output separately.
+        assertEquals(List.of(60.0, 40.0), writes);
     }
 
     @Test void repeatedRequestsCannotExtendOneSecondAndNoRepeatedConfigWrites() {

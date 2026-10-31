@@ -66,6 +66,7 @@ class RobotContainerDriverControlsTest {
         Intake intake = getField(container, "intake", Intake.class);
         // LT collects without feeding either indexer. Release stops the rack too.
         setTrigger(XboxController.Axis.kLeftTrigger, true);
+        assertTrue(SmartDashboard.getBoolean("Intake/ForceExtendRequested", false));
         assertEquals(Constants.IntakeConstants.EXTENDED_POSITION_ROTATIONS,
             SmartDashboard.getNumber("Intake/DeployTargetRotations", -1));
         assertEquals(0, indexer.getTunnelTargetRPM());
