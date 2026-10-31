@@ -321,7 +321,7 @@ public class RobotContainer {
             .whileTrue(manualShotCommand(floor, feed));
 
         driverXbox.start().
-          onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
+          onTrue(Commands.runOnce(drivebase::zeroNoAprilTagsGyro, drivebase).ignoringDisable(true));
         driverXbox.a()
           .and(DriverStation::isTeleopEnabled).and(() -> !pitCoastMode)
           .onTrue(Commands.runOnce(intake::confirmFullyExtended, intake));
@@ -360,8 +360,9 @@ public class RobotContainer {
         // Button-board 3 requests manual floor/tunnel feed outside the aimed shot.
 
         // --- RESETS ---
-        Trigger resetPoseTrigger = driverXbox.x().and(DriverStation::isTeleopEnabled);
-        resetPoseTrigger.onTrue(Commands.runOnce(() -> vision.hardReset(LimelightConstants.FRONT_CAMERA), vision));
+        Trigger resetPoseTrigger = driverXbox.x().and(() -> !DriverStation.isAutonomousEnabled());
+        resetPoseTrigger.onTrue(Commands.run(() -> {}, vision, drivebase)
+            .until(vision::tryResetPose).withTimeout(2.0).ignoringDisable(true));
     }
 
     private void togglePitCoastMode() {

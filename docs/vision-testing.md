@@ -39,8 +39,9 @@ in a saved log (or AdvantageKit/RealOutputs live). Start with these folders:
    old, repeated frames, rapid rotation, and >2 m position differences are rejected.
 6. If the camera pose matches the real robot but Swerve/Pose is >2 m away, the
    jump guard prevents automatic recovery. The current driver X button explicitly
-   resets to the FRONT camera's fresh tagged MegaTag1 pose. It changes heading
-   as well as position: first verify that pose while stationary, then use the
+   uses the first camera with a fresh tagged MegaTag1 pose (left, front, then
+   right), including its AprilTag-derived heading. First verify that pose while
+   stationary, then use the
    reset in a controlled teleop test. `Vision/Front/ResetStatus` records the result.
    Do not use a reset to hide a wrong field map or a jumping camera estimate.
 7. Test shooting only after the combined pose is believable. Hold the aimed-shot
@@ -52,7 +53,8 @@ in a saved log (or AdvantageKit/RealOutputs live). Start with these folders:
    Readiness booleans describe the last active command execution; Fuel/Status
    "Released" and Feeding=false identify an inactive command.
 
-Driver Start sets the current heading to 0 degrees. In the blue-origin field
+Driver Start sets heading to 0 degrees on blue or 180 degrees on red; an unknown
+alliance skips the reset. In the blue-origin field
 frame, 0 means facing the red alliance wall, not facing whichever tag is visible.
 
 ## A single practice tag is a miniature field-map test

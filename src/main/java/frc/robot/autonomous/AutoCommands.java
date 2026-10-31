@@ -70,6 +70,19 @@ public class AutoCommands {
     public Command getCompetitionAuto(String name, boolean red, Indexer indexer,
             BooleanSupplier pitCoast,
             FuelShotModel model, String calibrationStatus) {
+        return Commands.defer(() -> {
+            var alliance = DriverStation.getAlliance();
+            if (alliance.isEmpty()) {
+                DriverStation.reportWarning("Auto skipped: Driver Station alliance unknown", false);
+                return Commands.none();
+            }
+            return buildCompetitionAuto(name, alliance.get() == DriverStation.Alliance.Red,
+                indexer, pitCoast, model, calibrationStatus);
+        }, java.util.Set.of(drivetrain, shooter, indexer, intake));
+    }
+
+    private Command buildCompetitionAuto(String name, boolean red, Indexer indexer,
+            BooleanSupplier pitCoast, FuelShotModel model, String calibrationStatus) {
         var shoot = FuelShootCommand.aimedShot(drivetrain, shooter,
             indexer, ChassisSpeeds::new, pitCoast, model, calibrationStatus, true);
         var rev = new FuelShootCommand(shooter, indexer,

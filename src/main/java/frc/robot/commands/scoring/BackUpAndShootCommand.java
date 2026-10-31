@@ -7,7 +7,6 @@ import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
-import frc.robot.Constants.FieldConstants;
 import frc.robot.commands.swervedrive.drivebase.AimAtHub;
 import frc.robot.lib.BLine.FollowPath;
 import frc.robot.lib.BLine.Path;
@@ -24,7 +23,7 @@ public final class BackUpAndShootCommand extends Command {
     public static final double REVERSE_SPEED_MPS = 1.0;
     public static final double TRANSLATION_KP = 4.0;
     public static final double ACCELERATION_MPS2 = 0.75;
-    public static final double RETREAT_DISTANCE_METERS = 2.4;
+    public static final double RETREAT_DISTANCE_METERS = 2.0;
     private static final double END_TOLERANCE_METERS = 0.03;
     public static final double FEED_SECONDS = 6.0;
     private static final double STOPPED_MPS = 0.05;
@@ -69,7 +68,7 @@ public final class BackUpAndShootCommand extends Command {
         phase = Phase.PREPARE;
         abortReason = "";
         start = drive.getPose();
-        alliance = DriverStation.getAlliance().orElse(DriverStation.Alliance.Blue);
+        alliance = DriverStation.getAlliance().orElse(null);
         previousTime = Timer.getFPGATimestamp();
         feedSeconds = 0;
         retreat = null;
@@ -90,7 +89,8 @@ public final class BackUpAndShootCommand extends Command {
             && Double.isFinite(measured.vxMetersPerSecond)
             && Double.isFinite(measured.vyMetersPerSecond)
             && Double.isFinite(measured.omegaRadiansPerSecond);
-        String blocked = !DriverStation.isAutonomousEnabled() ? "Autonomous is not enabled"
+        String blocked = alliance == null ? "Driver Station alliance unknown"
+            : !DriverStation.isAutonomousEnabled() ? "Autonomous is not enabled"
             : pitCoast.getAsBoolean() ? "Pit coast is enabled"
             : !finite ? "Invalid pose or velocity" : "";
         if (!blocked.isEmpty()) {
@@ -140,21 +140,13 @@ public final class BackUpAndShootCommand extends Command {
 
     /** Always produce the fixed retreat, without field, zone, or predicted-shot rejection. */
     static Pose2d findRetreatEnd(Pose2d start, DriverStation.Alliance alliance) {
-        Translation2d position = retreatEndPosition(start, alliance);
-        return new Pose2d(position, start.getTranslation().minus(position).getAngle());
+        return new Pose2d(retreatEndPosition(start, alliance), start.getRotation());
     }
 
     private static Translation2d retreatEndPosition(Pose2d start, DriverStation.Alliance alliance) {
-        Translation2d away = start.getTranslation().minus(hub(alliance));
-        if (away.getNorm() < 0.01) {
-            away = new Translation2d(-start.getRotation().getCos(), -start.getRotation().getSin());
-        }
-        return start.getTranslation().plus(away.div(away.getNorm()).times(RETREAT_DISTANCE_METERS));
-    }
-
-    private static Translation2d hub(DriverStation.Alliance alliance) {
-        return alliance == DriverStation.Alliance.Blue
-            ? FieldConstants.BLUE_HUB_CENTER : FieldConstants.RED_HUB_CENTER;
+        double dx = alliance == DriverStation.Alliance.Blue
+            ? -RETREAT_DISTANCE_METERS : RETREAT_DISTANCE_METERS;
+        return start.getTranslation().plus(new Translation2d(dx, 0));
     }
 
     private double measuredSpeed() {

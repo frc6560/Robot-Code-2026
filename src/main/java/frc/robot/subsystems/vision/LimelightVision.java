@@ -117,7 +117,7 @@ public class LimelightVision {
     }
 
     /** Explicit operator reset uses MT1, which does not require the current robot heading. */
-    public void hardUpdate() {
+    public boolean hardUpdate() {
         PoseEstimate estimate = LimelightHelpers.getBotPoseEstimate_wpiBlue(name);
         double now = Timer.getFPGATimestamp();
         String status = estimate == null ? "No pose received"
@@ -129,6 +129,7 @@ public class LimelightVision {
         }
         RateLimitedTelemetry.recordOutput(logKey + "/ResetStatus", status);
         RateLimitedTelemetry.putString(logKey + "/ResetStatus", status);
+        return status.equals("Reset to MegaTag1");
     }
 
     public void updateRotation() {

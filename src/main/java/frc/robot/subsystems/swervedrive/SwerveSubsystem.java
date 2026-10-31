@@ -4,7 +4,6 @@
 
 package frc.robot.subsystems.swervedrive;
 
-import static edu.wpi.first.units.Units.Meter;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
@@ -54,6 +53,8 @@ public class SwerveSubsystem extends SubsystemBase {
   private final SwerveDrive swerveDrive;
   private final StringSubscriber autoChooserSubscriber;
   private boolean initialPoseSet = false;
+  private String initialPoseSelection = "";
+  private java.util.Optional<Alliance> initialPoseAlliance = java.util.Optional.empty();
   private boolean pitCoastMode = false;
 
   private final SimpleMotorFeedforward driveFF = new SimpleMotorFeedforward(DrivebaseConstants.kS, 
@@ -79,7 +80,7 @@ public class SwerveSubsystem extends SubsystemBase {
     Pose2d startingPose = RobotBase.isSimulation()
         && frc.robot.simulation.CompetitionAutoDiagnostic.requested()
             ? frc.robot.simulation.CompetitionAutoDiagnostic.initialPose()
-            : FieldConstants.BLUE_TESTING_START;
+            : allianceTestingStart();
     SwerveDriveTelemetry.verbosity = TelemetryVerbosity.NONE;
     try
     {
@@ -116,10 +117,14 @@ public class SwerveSubsystem extends SubsystemBase {
     swerveDrive = new SwerveDrive(driveCfg,
                                   controllerCfg,
                                   Constants.MAX_SPEED,
-                                  new Pose2d(new Translation2d(Meter.of(2), Meter.of(0)),
-                                  Rotation2d.fromDegrees(0)));
+                                  allianceTestingStart());
     registerCurrentMonitoring();
     setMotorBrake(true);
+  }
+
+  private static Pose2d allianceTestingStart() {
+    return DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red
+        ? FieldConstants.RED_TESTING_START : FieldConstants.BLUE_TESTING_START;
   }
 
   private void registerCurrentMonitoring() {
@@ -177,7 +182,14 @@ public class SwerveSubsystem extends SubsystemBase {
     RateLimitedTelemetry.putNumber("Swerve/DriverRightX", driverAxisCount > 4 ? DriverStation.getStickAxis(driverPort, 4) : 0);
     RateLimitedTelemetry.recordOutput("Swerve/ControlStatus", controlStatus);
 
-    // Set initial pose once based on auto selection (only while disabled)
+    // Re-evaluate only when DS alliance or chooser changes; never continually overwrite vision.
+    if (DriverStation.isDisabled()
+        && (!initialPoseAlliance.equals(DriverStation.getAlliance())
+            || !initialPoseSelection.equals(autoChooserSubscriber.get()))) {
+      initialPoseSet = false;
+      initialPoseAlliance = DriverStation.getAlliance();
+      initialPoseSelection = autoChooserSubscriber.get();
+    }
     if (!initialPoseSet && DriverStation.isDisabled()) {
       updateInitialPose();
     }
@@ -544,21 +556,21 @@ public class SwerveSubsystem extends SubsystemBase {
   }
 
   /**
-   * Resets the gyro angle to zero and resets odometry to the same position, but facing toward 0.
+   * Resets field heading toward the opposing alliance wall, preserving position.
    */
   public void zeroGyro()
   {
-    swerveDrive.zeroGyro();
+    zeroNoAprilTagsGyro();
   }
 
   public void zeroNoAprilTagsGyro() {
-    // 1. Zero the gyro sensor itself
-    zeroGyro();
-    Pose2d currentPose = getPose();
-    resetOdometry(new Pose2d(
-        currentPose.getTranslation(),
-        Rotation2d.fromDegrees(0)
-    ));
+    var alliance = DriverStation.getAlliance();
+    if (alliance.isEmpty()) {
+      DriverStation.reportWarning("Heading reset skipped: Driver Station alliance unknown", false);
+      return;
+    }
+    resetOdometry(new Pose2d(getPose().getTranslation(),
+        Rotation2d.fromDegrees(alliance.get() == Alliance.Red ? 180 : 0)));
   }
 
 
