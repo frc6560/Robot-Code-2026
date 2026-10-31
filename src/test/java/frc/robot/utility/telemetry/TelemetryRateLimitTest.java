@@ -9,6 +9,22 @@ import org.littletonrobotics.junction.LogDataReceiver;
 import org.littletonrobotics.junction.LogTable;
 
 class TelemetryRateLimitTest {
+    @Test void primitiveValuesKeepLatestValueAndShareSlotWithObjectValues() {
+        AtomicLong time = new AtomicLong();
+        List<Object> written = new ArrayList<>();
+        var limiter = new LatestValueLimiter(time::get, (key, value) -> written.add(value),
+            (key, value) -> written.add(value));
+        limiter.offerDouble("RPM", 1000);
+        limiter.offerDouble("RPM", 2000);
+        time.set(500_000);
+        limiter.flush();
+        assertEquals(List.of(1000.0, 2000.0), written);
+        limiter.offer("RPM", "stopped");
+        time.set(1_000_000);
+        limiter.flush();
+        assertEquals(List.of(1000.0, 2000.0, "stopped"), written);
+        assertEquals(1, limiter.keyCount());
+    }
     @Test void fiftyHertzCallsOnlySerializeAtTwoHertz() {
         AtomicLong time = new AtomicLong();
         List<Long> writtenAt = new ArrayList<>();

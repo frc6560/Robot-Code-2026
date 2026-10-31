@@ -67,6 +67,8 @@ public class RobotContainer {
     private Command manualAlignedShotWithIntake;
     private boolean pitCoastMode = false;
     private boolean manualControlsSuppressedAfterAim;
+    private final ChassisSpeeds clampedDriverSpeeds = new ChassisSpeeds();
+    private final ChassisSpeeds stoppedDriverSpeeds = new ChassisSpeeds();
     private FuelShotModel fuelShotModel;
     private String fuelCalibrationStatus = "No launch measurements: use calibration mode";
 
@@ -255,7 +257,10 @@ public class RobotContainer {
             vy *= scale;
         }
 
-        return new ChassisSpeeds(vx, vy, speeds.omegaRadiansPerSecond);
+        clampedDriverSpeeds.vxMetersPerSecond = vx;
+        clampedDriverSpeeds.vyMetersPerSecond = vy;
+        clampedDriverSpeeds.omegaRadiansPerSecond = speeds.omegaRadiansPerSecond;
+        return clampedDriverSpeeds;
     }
 
     private void configureBindings() {
@@ -267,7 +272,7 @@ public class RobotContainer {
         Command driveFieldOrientedAnglularVelocity = drivebase.driveFieldOriented(
             () -> DriverStation.isTeleopEnabled()
                 ? clampSpeedsForShooting(driveAngularVelocity.get())
-                : new ChassisSpeeds());
+                : stoppedDriverSpeeds);
         drivebase.setDefaultCommand(driveFieldOrientedAnglularVelocity);
         driveFieldOrientedAnglularVelocity.setName("Driver field-oriented drive");
 
@@ -394,6 +399,7 @@ public class RobotContainer {
       return autoChooser.getAutoChooser().getSelected();
     }
 
+    private final FuelShotModel.Shot dashboardShot = FuelShotModel.Shot.invalid();
     private double nextShotDashboard;
 
     /** Passive Elastic readiness summary, available before any shoot-button press. */
@@ -417,7 +423,8 @@ public class RobotContainer {
             : Math.atan2(delta.getY(), delta.getX());
         double error = edu.wpi.first.math.MathUtil.angleModulus(heading - pose.getRotation().getRadians());
         boolean known = alliance.isPresent() && Double.isFinite(range) && Double.isFinite(error);
-        boolean reachable = known && (passing || fuelShotModel.solve(range).valid());
+        if (known && !passing) fuelShotModel.solveInto(range, dashboardShot);
+        boolean reachable = known && (passing || dashboardShot.valid());
         boolean aligned = known && delta.getNorm() > 1e-6
             && Math.abs(error) <= (passing ? frc.robot.utility.shooting.AlliancePass.ANGLE_TOLERANCE
                 : Constants.DrivebaseConstants.HUB_AIM_TOLERANCE_RADIANS)

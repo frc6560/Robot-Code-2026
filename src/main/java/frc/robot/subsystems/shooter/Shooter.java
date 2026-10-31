@@ -1,7 +1,5 @@
 package frc.robot.subsystems.shooter;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.function.BooleanSupplier;
 
 import frc.robot.utility.telemetry.RateLimitedTelemetry;
@@ -265,14 +263,13 @@ public class Shooter extends SubsystemBase {
      * then checks the fit against the configured feedforward.
      */
     public Command feedforwardCharacterizationCommand() {
-        List<Double> velocitySamples = new ArrayList<>();
-        List<Double> voltageSamples = new ArrayList<>();
+        // Fixed-size least-squares accumulator: n, sumX, sumY, sumXY, sumX2.
+        double[] samples = new double[5];
         Timer timer = new Timer();
 
         return Commands.sequence(
                 runOnce(() -> {
-                    velocitySamples.clear();
-                    voltageSamples.clear();
+                    java.util.Arrays.fill(samples, 0);
                     characterizationVolts = 0.0;
                 }),
                 run(() -> characterizationVolts = 0.0)
@@ -281,32 +278,28 @@ public class Shooter extends SubsystemBase {
                 run(() -> {
                     characterizationVolts =
                         Math.min(timer.get() * ShooterConstants.FF_CHARACTERIZATION_RAMP_RATE, 12.0);
-                    velocitySamples.add(inputs.velocityRadsPerSec);
-                    voltageSamples.add(characterizationVolts);
+                    double x = inputs.velocityRadsPerSec;
+                    samples[0]++;
+                    samples[1] += x;
+                    samples[2] += characterizationVolts;
+                    samples[3] += x * characterizationVolts;
+                    samples[4] += x * x;
                 }))
             .finallyDo(() -> {
                 characterizationVolts = Double.NaN;
                 stop();
-                reportCharacterization(velocitySamples, voltageSamples);
+                reportCharacterization(samples);
             })
             .withName("Shooter FF Characterization");
     }
 
-    private void reportCharacterization(List<Double> velocities, List<Double> voltages) {
-        int n = velocities.size();
+    private void reportCharacterization(double[] samples) {
+        double n = samples[0];
         if (n < 2) {
             System.out.println("[Shooter] FF characterization: not enough samples.");
             return;
         }
-        double sumX = 0.0, sumY = 0.0, sumXY = 0.0, sumX2 = 0.0;
-        for (int i = 0; i < n; i++) {
-            double x = velocities.get(i);
-            double y = voltages.get(i);
-            sumX += x;
-            sumY += y;
-            sumXY += x * y;
-            sumX2 += x * x;
-        }
+        double sumX = samples[1], sumY = samples[2], sumXY = samples[3], sumX2 = samples[4];
         double denominator = n * sumX2 - sumX * sumX;
         if (denominator == 0.0) {
             System.out.println("[Shooter] FF characterization: flywheel never moved.");

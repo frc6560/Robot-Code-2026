@@ -43,6 +43,8 @@ public class ShooterIOTalonFX implements ShooterIO {
     private final StatusSignal<Current> followerCurrent;
     private final StatusSignal<Temperature> followerTemp;
 
+    private final BaseStatusSignal[] refreshGroup0;
+    private final BaseStatusSignal[] refreshGroup1;
     public ShooterIOTalonFX() {
         leaderMotor = new TalonFX(ShooterConstants.RIGHT_FLYWHEEL_ID, ShooterConstants.CAN_BUS);
         followerMotor = new TalonFX(ShooterConstants.LEFT_FLYWHEEL_ID, ShooterConstants.CAN_BUS);
@@ -71,6 +73,12 @@ public class ShooterIOTalonFX implements ShooterIO {
         followerMotor.optimizeBusUtilization();
         frc.robot.utility.CurrentUsageMonitor.register("Right shooter", leaderMotor);
         frc.robot.utility.CurrentUsageMonitor.register("Left shooter", followerMotor);
+        refreshGroup0 = new BaseStatusSignal[] {
+            leaderPosition, leaderVelocity, leaderVoltage, leaderCurrent, leaderTemp
+        };
+        refreshGroup1 = new BaseStatusSignal[] {
+            followerVelocity, followerVoltage, followerCurrent, followerTemp
+        };
     }
 
     private void configureLeaderMotor() {
@@ -112,12 +120,8 @@ public class ShooterIOTalonFX implements ShooterIO {
 
     @Override
     public void updateInputs(ShooterIOInputs inputs) {
-        inputs.leaderConnected = BaseStatusSignal.refreshAll(
-            leaderPosition, leaderVelocity, leaderVoltage, leaderCurrent, leaderTemp
-        ).isOK();
-        inputs.followerConnected = BaseStatusSignal.refreshAll(
-            followerVelocity, followerVoltage, followerCurrent, followerTemp
-        ).isOK();
+        inputs.leaderConnected = BaseStatusSignal.refreshAll(refreshGroup0).isOK();
+        inputs.followerConnected = BaseStatusSignal.refreshAll(refreshGroup1).isOK();
 
         inputs.leaderPositionRotations = leaderPosition.getValueAsDouble();
         inputs.leaderVelocityRPS = leaderVelocity.getValueAsDouble();

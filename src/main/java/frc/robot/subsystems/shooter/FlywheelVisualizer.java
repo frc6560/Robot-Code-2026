@@ -25,6 +25,10 @@ import org.littletonrobotics.junction.mechanism.LoggedMechanismRoot2d;
  * makes.
  */
 public class FlywheelVisualizer {
+  private static final Color8Bit GRAY = new Color8Bit(120, 130, 140);
+  private static final Color8Bit AMBER = new Color8Bit(217, 119, 6);
+  private static final Color8Bit BLUE = new Color8Bit(17, 121, 238);
+
 
   // --- Mechanism as tuned by the wall-thickness optimiser -------------------
   private static final double WHEEL_DIAMETER_M = 4.0 * 0.0254;
@@ -133,7 +137,7 @@ public class FlywheelVisualizer {
       spokes[i] =
           hub.append(
               new LoggedMechanismLigament2d(
-                  "spoke" + i, 0.45, i * (360.0 / SPOKE_COUNT), 7.0, new Color8Bit(17, 121, 238)));
+                  "spoke" + i, 0.45, i * (360.0 / SPOKE_COUNT), 7.0, BLUE));
     }
 
     // A gauge beside the wheel: the needle sweeps with speed, and a second
@@ -141,7 +145,7 @@ public class FlywheelVisualizer {
     LoggedMechanismRoot2d gauge = mechanism.getRoot("gauge", 1.55, 0.75);
     targetNeedle =
         gauge.append(
-            new LoggedMechanismLigament2d("target", 0.40, 0.0, 4.0, new Color8Bit(120, 130, 140)));
+            new LoggedMechanismLigament2d("target", 0.40, 0.0, 4.0, GRAY));
     tachNeedle =
         gauge.append(new LoggedMechanismLigament2d("tach", 0.36, 0.0, 8.0, new Color8Bit(0, 186, 255)));
 
@@ -282,9 +286,9 @@ public class FlywheelVisualizer {
     Color8Bit color;
     if (flashTimer > 0.0 || !inBand) {
       boolean resting = phase == Phase.IDLING || phase == Phase.EMPTY;
-      color = resting ? new Color8Bit(120, 130, 140) : new Color8Bit(217, 119, 6);
+      color = resting ? GRAY : AMBER;
     } else {
-      color = new Color8Bit(17, 121, 238);
+      color = BLUE;
     }
 
     double displayDegrees = Math.toDegrees(angleRad);

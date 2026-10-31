@@ -50,6 +50,8 @@ public class IndexerIOTalonFX implements IndexerIO {
     private final StatusSignal<Voltage> tunnelVoltage;
     private final StatusSignal<Current> tunnelCurrent;
 
+    private final String configurationSummary;
+    private final BaseStatusSignal[] refreshGroup0;
     public IndexerIOTalonFX(
             int floorLeaderId,
             int floorSecondaryId,
@@ -111,6 +113,20 @@ public class IndexerIOTalonFX implements IndexerIO {
         frc.robot.utility.CurrentUsageMonitor.register("Floor leader", floorLeader);
         frc.robot.utility.CurrentUsageMonitor.register("Floor follower", floorSecondary);
         frc.robot.utility.CurrentUsageMonitor.register("Wall tunnel", tunnelMotor);
+        configurationSummary = "ID25=" + floorConfigurationStatus
+            + "; ID0 follower=" + floorSecondaryConfigurationStatus;
+        refreshGroup0 = new BaseStatusSignal[] {
+                floorPosition,
+                floorVelocity,
+                floorVoltage,
+                floorLeaderCurrent,
+                floorSecondary.getVelocity(),
+                floorSecondary.getMotorVoltage(),
+                floorSecondary.getStatorCurrent(),
+                tunnelPosition,
+                tunnelVelocity,
+                tunnelVoltage,
+                tunnelCurrent};
     }
 
     static TalonFXConfiguration motorConfiguration(double gearRatio, boolean inverted) {
@@ -151,18 +167,7 @@ public class IndexerIOTalonFX implements IndexerIO {
         inputs.tunnelStatorLimitAmps = CURRENT_LIMIT_AMPS;
         inputs.floorCurrentLimitOK = floorConfigurationStatus.isOK() && floorSecondaryConfigurationStatus.isOK();
         inputs.tunnelCurrentLimitOK = tunnelConfigurationStatus.isOK();
-        BaseStatusSignal.refreshAll(
-                floorPosition,
-                floorVelocity,
-                floorVoltage,
-                floorLeaderCurrent,
-                floorSecondary.getVelocity(),
-                floorSecondary.getMotorVoltage(),
-                floorSecondary.getStatorCurrent(),
-                tunnelPosition,
-                tunnelVelocity,
-                tunnelVoltage,
-                tunnelCurrent);
+        BaseStatusSignal.refreshAll(refreshGroup0);
 
         inputs.appliedVolts = tunnelVoltage.getValueAsDouble();
         inputs.floorRPM = floorVelocity.getValueAsDouble() * 60.0;
@@ -181,8 +186,7 @@ public class IndexerIOTalonFX implements IndexerIO {
         inputs.floorSecondaryCurrentAmps = floorSecondary.getStatorCurrent().getValueAsDouble();
         inputs.floorAppliedVolts = floorVoltage.getValueAsDouble();
         inputs.floorCurrentAmps = floorLeaderCurrent.getValueAsDouble();
-        inputs.floorConfigurationStatus = "ID25=" + floorConfigurationStatus
-            + "; ID0 follower=" + floorSecondaryConfigurationStatus;
+        inputs.floorConfigurationStatus = configurationSummary;
         inputs.floorControlStatus = floorControlStatus;
 
         RateLimitedTelemetry.recordOutput("Indexer/Connected/FloorLeader", floorLeader.isConnected());
@@ -206,7 +210,8 @@ public class IndexerIOTalonFX implements IndexerIO {
                 return;
             }
             StatusCode leader = floorLeader.setControl(floorRequest.withVelocity(rpm / 60.0));
-            floorControlStatus = "ID25=" + leader + "; ID0 follower=" + follower;
+            floorControlStatus = leader.isOK() && follower.isOK() ? "ID25=OK; ID0 follower=OK"
+                : "ID25=" + leader + "; ID0 follower=" + follower;
             if (!leader.isOK()) stopFloorOutputs();
         }
     }

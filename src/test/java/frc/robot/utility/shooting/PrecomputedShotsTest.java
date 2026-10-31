@@ -27,6 +27,21 @@ class PrecomputedShotsTest {
         assertFalse(saved.setLaunchSpeedCoefficient(LaunchSpeedTuning.DEFAULT_COEFFICIENT));
         assertThrows(IllegalStateException.class, () -> saved.setLaunchSpeedCoefficient(1.1));
     }
+    @Test void reusableResultMatchesSnapshotAndClearsInvalidShots() {
+        var model = PrecomputedShots.load(Path.of("src/main/deploy/shooting/trajectories.csv"));
+        var result = FuelShotModel.Shot.invalid();
+        for (double range = 0.75; range <= 8; range += 0.025) {
+            var snapshot = model.solve(range);
+            model.solveInto(range, result);
+            assertEquals(snapshot, result);
+            assertNotSame(snapshot, result);
+        }
+        model.solveInto(Double.NaN, result);
+        assertFalse(result.valid());
+        assertEquals(0, result.rpm());
+        assertEquals(0, result.flightSeconds());
+        assertEquals(0, model.flightCalculations());
+    }
     @Test void staleTableIsRejected() throws Exception {
         var path = java.nio.file.Files.createTempFile("stale-shot-table", ".csv");
         try {

@@ -50,7 +50,7 @@ public final class FuelShootCommand extends Command {
     private double testRPM, tunnelRPM, readySince;
     private double solvedRange;
     private double nextSolve;
-    private Shot shot = Shot.invalid();
+    private final Shot shot = Shot.invalid();
 
     public FuelShootCommand(Shooter shooter, Indexer indexer, Supplier<Pose2d> pose,
             Supplier<ChassisSpeeds> velocity, Command aim, BooleanSupplier aligned,
@@ -86,6 +86,8 @@ public final class FuelShootCommand extends Command {
     }
 
     public static Translation2d releasePosition(Pose2d pose) {
+        if (FuelShotConfig.RELEASE_FORWARD_METERS == 0 && FuelShotConfig.RELEASE_LEFT_METERS == 0)
+            return pose.getTranslation();
         return pose.getTranslation().plus(new Translation2d(FuelShotConfig.RELEASE_FORWARD_METERS,
             FuelShotConfig.RELEASE_LEFT_METERS).rotateBy(pose.getRotation()));
     }
@@ -98,7 +100,7 @@ public final class FuelShootCommand extends Command {
             : model.calibration().tunnelRPM();
         feeding = false;
         readyToFeed = false;
-        readySince = Double.NaN; solvedRange = Double.NaN; shot = Shot.invalid();
+        readySince = Double.NaN; solvedRange = Double.NaN; shot.clear();
         indexer.stop();
         aim.initialize();
     }
@@ -128,7 +130,7 @@ public final class FuelShootCommand extends Command {
             <= FuelShotConfig.MAX_TRANSLATION_MPS;
         if (!passing && !calibrationMode && model != null && finite
                 && (!Double.isFinite(solvedRange) || (Timer.getFPGATimestamp() >= nextSolve && Math.abs(range - solvedRange) > 0.02))) {
-            shot = model.solve(range);
+            model.solveInto(range, shot);
             solvedRange = range;
             nextSolve = Timer.getFPGATimestamp() + 0.1;
         }

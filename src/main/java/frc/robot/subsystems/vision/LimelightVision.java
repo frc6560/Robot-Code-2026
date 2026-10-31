@@ -17,6 +17,11 @@ import frc.robot.utility.telemetry.RateLimitedTelemetry;
 public class LimelightVision {
     private Pose2d robotPose2d = new Pose2d();
     private double latency;
+    private final edu.wpi.first.math.Matrix<edu.wpi.first.math.numbers.N3, edu.wpi.first.math.numbers.N1>
+        visionStdDevs = VecBuilder.fill(0, 0, LimelightConstants.kStdvThetaBase);
+    private final edu.wpi.first.networktables.DoubleArrayEntry poseEntry;
+    private long lastReadTimestamp = Long.MIN_VALUE;
+    private PoseEstimate latestEstimate;
     private final double[] orientation = new double[6];
     private final String name;
     private final String logKey;
@@ -29,6 +34,7 @@ public class LimelightVision {
 
     public LimelightVision(SwerveSubsystem drivebase, String name, Pose3d cameraPose) {
         this.name = name;
+        poseEntry = LimelightHelpers.getLimelightDoubleArrayEntry(name, "botpose_orb_wpiblue");
         this.drivebase = drivebase;
         this.cameraPose = cameraPose;
         logKey = "Vision/" + switch (name) {
@@ -47,7 +53,12 @@ public class LimelightVision {
 
     public void update() {
         updateRotation();
-        updateLimelightEstimate(LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(name));
+        long timestamp = poseEntry.getLastChange();
+        if (timestamp != lastReadTimestamp) {
+            lastReadTimestamp = timestamp;
+            latestEstimate = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(name);
+        }
+        updateLimelightEstimate(latestEstimate);
     }
 
     public void updateLimelightEstimate(PoseEstimate estimate) {
@@ -73,8 +84,9 @@ public class LimelightVision {
         if (used) {
             stdXY = Math.max(LimelightConstants.kStdvXYFloor,
                 estimate.avgTagDist * estimate.avgTagDist / estimate.tagCount) * LimelightConstants.kStdvXYBase;
-            drivebase.getSwerveDrive().setVisionMeasurementStdDevs(
-                VecBuilder.fill(stdXY, stdXY, LimelightConstants.kStdvThetaBase));
+            visionStdDevs.set(0, 0, stdXY);
+            visionStdDevs.set(1, 0, stdXY);
+            drivebase.getSwerveDrive().setVisionMeasurementStdDevs(visionStdDevs);
             drivebase.getSwerveDrive().addVisionMeasurement(estimate.pose, estimate.timestampSeconds);
             lastUsedTime = now;
             status = "Used";

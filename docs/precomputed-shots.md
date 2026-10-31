@@ -30,3 +30,11 @@ Allocation reductions also include reusable camera orientation arrays, current-m
 CAN bus groups and scratch lists, and integrator scratch arrays for offline calculation.
 Scratch objects are owned by their subsystem/model rather than shared across threads.
 This does not eliminate allocations inside WPILib, NetworkTables, or vendor libraries.
+
+Runtime allocation update: command and dashboard now each own a reusable `Shot`.
+They call `solveInto(range, result)`, which updates it in place. The diagnostic
+view is also reused. `solve(range)` remains an allocating convenience method for
+offline tests/tools. These mutable views are scheduler-thread owned and must not
+be retained as historical snapshots or passed to asynchronous logging; telemetry
+records their scalar values. The warmed desktop allocation test requires zero
+bytes allocated by 100,000 solveInto calls and 100,000 scores calls.

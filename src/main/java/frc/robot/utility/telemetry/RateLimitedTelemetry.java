@@ -13,20 +13,25 @@ import org.littletonrobotics.junction.inputs.LoggableInputs;
 public final class RateLimitedTelemetry {
     public static final long PERIOD_MICROS = 500_000;
     private static final LatestValueLimiter outputs = new LatestValueLimiter(
-        RobotController::getFPGATime, RateLimitedTelemetry::writeOutput);
+        RobotController::getFPGATime, RateLimitedTelemetry::writeOutput,
+        (key, value) -> Logger.recordOutput(key, value));
     private static final LatestValueLimiter inputs = new LatestValueLimiter(
         RobotController::getFPGATime, (key, value) -> Logger.processInputs(key, (LoggableInputs) value));
     private static final LatestValueLimiter dashboard = new LatestValueLimiter(
-        RobotController::getFPGATime, RateLimitedTelemetry::writeDashboard);
+        RobotController::getFPGATime, RateLimitedTelemetry::writeDashboard, SmartDashboard::putNumber);
     private RateLimitedTelemetry() {}
 
+    public static void recordOutput(String key, double value) { outputs.offerDouble(key, value); }
     public static void recordOutput(String key, Object value) { outputs.offer(key, value); }
     public static void processInputs(String key, LoggableInputs value) {
         // Replay input consumption must still run on every control iteration.
         if (Logger.hasReplaySource()) Logger.processInputs(key, value);
         else inputs.offer(key, value);
     }
-    public static void putNumber(String key, double value) { putDashboard(key, value); }
+    public static void putNumber(String key, double value) {
+        if (RobotBase.isSimulation()) SmartDashboard.putNumber(key, value);
+        else dashboard.offerDouble(key, value);
+    }
     public static void putString(String key, String value) { putDashboard(key, value); }
     public static void putBoolean(String key, boolean value) { putDashboard(key, value); }
     private static void putDashboard(String key, Object value) {

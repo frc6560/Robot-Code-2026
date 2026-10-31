@@ -6,9 +6,29 @@ import frc.robot.Constants.ShotModelConstants;
 /** Fresh stationary fixed-hood model driven by measured exit speeds, not motor surface speed. */
 public final class FuelShotModel {
     public record Flight(double crossingX, double entryDegrees, double time, double risingX, boolean reached) {}
-    public record Shot(double rpm, double minimumRPM, double maximumRPM, double flightSeconds,
-                       boolean valid) {
+    /** Caller-owned result. Never hand this mutable object to asynchronous logging. */
+    public static final class Shot {
+        private double rpm, minimumRPM, maximumRPM, flightSeconds;
+        private boolean valid;
+        public Shot(double rpm, double minimumRPM, double maximumRPM, double flightSeconds, boolean valid) {
+            set(rpm, minimumRPM, maximumRPM, flightSeconds, valid);
+        }
         public static Shot invalid() { return new Shot(0, 0, 0, 0, false); }
+        public double rpm() { return rpm; }
+        public double minimumRPM() { return minimumRPM; }
+        public double maximumRPM() { return maximumRPM; }
+        public double flightSeconds() { return flightSeconds; }
+        public boolean valid() { return valid; }
+        public void clear() { set(0, 0, 0, 0, false); }
+        private void set(double rpm, double low, double high, double time, boolean valid) {
+            this.rpm = rpm; minimumRPM = low; maximumRPM = high; flightSeconds = time; this.valid = valid;
+        }
+        @Override public boolean equals(Object other) {
+            return other instanceof Shot s && Double.compare(rpm, s.rpm) == 0
+                && Double.compare(minimumRPM, s.minimumRPM) == 0 && Double.compare(maximumRPM, s.maximumRPM) == 0
+                && Double.compare(flightSeconds, s.flightSeconds) == 0 && valid == s.valid;
+        }
+        @Override public int hashCode() { return Double.hashCode(rpm); }
     }
     private Flight[] precomputed;
     // Owned scratch storage: the robot model is used only on the scheduler thread.
@@ -23,8 +43,32 @@ public final class FuelShotModel {
             : precomputed.length * 64L + sampledFlights.size() * 40L;
     }
     private final LaunchCalibration calibration;
-    public record SolveDiagnostics(double rangeMeters, int sampled, int reachedHeight,
-        int clearedNearRim, int landedInOpening, int passedEntryAngle, String reason) {}
+    /** Live diagnostic view owned by the model, updated in place on the scheduler thread. */
+    public static final class SolveDiagnostics {
+        private double rangeMeters;
+        private int sampled, reachedHeight, clearedNearRim, landedInOpening, passedEntryAngle;
+        private String reason;
+        SolveDiagnostics(double range, int sampled, int reached, int cleared, int landed, int entered, String reason) {
+            set(range, sampled, reached, cleared, landed, entered, reason);
+        }
+        void set(double range, int sampled, int reached, int cleared, int landed, int entered, String reason) {
+            rangeMeters = range; this.sampled = sampled; reachedHeight = reached; clearedNearRim = cleared;
+            landedInOpening = landed; passedEntryAngle = entered; this.reason = reason;
+        }
+        public double rangeMeters() { return rangeMeters; }
+        public int sampled() { return sampled; }
+        public int reachedHeight() { return reachedHeight; }
+        public int clearedNearRim() { return clearedNearRim; }
+        public int landedInOpening() { return landedInOpening; }
+        public int passedEntryAngle() { return passedEntryAngle; }
+        public String reason() { return reason; }
+        @Override public boolean equals(Object other) {
+            return other instanceof SolveDiagnostics d && Double.compare(rangeMeters, d.rangeMeters) == 0
+                && sampled == d.sampled && reachedHeight == d.reachedHeight && clearedNearRim == d.clearedNearRim
+                && landedInOpening == d.landedInOpening && passedEntryAngle == d.passedEntryAngle && reason.equals(d.reason);
+        }
+        @Override public int hashCode() { return Double.hashCode(rangeMeters); }
+    }
     private SolveDiagnostics diagnostics = new SolveDiagnostics(Double.NaN, 0, 0, 0, 0, 0, "Not solved yet");
     public SolveDiagnostics diagnostics() { return diagnostics; }
     private double launchSpeedCoefficient = LaunchSpeedTuning.DEFAULT_COEFFICIENT;
@@ -65,10 +109,18 @@ public final class FuelShotModel {
     public LaunchCalibration calibration() { return calibration; }
 
     /** Bounded work: scan the calibrated RPM span, then refine the selected contiguous band. */
+    /** Allocating convenience API for offline tooling/tests. Runtime callers use solveInto. */
     public Shot solve(double range) {
+        Shot result = Shot.invalid();
+        solveInto(range, result);
+        return result;
+    }
+
+    public void solveInto(double range, Shot result) {
+        result.clear();
         if (!Double.isFinite(range) || range < 0.75 || range > 8.0) {
-            diagnostics = new SolveDiagnostics(range, 0, 0, 0, 0, 0, "Range outside solver limits (0.75–8 m)");
-            return Shot.invalid();
+            diagnostics.set(range, 0, 0, 0, 0, 0, "Range outside solver limits (0.75–8 m)");
+            return;
         }
         // A fine grid finds narrow bands; midpoint refinement below never assumes a global monotonic trajectory.
         double step = 10.0;
@@ -105,17 +157,17 @@ public final class FuelShotModel {
             : landed == 0 ? "No rim-clearing trajectory lands in opening"
             : entered == 0 ? "Entry angle too shallow (requires "
                 + FuelShotConfig.MIN_ENTRY_DEGREES + " deg)" : "Reachable";
-        diagnostics = new SolveDiagnostics(range, sampledRPM.size(), reached, cleared, landed, entered, reason);
-        if (bestHigh < bestLow) return Shot.invalid();
+        diagnostics.set(range, sampledRPM.size(), reached, cleared, landed, entered, reason);
+        if (bestHigh < bestLow) return;
         // Grid endpoints are already valid; avoid dozens of full integrations to refine sub-RPM edges.
         double low = bestLow;
         double high = bestHigh;
         double target = (low + high) / 2;
         Flight flight = flight(target);
         boolean valid = flightScores(range, flight);
-        if (!valid) diagnostics = new SolveDiagnostics(range, sampledRPM.size(), reached, cleared,
+        if (!valid) diagnostics.set(range, sampledRPM.size(), reached, cleared,
             landed, entered, "Refined RPM failed trajectory check");
-        return new Shot(target, low, high, flight.time(), valid);
+        result.set(target, low, high, flight.time(), valid);
     }
 
     private double refine(double range, double inside, double outside) {

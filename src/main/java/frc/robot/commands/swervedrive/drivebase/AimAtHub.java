@@ -26,6 +26,7 @@ public class AimAtHub extends Command {
   private final SwerveSubsystem drivebase;
   private final Supplier<ChassisSpeeds> driverSpeeds;
   private final Supplier<Translation2d> releasePosition;
+  private final ChassisSpeeds commandedSpeeds = new ChassisSpeeds();
   private boolean atTarget;
 
   /** Actual heading error and measured angular speed must both be within tolerance. */
@@ -88,11 +89,11 @@ public class AimAtHub extends Command {
         alliance.get() == Alliance.Blue
             ? FieldConstants.BLUE_HUB_CENTER
             : FieldConstants.RED_HUB_CENTER;
-    Translation2d robotToHub = hub.minus(releasePosition.get());
+    Translation2d release = releasePosition.get();
     boolean passing = DriverStation.isTeleopEnabled()
         && AlliancePass.outsideZone(alliance.get(), robotPose.getX());
     double targetHeading = passing ? AlliancePass.heading(alliance.get())
-        : Math.atan2(robotToHub.getY(), robotToHub.getX());
+        : Math.atan2(hub.getY() - release.getY(), hub.getX() - release.getX());
     double headingError =
         MathUtil.angleModulus(targetHeading - robotPose.getRotation().getRadians());
     atTarget = passing
@@ -118,8 +119,10 @@ public class AimAtHub extends Command {
             -DrivebaseConstants.HUB_AIM_MAX_ANGULAR_SPEED_RAD_PER_SEC,
             DrivebaseConstants.HUB_AIM_MAX_ANGULAR_SPEED_RAD_PER_SEC);
 
-    drivebase.driveFieldOriented(
-        new ChassisSpeeds(speeds.vxMetersPerSecond, speeds.vyMetersPerSecond, omega));
+    commandedSpeeds.vxMetersPerSecond = speeds.vxMetersPerSecond;
+    commandedSpeeds.vyMetersPerSecond = speeds.vyMetersPerSecond;
+    commandedSpeeds.omegaRadiansPerSecond = omega;
+    drivebase.driveFieldOriented(commandedSpeeds);
 
     RateLimitedTelemetry.putBoolean("Hub Aim/Has Alliance", true);
     RateLimitedTelemetry.putNumber("Hub Aim/Target Heading Deg", Math.toDegrees(targetHeading));
@@ -145,7 +148,10 @@ public class AimAtHub extends Command {
   @Override
   public void end(boolean interrupted) {
     atTarget = false;
-    drivebase.driveFieldOriented(new ChassisSpeeds());
+    commandedSpeeds.vxMetersPerSecond = 0;
+    commandedSpeeds.vyMetersPerSecond = 0;
+    commandedSpeeds.omegaRadiansPerSecond = 0;
+    drivebase.driveFieldOriented(commandedSpeeds);
     RateLimitedTelemetry.putBoolean("Hub Aim/Active", false);
     RateLimitedTelemetry.putBoolean("Hub Aim/At Target", false);
     RateLimitedTelemetry.recordOutput("HubAim/Active", false);

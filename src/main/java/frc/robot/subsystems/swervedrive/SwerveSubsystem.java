@@ -143,6 +143,7 @@ public class SwerveSubsystem extends SubsystemBase {
     }
   }
 
+  private final ChassisSpeeds alignmentSpeeds = new ChassisSpeeds();
   private double nextFuelPoseLog;
 
   @Override
@@ -225,13 +226,11 @@ public class SwerveSubsystem extends SubsystemBase {
     RateLimitedTelemetry.recordOutput(
         "HeadingAlign/MeasuredOmegaRadPerSec", getRobotVelocity().omegaRadiansPerSecond);
 
-    ChassisSpeeds targetSpeeds = new ChassisSpeeds(
-      getFieldVelocity().vxMetersPerSecond,
-      getFieldVelocity().vyMetersPerSecond,
-      commandedOmega
-    );
-
-    swerveDrive.driveFieldOriented(targetSpeeds);
+    ChassisSpeeds measured = getFieldVelocity();
+    alignmentSpeeds.vxMetersPerSecond = measured.vxMetersPerSecond;
+    alignmentSpeeds.vyMetersPerSecond = measured.vyMetersPerSecond;
+    alignmentSpeeds.omegaRadiansPerSecond = commandedOmega;
+    swerveDrive.driveFieldOriented(alignmentSpeeds);
   }
 
     /** Aligns the robot to face the trench while driving */
@@ -363,8 +362,9 @@ public class SwerveSubsystem extends SubsystemBase {
    */
   public Command driveToDistanceCommand(double distanceInMeters, double speedInMetersPerSecond)
   {
-    return run(() -> drive(new ChassisSpeeds(speedInMetersPerSecond, 0, 0)))
-        .until(() -> swerveDrive.getPose().getTranslation().getDistance(new Translation2d(0, 0)) >
+    ChassisSpeeds commandSpeeds = new ChassisSpeeds(speedInMetersPerSecond, 0, 0);
+    return run(() -> drive(commandSpeeds))
+        .until(() -> swerveDrive.getPose().getTranslation().getNorm() >
                      distanceInMeters);
   }
 
