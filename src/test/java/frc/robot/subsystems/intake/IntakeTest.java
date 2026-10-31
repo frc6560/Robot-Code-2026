@@ -323,6 +323,59 @@ class IntakeTest {
         assertEquals(0, io.roller);
     }
 
+    @Test void driverConfirmationStopsRackAtPartialEncoderAndPreservesRollerRequest() {
+        teleop(true);
+        intake.requestRackExtended();
+        intake.setRollersRequested(true);
+        io.position = 1.0;
+        intake.periodic();
+        assertEquals(0, io.roller);
+        int requests = io.positionRequests;
+        intake.confirmFullyExtended();
+        assertTrue(io.stopped); // Immediate stop, without waiting for periodic.
+        intake.periodic();
+        assertTrue(intake.atDeployTarget());
+        assertTrue(intake.isExtensionLimitReached());
+        assertEquals(requests, io.positionRequests);
+        assertEquals(IntakeConstants.ROLLER_RPM, io.roller);
+        assertEquals(1.0, io.position); // Confirmation does not rewrite the encoder.
+        intake.requestRackRetracted();
+        intake.periodic();
+        assertFalse(intake.isExtensionLimitReached());
+        assertFalse(io.stopped);
+        assertEquals(0, io.target);
+        assertEquals(0, io.roller);
+        intake.requestRackExtended();
+        intake.periodic();
+        assertFalse(intake.isExtensionLimitReached());
+        intake.confirmFullyExtended();
+        teleop(false);
+        assertFalse(intake.isExtensionLimitReached());
+    }
+
+    @Test void driverConfirmationCannotBypassDisabledPitCoastAutoOrMissingReference() {
+        intake.confirmFullyExtended();
+        assertFalse(intake.isExtensionLimitReached());
+        teleop(true);
+        intake.confirmFullyExtended();
+        assertTrue(intake.isExtensionLimitReached());
+        assertEquals(0, io.roller); // Does not invent a roller request.
+        intake.setPitCoastMode(true);
+        intake.confirmFullyExtended();
+        assertFalse(intake.isExtensionLimitReached());
+        intake.setPitCoastMode(false);
+        io.homed = false;
+        intake.periodic();
+        intake.confirmFullyExtended();
+        assertFalse(intake.isExtensionLimitReached());
+        io.homed = true;
+        DriverStationSim.setAutonomous(true);
+        DriverStationSim.notifyNewData();
+        intake.periodic();
+        intake.confirmFullyExtended();
+        assertFalse(intake.isExtensionLimitReached());
+    }
+
     @Test void thirtyFourAmpsDoesNotCountButThirtyFiveAmpsDoes() {
         teleop(true);
         intake.requestRackExtended();

@@ -46,6 +46,16 @@ class IntakeRollerConfigurationTest {
         assertEquals(0.0, inputs.rollerAppliedVolts);
         assertEquals(0.0, inputs.rightRollerAppliedVolts);
     }
+    @Test void rackBoostRaisesOnlyStatorAllowanceAndPreservesSupplyLimit() {
+        var boost = IntakeIOTalonFX.deployCurrentLimits(IntakeConstants.DEPLOY_STARTUP_STATOR_CURRENT_LIMIT);
+        var continuous = IntakeIOTalonFX.deployCurrentLimits(IntakeConstants.DEPLOY_STATOR_CURRENT_LIMIT);
+        assertEquals(60.0, boost.StatorCurrentLimit);
+        assertEquals(40.0, continuous.StatorCurrentLimit);
+        assertEquals(30.0, boost.SupplyCurrentLimit);
+        assertEquals(30.0, continuous.SupplyCurrentLimit);
+        assertTrue(boost.StatorCurrentLimitEnable && boost.SupplyCurrentLimitEnable);
+        assertEquals(1.0, IntakeConstants.DEPLOY_STARTUP_SECONDS);
+    }
     @Test void hardwareBoundaryRejectsRollersUnlessRackFeedbackConfirmsExtension() {
         double end = IntakeConstants.EXTENDED_POSITION_ROTATIONS;
         assertTrue(IntakeIOTalonFX.rackAllowsRollers(true, true, false, end, end, 0));

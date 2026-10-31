@@ -14,6 +14,7 @@ import edu.wpi.first.wpilibj.simulation.DriverStationSim;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import frc.robot.subsystems.indexer.Indexer;
 import frc.robot.subsystems.shooter.Shooter;
+import frc.robot.subsystems.intake.Intake;
 
 class RobotContainerDriverControlsTest {
     private static final int DRIVER_PORT = Constants.OperatorConstants.DRIVER_CONTROLLER_PORT;
@@ -87,6 +88,13 @@ class RobotContainerDriverControlsTest {
         setButton(XboxController.Button.kRightBumper, true);
         assertEquals(Constants.IntakeConstants.EXTENDED_POSITION_ROTATIONS,
             SmartDashboard.getNumber("Intake/DeployTargetRotations", -1));
+        Intake intake = getField(container, "intake", Intake.class);
+        setButton(XboxController.Button.kA, true);
+        assertTrue(intake.isExtensionLimitReached());
+        assertTrue(intake.atDeployTarget());
+        assertFalse(CommandScheduler.getInstance().requiring(container.getDrivebase())
+            .getName().contains("Trench"));
+        setButton(XboxController.Button.kA, false);
         setButton(XboxController.Button.kRightBumper, false);
 
         setTrigger(XboxController.Axis.kLeftTrigger, true);

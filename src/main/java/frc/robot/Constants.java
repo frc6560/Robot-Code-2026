@@ -456,6 +456,9 @@ public final class Constants {
     // Current Limits
     public static final double DEPLOY_SUPPLY_CURRENT_LIMIT = 30.0;
     public static final double DEPLOY_STATOR_CURRENT_LIMIT = 40.0;
+    public static final double DEPLOY_STARTUP_STATOR_CURRENT_LIMIT = 60.0;
+    public static final double DEPLOY_STARTUP_SECONDS = 1.0;
+    public static final double DEPLOY_CURRENT_CONFIG_TIMEOUT_SECONDS = 0.005;
     public static final double ROLLER_SUPPLY_CURRENT_LIMIT = 40.0;
     public static final double ROLLER_STATOR_CURRENT_LIMIT = 40.0;
 

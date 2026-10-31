@@ -26,7 +26,11 @@ The default flywheel goal is 1000 RPM in both enabled teleop and auto. Right bum
 
 The active shooting RPM tolerance is `FuelShotConfig.RPM_TOLERANCE = 60.0` (absolute measured error must be less than 60 RPM), with `READY_DWELL_SECONDS = 0.10`. The measured trajectory scoring-band check can impose a tighter restriction. `ShooterConstants.FLYWHEEL_RPM_TOLERANCE = 200.0` is a legacy/simulation-test tolerance and does not control aimed-shot feeding.
 
-Teleop right trigger requests rack extension and 2500 RPM rollers once encoder extension is at least 40%; releasing it stops rollers. Roller startup no longer waits for a stopped or fully extended rack. Left trigger requests retraction and stops rollers.
+Teleop right bumper requests rack extension and rollers at `IntakeConstants.ROLLER_RPM` once encoder extension is at least 40%; releasing it stops rollers. Left bumper requests retraction and stops rollers, taking priority when the bumpers overlap. Releasing a bumper does not select a new endpoint.
+
+Driver A replaces trench alignment with a manual fully-extended confirmation. In enabled teleop, with healthy rack feedback and a valid startup reference, it immediately stops the rack and latches the extended endpoint even if the encoder reports partial extension. It does not rewrite the encoder or start the rollers by itself; an existing roller request can continue. A new extension/retraction request, disable, pit coast or auto cancellation clears the endpoint latch.
+
+Each new extension or retraction target allows up to 60 A stator current for the first 1.0 second while motion is needed, then returns to 40 A. Repeating the same target does not restart the timer. Reaching the target or stopping the rack ends the allowance early. The rack supply-current limit remains 30 A. Rollers wait until the 40 A stator limit is confirmed, in addition to the extension gate. A failed current-limit change stops motor output and is retried; the timer is not extended by retries.
 
 The extension motor's stator current is checked at control-loop frequency, independently of reduced-rate logging. Starting thresholds in `IntakeConstants`:
 

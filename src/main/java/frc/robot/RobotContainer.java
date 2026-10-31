@@ -12,7 +12,6 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 import swervelib.SwerveInputStream;
 import edu.wpi.first.math.geometry.Pose3d;
@@ -259,7 +258,8 @@ public class RobotContainer {
         driverXbox.start().
           onTrue((Commands.runOnce(drivebase::zeroNoAprilTagsGyro)));
         driverXbox.a()
-          .onTrue(Commands.defer(() -> drivebase.alignToTrenchCommand(), Set.of(drivebase)));
+          .and(DriverStation::isTeleopEnabled).and(() -> !pitCoastMode)
+          .onTrue(Commands.runOnce(intake::confirmFullyExtended, intake));
 
         // Driver Back/View toggles a zero-output coast mode so every mechanism can be moved by hand.
         driverXbox.back()

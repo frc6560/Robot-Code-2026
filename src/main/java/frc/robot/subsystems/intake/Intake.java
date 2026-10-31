@@ -49,6 +49,17 @@ public class Intake extends SubsystemBase {
         if (!requested) stopRollers();
     }
 
+    /** Driver confirms the physical endpoint without changing the encoder reference. */
+    public void confirmFullyExtended() {
+        if (!DriverStation.isTeleopEnabled() || pitCoastMode || !isReady()) return;
+        requestedDeployTarget = target = IntakeConstants.EXTENDED_POSITION_ROTATIONS;
+        rackRequested = true;
+        extensionLimitReached = true;
+        highCurrentSince = lowCurrentSince = Double.NaN;
+        io.setExtensionLimitReached(true);
+        io.stopDeploy();
+    }
+
     private void stopRollers() {
         rollerRequested = false;
         rollerTargetRPM = 0.0;
@@ -119,8 +130,9 @@ public class Intake extends SubsystemBase {
     }
 
     public boolean atDeployTarget() {
-        return isReady() && Math.abs(inputs.deployPositionRotations - target)
-            <= IntakeConstants.DEPLOY_POSITION_TOLERANCE_ROTATIONS;
+        return isReady() && ((extensionLimitReached && target == IntakeConstants.EXTENDED_POSITION_ROTATIONS)
+            || Math.abs(inputs.deployPositionRotations - target)
+                <= IntakeConstants.DEPLOY_POSITION_TOLERANCE_ROTATIONS);
     }
 
     public void setPitCoastMode(boolean enabled) {
@@ -223,7 +235,7 @@ public class Intake extends SubsystemBase {
                 + " CAN ID " + IntakeConstants.DEPLOY_MOTOR_ID + ", power and wiring"
             : !inputs.configured ? "Motor configuration failed: see configuration status; restart after fixing"
             : !inputs.deployHomed ? "Startup zero failed or controller reset: retract and restart code"
-            : extensionLimitReached ? "Extension stopped at second current spike"
+            : extensionLimitReached ? "Extension stopped: endpoint confirmed by current spikes or driver"
             : !rackRequested ? "Waiting for LT/RT rack request"
             : "None";
         RateLimitedTelemetry.putString("Intake/BlockedReason", blockedReason);
