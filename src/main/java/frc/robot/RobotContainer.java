@@ -230,28 +230,28 @@ public class RobotContainer {
         Trigger floor = feed;
 
         // Raw press edges prevent a release from reactivating another held control.
-        // Force retract takes priority over normal retract, which takes priority over intake.
-        Trigger rackForceRetract = driverXbox.leftBumper();
+        // Retraction takes priority over forced extension, which takes priority over collection.
+        Trigger rackForceExtend = driverXbox.leftBumper();
         Trigger rackRetract = driverXbox.rightBumper();
         Trigger rackExtend = driverXbox.leftTrigger();
-        rackForceRetract
+        rackForceExtend
             .and(DriverStation::isTeleopEnabled).and(() -> !pitCoastMode)
-            .onTrue(Commands.runOnce(intake::requestForceRetracted, intake))
+            .onTrue(Commands.runOnce(() -> {
+                if (!rackRetract.getAsBoolean()) intake.requestForceExtended();
+            }, intake))
             .onFalse(Commands.runOnce(() -> {
                 if (DriverStation.isTeleopEnabled()) intake.stop();
             }));
         rackRetract
             .and(DriverStation::isTeleopEnabled).and(() -> !pitCoastMode)
-            .onTrue(Commands.runOnce(() -> {
-                if (!rackForceRetract.getAsBoolean()) intake.requestRackRetracted();
-            }, intake))
+            .onTrue(Commands.runOnce(intake::requestForceRetracted, intake))
             .onFalse(Commands.runOnce(() -> {
                 if (DriverStation.isTeleopEnabled()) intake.stop();
             }));
         rackExtend
             .and(DriverStation::isTeleopEnabled).and(() -> !pitCoastMode)
             .onTrue(Commands.runOnce(() -> {
-                if (rackRetract.getAsBoolean() || rackForceRetract.getAsBoolean()) return;
+                if (rackRetract.getAsBoolean() || rackForceExtend.getAsBoolean()) return;
                 intake.requestRackExtended();
                 intake.setRollersRequested(true);
             }, intake))

@@ -27,12 +27,12 @@ public final class StartupCurrentLimit {
         return update(requested, newMove, needsMotion, false);
     }
 
-    /** Explicit force-retract mode can retain the startup allowance until its wall stop. */
-    public boolean update(boolean requested, boolean newMove, boolean needsMotion, boolean forceRetracting) {
+    /** Explicit forced motion can retain the startup allowance until its endpoint stop. */
+    public boolean update(boolean requested, boolean newMove, boolean needsMotion, boolean forcedMotion) {
         double now = clock.getAsDouble();
         if (requested && (!active || newMove)) start = now;
         active = requested;
-        desired = requested && needsMotion && (forceRetracting || now < start + seconds) ? startup : continuous;
+        desired = requested && needsMotion && (forcedMotion || now < start + seconds) ? startup : continuous;
         if (applied != desired) {
             if (!apply.test(desired)) {
                 applied = Double.NaN; // A partial multi-motor update must also be retried.

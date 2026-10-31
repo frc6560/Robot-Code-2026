@@ -18,6 +18,7 @@ public class IntakeIOSim implements IntakeIO {
     private boolean closedLoop;
     private boolean coastMode;
     private boolean forceRetracting;
+    private boolean forceExtending;
 
     private static DCMotorSim createRollerSim() {
         return new DCMotorSim(LinearSystemId.createDCMotorSystem(
@@ -38,7 +39,8 @@ public class IntakeIOSim implements IntakeIO {
 
     @Override
     public void updateInputs(IntakeIOInputs inputs) {
-        double volts = forceRetracting && !coastMode ? IntakeConstants.DEPLOY_FORCE_RETRACT_VOLTS
+        double volts = forceExtending && !coastMode ? IntakeConstants.DEPLOY_FORCE_EXTEND_VOLTS
+            : forceRetracting && !coastMode ? IntakeConstants.DEPLOY_FORCE_RETRACT_VOLTS
             : closedLoop && !coastMode
             ? MathUtil.clamp((target - deploySim.getAngularPositionRotations()) * 4.0, -12.0, 12.0)
             : 0.0;
@@ -46,6 +48,9 @@ public class IntakeIOSim implements IntakeIO {
         deploySim.update(0.02);
         boolean atRetractedWall = forceRetracting && deploySim.getAngularPositionRotations() <= 0.0;
         if (atRetractedWall) deploySim.setState(0.0, 0.0);
+        boolean atExtendedWall = forceExtending
+            && deploySim.getAngularPositionRotations() >= IntakeConstants.EXTENDED_POSITION_ROTATIONS;
+        if (atExtendedWall) deploySim.setState(IntakeConstants.EXTENDED_POSITION_ROTATIONS * 2.0 * Math.PI, 0.0);
         inputs.deployConnected = true;
         inputs.configured = true;
         inputs.deployHomed = true; // Starts retracted, like the hardware-test startup assumption.
@@ -55,7 +60,7 @@ public class IntakeIOSim implements IntakeIO {
         inputs.deployVelocityRPS = deploySim.getAngularVelocityRPM() / 60.0;
         inputs.deployAppliedVolts = volts;
         inputs.deployCurrentAmps = Math.abs(deploySim.getCurrentDrawAmps());
-        inputs.deployStatorCurrentAmps = atRetractedWall
+        inputs.deployStatorCurrentAmps = atRetractedWall || atExtendedWall
             ? IntakeConstants.DEPLOY_STARTUP_STATOR_CURRENT_LIMIT : inputs.deployCurrentAmps;
         inputs.deployCurrentFresh = true;
         inputs.deployTempCelsius = 25.0;
@@ -78,7 +83,7 @@ public class IntakeIOSim implements IntakeIO {
 
     @Override
     public void setDeployPosition(double rotations) {
-        forceRetracting = false;
+        forceRetracting = forceExtending = false;
         target = MathUtil.clamp(rotations, IntakeConstants.RETRACTED_POSITION_ROTATIONS,
             IntakeConstants.EXTENDED_POSITION_ROTATIONS);
         closedLoop = true;
@@ -88,14 +93,14 @@ public class IntakeIOSim implements IntakeIO {
     public void setRollerRPM(double rpm) { rollerRPM = rpm; }
 
     @Override public void stopDeploy() {
-        forceRetracting = false;
+        forceRetracting = forceExtending = false;
         closedLoop = false;
         deploySim.setInputVoltage(0.0);
     }
 
     @Override
     public void stop() {
-        forceRetracting = false;
+        forceRetracting = forceExtending = false;
         closedLoop = false;
         rollerRPM = 0.0;
         deploySim.setInputVoltage(0.0);
@@ -108,7 +113,15 @@ public class IntakeIOSim implements IntakeIO {
 
     @Override public void forceRetract() {
         rollerRPM = 0.0;
+        forceExtending = false;
         forceRetracting = true;
+        closedLoop = false;
+    }
+
+    @Override public void forceExtend() {
+        rollerRPM = 0.0;
+        forceRetracting = false;
+        forceExtending = true;
         closedLoop = false;
     }
 

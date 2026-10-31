@@ -41,10 +41,16 @@ public class IntakeIOTalonFX implements IntakeIO {
     private double requestedRackPosition = Double.NaN;
     private final StartupCurrentLimit deployLimit;
     private boolean forceRetracting;
+    private boolean forceExtending;
     private final VoltageOut forceRetractRequest = forceRetractControl();
+    private final VoltageOut forceExtendRequest = forceExtendControl();
 
     static VoltageOut forceRetractControl() {
         return new VoltageOut(IntakeConstants.DEPLOY_FORCE_RETRACT_VOLTS).withIgnoreSoftwareLimits(true);
+    }
+
+    static VoltageOut forceExtendControl() {
+        return new VoltageOut(IntakeConstants.DEPLOY_FORCE_EXTEND_VOLTS).withIgnoreSoftwareLimits(true);
     }
 
     public IntakeIOTalonFX() {
@@ -151,7 +157,7 @@ public class IntakeIOTalonFX implements IntakeIO {
         }
         rackFeedbackFresh = fresh && motor.isConnected();
         deployLimit.update(DriverStation.isEnabled() && !stopped && homed && rackFeedbackFresh,
-            false, forceRetracting || rackNeedsMotion(), forceRetracting);
+            false, forceRetracting || forceExtending || rackNeedsMotion(), forceRetracting || forceExtending);
         inputs.deployStatorLimitAmps = deployLimit.appliedAmps();
         inputs.deployCurrentLimitOK = configurationStatus.isOK() && deployLimit.confirmed();
         inputs.deployConnected = rackFeedbackFresh;
@@ -237,9 +243,9 @@ public class IntakeIOTalonFX implements IntakeIO {
         if (homed && configurationStatus.isOK() && Double.isFinite(rotations)) {
             double commandedTarget = MathUtil.clamp(rotations,
                 IntakeConstants.RETRACTED_POSITION_ROTATIONS, IntakeConstants.EXTENDED_POSITION_ROTATIONS);
-            boolean newMove = forceRetracting || !Double.isFinite(requestedRackPosition)
+            boolean newMove = forceRetracting || forceExtending || !Double.isFinite(requestedRackPosition)
                 || requestedRackPosition != commandedTarget;
-            forceRetracting = false;
+            forceRetracting = forceExtending = false;
             requestedRackPosition = commandedTarget;
             if (!deployLimit.update(DriverStation.isEnabled() && rackFeedbackFresh, newMove, rackNeedsMotion())) {
                 controlStatus = "Current-limit update failed; motor stopped";
@@ -261,20 +267,30 @@ public class IntakeIOTalonFX implements IntakeIO {
     }
 
     @Override public void forceRetract() {
+        forceMove(false);
+    }
+
+    @Override public void forceExtend() {
+        forceMove(true);
+    }
+
+    private void forceMove(boolean extending) {
         if (!DriverStation.isEnabled() || !homed || !rackFeedbackFresh || !configurationStatus.isOK()) {
             stop();
             return;
         }
-        boolean newMove = !forceRetracting;
-        forceRetracting = true;
-        requestedRackPosition = IntakeConstants.RETRACTED_POSITION_ROTATIONS;
+        boolean newMove = extending ? !forceExtending : !forceRetracting;
+        forceExtending = extending;
+        forceRetracting = !extending;
+        requestedRackPosition = extending ? IntakeConstants.EXTENDED_POSITION_ROTATIONS
+            : IntakeConstants.RETRACTED_POSITION_ROTATIONS;
         setRollerRPM(0.0);
         if (!deployLimit.update(true, newMove, true, true)) {
-            controlStatus = "Force retract current-limit update failed; motor stopped";
+            controlStatus = "Forced motion current-limit update failed; motor stopped";
             return;
         }
-        StatusCode control = motor.setControl(forceRetractRequest);
-        controlStatus = "Force retract: " + control;
+        StatusCode control = motor.setControl(extending ? forceExtendRequest : forceRetractRequest);
+        controlStatus = (extending ? "Force extend: " : "Force retract: ") + control;
         if (!control.isOK()) { stop(); return; }
         stopped = false;
     }
@@ -288,7 +304,7 @@ public class IntakeIOTalonFX implements IntakeIO {
 
     @Override public void stopDeploy() {
         motor.stopMotor();
-        forceRetracting = false;
+        forceRetracting = forceExtending = false;
         deployLimit.update(false, false, false);
         stopped = true;
         controlStatus = "Stopped: rack endpoint confirmed";
@@ -296,7 +312,7 @@ public class IntakeIOTalonFX implements IntakeIO {
 
     @Override
     public void stop() {
-        forceRetracting = false;
+        forceRetracting = forceExtending = false;
         requestedRackPosition = Double.NaN;
         deployLimit.update(false, false, false);
         motor.stopMotor();

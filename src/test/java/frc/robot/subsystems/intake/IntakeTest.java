@@ -26,6 +26,7 @@ class IntakeTest {
         boolean currentFresh = true;
         int deployStops;
         int forceRequests, wallZeros;
+        int forceExtendRequests;
         @Override public void updateInputs(IntakeIOInputs inputs) {
             inputs.deployPositionRotations = position;
             inputs.deployVelocityRPS = velocity;
@@ -48,6 +49,11 @@ class IntakeTest {
         @Override public void stopDeploy() { stopped = true; deployStops++; }
         @Override public void stop() { stopped = true; roller = 0.0; }
         @Override public void forceRetract() { target = 0; stopped = false; forceRequests++; }
+        @Override public void forceExtend() {
+            target = IntakeConstants.EXTENDED_POSITION_ROTATIONS;
+            stopped = false;
+            forceExtendRequests++;
+        }
         @Override public void finishForceRetract() { stopDeploy(); position = 0; wallZeros++; }
     }
     private FakeIO io;
@@ -437,6 +443,58 @@ class IntakeTest {
         intake.periodic();
         assertTrue(io.stopped);
         assertEquals(requests + 1, io.forceRequests);
+    }
+
+    @Test void forceExtensionGoesOutFromHalfwayAndLatchesOffUntilRelease() {
+        teleop(true);
+        io.position = IntakeConstants.EXTENDED_POSITION_ROTATIONS / 2;
+        intake.requestForceExtended();
+        intake.periodic();
+        assertEquals(1, io.forceExtendRequests);
+        assertEquals(0, io.forceRequests);
+        assertFalse(intake.atDeployTarget());
+        currentFor(45, 1.99);
+        assertFalse(io.stopped);
+        currentFor(45, 0.01);
+        assertTrue(io.stopped);
+        assertTrue(intake.isExtensionLimitReached());
+        assertTrue(intake.atDeployTarget());
+        assertEquals(0, io.wallZeros); // An extended stall must never establish the retracted zero.
+        int requests = io.forceExtendRequests;
+        currentFor(45, 5.0);
+        assertEquals(requests, io.forceExtendRequests);
+        intake.stop();
+        assertFalse(intake.isExtensionLimitReached());
+        intake.requestForceExtended();
+        intake.periodic();
+        assertEquals(requests + 1, io.forceExtendRequests);
+        intake.requestRackExtended();
+        intake.periodic();
+        assertEquals(requests + 1, io.forceExtendRequests);
+        assertTrue(io.positionRequests > 0);
+    }
+
+    @Test void simulatedForceExtensionStopsAtExtendedWall() {
+        teleop(true);
+        var simulatedIO = new IntakeIOSim();
+        var simulatedIntake = new Intake(simulatedIO);
+        try {
+            simulatedIntake.periodic();
+            simulatedIntake.requestForceExtended();
+            for (int i = 0; i < 300; i++) {
+                SimHooks.stepTiming(0.02);
+                simulatedIntake.periodic();
+            }
+            assertTrue(simulatedIntake.isExtensionLimitReached());
+            assertFalse(simulatedIntake.isRetractionLimitReached());
+            var feedback = new IntakeIO.IntakeIOInputs();
+            simulatedIO.updateInputs(feedback);
+            assertEquals(0, feedback.deployAppliedVolts);
+            assertEquals(IntakeConstants.EXTENDED_POSITION_ROTATIONS, feedback.deployPositionRotations, 1e-6);
+        } finally {
+            simulatedIntake.stop();
+            CommandScheduler.getInstance().unregisterSubsystem(simulatedIntake);
+        }
     }
 
     @Test void simulatedForceRetractReachesWallAndStopsAfterTwoContinuousSeconds() {

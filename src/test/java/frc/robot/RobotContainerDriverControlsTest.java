@@ -11,6 +11,7 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.simulation.DriverStationSim;
+import edu.wpi.first.wpilibj.simulation.SimHooks;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import frc.robot.subsystems.indexer.Indexer;
 import frc.robot.subsystems.shooter.Shooter;
@@ -74,6 +75,7 @@ class RobotContainerDriverControlsTest {
         setTrigger(XboxController.Axis.kLeftTrigger, true);
         setButton(XboxController.Button.kRightBumper, true);
         assertEquals(0, SmartDashboard.getNumber("Intake/DeployTargetRotations", -1));
+        assertTrue(SmartDashboard.getBoolean("Intake/ForceRetractRequested", false));
         setButton(XboxController.Button.kRightBumper, false);
         assertFalse(SmartDashboard.getBoolean("Intake/RackRequested", true));
         assertEquals(0, SmartDashboard.getNumber("Intake/DeployTargetRotations", -1));
@@ -88,10 +90,13 @@ class RobotContainerDriverControlsTest {
         setTrigger(XboxController.Axis.kLeftTrigger, false);
 
         setButton(XboxController.Button.kLeftBumper, true);
-        assertTrue(SmartDashboard.getBoolean("Intake/ForceRetractRequested", false));
+        assertTrue(SmartDashboard.getBoolean("Intake/ForceExtendRequested", false));
+        assertFalse(SmartDashboard.getBoolean("Intake/ForceRetractRequested", true));
+        assertEquals(Constants.IntakeConstants.EXTENDED_POSITION_ROTATIONS,
+            SmartDashboard.getNumber("Intake/DeployTargetRotations", -1));
         setButton(XboxController.Button.kLeftBumper, false);
         assertFalse(SmartDashboard.getBoolean("Intake/RackRequested", true));
-        assertFalse(SmartDashboard.getBoolean("Intake/ForceRetractRequested", true));
+        assertFalse(SmartDashboard.getBoolean("Intake/ForceExtendRequested", true));
 
         setTrigger(XboxController.Axis.kLeftTrigger, true);
         setButton(XboxController.Button.kA, true);
@@ -117,6 +122,24 @@ class RobotContainerDriverControlsTest {
             CommandScheduler.getInstance().requiring(intake));
         setBoard(3, false);
         assertEquals("FuelShootCommand", CommandScheduler.getInstance().requiring(indexer).getName());
+        // Keep RT held after the wall spike: aiming remains active but rack output stays off.
+        SimHooks.pauseTiming();
+        try {
+            for (int i = 0; i < 130; i++) {
+                SimHooks.stepTiming(0.02);
+                runCycles(1);
+            }
+            assertTrue(intake.isRetractionLimitReached());
+            for (int i = 0; i < 150; i++) {
+                SimHooks.stepTiming(0.02);
+                runCycles(1);
+            }
+            assertTrue(intake.isRetractionLimitReached());
+            assertEquals(0, SmartDashboard.getNumber("Intake/DeployAppliedVolts", 99));
+            assertEquals("FuelShootCommand", CommandScheduler.getInstance().requiring(indexer).getName());
+        } finally {
+            SimHooks.resumeTiming();
+        }
         setTrigger(XboxController.Axis.kRightTrigger, false);
         runCycles(3); // Releasing RT stops retraction and resets its current allowance.
         assertFalse(SmartDashboard.getBoolean("Intake/RackRequested", true));

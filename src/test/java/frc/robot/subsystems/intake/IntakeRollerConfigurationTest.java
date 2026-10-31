@@ -62,6 +62,12 @@ class IntakeRollerConfigurationTest {
         assertTrue(force.IgnoreSoftwareLimits);
         assertFalse(force.IgnoreHardwareLimits);
     }
+    @Test void forcedExtensionUsesPositiveVoltageAndPreservesHardwareLimits() {
+        var force = IntakeIOTalonFX.forceExtendControl();
+        assertTrue(force.Output > 0);
+        assertTrue(force.IgnoreSoftwareLimits);
+        assertFalse(force.IgnoreHardwareLimits);
+    }
     @Test void hardwareBoundaryRejectsRollersUnlessRackFeedbackConfirmsExtension() {
         double end = IntakeConstants.EXTENDED_POSITION_ROTATIONS;
         assertTrue(IntakeIOTalonFX.rackAllowsRollers(true, true, false, end, end, 0));

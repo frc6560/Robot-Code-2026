@@ -21,6 +21,7 @@ public class Intake extends SubsystemBase {
     private int deploySpikeCount;
     private boolean extensionLimitReached;
     private boolean forceRetractRequested, retractionLimitReached;
+    private boolean forceExtendRequested;
     private double highCurrentSince = Double.NaN;
 
     public enum State {
@@ -56,12 +57,17 @@ public class Intake extends SubsystemBase {
 
     public boolean isRetractionLimitReached() { return retractionLimitReached; }
 
+    public void requestForceExtended() {
+        requestRackExtended();
+        forceExtendRequested = true;
+    }
+
     /** Driver confirms the physical endpoint without changing the encoder reference. */
     public void confirmFullyExtended() {
         if (!DriverStation.isTeleopEnabled() || pitCoastMode || !isReady()) return;
         requestedDeployTarget = target = IntakeConstants.EXTENDED_POSITION_ROTATIONS;
         rackRequested = true;
-        forceRetractRequested = retractionLimitReached = false;
+        forceExtendRequested = forceRetractRequested = retractionLimitReached = false;
         extensionLimitReached = true;
         highCurrentSince = Double.NaN;
         io.setExtensionLimitReached(true);
@@ -77,7 +83,7 @@ public class Intake extends SubsystemBase {
     private void resetExtensionLimit() {
         deploySpikeCount = 0;
         extensionLimitReached = false;
-        forceRetractRequested = retractionLimitReached = false;
+        forceExtendRequested = forceRetractRequested = retractionLimitReached = false;
         highCurrentSince = Double.NaN;
         io.setExtensionLimitReached(false);
     }
@@ -131,6 +137,7 @@ public class Intake extends SubsystemBase {
 
     public boolean atDeployTarget() {
         if (forceRetractRequested) return isReady() && retractionLimitReached;
+        if (forceExtendRequested) return isReady() && extensionLimitReached;
         return isReady() && ((extensionLimitReached && target == IntakeConstants.EXTENDED_POSITION_ROTATIONS)
             || retractionLimitReached
             || Math.abs(inputs.deployPositionRotations - target)
@@ -164,6 +171,7 @@ public class Intake extends SubsystemBase {
             if (retractionLimitReached || extensionLimitReached)
                 io.stopDeploy();
             else if (forceRetractRequested) io.forceRetract();
+            else if (forceExtendRequested) io.forceExtend();
             else io.setDeployPosition(target);
         } else {
             io.stop();
@@ -208,6 +216,7 @@ public class Intake extends SubsystemBase {
         RateLimitedTelemetry.putNumber("Intake/DeploySpikeCount", deploySpikeCount);
         RateLimitedTelemetry.putBoolean("Intake/ExtensionLimitReached", extensionLimitReached);
         RateLimitedTelemetry.putBoolean("Intake/ForceRetractRequested", forceRetractRequested);
+        RateLimitedTelemetry.putBoolean("Intake/ForceExtendRequested", forceExtendRequested);
         RateLimitedTelemetry.putBoolean("Intake/RetractionLimitReached", retractionLimitReached);
         RateLimitedTelemetry.putNumber("Intake/DeployStatorLimitAmps", inputs.deployStatorLimitAmps);
         RateLimitedTelemetry.putBoolean("Intake/DeployCurrentLimitOK", inputs.deployCurrentLimitOK);

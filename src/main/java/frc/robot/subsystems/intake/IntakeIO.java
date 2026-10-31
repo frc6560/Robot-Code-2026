@@ -114,6 +114,9 @@ public interface IntakeIO {
     /** Drive inward past the encoder soft limit until a confirmed wall stall or release. */
     default void forceRetract() {}
 
+    /** Drive outward until a confirmed sustained current spike or release. */
+    default void forceExtend() {}
+
     /** Stop at the confirmed retracted wall and establish the physical zero reference. */
     default void finishForceRetract() { stopDeploy(); }
 
