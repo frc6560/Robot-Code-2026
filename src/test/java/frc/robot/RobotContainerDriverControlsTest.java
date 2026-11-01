@@ -59,16 +59,6 @@ class RobotContainerDriverControlsTest {
         assertIdleAt(container, shooter, AllianceStationID.Red1, 11.80, 0);
         assertIdleAt(container, shooter, AllianceStationID.Unknown, 0.0, 0);
 
-        // Driver X routes the explicit reset to the front camera only.
-        for (String camera : new String[] {"Front", "Left", "Right"}) {
-            SmartDashboard.putString("Vision/" + camera + "/ResetStatus", "Not requested");
-        }
-        setButton(XboxController.Button.kX, true);
-        assertNotEquals("Not requested", SmartDashboard.getString("Vision/Front/ResetStatus", "Not requested"));
-        assertEquals("Not requested", SmartDashboard.getString("Vision/Left/ResetStatus", ""));
-        assertEquals("Not requested", SmartDashboard.getString("Vision/Right/ResetStatus", ""));
-        setButton(XboxController.Button.kX, false);
-
         Intake intake = getField(container, "intake", Intake.class);
         // LT collects without feeding either indexer. Release stops the rack too.
         setTrigger(XboxController.Axis.kLeftTrigger, true);
@@ -206,6 +196,26 @@ class RobotContainerDriverControlsTest {
         assertEquals(0, indexer.getFloorTargetRPM());
         assertEquals(0, indexer.getTunnelTargetRPM());
     }
+    @Test void xDoesNotRequestVisionResetWhileLimelightsAreDisabled() {
+        DriverStationSim.setDsAttached(true);
+        DriverStationSim.setEnabled(true);
+        DriverStationSim.setAutonomous(false);
+        DriverStationSim.setJoystickAxisCount(DRIVER_PORT, 6);
+        DriverStationSim.setJoystickButtonCount(DRIVER_PORT, 10);
+        DriverStationSim.setJoystickIsXbox(DRIVER_PORT, true);
+        DriverStationSim.notifyNewData();
+        new RobotContainer();
+        // Vision is disabled: driver X must not request a camera pose reset.
+        for (String camera : new String[] {"Front", "Left", "Right"}) {
+            SmartDashboard.putString("Vision/" + camera + "/ResetStatus", "Not requested");
+        }
+        setButton(XboxController.Button.kX, true);
+        assertEquals("Not requested", SmartDashboard.getString("Vision/Front/ResetStatus", ""));
+        assertEquals("Not requested", SmartDashboard.getString("Vision/Left/ResetStatus", ""));
+        assertEquals("Not requested", SmartDashboard.getString("Vision/Right/ResetStatus", ""));
+        setButton(XboxController.Button.kX, false);
+    }
+
     @Test void yUsesCalculatorWithoutTakingDrivetrain() throws Exception {
         DriverStationSim.setDsAttached(true);
         DriverStationSim.setEnabled(true);

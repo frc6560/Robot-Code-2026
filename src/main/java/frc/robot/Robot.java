@@ -23,11 +23,11 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.wpilibj.simulation.DriverStationSim;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
-import frc.robot.Constants.LimelightConstants;
+// import frc.robot.Constants.LimelightConstants;
 import frc.robot.simulation.CompetitionAutoDiagnostic;
 import frc.robot.autonomous.EventPathAuto;
 import frc.robot.subsystems.shooter.FlywheelVisualizer;
-import frc.robot.utility.LimelightHelpers;
+// import frc.robot.utility.LimelightHelpers;
 
 /**
  * The VM is configured to automatically run this class, and to call the functions corresponding to each mode, as
@@ -78,8 +78,9 @@ public class Robot extends SampledLoggedRobot
     System.out.println("[Runtime] JVM arguments: " + jvmArguments);
     Logger.recordMetadata("Robot", "2026 Alpha");
     Logger.recordMetadata("ProgramSession", programSession);
-    Logger.recordMetadata("VisionConfiguration", LimelightConstants.CONFIGURATION_ID);
-    Logger.recordMetadata("VisionCameraNames", String.join(", ", LimelightConstants.LIMELIGHT_NAMES));
+    Logger.recordMetadata("VisionStatus", "Disabled for memory investigation");
+    // Logger.recordMetadata("VisionConfiguration", LimelightConstants.CONFIGURATION_ID);
+    // Logger.recordMetadata("VisionCameraNames", String.join(", ", LimelightConstants.LIMELIGHT_NAMES));
     if (isReal()) {
       // Stream only: never construct a file writer on the roboRIO.
       Logger.recordMetadata("LoggingPolicy", "Live NT4 streaming; application file recording disabled");
@@ -214,9 +215,10 @@ public class Robot extends SampledLoggedRobot
       disabledTimer.stop();
       disabledTimer.reset();
     }
-    for(String limelightName : LimelightConstants.LIMELIGHT_NAMES){
-      LimelightHelpers.SetIMUMode(limelightName, 1);
-    }
+    // Limelight vision disabled: do not initialize camera NetworkTables entries.
+    // for(String limelightName : LimelightConstants.LIMELIGHT_NAMES){
+    //   LimelightHelpers.SetIMUMode(limelightName, 1);
+    // }
   }
 
   /**
@@ -227,9 +229,10 @@ public class Robot extends SampledLoggedRobot
   {
     m_robotContainer.disablePitCoastMode();
 
-    for(String limelightName : LimelightConstants.LIMELIGHT_NAMES){
-      LimelightHelpers.SetIMUMode(limelightName, 4);
-    }
+    // Limelight vision disabled: do not initialize camera NetworkTables entries.
+    // for(String limelightName : LimelightConstants.LIMELIGHT_NAMES){
+    //   LimelightHelpers.SetIMUMode(limelightName, 4);
+    // }
 
     m_autonomousCommand = m_robotContainer.getAutonomousCommand();
 
@@ -262,9 +265,10 @@ public class Robot extends SampledLoggedRobot
       CommandScheduler.getInstance().cancelAll();
     }
 
-    for(String limelightName : LimelightConstants.LIMELIGHT_NAMES){
-      LimelightHelpers.SetIMUMode(limelightName, 4);
-    }
+    // Limelight vision disabled: do not initialize camera NetworkTables entries.
+    // for(String limelightName : LimelightConstants.LIMELIGHT_NAMES){
+    //   LimelightHelpers.SetIMUMode(limelightName, 4);
+    // }
   }
 
   /**

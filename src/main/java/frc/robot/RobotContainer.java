@@ -10,13 +10,13 @@ import edu.wpi.first.wpilibj2.command.button.Trigger;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
+// import java.util.ArrayList;
+// import java.util.List;
 
 import swervelib.SwerveInputStream;
-import edu.wpi.first.math.geometry.Pose3d;
+// import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
-import frc.robot.Constants.LimelightConstants;
+// import frc.robot.Constants.LimelightConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.autonomous.AutoModeChooser;
 import frc.robot.commands.scoring.FuelShootCommand;
@@ -40,8 +40,8 @@ import frc.robot.subsystems.led.LED;
 import frc.robot.subsystems.led.LEDIOAddressable;
 import frc.robot.subsystems.led.LEDIOSim;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
-import frc.robot.subsystems.vision.LimelightVision;
-import frc.robot.subsystems.vision.VisionSubsystem;
+// import frc.robot.subsystems.vision.LimelightVision;
+// import frc.robot.subsystems.vision.VisionSubsystem;
 import frc.robot.utility.telemetry.RateLimitedTelemetry;
 
 
@@ -54,7 +54,7 @@ public class RobotContainer {
      // The robot's subsystems and commands are defined here...
     private final SwerveSubsystem drivebase  = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(),
     "swerve/falcon"));
-    private final VisionSubsystem vision;
+    // private final VisionSubsystem vision;
 
     private final Shooter shooter;
     private final Intake intake;
@@ -118,18 +118,20 @@ public class RobotContainer {
       factory = new AutoCommands(drivebase, intake, shooter);
       RateLimitedTelemetry.putBoolean("Pit Coast Mode", false);
 
-      List<LimelightVision> limelights = new ArrayList<LimelightVision>();
-      for(String name : LimelightConstants.LIMELIGHT_NAMES) {
-        Pose3d cameraPose = LimelightConstants.getLimelightPose(name);
-        limelights.add(new LimelightVision(drivebase, name, cameraPose));
-      }
-
-      vision = new VisionSubsystem(limelights);
-      RateLimitedTelemetry.recordOutput("Vision/ConfigurationID", LimelightConstants.CONFIGURATION_ID);
-      RateLimitedTelemetry.recordOutput("Vision/ConfiguredCameraNames", LimelightConstants.LIMELIGHT_NAMES);
-      RateLimitedTelemetry.recordOutput("Vision/ConfiguredCameraCount", limelights.size());
-      RateLimitedTelemetry.putString("Vision/ConfigurationID", LimelightConstants.CONFIGURATION_ID);
-      RateLimitedTelemetry.putNumber("Vision/ConfiguredCameraCount", limelights.size());
+      // Limelight vision disabled while investigating memory crashes.
+      // Do not construct cameras or register the vision subsystem.
+      // List<LimelightVision> limelights = new ArrayList<LimelightVision>();
+      // for(String name : LimelightConstants.LIMELIGHT_NAMES) {
+      //   Pose3d cameraPose = LimelightConstants.getLimelightPose(name);
+      //   limelights.add(new LimelightVision(drivebase, name, cameraPose));
+      // }
+      //
+      // vision = new VisionSubsystem(limelights);
+      // RateLimitedTelemetry.recordOutput("Vision/ConfigurationID", LimelightConstants.CONFIGURATION_ID);
+      // RateLimitedTelemetry.recordOutput("Vision/ConfiguredCameraNames", LimelightConstants.LIMELIGHT_NAMES);
+      // RateLimitedTelemetry.recordOutput("Vision/ConfiguredCameraCount", limelights.size());
+      // RateLimitedTelemetry.putString("Vision/ConfigurationID", LimelightConstants.CONFIGURATION_ID);
+      // RateLimitedTelemetry.putNumber("Vision/ConfiguredCameraCount", limelights.size());
 
       // Idle only inside our alliance zone; crossing out stops idle output.
       shooter.setDefaultCommand(Commands.run(shooter::setIdle, shooter));
@@ -366,10 +368,10 @@ public class RobotContainer {
 
         // Button-board 3 requests manual floor/tunnel feed outside the aimed shot.
 
-        // --- RESETS ---
-        Trigger resetPoseTrigger = driverXbox.x().and(() -> !DriverStation.isAutonomousEnabled());
-        resetPoseTrigger.onTrue(Commands.run(() -> {}, vision, drivebase)
-            .until(vision::tryResetPose).withTimeout(2.0).ignoringDisable(true));
+        // Vision reset disabled along with camera initialization.
+        // Trigger resetPoseTrigger = driverXbox.x().and(() -> !DriverStation.isAutonomousEnabled());
+        // resetPoseTrigger.onTrue(Commands.run(() -> {}, vision, drivebase)
+        //     .until(vision::tryResetPose).withTimeout(2.0).ignoringDisable(true));
     }
 
     private void togglePitCoastMode() {
