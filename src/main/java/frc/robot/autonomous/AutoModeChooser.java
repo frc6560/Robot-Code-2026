@@ -8,6 +8,12 @@ import java.util.function.BiFunction;
 public class AutoModeChooser {
     private final SendableChooser<Command> autoChooser = new SendableChooser<>();
 
+    /** Memory-isolation configuration: no mechanism commands or paths are constructed. */
+    public AutoModeChooser() {
+        autoChooser.setDefaultOption("Idle - shooter and intake disabled",
+            edu.wpi.first.wpilibj2.command.Commands.none().withName("Mechanisms disabled - Idle"));
+    }
+
     public AutoModeChooser(AutoCommands factory, BiFunction<String, Boolean, Command> competitionAuto, Command backup) {
         var choices = new java.util.LinkedHashMap<String, Command>();
         choices.put("Blue Left", competitionAuto.apply("non-human", false));
