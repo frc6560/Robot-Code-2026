@@ -27,7 +27,6 @@ class RobotContainerDriverControlsTest {
         DriverStationSim.notifyNewData();
     }
 
-    @org.junit.jupiter.api.Disabled("Shooter and intake intentionally not initialized during memory investigation")
     @Test void driverControlsOwnIntakeAimAndManualFeed() throws Exception {
         DriverStationSim.setDsAttached(true);
         DriverStationSim.setEnabled(true);
@@ -197,66 +196,31 @@ class RobotContainerDriverControlsTest {
         assertEquals(0, indexer.getFloorTargetRPM());
         assertEquals(0, indexer.getTunnelTargetRPM());
     }
-    @Test void disabledMechanismControlsLeaveDrivingAvailableAndIndexerStopped() throws Exception {
+    @Test void mechanismsAndVisionInitializeAndXRequestsCameraReset() throws Exception {
         DriverStationSim.setDsAttached(true);
         DriverStationSim.setEnabled(true);
         DriverStationSim.setAutonomous(false);
         DriverStationSim.setJoystickAxisCount(DRIVER_PORT, 6);
         DriverStationSim.setJoystickButtonCount(DRIVER_PORT, 10);
         DriverStationSim.setJoystickIsXbox(DRIVER_PORT, true);
-        DriverStationSim.setJoystickButtonCount(BUTTON_BOARD_PORT, 11);
         DriverStationSim.notifyNewData();
         RobotContainer container = new RobotContainer();
-        Indexer indexer = getField(container, "indexer", Indexer.class);
-        runCycles(4);
-        CommandScheduler scheduler = CommandScheduler.getInstance();
-        var driveCommand = scheduler.requiring(container.getDrivebase());
-        assertNotNull(driveCommand);
-        assertEquals("Driver field-oriented drive", driveCommand.getName());
-        // Former intake/shoot/feed controls must not schedule mechanism commands or seize driving.
-        setTrigger(XboxController.Axis.kLeftTrigger, true);
-        setTrigger(XboxController.Axis.kRightTrigger, true);
-        for (var button : new XboxController.Button[] {XboxController.Button.kLeftBumper,
-                XboxController.Button.kRightBumper, XboxController.Button.kA,
-                XboxController.Button.kB, XboxController.Button.kY}) {
-            setButton(button, true);
-            assertSame(driveCommand, scheduler.requiring(container.getDrivebase()));
-            assertEquals(0, indexer.getFloorTargetRPM());
-            assertEquals(0, indexer.getTunnelTargetRPM());
-            setButton(button, false);
-        }
-        setBoard(3, true);
-        assertEquals(0, indexer.getFloorTargetRPM());
-        assertEquals(0, indexer.getTunnelTargetRPM());
-        var auto = container.getAutonomousCommand();
-        assertEquals("Mechanisms disabled - Idle", auto.getName());
-        assertTrue(auto.getRequirements().isEmpty());
-        setBoard(3, false);
-        setTrigger(XboxController.Axis.kLeftTrigger, false);
-        setTrigger(XboxController.Axis.kRightTrigger, false);
-    }
-
-    @Test void xDoesNotRequestVisionResetWhileLimelightsAreDisabled() {
-        DriverStationSim.setDsAttached(true);
-        DriverStationSim.setEnabled(true);
-        DriverStationSim.setAutonomous(false);
-        DriverStationSim.setJoystickAxisCount(DRIVER_PORT, 6);
-        DriverStationSim.setJoystickButtonCount(DRIVER_PORT, 10);
-        DriverStationSim.setJoystickIsXbox(DRIVER_PORT, true);
-        DriverStationSim.notifyNewData();
-        new RobotContainer();
-        // Vision is disabled: driver X must not request a camera pose reset.
+        assertNotNull(getField(container, "shooter", Shooter.class));
+        assertNotNull(getField(container, "intake", Intake.class));
+        assertNotNull(getField(container, "vision", frc.robot.subsystems.vision.VisionSubsystem.class));
+        assertNotNull(container.getAutonomousCommand());
         for (String camera : new String[] {"Front", "Left", "Right"}) {
             SmartDashboard.putString("Vision/" + camera + "/ResetStatus", "Not requested");
         }
         setButton(XboxController.Button.kX, true);
-        assertEquals("Not requested", SmartDashboard.getString("Vision/Front/ResetStatus", ""));
-        assertEquals("Not requested", SmartDashboard.getString("Vision/Left/ResetStatus", ""));
-        assertEquals("Not requested", SmartDashboard.getString("Vision/Right/ResetStatus", ""));
+        // With no camera frames, the reset command tries every configured camera.
+        for (String camera : new String[] {"Front", "Left", "Right"}) {
+            assertNotEquals("Not requested",
+                SmartDashboard.getString("Vision/" + camera + "/ResetStatus", "Not requested"));
+        }
         setButton(XboxController.Button.kX, false);
     }
 
-    @org.junit.jupiter.api.Disabled("Shooter and intake intentionally not initialized during memory investigation")
     @Test void yUsesCalculatorWithoutTakingDrivetrain() throws Exception {
         DriverStationSim.setDsAttached(true);
         DriverStationSim.setEnabled(true);
@@ -302,7 +266,6 @@ class RobotContainerDriverControlsTest {
 
     }
 
-    @org.junit.jupiter.api.Disabled("Shooter and intake intentionally not initialized during memory investigation")
     @Test void bWaitsForSixtyRpmToleranceWithoutAimOrIntakeAndStopsOnRelease() throws Exception {
         DriverStationSim.setDsAttached(true);
         DriverStationSim.setEnabled(true);

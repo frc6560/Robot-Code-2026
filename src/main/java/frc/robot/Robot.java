@@ -23,11 +23,11 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.wpilibj.simulation.DriverStationSim;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
-// import frc.robot.Constants.LimelightConstants;
+import frc.robot.Constants.LimelightConstants;
 import frc.robot.simulation.CompetitionAutoDiagnostic;
 import frc.robot.autonomous.EventPathAuto;
-// import frc.robot.subsystems.shooter.FlywheelVisualizer;
-// import frc.robot.utility.LimelightHelpers;
+import frc.robot.subsystems.shooter.FlywheelVisualizer;
+import frc.robot.utility.LimelightHelpers;
 
 /**
  * The VM is configured to automatically run this class, and to call the functions corresponding to each mode, as
@@ -45,7 +45,7 @@ public class Robot extends SampledLoggedRobot
   private RobotContainer m_robotContainer;
 
   /** Simulation-only spinning-wheel view of the flywheel, for AdvantageScope. */
-  // private FlywheelVisualizer flywheelVisualizer;
+  private FlywheelVisualizer flywheelVisualizer;
 
   private Timer disabledTimer;
   // Run before the first hardware CAN bus/device is constructed.
@@ -78,11 +78,8 @@ public class Robot extends SampledLoggedRobot
     System.out.println("[Runtime] JVM arguments: " + jvmArguments);
     Logger.recordMetadata("Robot", "2026 Alpha");
     Logger.recordMetadata("ProgramSession", programSession);
-    Logger.recordMetadata("ShooterStatus", "Disabled for memory investigation");
-    Logger.recordMetadata("IntakeStatus", "Disabled for memory investigation");
-    Logger.recordMetadata("VisionStatus", "Disabled for memory investigation");
-    // Logger.recordMetadata("VisionConfiguration", LimelightConstants.CONFIGURATION_ID);
-    // Logger.recordMetadata("VisionCameraNames", String.join(", ", LimelightConstants.LIMELIGHT_NAMES));
+    Logger.recordMetadata("VisionConfiguration", LimelightConstants.CONFIGURATION_ID);
+    Logger.recordMetadata("VisionCameraNames", String.join(", ", LimelightConstants.LIMELIGHT_NAMES));
     if (isReal()) {
       // Stream only: never construct a file writer on the roboRIO.
       Logger.recordMetadata("LoggingPolicy", "Live NT4 streaming; application file recording disabled");
@@ -162,11 +159,11 @@ public class Robot extends SampledLoggedRobot
         ##                                                                    ##
         ########################################################################
         ##                                                                    ##
-        ##               MEMORY INVESTIGATION CONFIGURATION                    ##
-        ##               LIMELIGHT VISION: DISABLED                             ##
-        ##               SHOOTER:          DISABLED                             ##
-        ##               INTAKE:           DISABLED                             ##
-        ##               AUTONOMOUS:       IDLE ONLY                            ##
+        ##               FULL SUBSYSTEM CONFIGURATION                          ##
+        ##               LIMELIGHT VISION: ENABLED                              ##
+        ##               SHOOTER:          ENABLED                              ##
+        ##               INTAKE:           ENABLED                              ##
+        ##               AUTONOMOUS:       RESTORED                             ##
         ##                                                                    ##
         ########################################################################
         ########################################################################
@@ -191,9 +188,9 @@ public class Robot extends SampledLoggedRobot
     frc.robot.utility.MemoryMonitor.update();
     frc.robot.utility.CpuMonitor.update();
     frc.robot.utility.StorageMonitor.update();
-    // frc.robot.utility.shooting.LaunchSpeedTuning.update();
+    frc.robot.utility.shooting.LaunchSpeedTuning.update();
     CommandScheduler.getInstance().run();
-    // m_robotContainer.updateShotDashboard();
+    m_robotContainer.updateShotDashboard();
     RateLimitedTelemetry.flush();
     frc.robot.utility.CurrentUsageMonitor.update();
     RateLimitedTelemetry.recordOutput("Power/BatteryVoltage", RobotController.getBatteryVoltage());
@@ -247,10 +244,9 @@ public class Robot extends SampledLoggedRobot
       disabledTimer.stop();
       disabledTimer.reset();
     }
-    // Limelight vision disabled: do not initialize camera NetworkTables entries.
-    // for(String limelightName : LimelightConstants.LIMELIGHT_NAMES){
-    //   LimelightHelpers.SetIMUMode(limelightName, 1);
-    // }
+    for(String limelightName : LimelightConstants.LIMELIGHT_NAMES){
+      LimelightHelpers.SetIMUMode(limelightName, 1);
+    }
   }
 
   /**
@@ -261,10 +257,9 @@ public class Robot extends SampledLoggedRobot
   {
     m_robotContainer.disablePitCoastMode();
 
-    // Limelight vision disabled: do not initialize camera NetworkTables entries.
-    // for(String limelightName : LimelightConstants.LIMELIGHT_NAMES){
-    //   LimelightHelpers.SetIMUMode(limelightName, 4);
-    // }
+    for(String limelightName : LimelightConstants.LIMELIGHT_NAMES){
+      LimelightHelpers.SetIMUMode(limelightName, 4);
+    }
 
     m_autonomousCommand = m_robotContainer.getAutonomousCommand();
 
@@ -297,10 +292,9 @@ public class Robot extends SampledLoggedRobot
       CommandScheduler.getInstance().cancelAll();
     }
 
-    // Limelight vision disabled: do not initialize camera NetworkTables entries.
-    // for(String limelightName : LimelightConstants.LIMELIGHT_NAMES){
-    //   LimelightHelpers.SetIMUMode(limelightName, 4);
-    // }
+    for(String limelightName : LimelightConstants.LIMELIGHT_NAMES){
+      LimelightHelpers.SetIMUMode(limelightName, 4);
+    }
   }
 
   /**
@@ -332,7 +326,7 @@ public class Robot extends SampledLoggedRobot
   @Override
   public void simulationInit()
   {
-    // flywheelVisualizer = new FlywheelVisualizer();
+    flywheelVisualizer = new FlywheelVisualizer();
 
     if (runHeadlessAutoDiagnostic) {
       headlessDiagnosticStartSeconds = Timer.getFPGATimestamp();
@@ -355,10 +349,10 @@ public class Robot extends SampledLoggedRobot
   @Override
   public void simulationPeriodic()
   {
-    // if (flywheelVisualizer != null)
-    // {
-    //   flywheelVisualizer.update(getPeriod());
-    // }
+    if (flywheelVisualizer != null)
+    {
+      flywheelVisualizer.update(getPeriod());
+    }
 
     if (!runHeadlessAutoDiagnostic) {
       return;
