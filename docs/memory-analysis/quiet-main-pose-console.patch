@@ -1,0 +1,33 @@
+--- a/src/main/java/frc/robot/subsystems/swervedrive/SwerveSubsystem.java
++++ b/src/main/java/frc/robot/subsystems/swervedrive/SwerveSubsystem.java
+@@ -128,7 +128,6 @@
+   public void periodic() {
+     // Set initial pose once based on auto selection (only while disabled)
+     if (!initialPoseSet && DriverStation.isDisabled()) {
+-      System.out.println("Resetting pose!");
+       updateInitialPose();
+     }
+ 
+@@ -295,9 +294,6 @@
+     Pose2d pose = poseEstimate.pose;
+     if(pose != null){
+       resetOdometry(pose);
+-      System.out.println("Resetting odometry to Limelight pose: " + pose);
+-    } else {
+-      System.out.println("Limelight pose is null, cannot reset odometry.");
+     }
+   }
+   
+@@ -461,12 +457,6 @@
+   public void resetOdometry(Pose2d initialHolonomicPose)
+   {
+     swerveDrive.resetOdometry(initialHolonomicPose);
+-    System.out.println("Resetting odometry to: " + initialHolonomicPose);
+-    try {
+-      throw new Exception();
+-    } catch (Exception e) {
+-      e.printStackTrace();
+-  }
+   }
+ 
+ 

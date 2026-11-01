@@ -517,7 +517,6 @@ public class SwerveSubsystem extends SubsystemBase {
   public void resetOdometry(Pose2d initialHolonomicPose)
   {
     swerveDrive.resetOdometry(initialHolonomicPose);
-    System.out.println("Resetting odometry to: " + initialHolonomicPose);
   }
 
 

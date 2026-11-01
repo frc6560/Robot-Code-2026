@@ -27,8 +27,10 @@ deploy {
                 // getTargetTypeClass is a shortcut to get the class type using a string
 
                 frcJava(getArtifactTypeClass('FRCJavaArtifact')) {
-                    // Stream fatal JVM diagnostics to stderr; do not create crash/heap dump files.
-                    jvmArgs.addAll(['-XX:ErrorFile=/dev/stderr', '-XX:-HeapDumpOnOutOfMemoryError',
+                    // Leave controller RAM for native libraries/JIT/stacks instead of relying on heap ergonomics.
+                    // Fatal reports go directly to stderr; compiler replay is a separate file-dump setting.
+                    jvmArgs.addAll(['-Xms16m', '-Xmx64m', '-XX:+ErrorFileToStderr', '-XX:ErrorFile=/dev/stderr',
+                                   '-XX:-DumpReplayDataOnError', '-XX:-HeapDumpOnOutOfMemoryError',
                                    '-XX:-CreateCoredumpOnCrash'])
                 }
 
@@ -99,6 +101,15 @@ task(replayWatch, type: JavaExec) {
 wpi.sim.addGui().defaultEnabled = !project.hasProperty("headless")
 wpi.sim.addDriverstation()
 
+// Identify the deployed artifact; JVM options are in robotCommand, not inside the JAR.
+def robotRevision = providers.exec {
+    commandLine 'git', 'rev-parse', '--short=12', 'HEAD'
+}.standardOutput.asText.get().trim()
+def robotWorktreeChanges = providers.exec {
+    commandLine 'git', 'status', '--porcelain', '--untracked-files=no'
+}.standardOutput.asText.get().trim()
+def robotBuildIdentity = robotRevision + (robotWorktreeChanges.isEmpty() ? '' : '-dirty')
+
 // Setting up my Jar File. In this case, adding all libraries into the main jar ('fat jar')
 // in order to make them all available at runtime. Also adding the manifest so WPILib
 // knows where to look for our Robot Class.
@@ -116,6 +127,8 @@ jar {
     from('vendordeps') { into 'backup/vendordeps' }
     from('build.gradle') { into 'backup' }
     manifest edu.wpi.first.gradlerio.GradleRIOPlugin.javaManifest(ROBOT_MAIN_CLASS)
+    manifest.attributes('Implementation-Version': robotBuildIdentity,
+                        'Robot-Runtime-Policy': 'stream-only-native-oom-v2')
     duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }
 

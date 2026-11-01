@@ -23,8 +23,10 @@ There are no active application calls starting DataLogManager/DriverStation data
 logging or Phoenix recording. Dormant SysId helpers use library-managed recording
 and must be adapted before enabling them under this policy.
 
-The hardware JVM configuration also disables heap dumps/core dumps and routes
-fatal JVM error reports to /dev/stderr instead of a new hs_err_pid file. Fatal
+Follow-up after the native-crash photo: the hardware JVM configuration now explicitly
+uses ErrorFileToStderr=true and DumpReplayDataOnError=false. The earlier policy
+missed compiler replay output. Heap/core dumps remain disabled, and heap sizing is
+explicitly Xms16m/Xmx64m. See memory-analysis/native-crash-photo.md. Fatal
 reports are therefore console output, subject to the launcher caveat below.
 These flags apply on the next deploy/restart, not to the currently running JVM.
 Existing log files are not deleted. Desktop diagnostics/precompute tooling can

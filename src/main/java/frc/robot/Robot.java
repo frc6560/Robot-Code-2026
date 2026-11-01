@@ -66,6 +66,16 @@ public class Robot extends SampledLoggedRobot
 
   public Robot()
   {
+    String build = Robot.class.getPackage().getImplementationVersion();
+    if (build == null) build = "development-classes";
+    String jvmArguments = String.join(" ", java.lang.management.ManagementFactory.getRuntimeMXBean().getInputArguments());
+    Logger.recordMetadata("BuildIdentity", build);
+    Logger.recordMetadata("RuntimePolicy", "stream-only-native-oom-v2");
+    Logger.recordMetadata("JvmArguments", jvmArguments);
+    System.out.println("[Runtime] build=" + build + " policy=stream-only-native-oom-v2"
+        + " Java=" + System.getProperty("java.runtime.version") + " arch=" + System.getProperty("os.arch")
+        + " heapMaxMiB=" + Runtime.getRuntime().maxMemory() / 1048576L);
+    System.out.println("[Runtime] JVM arguments: " + jvmArguments);
     Logger.recordMetadata("Robot", "2026 Alpha");
     Logger.recordMetadata("ProgramSession", programSession);
     Logger.recordMetadata("VisionConfiguration", LimelightConstants.CONFIGURATION_ID);
