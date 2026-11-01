@@ -142,6 +142,36 @@ public class Robot extends SampledLoggedRobot
     {
       DriverStation.silenceJoystickConnectionWarning(true);
     }
+
+    // Print once after initialization so this is unmistakable in the startup console.
+    System.out.println("""
+
+        ########################################################################
+        ########################################################################
+        ##                                                                    ##
+        ##                         TEAM 6560                                  ##
+        ##                      ROBOT CODE 2026                               ##
+        ##                                                                    ##
+        ########################################################################
+        ##                                                                    ##
+        ##               OUR ROBOT CODE IS RUNNING!                            ##
+        ##               OUR ROBOT CODE IS RUNNING!                            ##
+        ##               OUR ROBOT CODE IS RUNNING!                            ##
+        ##                                                                    ##
+        ##               ROBOT INITIALIZATION COMPLETED                        ##
+        ##                                                                    ##
+        ########################################################################
+        ##                                                                    ##
+        ##               MEMORY INVESTIGATION CONFIGURATION                    ##
+        ##               LIMELIGHT VISION: DISABLED                             ##
+        ##               SHOOTER:          DISABLED                             ##
+        ##               INTAKE:           DISABLED                             ##
+        ##               AUTONOMOUS:       IDLE ONLY                            ##
+        ##                                                                    ##
+        ########################################################################
+        ########################################################################
+
+        """);
   }
 
   /**
