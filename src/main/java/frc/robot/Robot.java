@@ -48,6 +48,9 @@ public class Robot extends SampledLoggedRobot
   private FlywheelVisualizer flywheelVisualizer;
 
   private Timer disabledTimer;
+  // Run before the first hardware CAN bus/device is constructed.
+  private final boolean persistentRecordersDisabled = isReal()
+      && frc.robot.utility.telemetry.StreamingLogPolicy.disablePersistentRecorders();
   private final CANBus mechanismCANBus = new CANBus(Constants.ShooterConstants.CAN_BUS);
   private double nextCANHealthSample;
 
@@ -68,7 +71,8 @@ public class Robot extends SampledLoggedRobot
     Logger.recordMetadata("VisionConfiguration", LimelightConstants.CONFIGURATION_ID);
     Logger.recordMetadata("VisionCameraNames", String.join(", ", LimelightConstants.LIMELIGHT_NAMES));
     if (isReal()) {
-      Logger.addDataReceiver(new RateLimitedReceiver(new WPILOGWriter()));
+      // Stream only: never construct a file writer on the roboRIO.
+      Logger.recordMetadata("LoggingPolicy", "Live NT4 streaming; application file recording disabled");
       Logger.addDataReceiver(new RateLimitedReceiver(new NT4Publisher()));
     } else if (System.getenv("AKIT_LOG_PATH") != null || Constants.currentMode == Constants.Mode.REPLAY) {
       // Replay: re-run a recorded log through this code. AdvantageScope sets
@@ -90,6 +94,11 @@ public class Robot extends SampledLoggedRobot
     }
 
     Logger.start();
+    if (isReal()) {
+      RateLimitedTelemetry.putBoolean("Logging/PersistentRecordersDisabled", persistentRecordersDisabled);
+      System.out.println("[Logging] Live NT4 streaming only; application file recorders disabled="
+          + persistentRecordersDisabled + ". OS console logs are managed by the roboRIO launcher.");
+    }
     instance = this;
   }
 

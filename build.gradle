@@ -27,6 +27,9 @@ deploy {
                 // getTargetTypeClass is a shortcut to get the class type using a string
 
                 frcJava(getArtifactTypeClass('FRCJavaArtifact')) {
+                    // Stream fatal JVM diagnostics to stderr; do not create crash/heap dump files.
+                    jvmArgs.addAll(['-XX:ErrorFile=/dev/stderr', '-XX:-HeapDumpOnOutOfMemoryError',
+                                   '-XX:-CreateCoredumpOnCrash'])
                 }
 
                 // Static files artifact
