@@ -465,7 +465,7 @@ public final class Constants {
     public static final double ROLLER_STATOR_CURRENT_LIMIT = 40.0;
 
     // Mechanism RPM for both separate rollers; inversion supplies opposite directions.
-    public static final double ROLLER_RPM = 2500.0;
+    public static final double ROLLER_RPM = 4500.0;
     public static final double ROLLER_GEARING = 1.5;
 
     public static final double ROLLER_kP = 0.5;

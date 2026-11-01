@@ -1,0 +1,38 @@
+1732147 2026-10-29T23:03:23-07:00 shooting
+8326d37 2026-10-29T23:57:21-07:00 Wait for rack startup current boost to end before running rollers
+3e22a26 2026-10-30T11:57:50-07:00 Check
+7e327a1 2026-10-30T12:40:11-07:00 Use descriptive Limelight network names
+d276963 2026-10-30T12:58:37-07:00 Expose field poses and explain unreachable shot predictions
+362856c 2026-10-30T14:04:57-07:00 Remove rack startup current boost and persist launch tuning
+4b7dec8 2026-10-30T14:06:24-07:00 Limit shooter motors to 40A and restore intake startup allowance
+f1af655 2026-10-30T14:14:02-07:00 Save launch tuning independently and identify robot restarts
+9a97cb2 2026-10-30T14:21:43-07:00 Require held trigger for intake rollers and log individual currents
+03bcbca 2026-10-30T14:31:57-07:00 Rank top three motor supply-current users live
+e6217bc 2026-10-30T14:36:09-07:00 Separate CAN diagnostic refreshes and rank device temperatures
+c3b9e5c 2026-10-30T14:53:19-07:00 Delete obsolete CAN hardware definitions and correct shooter names
+93a8b60 2026-10-30T15:54:35-07:00 Remove obsolete subsystems and legacy shooting code
+ee1494b 2026-10-30T16:18:06-07:00 removed logs
+9fe259d 2026-10-30T16:24:59-07:00 yes
+04e7233 2026-10-30T16:32:58-07:00 yes
+79a2e00 2026-10-30T16:49:15-07:00 Allow 10-degree shot entry and bind front vision reset to X
+78f7626 2026-10-30T20:55:56-07:00 m
+ca4fc54 2026-10-30T21:48:40-07:00 attempt to fix bug
+be9839d 2026-10-30T23:26:06-07:00 Implement moving-shot compensation and tune hub aim
+b578504 2026-10-31T08:03:24-07:00 Restore original aim-at-hub PID gains
+dcb4068 2026-10-31T08:12:14-07:00 Add intake endpoint override and restore startup current boost
+0bbeac0 2026-10-31T08:52:49-07:00 intakework
+4b9c2db 2026-10-31T09:11:39-07:00 Correct intake force extension and retraction controls
+31fdf51 2026-10-31T09:21:04-07:00 works
+bdc9e16 2026-10-31T10:00:36-07:00 Increase hub aim tolerance and gain; update idle and intake gates
+5372075 2026-10-31T10:11:03-07:00 Shorten intake 60A startup allowance to 1.5 seconds
+4340e53 2026-10-31T10:14:18-07:00 Run intake rollers directly from left trigger without rack interlocks
+bd14f20 2026-10-31T10:23:07-07:00 work
+c6db230 2026-10-31T10:28:06-07:00 make shoot-on-the-move less wild
+a19b5e9 2026-10-31T10:32:55-07:00 m
+74c9c28 2026-10-31T10:37:35-07:00 m
+4b3cc2e 2026-10-31T10:58:07-07:00 Disable restored swerve encoder telemetry
+2933557 2026-10-31T11:16:35-07:00 Restore stationary shooting and add Y/B manual shot controls
+8bd2b29 2026-10-31T11:23:14-07:00 stuff
+f28e2b4 2026-10-31T12:04:03-07:00 Require flywheel within 60 RPM before feeding any shot
+9278df5 2026-10-31T12:54:48-07:00 Reduce logging allocations and load precomputed shooter trajectories
+aefb30c 2026-10-31T15:21:26-07:00 m
