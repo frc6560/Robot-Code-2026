@@ -27,9 +27,9 @@ deploy {
                 // getTargetTypeClass is a shortcut to get the class type using a string
 
                 frcJava(getArtifactTypeClass('FRCJavaArtifact')) {
-                    // Leave controller RAM for native libraries/JIT/stacks instead of relying on heap ergonomics.
+                    // Use the JVM's default heap sizing, as on the working backup branch.
                     // Fatal reports go directly to stderr; compiler replay is a separate file-dump setting.
-                    jvmArgs.addAll(['-Xms16m', '-Xmx64m', '-XX:+ErrorFileToStderr', '-XX:ErrorFile=/dev/stderr',
+                    jvmArgs.addAll(['-XX:+ErrorFileToStderr', '-XX:ErrorFile=/dev/stderr',
                                    '-XX:-DumpReplayDataOnError', '-XX:-HeapDumpOnOutOfMemoryError',
                                    '-XX:-CreateCoredumpOnCrash'])
                 }
