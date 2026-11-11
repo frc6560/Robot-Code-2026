@@ -5,7 +5,6 @@ import edu.wpi.first.hal.HAL;
 import edu.wpi.first.wpilibj.simulation.DriverStationSim;
 import edu.wpi.first.wpilibj.simulation.SimHooks;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.IntakeConstants;
 import org.junit.jupiter.api.*;
 
@@ -90,8 +89,6 @@ class IntakeTest {
         intake.periodic();
         assertTrue(io.stopped);
         assertEquals(0, io.positionRequests);
-        assertFalse(SmartDashboard.getBoolean("Intake/RackRequested", true));
-        assertEquals("Waiting for intake control", SmartDashboard.getString("Intake/BlockedReason", ""));
         assertEquals(0, io.roller);
         DriverStationSim.setAutonomous(true);
         DriverStationSim.notifyNewData();
@@ -124,7 +121,6 @@ class IntakeTest {
         intake.periodic();
         assertEquals(0, io.roller);
         assertEquals(IntakeConstants.EXTENDED_POSITION_ROTATIONS, io.target);
-        assertEquals("Intake trigger not held", SmartDashboard.getString("Intake/RollerBlockedReason", ""));
     }
 
     @Test void rackSelectionsHoldAndRollersIgnoreEncoderExtension() {
@@ -204,12 +200,10 @@ class IntakeTest {
         io.configured = false;
         intake.periodic();
         assertTrue(io.stopped);
-        assertTrue(SmartDashboard.getString("Intake/BlockedReason", "").contains("configuration failed"));
         io.configured = true;
         io.homed = false;
         intake.periodic();
         assertTrue(io.stopped);
-        assertTrue(SmartDashboard.getString("Intake/BlockedReason", "").contains("zero failed"));
         io.homed = true;
         io.ready = false;
         intake.periodic();
@@ -440,7 +434,6 @@ class IntakeTest {
         intake.requestForceExtended();
         intake.periodic();
         assertFalse(intake.atDeployTarget());
-        assertFalse(SmartDashboard.getBoolean("Intake/FullyExtended", true));
         assertEquals(1, io.forceExtendRequests);
         currentFor(45, 2.0);
         assertTrue(io.stopped);
@@ -450,11 +443,9 @@ class IntakeTest {
         intake.requestForceRetracted();
         intake.periodic();
         assertFalse(intake.atDeployTarget());
-        assertFalse(SmartDashboard.getBoolean("Intake/FullyRetracted", true));
         assertEquals(1, io.forceRequests);
         currentFor(45, 2.0);
         assertTrue(io.stopped);
-        assertTrue(SmartDashboard.getBoolean("Intake/FullyRetracted", false));
         assertTrue(intake.atDeployTarget());
     }
 
@@ -570,7 +561,6 @@ class IntakeTest {
         SimHooks.stepTiming(2.0); intake.periodic();
         assertFalse(io.stopped);
         assertEquals(IntakeConstants.EXTENDED_POSITION_ROTATIONS, io.target);
-        assertFalse(SmartDashboard.getBoolean("Intake/DeployStallFault", true));
         assertEquals(IntakeConstants.ROLLER_RPM, io.roller); // No encoder extension gate.
         intake.requestRackRetracted(); intake.periodic();
         assertFalse(io.stopped);

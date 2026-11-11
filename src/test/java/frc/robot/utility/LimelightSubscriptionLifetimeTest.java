@@ -33,8 +33,6 @@ class LimelightSubscriptionLifetimeTest {
         }
         // Helpers own their cached entries for process lifetime; closing them here would
         // leave closed handles in that shared cache. No per-iteration resource is created.
-        System.out.println("LIMELIGHT_LIFETIME: 60000 pose lookups reused 6 entries/handles; "
-            + "30000 heartbeat lookups reused 3 entries");
     }
 
     @Test void explicitlySubscribingTwiceCreatesDistinctNativeHandles() {

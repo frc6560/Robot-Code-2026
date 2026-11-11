@@ -34,10 +34,6 @@ class ShotMemoryAuditTest {
         assertEquals(count, model.cachedFlightCount());
         assertEquals(bytes, model.estimatedCacheBytes());
         assertEquals(0, model.flightCalculations());
-        System.out.printf("SHOT_MEMORY_AUDIT iterations=%d solveAllocatedBytes=%d bytesPerSolve=%.1f "
-            + "scoreAllocatedBytes=%d cacheEstimateBytes=%d integrations=%d ready=%d%n",
-            iterations, solveBytes, (double) solveBytes / iterations, scoreBytes, bytes,
-            model.flightCalculations(), ready);
         sink = null;
     }
 }

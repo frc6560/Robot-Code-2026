@@ -1,5 +1,6 @@
 package frc.robot.commands.scoring;
 
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Translation2d;
@@ -14,7 +15,6 @@ import frc.robot.subsystems.indexer.Indexer;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import frc.robot.utility.shooting.FuelShotModel;
-import frc.robot.utility.telemetry.RateLimitedTelemetry;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 
@@ -37,6 +37,7 @@ public final class BackUpAndShootCommand extends Command {
     private final AimAtHub aim;
     private final FuelShootCommand shot;
     private Phase phase;
+    private double nextTelemetry;
     private String abortReason = "";
     private Pose2d start;
     private Translation2d retreatDirection;
@@ -70,6 +71,7 @@ public final class BackUpAndShootCommand extends Command {
         start = drive.getPose();
         alliance = DriverStation.getAlliance().orElse(null);
         previousTime = Timer.getFPGATimestamp();
+        nextTelemetry = previousTime + 0.5;
         feedSeconds = 0;
         retreat = null;
         retreatActive = false;
@@ -135,7 +137,10 @@ public final class BackUpAndShootCommand extends Command {
             phase = Phase.DONE;
             stop(false);
         }
-        publish();
+        if (phase == Phase.DONE || !edu.wpi.first.wpilibj.RobotBase.isReal() || now >= nextTelemetry) {
+            nextTelemetry = now + 0.5;
+            publish();
+        }
     }
 
     /** Always produce the fixed retreat, without field, zone, or predicted-shot rejection. */
@@ -177,19 +182,19 @@ public final class BackUpAndShootCommand extends Command {
     }
 
     private void publish() {
-        RateLimitedTelemetry.putString("Auto/Back Up and Shoot/Phase", phase.name());
-        RateLimitedTelemetry.putString("Auto/Back Up and Shoot/Abort Reason", abortReason);
-        RateLimitedTelemetry.recordOutput("Auto/Back Up and Shoot/Abort Reason", abortReason);
-        RateLimitedTelemetry.recordOutput("Auto/Back Up and Shoot/Start Pose", start);
+        SmartDashboard.putString("Auto/Back Up and Shoot/Phase", phase.name());
+        SmartDashboard.putString("Auto/Back Up and Shoot/Abort Reason", abortReason);
+        SmartDashboard.putNumberArray("Auto/Back Up and Shoot/Start Pose",
+            new double[] {start.getX(), start.getY(), start.getRotation().getDegrees()});
         if (alliance != null) {
             Translation2d planned = retreatEndPosition(start, alliance);
             if (planned != null) {
-                RateLimitedTelemetry.putNumber("Auto/Back Up and Shoot/Planned End X", planned.getX());
-                RateLimitedTelemetry.putNumber("Auto/Back Up and Shoot/Planned End Y", planned.getY());
+                SmartDashboard.putNumber("Auto/Back Up and Shoot/Planned End X", planned.getX());
+                SmartDashboard.putNumber("Auto/Back Up and Shoot/Planned End Y", planned.getY());
             }
         }
-        RateLimitedTelemetry.putNumber("Auto/Back Up and Shoot/Feed Seconds", feedSeconds);
-        RateLimitedTelemetry.putNumber("Auto/Back Up and Shoot/Retreat Meters", retreatProgress());
+        SmartDashboard.putNumber("Auto/Back Up and Shoot/Feed Seconds", feedSeconds);
+        SmartDashboard.putNumber("Auto/Back Up and Shoot/Retreat Meters", retreatProgress());
     }
 
     @Override public boolean isFinished() { return phase == Phase.DONE || phase == Phase.ABORTED; }

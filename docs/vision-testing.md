@@ -1,57 +1,28 @@
 # Testing camera position and shooting readiness
 
-The saved AdvantageKit `.wpilog` now contains the vision diagnostics. Open it in
-AdvantageScope, or connect AdvantageScope to the robot live. Look under RealOutputs
-in a saved log (or AdvantageKit/RealOutputs live). Start with these folders:
+Connect AdvantageScope or Elastic to the robot. The retained telemetry is under
+`SmartDashboard`. Add `Swerve/Pose` and `Vision/Front/RawPose`,
+`Vision/Left/RawPose`, and `Vision/Right/RawPose` to the same 2D field. The
+camera poses show the last finite estimate from each camera. `Swerve/Pose`
+shows the combined robot pose used for driving and aiming.
 
-- `Vision/Front`: physical front camera, network name `limelight-front`.
-- `Vision/Left`: physical left camera, network name `limelight-left`.
-- `Vision/Right`: physical right camera, network name `limelight-right`.
-- `Swerve/Pose`: the combined robot position and heading used for driving/aiming.
-- `Fuel/Status`: first reason feeding is blocked. `Fuel/Readiness` shows individual
-  conditions; `Fuel/Feeding` is the actual automatic feed decision.
-
-## A short test
-
-1. Release automatic aim. With the robot stationary and a tag visible, check the
-   physical camera's `Connected`, `TargetVisible`, `PrimaryTagID`, and `TagCount`.
-   `TagIDs` is the full list contributing to the MegaTag2 estimate when supplied
-   by the camera. The primary target can be a different tag from that full list.
-2. Check `ConfiguredMount` against `ReportedMount`. The configured Pose3d is a
-   container for Limelight forward/right/up values, NOT a WPILib left-positive
-   transform. ReportedMount is [forward, right, up, roll, pitch, yaw] in meters/degrees.
-   Code writes mounting configuration at startup, overriding previous web settings.
-3. Put `Swerve/Pose`, `Vision/Front/MegaTag1Pose`, and
-   `Vision/Front/MegaTag2Pose` on the same 2D field. Camera poses are arrays with
-   one robot pose, or an empty array when no tagged finite estimate is available.
-   A missing reading is not drawn as a robot at (0,0). Check frame ages too:
-   even a finite tagged pose may be stale. Camera poses show estimates, including
-   rejected ones; only Swerve/Pose is the combined result used for driving.
-4. Rotate gently without translating. Check Swerve/Pose rotation and
-   `Vision/Front/HeadingSentDeg`. Both should track the actual robot rotation.
-   MegaTag2 uses the heading supplied by the robot; it is not an independent
-   check that the robot's direction sensor is correct. Normal vision fusion
-   effectively ignores camera heading corrections.
-5. Read `Status`. `Used` means a new reading was inserted this loop; `Waiting for
-   new frame` between camera frames is normal. Use `SecondsSinceUsed` to judge
-   whether updates continue. -1 means none has been used since program startup.
-   Disconnected cameras, absent tags, invalid data, timestamps more than 0.5 s
-   old, repeated frames, rapid rotation, and >2 m position differences are rejected.
-6. If the camera pose matches the real robot but Swerve/Pose is >2 m away, the
-   jump guard prevents automatic recovery. The current driver X button explicitly
-   uses the first camera with a fresh tagged MegaTag1 pose (left, front, then
-   right), including its AprilTag-derived heading. First verify that pose while
-   stationary, then use the
-   reset in a controlled teleop test. `Vision/Front/ResetStatus` records the result.
-   Do not use a reset to hide a wrong field map or a jumping camera estimate.
-7. Test shooting only after the combined pose is believable. Hold the aimed-shot
-   control and read Fuel/Status, Fuel/Readiness, Fuel/RangeMeters, and HubAim logs.
-   "Settling" is the short required readiness dwell. "Ready" and Feeding=true
-   should command nonzero Indexer/FloorTargetRPM and Indexer/TunnelTargetRPM.
-   Nonzero targets with no physical motion indicate an output/hardware issue;
-   zero targets with Feeding=false indicate a release condition has not passed.
-   Readiness booleans describe the last active command execution; Fuel/Status
-   "Released" and Feeding=false identify an inactive command.
+1. With the robot stationary and a tag visible, compare the camera estimate and
+   the combined pose to the robot's actual field position. The camera's web UI
+   shows its visible tags and mounting configuration. Code writes the configured
+   camera mount at startup.
+2. Rotate gently without translating. The fused heading should track the robot.
+   MegaTag2 uses the heading and yaw rate supplied by the robot. Normal fusion
+   gives the camera heading very little weight.
+3. The code can reuse a published camera estimate. It skips missing or zero
+   poses, non-finite positions, poses more than 1 m from the field rectangle,
+   turns faster than 360 degrees per second, and jumps of more than 2 m from odometry.
+4. If the combined pose is more than 2 m away, the jump guard prevents automatic
+   recovery. Driver X tries left, front, then right and resets to the first valid
+   MegaTag1 pose, including heading. The 1 m field margin applies to that reset.
+5. Hold the aimed-shot control and check `Fuel/Status`, `Fuel/Readiness`,
+   `Fuel/RangeMeters`, and `HubAim`. `Settling` is the short readiness dwell.
+   `Feeding=true` should coincide with nonzero `Indexer/FloorMotorTargetRPM` and
+   `Indexer/TunnelMotorTargetRPM`.
 
 Driver Start sets heading to 0 degrees on blue or 180 degrees on red; an unknown
 alliance skips the reset. In the blue-origin field
@@ -80,9 +51,7 @@ https://raw.githubusercontent.com/wpilibsuite/allwpilib/v2026.2.1/apriltag/src/m
 ## Camera names and configuration
 
 Hardware hostnames and code now both use limelight-front, limelight-left, and
-limelight-right. Deploy this version after renaming the cameras. The dashboard
-must show Vision/ConfigurationID = three-ll4-named-2026-10-30 and
-Vision/ConfiguredCameraCount = 3. Limelights communicate over
+limelight-right. Deploy this version after renaming the cameras. Limelights communicate over
 the robot's Ethernet/IP network, using NetworkTables to exchange data with the
 roboRIO; they are not motor-controller devices listed in Phoenix Tuner.
 
@@ -99,16 +68,10 @@ https://docs.limelightvision.io/docs/docs-limelight/getting-started/limelight-4
 
 ## Drawing the robot and diagnosing unreachable shots
 
-In AdvantageScope live, create a 2D Field tab. Drag the entire
-`AdvantageKit/RealOutputs/Swerve/Pose` structured value onto it, not its individual
-X/Y members. Alternatively use the `SmartDashboard/Swerve/Field` Field2d value.
-While the aimed shot is held, `Fuel/RobotPose`, `Fuel/HubPose`, and `Fuel/ReleasePose`
-are also structured Pose2d outputs suitable for overlaying on the same field.
-The hub is a reference marker, not another robot. These Fuel poses describe the
-last active shot execution; Swerve/Pose updates continuously.
+In AdvantageScope live, drag `SmartDashboard/Swerve/Pose` or
+`SmartDashboard/Fuel/RobotPose` onto a 2D Field tab. Both show the combined pose.
 
-When Fuel/Status says "No reachable shot", read `Fuel/Trajectory/Reason`
-(or SmartDashboard/Fuel/TrajectoryReason). The trajectory folder records the
+When Fuel/Status says "No reachable shot", read `Fuel/Trajectory/Status`. The trajectory folder records the
 range last solved, RPM search limits, launch angle/speed scale and progressive
 candidate counts: reached hub height, cleared near rim, landed in opening, and
 passed minimum entry angle. A zero at one stage identifies the first stage

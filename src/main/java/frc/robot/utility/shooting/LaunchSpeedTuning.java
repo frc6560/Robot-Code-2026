@@ -1,7 +1,6 @@
 package frc.robot.utility.shooting;
 
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import frc.robot.utility.telemetry.RateLimitedTelemetry;
 
 /** Fixed launch-speed scale. Dashboard and legacy saved preferences never select this value. */
 public final class LaunchSpeedTuning {
@@ -14,8 +13,8 @@ public final class LaunchSpeedTuning {
     private LaunchSpeedTuning() {}
 
     public static void initialize() {
-        SmartDashboard.getEntry(REQUEST_KEY).clearPersistent();
         publish();
+        SmartDashboard.getEntry(REQUEST_KEY).clearPersistent();
     }
 
     /** The same fixed scale applies before shooting, while disabled, and during every shot. */
@@ -29,9 +28,9 @@ public final class LaunchSpeedTuning {
     }
 
     private static void publish() {
-        RateLimitedTelemetry.putNumber(REQUEST_KEY, DEFAULT_COEFFICIENT);
-        RateLimitedTelemetry.putString("Shooter/Launch Speed Coefficient Status",
+        SmartDashboard.putNumber(REQUEST_KEY, DEFAULT_COEFFICIENT);
+        SmartDashboard.putString("Shooter/Launch Speed Coefficient Status",
             "Fixed in code: 1.025; dashboard edits ignored");
-        RateLimitedTelemetry.recordOutput("Fuel/Tuning/AppliedCoefficient", DEFAULT_COEFFICIENT);
+        SmartDashboard.putNumber("Fuel/Tuning/AppliedCoefficient", DEFAULT_COEFFICIENT);
     }
 }

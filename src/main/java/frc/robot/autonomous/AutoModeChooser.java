@@ -20,20 +20,6 @@ public class AutoModeChooser {
         autoChooser.setDefaultOption("Blue Center", choices.get("Blue Center"));
         autoChooser.addOption("Backup - Back Up and Shoot", backup);
         autoChooser.addOption("Idle", factory.getNoAuto());
-        // Preserve explicit desktop diagnostics for the old tuning paths.
-        if ("1".equals(System.getenv("BLINE_HEADLESS_DIAGNOSTIC"))) {
-            String selection = System.getenv("BLINE_HEADLESS_AUTO");
-            String label = selection == null ? "" : selection.replace('-', ' ');
-            var selected = choices.entrySet().stream()
-                .filter(e -> e.getKey().equalsIgnoreCase(label)).findFirst();
-            if (selected.isPresent()) {
-                autoChooser.setDefaultOption(selected.get().getKey(), selected.get().getValue());
-            } else if ("editor".equals(selection)) {
-                autoChooser.setDefaultOption("BLine Editor Path", factory.getBLineEditorPath());
-            } else {
-                autoChooser.setDefaultOption("Zigzag", factory.getZigzagPath());
-            }
-        }
     }
 
     public SendableChooser<Command> getAutoChooser() { return autoChooser; }

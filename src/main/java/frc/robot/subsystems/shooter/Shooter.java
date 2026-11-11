@@ -1,8 +1,8 @@
 package frc.robot.subsystems.shooter;
 
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import java.util.function.BooleanSupplier;
 
-import frc.robot.utility.telemetry.RateLimitedTelemetry;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.filter.Debouncer;
@@ -30,7 +30,7 @@ public class Shooter extends SubsystemBase {
 
     private final ShooterIO io;
     private final BooleanSupplier idleAllowed;
-    private final ShooterIOInputsAutoLogged inputs = new ShooterIOInputsAutoLogged();
+    private final ShooterIO.ShooterIOInputs inputs = new ShooterIO.ShooterIOInputs();
     private final ShooterIOOutputs outputs = new ShooterIOOutputs();
 
     private final Debouncer leaderConnectedDebouncer = new Debouncer(0.5, DebounceType.kFalling);
@@ -50,6 +50,7 @@ public class Shooter extends SubsystemBase {
     private double filteredAccel = 0.0;
     private boolean nonZeroAccel = false;
     private boolean atGoal = false;
+    private double nextTelemetry;
 
     private boolean withinTolerancekS = false;
     private boolean withinTolerancekV = false;
@@ -147,7 +148,6 @@ public class Shooter extends SubsystemBase {
     public void periodic() {
         if (idle && !idleAllowed.getAsBoolean()) stop();
         io.updateInputs(inputs);
-        RateLimitedTelemetry.processInputs("Shooter", inputs);
 
         leaderDisconnected.set(!leaderConnectedDebouncer.calculate(inputs.leaderConnected));
         followerDisconnected.set(!followerConnectedDebouncer.calculate(inputs.followerConnected));
@@ -168,9 +168,33 @@ public class Shooter extends SubsystemBase {
 
         io.applyOutputs(outputs);
 
-        RateLimitedTelemetry.recordOutput("Shooter/GoalRPM", getGoalRPM());
-        RateLimitedTelemetry.recordOutput("Shooter/CurrentRPM", getCurrentRPM());
-        RateLimitedTelemetry.recordOutput("Shooter/AtTarget", atTarget());
+        double now = Timer.getFPGATimestamp();
+        if (edu.wpi.first.wpilibj.RobotBase.isReal() && now < nextTelemetry) return;
+        nextTelemetry = now + 0.5;
+        SmartDashboard.putNumber("Shooter/GoalRPM", getGoalRPM());
+        SmartDashboard.putNumber("Shooter/CurrentRPM", getCurrentRPM());
+        SmartDashboard.putBoolean("Shooter/AtTarget", atTarget());
+        SmartDashboard.putBoolean("Shooter/LeaderConnected", inputs.leaderConnected);
+        SmartDashboard.putBoolean("Shooter/FollowerConnected", inputs.followerConnected);
+        SmartDashboard.putNumber("Shooter/VelocityRadsPerSec", inputs.velocityRadsPerSec);
+        SmartDashboard.putNumber("Shooter/LeaderPositionRotations", inputs.leaderPositionRotations);
+        SmartDashboard.putNumber("Shooter/LeaderVelocityRPS", inputs.leaderVelocityRPS);
+        SmartDashboard.putNumber("Shooter/LeaderAppliedVolts", inputs.leaderAppliedVolts);
+        SmartDashboard.putNumber("Shooter/LeaderCurrentAmps", inputs.leaderCurrentAmps);
+        SmartDashboard.putNumber("Shooter/LeaderTempCelsius", inputs.leaderTempCelsius);
+        SmartDashboard.putNumber("Shooter/FollowerPositionRotations", inputs.followerPositionRotations);
+        SmartDashboard.putNumber("Shooter/FollowerVelocityRPS", inputs.followerVelocityRPS);
+        SmartDashboard.putNumber("Shooter/FollowerAppliedVolts", inputs.followerAppliedVolts);
+        SmartDashboard.putNumber("Shooter/FollowerCurrentAmps", inputs.followerCurrentAmps);
+        SmartDashboard.putNumber("Shooter/FollowerTempCelsius", inputs.followerTempCelsius);
+        SmartDashboard.putNumber("Shooter/LeaderRPM", inputs.leaderVelocityRPS * 60.0);
+        SmartDashboard.putNumber("Shooter/FollowerRPM", inputs.followerVelocityRPS * 60.0);
+        double motorTargetRPM = outputs.mode == ShooterIOOutputMode.COAST ? 0.0
+            : !Double.isNaN(characterizationVolts) ? Double.NaN
+            : Units.radiansPerSecondToRotationsPerMinute(outputs.velocityRadsPerSec) / ShooterConstants.FLYWHEEL_GEAR_RATIO;
+        SmartDashboard.putNumber("Shooter/LeaderTargetRPM", motorTargetRPM);
+        SmartDashboard.putNumber("Shooter/FollowerTargetRPM", edu.wpi.first.wpilibj.RobotBase.isReal() ? -motorTargetRPM : motorTargetRPM);
+
     }
 
     private void runVelocity(double goal, boolean bangBang, boolean idle) {
@@ -296,13 +320,13 @@ public class Shooter extends SubsystemBase {
     private void reportCharacterization(double[] samples) {
         double n = samples[0];
         if (n < 2) {
-            System.out.println("[Shooter] FF characterization: not enough samples.");
+            SmartDashboard.putString("Shooter/FF/Status", "Not enough samples");
             return;
         }
         double sumX = samples[1], sumY = samples[2], sumXY = samples[3], sumX2 = samples[4];
         double denominator = n * sumX2 - sumX * sumX;
         if (denominator == 0.0) {
-            System.out.println("[Shooter] FF characterization: flywheel never moved.");
+            SmartDashboard.putString("Shooter/FF/Status", "Flywheel never moved");
             return;
         }
         double kV = (n * sumXY - sumX * sumY) / denominator;
@@ -310,9 +334,11 @@ public class Shooter extends SubsystemBase {
 
         withinTolerancekS = Math.abs(kS - ShooterConstants.FF_kS) <= ShooterConstants.FF_kS_TOLERANCE;
         withinTolerancekV = Math.abs(kV - ShooterConstants.FF_kV) <= ShooterConstants.FF_kV_TOLERANCE;
-        System.out.printf(
-            "[Shooter] FF characterization: kS=%.5f V (%s), kV=%.5f V/(rad/s) (%s)%n",
-            kS, withinTolerancekS ? "ok" : "OUT OF TOLERANCE",
-            kV, withinTolerancekV ? "ok" : "OUT OF TOLERANCE");
+
+        SmartDashboard.putString("Shooter/FF/Status", "Complete");
+        SmartDashboard.putNumber("Shooter/FF/kS", kS);
+        SmartDashboard.putNumber("Shooter/FF/kV", kV);
+        SmartDashboard.putBoolean("Shooter/FF/WithinTolerancekS", withinTolerancekS);
+        SmartDashboard.putBoolean("Shooter/FF/WithinTolerancekV", withinTolerancekV);
     }
 }

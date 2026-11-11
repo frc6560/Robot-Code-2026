@@ -19,7 +19,6 @@ import frc.robot.utility.shooting.FuelShotModel;
 import frc.robot.utility.shooting.FuelShotModel.Shot;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
-import frc.robot.utility.telemetry.RateLimitedTelemetry;
 
 /** Owns aim, flywheel and indexers for a gated teleop or autonomous shot. */
 public final class FuelShootCommand extends Command {
@@ -111,7 +110,6 @@ public final class FuelShootCommand extends Command {
             solvedRange = Double.NaN;
             readySince = Double.NaN;
         }
-        RateLimitedTelemetry.putNumber("Shooter/Applied Launch Speed Coefficient", launchSpeedCoefficient);
         Pose2d current = pose.get();
         ChassisSpeeds speeds = velocity.get();
         boolean finite = Double.isFinite(current.getX()) && Double.isFinite(current.getY())
@@ -171,57 +169,56 @@ public final class FuelShootCommand extends Command {
         feeding = rawReady && now - readySince >= FuelShotConfig.READY_DWELL_SECONDS;
         indexer.setFloorRPM(feeding ? Constants.IndexerConstants.FLOOR_RUNNING_RPM : 0);
         indexer.setTunnelRPM(feeding ? tunnelRPM : 0);
-        RateLimitedTelemetry.putBoolean("Fuel/Passing Mode", passing);
         String status = rawReady && !feeding ? "Settling" : reason;
         // Release gates run every loop; telemetry is limited to two updates per second.
-        RateLimitedTelemetry.recordOutput("Fuel/Feeding", feeding);
-        RateLimitedTelemetry.recordOutput("Fuel/MeasuredRPM", shooter.getCurrentRPM());
         if (edu.wpi.first.wpilibj.RobotBase.isReal() && now < nextTelemetry) return;
         nextTelemetry = now + 0.5;
-        RateLimitedTelemetry.putString("Fuel/Mode", passing ? "Alliance wall pass" : fixedRPM
+        SmartDashboard.putNumber("Shooter/Applied Launch Speed Coefficient", launchSpeedCoefficient);
+        SmartDashboard.putBoolean("Fuel/Passing Mode", passing);
+        SmartDashboard.putString("Fuel/Mode", passing ? "Alliance wall pass" : fixedRPM
             ? (calibrationMode ? "Fixed RPM measurement" : "Fixed RPM (uncalibrated)") : "Formula trajectory");
-        RateLimitedTelemetry.putString("Fuel/Calibration Status", calibrationStatus);
-        RateLimitedTelemetry.putString("Fuel/Status", status);
-        String trajectoryStatus = fixedRPM ? "Fixed RPM; trajectory model bypassed"
+        SmartDashboard.putString("Fuel/Calibration Status", calibrationStatus);
+        SmartDashboard.putString("Fuel/Status", status);
+        String trajectoryStatus = passing ? "Fixed RPM; alliance wall pass"
+            : fixedRPM ? "Fixed RPM; trajectory model bypassed"
             : model == null ? "No trajectory model" : model.diagnostics().reason();
-        RateLimitedTelemetry.putString("Fuel/Trajectory Status", trajectoryStatus);
-        RateLimitedTelemetry.recordOutput("Fuel/Trajectory/Status", trajectoryStatus);
-        if (!fixedRPM && model != null) {
+        SmartDashboard.putString("Fuel/Trajectory Status", trajectoryStatus);
+        SmartDashboard.putString("Fuel/Trajectory/Status", trajectoryStatus);
+        if (!passing && !fixedRPM && model != null) {
             var diagnostic = model.diagnostics();
-            RateLimitedTelemetry.recordOutput("Fuel/Trajectory/Sampled", diagnostic.sampled());
-            RateLimitedTelemetry.recordOutput("Fuel/Trajectory/ReachedHeight", diagnostic.reachedHeight());
-            RateLimitedTelemetry.recordOutput("Fuel/Trajectory/ClearedNearRim", diagnostic.clearedNearRim());
-            RateLimitedTelemetry.recordOutput("Fuel/Trajectory/LandedInOpening", diagnostic.landedInOpening());
-            RateLimitedTelemetry.recordOutput("Fuel/Trajectory/PassedEntryAngle", diagnostic.passedEntryAngle());
+            SmartDashboard.putNumber("Fuel/Trajectory/Sampled", diagnostic.sampled());
+            SmartDashboard.putNumber("Fuel/Trajectory/ReachedHeight", diagnostic.reachedHeight());
+            SmartDashboard.putNumber("Fuel/Trajectory/ClearedNearRim", diagnostic.clearedNearRim());
+            SmartDashboard.putNumber("Fuel/Trajectory/LandedInOpening", diagnostic.landedInOpening());
+            SmartDashboard.putNumber("Fuel/Trajectory/PassedEntryAngle", diagnostic.passedEntryAngle());
         }
-        RateLimitedTelemetry.putBoolean("Fuel/Feeding", feeding);
-        RateLimitedTelemetry.putNumber("Fuel/Range M", range);
-        RateLimitedTelemetry.putNumber("Fuel/Target RPM", rpm);
-        RateLimitedTelemetry.putNumber("Fuel/Measured RPM", shooter.getCurrentRPM());
-        RateLimitedTelemetry.putNumber("Fuel/Tunnel Target RPM", feeding ? tunnelRPM : 0);
-        RateLimitedTelemetry.putNumber("Fuel/Minimum Scoring RPM", shot.minimumRPM());
-        RateLimitedTelemetry.putNumber("Fuel/Maximum Scoring RPM", shot.maximumRPM());
-        RateLimitedTelemetry.recordOutput("Fuel/Status", status);
+        SmartDashboard.putBoolean("Fuel/Feeding", feeding);
+        SmartDashboard.putNumber("Fuel/Range M", range);
+        SmartDashboard.putNumber("Fuel/Target RPM", rpm);
+        SmartDashboard.putNumber("Fuel/Measured RPM", shooter.getCurrentRPM());
+        SmartDashboard.putNumber("Fuel/Tunnel Target RPM", feeding ? tunnelRPM : 0);
+        SmartDashboard.putNumber("Fuel/Minimum Scoring RPM", shot.minimumRPM());
+        SmartDashboard.putNumber("Fuel/Maximum Scoring RPM", shot.maximumRPM());
         // Record each gate independently: Status shows the first blocker, not all blockers.
-        RateLimitedTelemetry.recordOutput("Fuel/Readiness/AllianceKnown", alliance.isPresent());
-        RateLimitedTelemetry.recordOutput("Fuel/Readiness/PoseAndVelocityFinite", finite);
-        RateLimitedTelemetry.recordOutput("Fuel/Readiness/InOwnZone", ownZone);
-        RateLimitedTelemetry.recordOutput("Fuel/Readiness/ShotReachable", fixedRPM || shot.valid());
-        RateLimitedTelemetry.recordOutput("Fuel/Readiness/SettingsValid", controlsValid);
-        RateLimitedTelemetry.recordOutput("Fuel/Readiness/StoppedTranslating", stationary);
-        RateLimitedTelemetry.recordOutput("Fuel/Readiness/Aimed", aligned.getAsBoolean());
-        RateLimitedTelemetry.recordOutput("Fuel/Readiness/TunnelReady", indexer.isTunnelReady());
-        RateLimitedTelemetry.recordOutput("Fuel/Readiness/FlywheelReady", shooter.isHardwareReady());
-        RateLimitedTelemetry.recordOutput("Fuel/Readiness/FlywheelAtSpeed", shooter.atTarget()
+        SmartDashboard.putBoolean("Fuel/Readiness/AllianceKnown", alliance.isPresent());
+        SmartDashboard.putBoolean("Fuel/Readiness/PoseAndVelocityFinite", finite);
+        SmartDashboard.putBoolean("Fuel/Readiness/InOwnZone", ownZone);
+        SmartDashboard.putBoolean("Fuel/Readiness/ShotReachable", fixedRPM || shot.valid());
+        SmartDashboard.putBoolean("Fuel/Readiness/SettingsValid", controlsValid);
+        SmartDashboard.putBoolean("Fuel/Readiness/StoppedTranslating", stationary);
+        SmartDashboard.putBoolean("Fuel/Readiness/Aimed", aligned.getAsBoolean());
+        SmartDashboard.putBoolean("Fuel/Readiness/TunnelReady", indexer.isTunnelReady());
+        SmartDashboard.putBoolean("Fuel/Readiness/FlywheelReady", shooter.isHardwareReady());
+        SmartDashboard.putBoolean("Fuel/Readiness/FlywheelAtSpeed", shooter.atTarget()
             && shooter.withinTolerance(FuelShotConfig.RPM_TOLERANCE));
-        RateLimitedTelemetry.recordOutput("Fuel/Feeding", feeding);
-        RateLimitedTelemetry.recordOutput("Fuel/CalibrationMode", calibrationMode);
-        RateLimitedTelemetry.recordOutput("Fuel/RangeMeters", range);
-        RateLimitedTelemetry.recordOutput("Fuel/TargetRPM", rpm);
-        RateLimitedTelemetry.recordOutput("Fuel/MeasuredRPM", shooter.getCurrentRPM());
-        RateLimitedTelemetry.recordOutput("Fuel/FlightSeconds", shot.flightSeconds());
-        RateLimitedTelemetry.recordOutput("Fuel/TunnelMeasuredRPM", indexer.getTunnelRPM());
-        RateLimitedTelemetry.recordOutput("Fuel/TunnelRequestedRPM", feeding ? tunnelRPM : 0);
+        SmartDashboard.putBoolean("Fuel/Feeding", feeding);
+        SmartDashboard.putBoolean("Fuel/CalibrationMode", calibrationMode);
+        SmartDashboard.putNumber("Fuel/RangeMeters", range);
+        SmartDashboard.putNumber("Fuel/TargetRPM", rpm);
+        SmartDashboard.putNumber("Fuel/MeasuredRPM", shooter.getCurrentRPM());
+        SmartDashboard.putNumber("Fuel/FlightSeconds", shot.flightSeconds());
+        SmartDashboard.putNumber("Fuel/TunnelMeasuredRPM", indexer.getTunnelRPM());
+        SmartDashboard.putNumber("Fuel/TunnelRequestedRPM", feeding ? tunnelRPM : 0);
     }
 
     private boolean modeEnabled() {
@@ -234,9 +231,7 @@ public final class FuelShootCommand extends Command {
         aim.end(interrupted);
         indexer.stop(); shooter.stop();
         readySince = Double.NaN;
-        RateLimitedTelemetry.putBoolean("Fuel/Feeding", false);
-        RateLimitedTelemetry.putString("Fuel/Status", "Released");
-        RateLimitedTelemetry.recordOutput("Fuel/Feeding", false);
-        RateLimitedTelemetry.recordOutput("Fuel/Status", "Released");
+        SmartDashboard.putBoolean("Fuel/Feeding", false);
+        SmartDashboard.putString("Fuel/Status", "Released");
     }
 }

@@ -1,9 +1,7 @@
 package frc.robot.subsystems.shooter;
 
-import org.littletonrobotics.junction.AutoLog;
 
 public interface ShooterIO {
-    @AutoLog
     public static class ShooterIOInputs {
         public boolean leaderConnected = false;
         public boolean followerConnected = false;
@@ -17,6 +15,7 @@ public interface ShooterIO {
         public double leaderCurrentAmps = 0.0;
         public double leaderTempCelsius = 0.0;
 
+        public double followerPositionRotations = 0.0;
         public double followerVelocityRPS = 0.0;
         public double followerAppliedVolts = 0.0;
         public double followerCurrentAmps = 0.0;

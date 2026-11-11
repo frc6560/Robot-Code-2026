@@ -44,6 +44,7 @@ public class ShooterIOSim implements ShooterIO {
         inputs.leaderCurrentAmps = currentPerMotor;
         inputs.leaderTempCelsius = 25.0;
 
+        inputs.followerPositionRotations = positionRotations;
         inputs.followerVelocityRPS = motorRPS;
         inputs.followerAppliedVolts = appliedVolts;
         inputs.followerCurrentAmps = currentPerMotor;

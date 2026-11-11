@@ -8,7 +8,6 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
-import frc.robot.utility.telemetry.RateLimitedTelemetry;
 import frc.robot.lib.BLine.FlippingUtil;
 import frc.robot.lib.BLine.FollowPath;
 import frc.robot.lib.BLine.Path;
@@ -42,7 +41,6 @@ public class AutoCommands {
         this.intake = intake;
         this.shooter = shooter;
 
-        configureBLineLogging();
 
         Path.setDefaultGlobalConstraints(new Path.DefaultGlobalConstraints(
             BLineConstants.GLOBAL_MAX_VELOCITY_MPS,
@@ -133,23 +131,7 @@ public class AutoCommands {
         return element.copy();
     }
 
-    /**
-     * Retains BLine scalar diagnostics at 2 Hz. Bulk pose/path graphics are discarded to avoid
-     * repeatedly serializing trajectory arrays; these consumers do not control path following.
-     */
-    private static void configureBLineLogging() {
-        FollowPath.setDoubleLoggingConsumer(value -> {
-            String key = value.getFirst();
-            double measurement = value.getSecond();
-            RateLimitedTelemetry.recordOutput("BLine/" + key, measurement);
 
-        });
-        FollowPath.setBooleanLoggingConsumer(
-            value -> RateLimitedTelemetry.recordOutput("BLine/" + value.getFirst(), value.getSecond()));
-        FollowPath.setPoseLoggingConsumer(
-            value -> {});
-        FollowPath.setTranslationListLoggingConsumer(value -> {});
-    }
 
     private FollowPath.Builder createPathBuilder() {
         return createPathBuilder(BLineConstants.TRANSLATION_KP);
@@ -202,19 +184,6 @@ public class AutoCommands {
     private void setBLineChassisSpeeds(ChassisSpeeds requestedSpeeds) {
         boolean waiting = Timer.getFPGATimestamp() < bLinePauseUntilSeconds;
         ChassisSpeeds appliedSpeeds = waiting ? new ChassisSpeeds() : requestedSpeeds;
-        ChassisSpeeds measuredSpeeds = drivetrain.getRobotVelocity();
-        RateLimitedTelemetry.recordOutput("BLine/Wait/Active", waiting);
-        RateLimitedTelemetry.recordOutput(
-            "BLine/Wait/RemainingSeconds",
-            waiting ? bLinePauseUntilSeconds - Timer.getFPGATimestamp() : 0.0);
-        RateLimitedTelemetry.recordOutput("BLine/Drive/RequestedRobotVxMetersPerSec", requestedSpeeds.vxMetersPerSecond);
-        RateLimitedTelemetry.recordOutput("BLine/Drive/RequestedRobotVyMetersPerSec", requestedSpeeds.vyMetersPerSecond);
-        RateLimitedTelemetry.recordOutput("BLine/Drive/RequestedOmegaRadPerSec", requestedSpeeds.omegaRadiansPerSecond);
-        RateLimitedTelemetry.recordOutput("BLine/Drive/AppliedRobotVxMetersPerSec", appliedSpeeds.vxMetersPerSecond);
-        RateLimitedTelemetry.recordOutput("BLine/Drive/AppliedRobotVyMetersPerSec", appliedSpeeds.vyMetersPerSecond);
-        RateLimitedTelemetry.recordOutput("BLine/Drive/AppliedOmegaRadPerSec", appliedSpeeds.omegaRadiansPerSecond);
-        RateLimitedTelemetry.recordOutput("BLine/Drive/MeasuredRobotVxMetersPerSec", measuredSpeeds.vxMetersPerSecond);
-        RateLimitedTelemetry.recordOutput("BLine/Drive/MeasuredRobotVyMetersPerSec", measuredSpeeds.vyMetersPerSecond);
         drivetrain.setChassisSpeeds(appliedSpeeds);
     }
 
@@ -285,8 +254,6 @@ public class AutoCommands {
             (startToRobot.getX() * finalSegment.getX()
                 + startToRobot.getY() * finalSegment.getY()) / segmentLengthSquared;
         boolean passedFinishPlane = progress >= 1.0;
-        RateLimitedTelemetry.recordOutput("BLine/Zigzag/FinalSegmentProgress", progress);
-        RateLimitedTelemetry.recordOutput("BLine/Zigzag/PassedFinishPlane", passedFinishPlane);
         return passedFinishPlane;
     }
 

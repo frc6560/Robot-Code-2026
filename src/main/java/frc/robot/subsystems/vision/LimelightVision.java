@@ -1,19 +1,25 @@
 package frc.robot.subsystems.vision;
 
 
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.Timer;
-import frc.robot.utility.telemetry.RateLimitedTelemetry;
+import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.StructPublisher;
+import edu.wpi.first.networktables.PubSubOption;
+import frc.robot.Constants.FieldConstants;
 import frc.robot.Constants.LimelightConstants;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import frc.robot.utility.LimelightHelpers;
 import frc.robot.utility.LimelightHelpers.PoseEstimate;
 
 public class LimelightVision{
+    private static final double FIELD_MARGIN_METERS = 1.0;
+
     private Pose2d robotPose2d = new Pose2d();
     private double latency = 0.0;
     private final String name;
@@ -21,18 +27,22 @@ public class LimelightVision{
     private double kStdvTheta = Double.POSITIVE_INFINITY;
 
     private boolean measurementAccepted = true;
-    private final String logKey;
+    private final StructPublisher<Pose2d> posePublisher;
+    private double nextTelemetry;
 
     private SwerveSubsystem drivebase;
 
     public LimelightVision(SwerveSubsystem drivebase, String name, Pose3d cameraPose) {
         this.name = name;
-        logKey = "Vision/" + switch (name) {
+        String logKey = "Vision/" + switch (name) {
             case LimelightConstants.FRONT_CAMERA -> "Front";
             case LimelightConstants.LEFT_CAMERA -> "Left";
             case LimelightConstants.RIGHT_CAMERA -> "Right";
             default -> name;
         };
+        posePublisher = NetworkTableInstance.getDefault()
+            .getStructTopic("/SmartDashboard/" + logKey + "/RawPose", Pose2d.struct)
+            .publish(PubSubOption.periodic(0.5));
         this.drivebase = drivebase;
         // Sets the camera's position on the robot. The actual Pose3d this originates from comes from the camera.
         LimelightHelpers.setCameraPose_RobotSpace(
@@ -61,25 +71,18 @@ public class LimelightVision{
         robotPose2d = poseEstimate.pose;
         latency = poseEstimate.latency / 1000.0; // in seconds
 
-        RateLimitedTelemetry.putNumber(this.name + "/TagCount", poseEstimate.tagCount);
-        RateLimitedTelemetry.putNumber(this.name + "/AvgTagDist", poseEstimate.avgTagDist);
-        RateLimitedTelemetry.putNumber(this.name + "/Latency", latency);
-        RateLimitedTelemetry.putNumber(this.name + "/STDVX", kStdvXY * LimelightConstants.kStdvXYBase);
-
-        if(robotPose2d != null && !Double.isNaN(robotPose2d.getX()) && poseEstimate.tagCount > 0){
-            drivebase.getSwerveDrive().field.getObject(this.name + "/LimelightPose").setPose(robotPose2d);
+        double now = Timer.getFPGATimestamp();
+        if (now >= nextTelemetry && robotPose2d != null
+                && Double.isFinite(robotPose2d.getX()) && Double.isFinite(robotPose2d.getY())
+                && Double.isFinite(robotPose2d.getRotation().getRadians())) {
+            nextTelemetry = now + 0.5;
+            posePublisher.set(robotPose2d);
         }
 
         String status = rejectionReason(poseEstimate, drivebase.getPose(),
             drivebase.getRobotVelocity().omegaRadiansPerSecond);
         measurementAccepted = status.equals("Ready");
-        if (robotPose2d != null) RateLimitedTelemetry.recordOutput(logKey + "/RawPose", robotPose2d);
-        RateLimitedTelemetry.recordOutput(logKey + "/TagCount", poseEstimate.tagCount);
-        RateLimitedTelemetry.recordOutput(logKey + "/AvgTagDistanceMeters", poseEstimate.avgTagDist);
-        RateLimitedTelemetry.recordOutput(logKey + "/Status", measurementAccepted ? "Used" : status);
-        RateLimitedTelemetry.recordOutput(logKey + "/UsedThisLoop", measurementAccepted);
 
-        RateLimitedTelemetry.putBoolean(this.name + "/MeasurementAccepted", measurementAccepted);
 
         if(!measurementAccepted){
             return;
@@ -105,10 +108,9 @@ public class LimelightVision{
         );
     }
 
-    // These checks, weighting and timing intentionally match glendale-working-branch.
     static String rejectionReason(PoseEstimate estimate, Pose2d robotPose, double omega) {
-        if (estimate == null) return "No pose received";
-        if (estimate.pose == null || estimate.pose.equals(new Pose2d())) return "Null or zero pose";
+        String invalidPose = invalidPoseReason(estimate);
+        if (invalidPose != null) return invalidPose;
         if (Math.abs(omega) > Units.degreesToRadians(360)) return "Robot turning too fast";
         if (estimate.pose.getTranslation().getDistance(robotPose.getTranslation())
                 > LimelightConstants.JUMP_TOLERANCE) return "Pose differs by more than 2 m";
@@ -124,19 +126,34 @@ public class LimelightVision{
         return now - latencySeconds;
     }
 
-    static boolean canHardReset(PoseEstimate estimate) {
-        return estimate != null && estimate.pose != null && !estimate.pose.equals(new Pose2d());
+    static String invalidPoseReason(PoseEstimate estimate) {
+        if (estimate == null) return "No pose received";
+        if (estimate.pose == null || estimate.pose.equals(Pose2d.kZero)) return "Null or zero pose";
+
+        double x = estimate.pose.getX();
+        double y = estimate.pose.getY();
+        if (!Double.isFinite(x) || !Double.isFinite(y)) return "Non-finite position";
+
+        double nearestX = MathUtil.clamp(x, 0.0, FieldConstants.FIELD_LENGTH);
+        double nearestY = MathUtil.clamp(y, 0.0, FieldConstants.FIELD_WIDTH);
+        if (Math.hypot(x - nearestX, y - nearestY) > FIELD_MARGIN_METERS) {
+            return "Pose more than 1 m outside field bounds";
+        }
+        return null;
     }
 
     /** Glendale's heading-independent MT1 reset; return success for the current driver command. */
     public boolean hardUpdate(){
         PoseEstimate poseEstimate = LimelightHelpers.getBotPoseEstimate_wpiBlue(this.name);
         if (poseEstimate != null) robotPose2d = poseEstimate.pose;
-        boolean reset = canHardReset(poseEstimate);
-        if (reset) drivebase.resetOdometry(robotPose2d);
-        String status = reset ? "Reset to MegaTag1" : "No nonzero pose received";
-        RateLimitedTelemetry.recordOutput(logKey + "/ResetStatus", status);
-        RateLimitedTelemetry.putString(logKey + "/ResetStatus", status);
+        String invalidPose = invalidPoseReason(poseEstimate);
+        boolean reset = invalidPose == null;
+        if (reset) {
+            drivebase.resetOdometry(robotPose2d);
+            posePublisher.set(robotPose2d);
+        }
+
+
         return reset;
     }
 

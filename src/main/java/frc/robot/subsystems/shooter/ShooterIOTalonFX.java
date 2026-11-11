@@ -71,8 +71,9 @@ public class ShooterIOTalonFX implements ShooterIO {
 
         leaderMotor.optimizeBusUtilization();
         followerMotor.optimizeBusUtilization();
-        frc.robot.utility.CurrentUsageMonitor.register("Right shooter", leaderMotor);
-        frc.robot.utility.CurrentUsageMonitor.register("Left shooter", followerMotor);
+        followerMotor.getPosition().setUpdateFrequency(2.0);
+
+
         refreshGroup0 = new BaseStatusSignal[] {
             leaderPosition, leaderVelocity, leaderVoltage, leaderCurrent, leaderTemp
         };
@@ -129,6 +130,7 @@ public class ShooterIOTalonFX implements ShooterIO {
         inputs.leaderCurrentAmps = leaderCurrent.getValueAsDouble();
         inputs.leaderTempCelsius = leaderTemp.getValueAsDouble();
 
+        inputs.followerPositionRotations = followerMotor.getPosition().getValueAsDouble();
         inputs.followerVelocityRPS = followerVelocity.getValueAsDouble();
         inputs.followerAppliedVolts = followerVoltage.getValueAsDouble();
         inputs.followerCurrentAmps = followerCurrent.getValueAsDouble();

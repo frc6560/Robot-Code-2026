@@ -32,11 +32,8 @@ public class IntakeIOTalonFX implements IntakeIO {
     private final VelocityVoltage rightRollerRequest = new VelocityVoltage(0).withSlot(0);
     private final StatusCode leftRollerConfigurationStatus;
     private final StatusCode rightRollerConfigurationStatus;
-    private String rollerControlStatus = "No request";
     private final StatusCode configurationStatus;
     private boolean homed;
-    private String zeroStatus;
-    private String controlStatus = "No request";
     private boolean stopped = true;
     private boolean extensionLimitReached;
     private boolean rackFeedbackFresh;
@@ -55,15 +52,11 @@ public class IntakeIOTalonFX implements IntakeIO {
         return new VoltageOut(IntakeConstants.DEPLOY_FORCE_EXTEND_VOLTS).withIgnoreSoftwareLimits(true);
     }
 
-    private final String configurationSummary;
     private final BaseStatusSignal[] refreshGroup0;
     private final BaseStatusSignal[] refreshGroup1;
     private final BaseStatusSignal[] refreshGroup2;
     private final BaseStatusSignal[] refreshGroup3;
     public IntakeIOTalonFX() {
-        frc.robot.utility.CurrentUsageMonitor.register("Intake extension", motor);
-        frc.robot.utility.CurrentUsageMonitor.register("Left intake roller", leftRoller);
-        frc.robot.utility.CurrentUsageMonitor.register("Right intake roller", rightRoller);
 
         TalonFXConfiguration config = new TalonFXConfiguration();
         config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
@@ -100,24 +93,21 @@ public class IntakeIOTalonFX implements IntakeIO {
         StatusCode zero = status.isOK()
             ? motor.setPosition(IntakeConstants.RETRACTED_POSITION_ROTATIONS) : status;
         homed = status.isOK() && zero.isOK();
-        zeroStatus = zero.toString();
         motor.hasResetOccurred();
         BaseStatusSignal.setUpdateFrequencyForAll(50.0, motor.getPosition(), motor.getVelocity(),
-            motor.getMotorVoltage(), motor.getSupplyCurrent(), motor.getStatorCurrent(), motor.getDeviceTemp());
+            motor.getMotorVoltage(), motor.getSupplyCurrent(), motor.getStatorCurrent());
         motor.optimizeBusUtilization();
+        motor.getClosedLoopReferenceSlope().setUpdateFrequency(2.0);
         leftRollerConfigurationStatus = configureRoller(leftRoller,
             IntakeConstants.LEFT_ROLLER_MOTOR_INVERTED);
         rightRollerConfigurationStatus = configureRoller(rightRoller,
             IntakeConstants.RIGHT_ROLLER_MOTOR_INVERTED);
-        configurationSummary = "Left=" + leftRollerConfigurationStatus
-            + " Right=" + rightRollerConfigurationStatus;
         refreshGroup0 = new BaseStatusSignal[] {motor.getPosition(), motor.getVelocity()};
-        refreshGroup1 = new BaseStatusSignal[] {motor.getMotorVoltage(), motor.getSupplyCurrent(), motor.getStatorCurrent(), motor.getDeviceTemp()};
+        refreshGroup1 = new BaseStatusSignal[] {motor.getMotorVoltage(), motor.getSupplyCurrent(), motor.getStatorCurrent()};
         refreshGroup2 = new BaseStatusSignal[] {
             leftRoller.getVelocity(), rightRoller.getVelocity()};
-        refreshGroup3 = new BaseStatusSignal[] {leftRoller.getMotorVoltage(), leftRoller.getSupplyCurrent(), leftRoller.getStatorCurrent(),
-            leftRoller.getDeviceTemp(), rightRoller.getMotorVoltage(), rightRoller.getSupplyCurrent(), rightRoller.getStatorCurrent(),
-            rightRoller.getDeviceTemp()};
+        refreshGroup3 = new BaseStatusSignal[] {leftRoller.getMotorVoltage(), leftRoller.getSupplyCurrent(),
+            rightRoller.getMotorVoltage(), rightRoller.getSupplyCurrent()};
     }
 
     static CurrentLimitsConfigs deployCurrentLimits(double statorAmps) {
@@ -159,8 +149,8 @@ public class IntakeIOTalonFX implements IntakeIO {
         for (int attempt = 1; attempt < 3 && !status.isOK(); attempt++) {
             status = roller.getConfigurator().apply(config, 0.1);
         }
-        BaseStatusSignal.setUpdateFrequencyForAll(50.0, roller.getVelocity(),
-            roller.getMotorVoltage(), roller.getSupplyCurrent(), roller.getStatorCurrent(), roller.getDeviceTemp());
+        BaseStatusSignal.setUpdateFrequencyForAll(50.0, roller.getPosition(), roller.getVelocity(),
+            roller.getMotorVoltage(), roller.getSupplyCurrent());
         roller.optimizeBusUtilization();
         return status;
     }
@@ -173,7 +163,6 @@ public class IntakeIOTalonFX implements IntakeIO {
         BaseStatusSignal.refreshAll(refreshGroup1);
         if (motor.hasResetOccurred()) {
             homed = false;
-            zeroStatus = "Rack controller reset: physically retract and restart code";
         }
         rackFeedbackFresh = fresh && motor.isConnected();
         deployLimit.update(DriverStation.isEnabled() && !stopped && homed && rackFeedbackFresh,
@@ -183,34 +172,27 @@ public class IntakeIOTalonFX implements IntakeIO {
         inputs.deployConnected = rackFeedbackFresh;
         inputs.configured = configurationStatus.isOK();
         inputs.deployHomed = homed;
-        inputs.deployConfigurationStatus = configurationStatus.toString();
-        inputs.zeroStatus = zeroStatus;
-        inputs.deployControlStatus = controlStatus;
         inputs.deployPositionRotations = motor.getPosition().getValueAsDouble();
+        inputs.deployTargetRPS = stopped || forceRetracting || forceExtending
+            ? Double.NaN : motor.getClosedLoopReferenceSlope().getValueAsDouble();
+        inputs.leftRollerPositionRotations = leftRoller.getPosition().getValueAsDouble();
+        inputs.rightRollerPositionRotations = rightRoller.getPosition().getValueAsDouble();
         inputs.deployVelocityRPS = motor.getVelocity().getValueAsDouble();
         inputs.deployAppliedVolts = motor.getMotorVoltage().getValueAsDouble();
         inputs.deployCurrentAmps = motor.getSupplyCurrent().getValueAsDouble();
         inputs.deployStatorCurrentAmps = motor.getStatorCurrent().getValueAsDouble();
         inputs.deployCurrentFresh = motor.getStatorCurrent().getStatus().isOK();
-        inputs.deployTempCelsius = motor.getDeviceTemp().getValueAsDouble();
         boolean rollersFresh = BaseStatusSignal.refreshAll(refreshGroup2).isOK();
         BaseStatusSignal.refreshAll(refreshGroup3);
         inputs.rollerConnected = rollersFresh && leftRoller.isConnected() && rightRoller.isConnected();
         inputs.rollerConfigured = leftRollerConfigurationStatus.isOK()
             && rightRollerConfigurationStatus.isOK();
-        inputs.rollerConfigurationStatus = configurationSummary;
-        inputs.rollerControlStatus = rollerControlStatus;
         inputs.rollerVelocityRPS = leftRoller.getVelocity().getValueAsDouble();
         inputs.rightRollerVelocityRPS = rightRoller.getVelocity().getValueAsDouble();
         inputs.rollerAppliedVolts = leftRoller.getMotorVoltage().getValueAsDouble();
         inputs.rightRollerAppliedVolts = rightRoller.getMotorVoltage().getValueAsDouble();
         inputs.leftRollerSupplyAmps = leftRoller.getSupplyCurrent().getValueAsDouble();
         inputs.rightRollerSupplyAmps = rightRoller.getSupplyCurrent().getValueAsDouble();
-        inputs.leftRollerStatorAmps = leftRoller.getStatorCurrent().getValueAsDouble();
-        inputs.rightRollerStatorAmps = rightRoller.getStatorCurrent().getValueAsDouble();
-        inputs.rollerCurrentAmps = inputs.leftRollerSupplyAmps + inputs.rightRollerSupplyAmps;
-        inputs.rollerTempCelsius = Math.max(leftRoller.getDeviceTemp().getValueAsDouble(),
-            rightRoller.getDeviceTemp().getValueAsDouble());
     }
 
     @Override
@@ -218,13 +200,10 @@ public class IntakeIOTalonFX implements IntakeIO {
         if (!Double.isFinite(rpm) || rpm == 0.0) {
             leftRoller.stopMotor();
             rightRoller.stopMotor();
-            rollerControlStatus = rpm == 0 ? "Stopped" : "Invalid roller RPM";
             return;
         }
-        StatusCode left = leftRoller.setControl(leftRollerRequest.withVelocity(rpm / 60.0));
-        StatusCode right = rightRoller.setControl(rightRollerRequest.withVelocity(rpm / 60.0));
-        rollerControlStatus = left.isOK() && right.isOK() ? "Left=OK Right=OK"
-            : "Left=" + left + " Right=" + right;
+        leftRoller.setControl(leftRollerRequest.withVelocity(rpm / 60.0));
+        rightRoller.setControl(rightRollerRequest.withVelocity(rpm / 60.0));
     }
 
     @Override
@@ -237,11 +216,9 @@ public class IntakeIOTalonFX implements IntakeIO {
             forceRetracting = forceExtending = false;
             requestedRackPosition = commandedTarget;
             if (!deployLimit.update(DriverStation.isEnabled() && rackFeedbackFresh, newMove, rackNeedsMotion())) {
-                controlStatus = "Current-limit update failed; motor stopped";
                 return;
             }
             StatusCode control = motor.setControl(request.withPosition(commandedTarget));
-            controlStatus = control.toString();
             if (!control.isOK()) { stop(); return; }
             stopped = false;
         } else {
@@ -273,12 +250,9 @@ public class IntakeIOTalonFX implements IntakeIO {
         requestedRackPosition = extending ? IntakeConstants.EXTENDED_POSITION_ROTATIONS
             : IntakeConstants.RETRACTED_POSITION_ROTATIONS;
         if (!deployLimit.update(true, newMove, true)) {
-            controlStatus = "Forced motion current-limit update failed; motor stopped";
             return;
         }
         StatusCode control = motor.setControl(extending ? forceExtendRequest : forceRetractRequest);
-        controlStatus = control.isOK() ? (extending ? "Force extend: OK" : "Force retract: OK")
-            : (extending ? "Force extend: " : "Force retract: ") + control;
         if (!control.isOK()) { stop(); return; }
         stopped = false;
     }
@@ -287,7 +261,6 @@ public class IntakeIOTalonFX implements IntakeIO {
         stopDeploy();
         StatusCode zero = motor.setPosition(IntakeConstants.RETRACTED_POSITION_ROTATIONS);
         homed = configurationStatus.isOK() && zero.isOK();
-        zeroStatus = "Retracted wall confirmed: " + zero;
     }
 
     @Override public void stopDeploy() {
@@ -295,7 +268,6 @@ public class IntakeIOTalonFX implements IntakeIO {
         forceRetracting = forceExtending = false;
         deployLimit.update(false, false, false);
         stopped = true;
-        controlStatus = "Stopped: rack endpoint confirmed";
     }
 
     @Override

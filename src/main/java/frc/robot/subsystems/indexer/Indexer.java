@@ -2,12 +2,13 @@ package frc.robot.subsystems.indexer;
 
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import frc.robot.utility.telemetry.RateLimitedTelemetry;
+import frc.robot.Constants.IndexerConstants;
 import frc.robot.utility.shooting.FuelShotConfig;
 
 public class Indexer extends SubsystemBase {
     private final IndexerIO io;
-    private final IndexerIOInputsAutoLogged inputs = new IndexerIOInputsAutoLogged();
+    private final IndexerIO.IndexerIOInputs inputs = new IndexerIO.IndexerIOInputs();
+    private double nextTelemetry;
     private double floorTargetRPM = 0.0;
     private double tunnelTargetRPM = 0.0;
 
@@ -18,39 +19,24 @@ public class Indexer extends SubsystemBase {
     @Override
     public void periodic() {
         io.updateInputs(inputs);
-        // Clear legacy telemetry: automatic stall cutoffs are disabled by operator request.
-        RateLimitedTelemetry.putBoolean("Indexer/FloorStallFault", false);
-        RateLimitedTelemetry.putString("Indexer/FloorBlockedReason", "None");
-        RateLimitedTelemetry.recordOutput("Indexer/FloorStallFault", false);
-        RateLimitedTelemetry.processInputs("Indexer", inputs);
-        RateLimitedTelemetry.recordOutput("Indexer/FloorTargetRPM", floorTargetRPM);
-        RateLimitedTelemetry.putNumber("Indexer/FloorStatorLimitAmps", inputs.floorStatorLimitAmps);
-        RateLimitedTelemetry.putNumber("Indexer/TunnelStatorLimitAmps", inputs.tunnelStatorLimitAmps);
-        RateLimitedTelemetry.putBoolean("Indexer/FloorCurrentLimitOK", inputs.floorCurrentLimitOK);
-        RateLimitedTelemetry.putBoolean("Indexer/TunnelCurrentLimitOK", inputs.tunnelCurrentLimitOK);
-        RateLimitedTelemetry.putBoolean("Indexer/FloorEnabled", FuelShotConfig.FLOOR_ENABLED);
-        RateLimitedTelemetry.recordOutput("Indexer/TunnelTargetRPM", tunnelTargetRPM);
-        RateLimitedTelemetry.putNumber("Indexer/TunnelRPM", inputs.tunnelRPM);
-        RateLimitedTelemetry.putNumber("Indexer/TunnelTargetRPM", tunnelTargetRPM);
-        RateLimitedTelemetry.putNumber("Indexer/TunnelVolts", inputs.appliedVolts);
-        RateLimitedTelemetry.putNumber("Indexer/TunnelStatorAmps", inputs.tunnelCurrentAmps);
-        RateLimitedTelemetry.putString("Indexer/TunnelConfigurationStatus", inputs.tunnelConfigurationStatus);
-        RateLimitedTelemetry.putString("Indexer/TunnelControlStatus", inputs.tunnelControlStatus);
-        RateLimitedTelemetry.putBoolean("Indexer/TunnelReady", isTunnelReady());
-        // Keep the floor diagnostics separate from the tunnel's legacy appliedVolts field.
-        RateLimitedTelemetry.putNumber("Indexer/FloorTargetRPM", floorTargetRPM);
-        RateLimitedTelemetry.putNumber("Indexer/FloorRPM", inputs.floorRPM);
-        RateLimitedTelemetry.putBoolean("Indexer/FloorConnected", inputs.floorConnected);
-        RateLimitedTelemetry.putNumber("Indexer/FloorVolts", inputs.floorAppliedVolts);
-        RateLimitedTelemetry.putNumber("Indexer/FloorAmps", inputs.floorCurrentAmps);
-        RateLimitedTelemetry.putString("Indexer/FloorConfigurationStatus", inputs.floorConfigurationStatus);
-        RateLimitedTelemetry.putString("Indexer/FloorControlStatus", inputs.floorControlStatus);
-        RateLimitedTelemetry.putBoolean("Indexer/FloorSecondaryConnected", inputs.floorSecondaryConnected);
-        RateLimitedTelemetry.putNumber("Indexer/FloorSecondaryRPM", inputs.floorSecondaryRPM);
-        RateLimitedTelemetry.putNumber("Indexer/FloorSecondaryVolts", inputs.floorSecondaryAppliedVolts);
-        RateLimitedTelemetry.putNumber("Indexer/FloorSecondaryAmps", inputs.floorSecondaryCurrentAmps);
-
-
+        double now = edu.wpi.first.wpilibj.Timer.getFPGATimestamp();
+        if (edu.wpi.first.wpilibj.RobotBase.isReal() && now < nextTelemetry) return;
+        nextTelemetry = now + 0.5;
+        SmartDashboard.putNumber("Indexer/FloorPositionRotations", inputs.floorPositionRotations);
+        SmartDashboard.putNumber("Indexer/FloorMotorRPM", inputs.floorRPM * IndexerConstants.FLOOR_GEAR_RATIO);
+        SmartDashboard.putNumber("Indexer/FloorMotorTargetRPM", floorTargetRPM * IndexerConstants.FLOOR_GEAR_RATIO);
+        SmartDashboard.putNumber("Indexer/FloorVolts", inputs.floorAppliedVolts);
+        SmartDashboard.putNumber("Indexer/FloorAmps", inputs.floorCurrentAmps);
+        SmartDashboard.putNumber("Indexer/FloorSecondaryPositionRotations", inputs.floorSecondaryPositionRotations);
+        SmartDashboard.putNumber("Indexer/FloorSecondaryMotorRPM", inputs.floorSecondaryRPM * IndexerConstants.FLOOR_GEAR_RATIO);
+        SmartDashboard.putNumber("Indexer/FloorSecondaryMotorTargetRPM", floorTargetRPM * IndexerConstants.FLOOR_GEAR_RATIO);
+        SmartDashboard.putNumber("Indexer/FloorSecondaryVolts", inputs.floorSecondaryAppliedVolts);
+        SmartDashboard.putNumber("Indexer/FloorSecondaryAmps", inputs.floorSecondaryCurrentAmps);
+        SmartDashboard.putNumber("Indexer/TunnelPositionRotations", inputs.tunnelPositionRotations);
+        SmartDashboard.putNumber("Indexer/TunnelMotorRPM", inputs.tunnelRPM * IndexerConstants.TUNNEL_GEAR_RATIO);
+        SmartDashboard.putNumber("Indexer/TunnelMotorTargetRPM", tunnelTargetRPM * IndexerConstants.TUNNEL_GEAR_RATIO);
+        SmartDashboard.putNumber("Indexer/TunnelVolts", inputs.appliedVolts);
+        SmartDashboard.putNumber("Indexer/TunnelStatorAmps", inputs.tunnelCurrentAmps);
     }
 
     public void setFloorRPM(double rpm) {

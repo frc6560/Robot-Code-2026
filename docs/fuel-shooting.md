@@ -81,32 +81,11 @@ boost. The intake rack retains its one-second 60 A stator allowance; it also ret
 to 40 A on arrival. Configuration confirmation/retry handling
 remains, including restoring fixed limits after a controller reset.
 
-Current limit telemetry: `Indexer/FloorStatorLimitAmps`, `Indexer/TunnelStatorLimitAmps`,
-and `Intake/DeployStatorLimitAmps`. Their corresponding `FloorCurrentLimitOK`,
-`TunnelCurrentLimitOK`, and `DeployCurrentLimitOK` flags indicate whether the
-controller configuration was confirmed.
-
-Automatic floor and rack stall cutoffs have been removed by operator request. Sustained high-current,
-low-speed operation no longer cancels the requested RPM/position or requires a disable to reset.
-The continuous current limits above, rack soft limits, disable/pit-coast behavior, and roller
-extension interlocks remain. Legacy `Indexer/FloorStallFault` and `Intake/DeployStallFault` dashboard values are cleared to
-false to avoid stale fault indicators. This removes a software cutoff; it does not resolve binding.
-
-Watch `Intake/FullyExtended` / `Intake/RollerPermitted` for the roller interlock.
-The existing `Intake/DeployCurrentAmps` is **supply current**, whereas floor
-current readings are **stator current**. New `Intake/DeploySupplyAmps` and `Intake/DeployStatorAmps`
-make that distinction explicit. `Intake/LeftRollerVolts` / `Intake/RightRollerVolts` help investigate
-one roller failing to spin. Separate `Intake/LeftRollerSupplyAmps`, `LeftRollerStatorAmps`,
-`RightRollerSupplyAmps`, and `RightRollerStatorAmps` are available on SmartDashboard
-and in saved logs. Legacy RollerCurrentAmps remains the combined supply current.
-`Intake/RollerTriggerHeld`, `RollerCommandedRPM`, and `RollerBlockedReason` explain
-whether the rollers were requested or stopped. For a noisy left roller, compare
-its current, voltage and measured RPM against the right side. A high current with
-little motion calls for checking binding, loading, wiring and motor feedback;
-it does not establish which fault is present. The rack assumes physically retracted at code startup; its motor encoder
-cannot independently verify the physical endpoint. Verify that 9.5 rotations matches full extension
-before relying on the roller interlock, since the earlier measured-travel calculation was 7.81.
-
+The live readings `Intake/DeployCurrentAmps` and the two `RollerSupplyAmps`
+fields report supply current. `Intake/DeployStatorAmps` and the indexer current
+fields report stator current. Compare RPM, target RPM, voltage, and current to
+check which motor responds to a request. The rack assumes a physically retracted
+position at startup and uses an integrated encoder.
 
 ## When the wall does not run
 
@@ -119,9 +98,9 @@ With RB held, `Fuel/Status` gives the blocking condition (for example Aiming, No
 own alliance zone, Waiting for measured flywheel RPM, or Stop translating to shoot). No automatic
 feed is requested until those conditions pass; the timed current limits are independent of that decision.
 
-`Indexer/TunnelTargetRPM=0` means the command is not requesting feed. A nonzero target with
-`Indexer/TunnelRPM` near zero needs the accompanying `Indexer/TunnelVolts`,
-`Indexer/TunnelStatorAmps`, `Indexer/TunnelConfigurationStatus`, and `Indexer/TunnelControlStatus`
+`Indexer/TunnelMotorTargetRPM=0` means the command is not requesting feed. A nonzero target with
+`Indexer/TunnelMotorRPM` near zero needs the accompanying `Indexer/TunnelVolts`,
+and `Indexer/TunnelStatorAmps`
 to distinguish a motor/controller problem from a stalled mechanism.
 
 ## Fixed launch-speed coefficient
@@ -133,49 +112,14 @@ shows the fixed value while shooting. Changing this coefficient requires editing
 This applies to both right-trigger and Y calculator shots. Fixed-RPM calibration mode still bypasses
 trajectory selection as before.
 
-## Runtime diagnostics
+## Live motor and shooting telemetry
 
-For intermittent shutdowns, inspect `Power/BatteryVoltage`, `Power/BrownedOut`,
-`Power/ControllerTemperatureCelsius`, and `Runtime/CodeUptimeSeconds`, together
-with Driver Station errors. Code uptime restarting indicates a new Robot instance;
-a graph simply freezing can also be a lost connection. These logs do not prove
-that a battery, connection, or noisy mechanism is electrically healthy.
-
-`Runtime/ProgramSession` changes for every new Robot instance. After reconnecting,
-a changed session and restarted CodeUptimeSeconds establish a program restart;
-a matching session and continuing uptime indicate the program survived the lost
-connection. Battery voltage, brownout flags and Driver Station messages are still
-needed to distinguish electrical failure, an exception, and a network problem.
-
-## Top current users
-
-On Elastic, add text displays for SmartDashboard `Power/Top1CurrentUser`,
-`Power/Top2CurrentUser`, and `Power/Top3CurrentUser`. Each shows a physical motor
-label, CAN ID and current supply amps. Corresponding numeric `...Amps` keys can
-be graphed. The same keys are recorded under AdvantageKit RealOutputs.
-
-All 16 installed Talon FX controllers are tracked together on hardware: eight
-swerve drive/steering motors, two shooter motors, three intake motors, and three
-indexer motors. No new motor-controller objects are created. Supply-current
-signals are requested at 20 Hz and ranked every robot loop. Refresh calls are
-grouped by CAN connection; a Phoenix refresh cannot mix rio and CANivore signals. Failed/stale signals
-are excluded; check Power/TrackedMotorCount and Power/FreshMotorCount for coverage.
-Per-motor readings/freshness are under Power/Motors. TotalTrackedSupplyAmps sums
-only fresh monitored motor readings, not all electrical loads on the robot.
-This is an instantaneous battery-draw ranking, not an overheating or fault diagnosis.
-
-
-Hottest-controller displays are `Power/Top1HottestDevice`, `Power/Top2HottestDevice`,
-and `Power/Top3HottestDevice`, with separate numeric `...Celsius` keys. These rank
-fresh device-temperature readings from the same 16 motor controllers, requested
-at 10 Hz. Temperatures more than 2 seconds old are excluded. Device temperature
-is the controller's reported sensor temperature, not a direct measurement of the
-motor windings, bearings or power connections. `Power/MonitorStatus` and
-`Power/RefreshStatus` expose diagnostic errors. A runtime exception in this monitor
-is reported without propagating into the robot loop; this does not catch crashes
-elsewhere or native/process failures. A stale device-temperature warning by itself
-does not establish an overtemperature condition. Preserve the Driver Station error
-and stack trace to investigate an actual program termination.
+Connect to the robot and look under `SmartDashboard`. The swerve, shooter,
+intake, and indexer folders contain position, RPM, target, voltage, and current
+readings. Swerve also reports each steering absolute encoder. On the rack and
+steering motors, a position request supplies the target and the motion profile
+supplies target RPM when available. `NaN` indicates no active speed reference.
+Shooter and hub-aim diagnostics remain under `Shooter`, `Fuel`, and `HubAim`.
 
 ## Driver control swap
 

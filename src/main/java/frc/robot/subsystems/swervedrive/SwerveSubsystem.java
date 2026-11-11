@@ -18,18 +18,25 @@ import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.FunctionalCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.utility.telemetry.RateLimitedTelemetry;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Config;
 import frc.robot.Constants;
 import frc.robot.Constants.DrivebaseConstants;
 import frc.robot.Constants.FieldConstants;
 
 import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.StructPublisher;
+import edu.wpi.first.networktables.PubSubOption;
+import com.ctre.phoenix6.BaseStatusSignal;
+import com.ctre.phoenix6.controls.MotionMagicVoltage;
+import com.ctre.phoenix6.controls.VelocityVoltage;
+import com.ctre.phoenix6.hardware.CANcoder;
+import com.ctre.phoenix6.hardware.TalonFX;
 import edu.wpi.first.networktables.StringSubscriber;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import java.io.File;
@@ -77,14 +84,10 @@ public class SwerveSubsystem extends SubsystemBase {
         .getStringTopic("/SmartDashboard/Auto Chooser/selected")
         .subscribe("Idle");
 
-    Pose2d startingPose = RobotBase.isSimulation()
-        && frc.robot.simulation.CompetitionAutoDiagnostic.requested()
-            ? frc.robot.simulation.CompetitionAutoDiagnostic.initialPose()
-            : allianceTestingStart();
     SwerveDriveTelemetry.verbosity = TelemetryVerbosity.NONE;
     try
     {
-      swerveDrive = new SwerveParser(directory).createSwerveDrive(Constants.MAX_SPEED, startingPose);
+      swerveDrive = new SwerveParser(directory).createSwerveDrive(Constants.MAX_SPEED, allianceTestingStart());
     } catch (Exception e)
     {
       throw new RuntimeException(e);
@@ -97,7 +100,7 @@ public class SwerveSubsystem extends SubsystemBase {
     swerveDrive.setModuleEncoderAutoSynchronize(false,
                                                 1); 
     swerveDrive.replaceSwerveModuleFeedforward(driveFF);
-    registerCurrentMonitoring();
+    configureMotorTelemetry();
     setMotorBrake(true);
   }
 
@@ -114,75 +117,50 @@ public class SwerveSubsystem extends SubsystemBase {
         .getStringTopic("/SmartDashboard/Auto Chooser/selected")
         .subscribe("Idle");
 
+    SwerveDriveTelemetry.verbosity = TelemetryVerbosity.NONE;
     swerveDrive = new SwerveDrive(driveCfg,
                                   controllerCfg,
                                   Constants.MAX_SPEED,
                                   allianceTestingStart());
-    registerCurrentMonitoring();
+    configureMotorTelemetry();
     setMotorBrake(true);
   }
 
-  private static Pose2d allianceTestingStart() {
-    return DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red
-        ? FieldConstants.RED_TESTING_START : FieldConstants.BLUE_TESTING_START;
+  private void configureMotorTelemetry() {
+    if (!RobotBase.isReal()) return;
+    for (var module : swerveDrive.getModules()) {
+      if (module.getDriveMotor().getMotor() instanceof TalonFX motor) {
+        motor.getStatorCurrent().setUpdateFrequency(2.0);
+      }
+      if (module.getAngleMotor().getMotor() instanceof TalonFX motor) {
+        BaseStatusSignal.setUpdateFrequencyForAll(2.0, motor.getStatorCurrent(),
+            motor.getClosedLoopReferenceSlope());
+      }
+    }
   }
 
-  private void registerCurrentMonitoring() {
-    for (var module : swerveDrive.getModules()) {
-      String name = switch (module.moduleNumber) {
-        case 0 -> "Front left";
-        case 1 -> "Front right";
-        case 2 -> "Back left";
-        case 3 -> "Back right";
-        default -> "Module " + module.moduleNumber;
-      };
-      if (module.getDriveMotor().getMotor() instanceof com.ctre.phoenix6.hardware.TalonFX motor)
-        frc.robot.utility.CurrentUsageMonitor.register(name + " drive", motor);
-      if (module.getAngleMotor().getMotor() instanceof com.ctre.phoenix6.hardware.TalonFX motor)
-        frc.robot.utility.CurrentUsageMonitor.register(name + " steering", motor);
-    }
+  private static Pose2d allianceTestingStart() {
+    boolean red = DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red;
+    Pose2d start = red ? FieldConstants.RED_TESTING_START : FieldConstants.BLUE_TESTING_START;
+    if (!RobotBase.isSimulation()) return start;
+    // Leave the simulated bumpers clear of the hub at the teleop test start.
+    return new Pose2d(start.getX() + (red ? 0.15 : -0.15), start.getY(), start.getRotation());
   }
 
   private final ChassisSpeeds alignmentSpeeds = new ChassisSpeeds();
-  private double nextFuelPoseLog;
+  private double nextTelemetry;
+  private double nextPoseTelemetry;
+  private double simRequestedFieldOmega;
+  private static final double POSE_PERIOD_SECONDS = RobotBase.isSimulation() ? 0.05 : 0.5;
+  private final StructPublisher<Pose2d> posePublisher = NetworkTableInstance.getDefault()
+      .getStructTopic("/SmartDashboard/Swerve/Pose", Pose2d.struct)
+      .publish(PubSubOption.periodic(POSE_PERIOD_SECONDS));
+  private final StructPublisher<Pose2d> fuelPosePublisher = NetworkTableInstance.getDefault()
+      .getStructTopic("/SmartDashboard/Fuel/RobotPose", Pose2d.struct)
+      .publish(PubSubOption.periodic(POSE_PERIOD_SECONDS));
 
   @Override
   public void periodic() {
-    // Publish independently of the shoot command, including while disabled.
-    double poseLogTime = edu.wpi.first.wpilibj.Timer.getFPGATimestamp();
-    if (poseLogTime >= nextFuelPoseLog) {
-      nextFuelPoseLog = poseLogTime + 0.5;
-      RateLimitedTelemetry.recordOutput("Fuel/RobotPose", getPose());
-    }
-
-    SwerveDriveTelemetry.verbosity = TelemetryVerbosity.NONE;
-    // Pose2d is published as structured AdvantageKit data. In AdvantageScope, add
-    // Swerve/Pose to a 2D Field tab.
-    RateLimitedTelemetry.recordOutput("Swerve/Pose", getPose());
-    Pose2d diagnosticPose = getPose();
-    RateLimitedTelemetry.recordOutput("Swerve/XMeters", diagnosticPose.getX());
-    RateLimitedTelemetry.recordOutput("Swerve/YMeters", diagnosticPose.getY());
-    RateLimitedTelemetry.recordOutput("Swerve/HeadingDeg", diagnosticPose.getRotation().getDegrees());
-    RateLimitedTelemetry.recordOutput("Swerve/RobotVelocity", getRobotVelocity());
-    RateLimitedTelemetry.recordOutput("Swerve/FieldVelocity", getFieldVelocity());
-    RateLimitedTelemetry.recordOutput("Swerve/PitCoastMode", pitCoastMode);
-    Command activeCommand = getCurrentCommand();
-    int driverPort = Constants.OperatorConstants.DRIVER_CONTROLLER_PORT;
-    String controlStatus = !DriverStation.isEnabled() ? "Robot disabled"
-        : pitCoastMode ? "Pit coast mode: press Back/View to restore drive"
-        : !DriverStation.isJoystickConnected(driverPort) ? "Driver controller missing on USB " + driverPort
-        : !DriverStation.isTeleopEnabled() ? "Outside Teleop: joystick drive inactive"
-        : activeCommand == null ? "Waiting for drive command"
-        : "Active: " + activeCommand.getName();
-    RateLimitedTelemetry.putString("Swerve/ControlStatus", controlStatus);
-    RateLimitedTelemetry.putBoolean("Swerve/PitCoastMode", pitCoastMode);
-    RateLimitedTelemetry.putNumber("Swerve/DriverControllerPort", driverPort);
-    int driverAxisCount = DriverStation.getStickAxisCount(driverPort);
-    RateLimitedTelemetry.putNumber("Swerve/DriverLeftX", driverAxisCount > 0 ? DriverStation.getStickAxis(driverPort, 0) : 0);
-    RateLimitedTelemetry.putNumber("Swerve/DriverLeftY", driverAxisCount > 1 ? DriverStation.getStickAxis(driverPort, 1) : 0);
-    RateLimitedTelemetry.putNumber("Swerve/DriverRightX", driverAxisCount > 4 ? DriverStation.getStickAxis(driverPort, 4) : 0);
-    RateLimitedTelemetry.recordOutput("Swerve/ControlStatus", controlStatus);
-
     // Re-evaluate only when DS alliance or chooser changes; never continually overwrite vision.
     if (DriverStation.isDisabled()
         && (!initialPoseAlliance.equals(DriverStation.getAlliance())
@@ -200,9 +178,60 @@ public class SwerveSubsystem extends SubsystemBase {
       initialPoseSet = true;  // Lock in the pose once auto starts
     }
 
-    RateLimitedTelemetry.putNumber("DistToBlueHub",
-        frc.robot.commands.scoring.FuelShootCommand.releasePosition(getPose())
-            .getDistance(FieldConstants.BLUE_HUB_CENTER));
+    double now = Timer.getFPGATimestamp();
+    if (now >= nextPoseTelemetry) {
+      nextPoseTelemetry = now + POSE_PERIOD_SECONDS;
+      Pose2d pose = getPose();
+      posePublisher.set(pose);
+      fuelPosePublisher.set(pose);
+      if (RobotBase.isSimulation()) {
+        int port = Constants.OperatorConstants.DRIVER_CONTROLLER_PORT;
+        int axis = XboxController.Axis.kRightX.value;
+        SmartDashboard.putNumber("Swerve/Sim/DriverRightX",
+            DriverStation.getStickAxisCount(port) > axis ? DriverStation.getStickAxis(port, axis) : 0.0);
+        SmartDashboard.putNumber("Swerve/Sim/RequestedFieldOmega", simRequestedFieldOmega);
+        SmartDashboard.putNumber("Swerve/Sim/MeasuredOmega", getRobotVelocity().omegaRadiansPerSecond);
+      }
+    }
+    if (now < nextTelemetry) return;
+    nextTelemetry = now + 0.5;
+    for (var module : swerveDrive.getModules()) {
+      String key = "Swerve/" + module.configuration.name;
+      var absoluteEncoder = module.getAbsoluteEncoder();
+      if (RobotBase.isSimulation()) {
+        SmartDashboard.putNumber(key + "/AbsoluteEncoderDeg", module.getAbsolutePosition());
+      } else if (absoluteEncoder != null && absoluteEncoder.getAbsoluteEncoder() instanceof CANcoder encoder) {
+        var angle = encoder.getAbsolutePosition();
+        SmartDashboard.putNumber(key + "/AbsoluteEncoderDeg",
+            angle.getStatus().isOK() ? angle.getValueAsDouble() * 360.0 : Double.NaN);
+      }
+      if (module.getDriveMotor().getMotor() instanceof TalonFX motor) {
+        double rotationsPerMeter = 1.0 / module.configuration.conversionFactors.drive.factor;
+        SmartDashboard.putNumber(key + "/Drive/PositionRotations", motor.getPosition().getValueAsDouble() * rotationsPerMeter);
+        SmartDashboard.putNumber(key + "/Drive/RPM", motor.getVelocity().getValueAsDouble() * rotationsPerMeter * 60.0);
+        // YAGSL's drive request is in m/s. Convert back to motor RPM.
+        SmartDashboard.putNumber(key + "/Drive/TargetRPM", motor.getAppliedControl() instanceof VelocityVoltage request
+            ? request.Velocity * rotationsPerMeter * 60.0 : Double.NaN);
+        SmartDashboard.putNumber(key + "/Drive/Volts", motor.getMotorVoltage().getValueAsDouble());
+        SmartDashboard.putNumber(key + "/Drive/Amps", motor.getStatorCurrent().getValueAsDouble());
+      }
+      if (module.getAngleMotor().getMotor() instanceof TalonFX motor) {
+        double motorRotationsPerModuleRotation = 360.0 / module.configuration.conversionFactors.angle.factor;
+        SmartDashboard.putNumber(key + "/Steering/PositionRotations",
+            motor.getPosition().getValueAsDouble() * motorRotationsPerModuleRotation);
+        SmartDashboard.putNumber(key + "/Steering/RPM",
+            motor.getVelocity().getValueAsDouble() * motorRotationsPerModuleRotation * 60.0);
+        // Motion Magic controls position. Its profile slope supplies the RPM reference.
+        var request = motor.getAppliedControl() instanceof MotionMagicVoltage profile ? profile : null;
+        SmartDashboard.putNumber(key + "/Steering/TargetRPM", request != null
+            ? motor.getClosedLoopReferenceSlope().getValueAsDouble() * motorRotationsPerModuleRotation * 60.0
+            : Double.NaN);
+        SmartDashboard.putNumber(key + "/Steering/TargetAngleDeg",
+            request == null ? Double.NaN : request.Position * 360.0);
+        SmartDashboard.putNumber(key + "/Steering/Volts", motor.getMotorVoltage().getValueAsDouble());
+        SmartDashboard.putNumber(key + "/Steering/Amps", motor.getStatorCurrent().getValueAsDouble());
+      }
+    }
   }
 
   /** Rotates to a specified angle while inheriting the chassis's original translational velocity */
@@ -214,17 +243,7 @@ public class SwerveSubsystem extends SubsystemBase {
     m_pidControllerTheta.enableContinuousInput(-Math.PI, Math.PI);
 
     double currentHeading = getPose().getRotation().getRadians();
-    double headingError = MathUtil.angleModulus(targetInRadians - currentHeading);
     double commandedOmega = m_pidControllerTheta.calculate(currentHeading, targetInRadians);
-
-    RateLimitedTelemetry.putNumber("Yaw error", headingError);
-    RateLimitedTelemetry.putNumber("Pose in radians", currentHeading);
-    RateLimitedTelemetry.recordOutput("HeadingAlign/TargetHeadingDeg", Math.toDegrees(targetInRadians));
-    RateLimitedTelemetry.recordOutput("HeadingAlign/CurrentHeadingDeg", Math.toDegrees(currentHeading));
-    RateLimitedTelemetry.recordOutput("HeadingAlign/HeadingErrorDeg", Math.toDegrees(headingError));
-    RateLimitedTelemetry.recordOutput("HeadingAlign/CommandedOmegaRadPerSec", commandedOmega);
-    RateLimitedTelemetry.recordOutput(
-        "HeadingAlign/MeasuredOmegaRadPerSec", getRobotVelocity().omegaRadiansPerSecond);
 
     ChassisSpeeds measured = getFieldVelocity();
     alignmentSpeeds.vxMetersPerSecond = measured.vxMetersPerSecond;
@@ -239,7 +258,6 @@ public class SwerveSubsystem extends SubsystemBase {
 
       final double ROT_TOLERANCE = Units.degreesToRadians(2.0);
       double target = MathUtil.angleModulus(getPose().getRotation().getRadians() - (MathUtil.inputModulus(getPose().getRotation().getRadians(), - Math.PI/2 , Math.PI/2)));
-      RateLimitedTelemetry.putNumber("Target pose", target);
 
       Command alignToTrenchCommand = new FunctionalCommand(
         () -> {},
@@ -295,7 +313,7 @@ public class SwerveSubsystem extends SubsystemBase {
         break;
       case "Idle":
       default:
-        startPose = isRed ? FieldConstants.RED_TESTING_START : FieldConstants.BLUE_TESTING_START;
+        startPose = allianceTestingStart();
         break;
     }
 
@@ -320,7 +338,6 @@ public class SwerveSubsystem extends SubsystemBase {
    */
   public Command sysIdDriveMotorCommand()
   {
-    System.out.println("Running SysID Command!");
     return SwerveDriveTest.generateSysIdCommand(
         SwerveDriveTest.setDriveSysIdRoutine(
             new Config(),
@@ -461,10 +478,9 @@ public class SwerveSubsystem extends SubsystemBase {
    */
   public void driveFieldOriented(ChassisSpeeds velocity)
   {
-    RateLimitedTelemetry.recordOutput("Swerve/RequestedFieldVelocity", velocity);
-    RateLimitedTelemetry.putNumber("Swerve/RequestedVxMPS", velocity.vxMetersPerSecond);
-    RateLimitedTelemetry.putNumber("Swerve/RequestedVyMPS", velocity.vyMetersPerSecond);
-    RateLimitedTelemetry.putNumber("Swerve/RequestedOmegaRadPerSec", velocity.omegaRadiansPerSecond);
+    if (RobotBase.isSimulation()) {
+      simRequestedFieldOmega = pitCoastMode ? 0.0 : velocity.omegaRadiansPerSecond;
+    }
     if (pitCoastMode) {
       stopAllMotors();
       return;

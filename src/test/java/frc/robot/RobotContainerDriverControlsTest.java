@@ -62,19 +62,19 @@ class RobotContainerDriverControlsTest {
         Intake intake = getField(container, "intake", Intake.class);
         // LT collects without feeding either indexer. Release stops the rack too.
         setTrigger(XboxController.Axis.kLeftTrigger, true);
-        assertTrue(SmartDashboard.getBoolean("Intake/ForceExtendRequested", false));
+        assertTrue(getField(intake, "forceExtendRequested", Boolean.class));
         assertEquals(Constants.IntakeConstants.EXTENDED_POSITION_ROTATIONS,
             SmartDashboard.getNumber("Intake/DeployTargetRotations", -1));
         assertEquals(0, indexer.getTunnelTargetRPM());
         assertEquals(0, indexer.getFloorTargetRPM());
         setTrigger(XboxController.Axis.kLeftTrigger, false);
-        assertFalse(SmartDashboard.getBoolean("Intake/RackRequested", true));
+        assertFalse(getField(intake, "rackRequested", Boolean.class));
         setTrigger(XboxController.Axis.kLeftTrigger, true);
         setButton(XboxController.Button.kRightBumper, true);
         assertEquals(0, SmartDashboard.getNumber("Intake/DeployTargetRotations", -1));
-        assertTrue(SmartDashboard.getBoolean("Intake/ForceRetractRequested", false));
+        assertTrue(getField(intake, "forceRetractRequested", Boolean.class));
         setButton(XboxController.Button.kRightBumper, false);
-        assertFalse(SmartDashboard.getBoolean("Intake/RackRequested", true));
+        assertFalse(getField(intake, "rackRequested", Boolean.class));
         assertEquals(0, SmartDashboard.getNumber("Intake/DeployTargetRotations", -1));
         setTrigger(XboxController.Axis.kLeftTrigger, false);
 
@@ -82,26 +82,26 @@ class RobotContainerDriverControlsTest {
         setButton(XboxController.Button.kRightBumper, true);
         setTrigger(XboxController.Axis.kLeftTrigger, true);
         setButton(XboxController.Button.kRightBumper, false);
-        assertFalse(SmartDashboard.getBoolean("Intake/RackRequested", true));
+        assertFalse(getField(intake, "rackRequested", Boolean.class));
         assertEquals(0, SmartDashboard.getNumber("Intake/DeployTargetRotations", -1));
         setTrigger(XboxController.Axis.kLeftTrigger, false);
 
         setButton(XboxController.Button.kLeftBumper, true);
-        assertEquals(-Constants.IntakeConstants.ROLLER_RPM,
-            SmartDashboard.getNumber("Intake/RollerCommandedRPM", 0));
+        assertEquals(-Constants.IntakeConstants.ROLLER_RPM * Constants.IntakeConstants.ROLLER_GEARING,
+            SmartDashboard.getNumber("Intake/LeftRollerMotorTargetRPM", 0));
         assertEquals(-Constants.IndexerConstants.FLOOR_RUNNING_RPM, indexer.getFloorTargetRPM());
         assertEquals(0, indexer.getTunnelTargetRPM());
-        assertFalse(SmartDashboard.getBoolean("Intake/RackRequested", true));
+        assertFalse(getField(intake, "rackRequested", Boolean.class));
         setTrigger(XboxController.Axis.kLeftTrigger, true);
-        assertEquals(-Constants.IntakeConstants.ROLLER_RPM,
-            SmartDashboard.getNumber("Intake/RollerCommandedRPM", 0));
+        assertEquals(-Constants.IntakeConstants.ROLLER_RPM * Constants.IntakeConstants.ROLLER_GEARING,
+            SmartDashboard.getNumber("Intake/LeftRollerMotorTargetRPM", 0));
         setTrigger(XboxController.Axis.kRightTrigger, true);
         assertEquals(-Constants.IndexerConstants.FLOOR_RUNNING_RPM, indexer.getFloorTargetRPM());
         setTrigger(XboxController.Axis.kRightTrigger, false);
         setTrigger(XboxController.Axis.kLeftTrigger, false);
         setButton(XboxController.Button.kLeftBumper, false);
         assertEquals(0, indexer.getFloorTargetRPM());
-        assertEquals(0, SmartDashboard.getNumber("Intake/RollerCommandedRPM", 99));
+        assertEquals(0, SmartDashboard.getNumber("Intake/LeftRollerMotorTargetRPM", 99));
 
         setTrigger(XboxController.Axis.kLeftTrigger, true);
         setButton(XboxController.Button.kA, true);
@@ -122,7 +122,7 @@ class RobotContainerDriverControlsTest {
         assertEquals(3000, shooter.getGoalRPM(), 1e-6);
         assertEquals(0, indexer.getTunnelTargetRPM()); // Unknown alliance: spin, but do not feed.
         assertEquals(0, indexer.getFloorTargetRPM());
-        assertTrue(SmartDashboard.getBoolean("Intake/ForceRetractRequested", false));
+        assertTrue(getField(intake, "forceRetractRequested", Boolean.class));
         assertSame(CommandScheduler.getInstance().requiring(indexer),
             CommandScheduler.getInstance().requiring(intake));
         setBoard(3, false);
@@ -147,7 +147,7 @@ class RobotContainerDriverControlsTest {
         }
         setTrigger(XboxController.Axis.kRightTrigger, false);
         runCycles(3); // Releasing RT stops retraction and resets its current allowance.
-        assertFalse(SmartDashboard.getBoolean("Intake/RackRequested", true));
+        assertFalse(getField(intake, "rackRequested", Boolean.class));
         assertEquals(0, shooter.getGoalRPM(), 1e-6);
         assertEquals(0, indexer.getTunnelTargetRPM());
         assertEquals(0, indexer.getFloorTargetRPM());
@@ -209,16 +209,23 @@ class RobotContainerDriverControlsTest {
         assertNotNull(getField(container, "intake", Intake.class));
         assertNotNull(getField(container, "vision", frc.robot.subsystems.vision.VisionSubsystem.class));
         assertNotNull(container.getAutonomousCommand());
-        for (String camera : new String[] {"Front", "Left", "Right"}) {
-            SmartDashboard.putString("Vision/" + camera + "/ResetStatus", "Not requested");
+        var nt = edu.wpi.first.networktables.NetworkTableInstance.getDefault();
+        var rightCamera = nt.getTable(Constants.LimelightConstants.RIGHT_CAMERA).getEntry("botpose_wpiblue");
+        var predictedPose = nt.getStructTopic("/SmartDashboard/Vision/Right/RawPose", Pose2d.struct)
+            .subscribe(Pose2d.kZero);
+        rightCamera.setDoubleArray(new double[] {2.5, 3.0, 0, 0, 0, 30, 0, 1, 0, 2, 0});
+        try {
+            setButton(XboxController.Button.kX, true);
+            Pose2d resetPose = container.getDrivebase().getPose();
+            assertEquals(2.5, resetPose.getX(), 1e-3);
+            assertEquals(3.0, resetPose.getY(), 1e-3);
+            assertEquals(30, resetPose.getRotation().getDegrees(), 1e-3);
+            assertEquals(resetPose.getX(), predictedPose.get().getX(), 1e-3);
+        } finally {
+            setButton(XboxController.Button.kX, false);
+            rightCamera.unpublish();
+            predictedPose.close();
         }
-        setButton(XboxController.Button.kX, true);
-        // With no camera frames, the reset command tries every configured camera.
-        for (String camera : new String[] {"Front", "Left", "Right"}) {
-            assertNotEquals("Not requested",
-                SmartDashboard.getString("Vision/" + camera + "/ResetStatus", "Not requested"));
-        }
-        setButton(XboxController.Button.kX, false);
     }
 
     @Test void yUsesCalculatorWithoutTakingDrivetrain() throws Exception {
@@ -281,35 +288,35 @@ class RobotContainerDriverControlsTest {
         Intake intake = getField(container, "intake", Intake.class);
         runCycles(4);
         setButton(XboxController.Button.kB, true);
-        assertEquals(2700, shooter.getGoalRPM(), 1e-6);
+        assertEquals(2400, shooter.getGoalRPM(), 1e-6);
         assertEquals(0, indexer.getFloorTargetRPM());
         assertEquals(0, indexer.getTunnelTargetRPM());
         var raw = CommandScheduler.getInstance().requiring(indexer);
-        assertEquals("FuelShootRaw2700", raw.getName());
+        assertEquals("FuelShootRaw2400", raw.getName());
         Field inputsField = Shooter.class.getDeclaredField("inputs");
         inputsField.setAccessible(true);
         var inputs = (frc.robot.subsystems.shooter.ShooterIO.ShooterIOInputs) inputsField.get(shooter);
         inputs.leaderConnected = inputs.followerConnected = true;
-        inputs.velocityRadsPerSec = edu.wpi.first.math.util.Units.rotationsPerMinuteToRadiansPerSecond(2641);
+        inputs.velocityRadsPerSec = edu.wpi.first.math.util.Units.rotationsPerMinuteToRadiansPerSecond(2341);
         raw.execute();
         assertEquals(1200, indexer.getFloorTargetRPM());
         assertEquals(1500, indexer.getTunnelTargetRPM());
-        inputs.velocityRadsPerSec = edu.wpi.first.math.util.Units.rotationsPerMinuteToRadiansPerSecond(2639);
+        inputs.velocityRadsPerSec = edu.wpi.first.math.util.Units.rotationsPerMinuteToRadiansPerSecond(2339);
         raw.execute();
         assertEquals(0, indexer.getFloorTargetRPM());
         assertEquals(0, indexer.getTunnelTargetRPM());
-        inputs.velocityRadsPerSec = edu.wpi.first.math.util.Units.rotationsPerMinuteToRadiansPerSecond(2759);
+        inputs.velocityRadsPerSec = edu.wpi.first.math.util.Units.rotationsPerMinuteToRadiansPerSecond(2459);
         raw.execute();
         assertEquals(1500, indexer.getTunnelTargetRPM());
-        inputs.velocityRadsPerSec = edu.wpi.first.math.util.Units.rotationsPerMinuteToRadiansPerSecond(2761);
+        inputs.velocityRadsPerSec = edu.wpi.first.math.util.Units.rotationsPerMinuteToRadiansPerSecond(2461);
         raw.execute();
         assertEquals(0, indexer.getTunnelTargetRPM());
         assertNotSame(raw, CommandScheduler.getInstance().requiring(container.getDrivebase()));
         assertNotSame(raw, CommandScheduler.getInstance().requiring(intake));
-        assertFalse(SmartDashboard.getBoolean("Intake/ForceRetractRequested", false));
+        assertFalse(getField(intake, "forceRetractRequested", Boolean.class));
         setTrigger(XboxController.Axis.kRightTrigger, true);
         assertSame(raw, CommandScheduler.getInstance().requiring(indexer));
-        assertEquals(2700, shooter.getGoalRPM(), 1e-6);
+        assertEquals(2400, shooter.getGoalRPM(), 1e-6);
         setTrigger(XboxController.Axis.kRightTrigger, false);
         setButton(XboxController.Button.kB, false);
         assertEquals(0, shooter.getGoalRPM(), 1e-6);
@@ -345,10 +352,10 @@ class RobotContainerDriverControlsTest {
     private static void runCycles(int count) {
         for (int i = 0; i < count; i++) CommandScheduler.getInstance().run();
     }
-    private static <T> T getField(RobotContainer container, String name, Class<T> type)
+    private static <T> T getField(Object target, String name, Class<T> type)
             throws ReflectiveOperationException {
-        Field field = RobotContainer.class.getDeclaredField(name);
+        Field field = target.getClass().getDeclaredField(name);
         field.setAccessible(true);
-        return type.cast(field.get(container));
+        return type.cast(field.get(target));
     }
 }

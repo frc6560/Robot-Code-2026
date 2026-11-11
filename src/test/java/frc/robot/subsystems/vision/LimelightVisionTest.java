@@ -3,6 +3,7 @@ package frc.robot.subsystems.vision;
 import static org.junit.jupiter.api.Assertions.*;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import frc.robot.Constants.FieldConstants;
 import frc.robot.Constants.LimelightConstants;
 import frc.robot.utility.LimelightHelpers.PoseEstimate;
 import org.junit.jupiter.api.Test;
@@ -49,6 +50,33 @@ class LimelightVisionTest {
         }
     }
 
+    @Test void visionAndResetUseOneMeterDistanceFromTheFieldRectangle() {
+        double length = FieldConstants.FIELD_LENGTH;
+        double width = FieldConstants.FIELD_WIDTH;
+        PoseEstimate frame = frame();
+        for (Pose2d pose : new Pose2d[] {
+                new Pose2d(-1.0, 4.0, new Rotation2d()),
+                new Pose2d(length + 1.0, 4.0, new Rotation2d()),
+                new Pose2d(3.0, -1.0, new Rotation2d()),
+                new Pose2d(3.0, width + 1.0, new Rotation2d()),
+                new Pose2d(-0.6, -0.8, new Rotation2d())}) {
+            frame.pose = pose;
+            assertNull(LimelightVision.invalidPoseReason(frame), pose.toString());
+            assertEquals("Ready", LimelightVision.rejectionReason(frame, pose, 0));
+        }
+        for (Pose2d pose : new Pose2d[] {
+                new Pose2d(-1.001, 4.0, new Rotation2d()),
+                new Pose2d(length + 1.001, 4.0, new Rotation2d()),
+                new Pose2d(3.0, -1.001, new Rotation2d()),
+                new Pose2d(3.0, width + 1.001, new Rotation2d()),
+                new Pose2d(-0.8, -0.8, new Rotation2d())}) {
+            frame.pose = pose;
+            String reason = "Pose more than 1 m outside field bounds";
+            assertEquals(reason, LimelightVision.invalidPoseReason(frame), pose.toString());
+            assertEquals(reason, LimelightVision.rejectionReason(frame, pose, 0));
+        }
+    }
+
     @Test void latestEstimateCanBeReusedAndNoFrameAgeOrDistanceFilterIsApplied() {
         PoseEstimate frame = frame();
         frame.avgTagDist = 9;
@@ -80,16 +108,16 @@ class LimelightVisionTest {
         assertEquals(10.08, LimelightVision.fusionTimestamp(10.1, frame.latency / 1000.0), 1e-12);
     }
 
-    @Test void manualResetAcceptsAnyNonzeroMt1PoseLikeGlendale() {
-        assertFalse(LimelightVision.canHardReset(null));
+    @Test void manualResetUsesPoseValidationWithoutTheOdometryJumpLimit() {
+        assertEquals("No pose received", LimelightVision.invalidPoseReason(null));
         PoseEstimate frame = frame();
         frame.pose = null;
-        assertFalse(LimelightVision.canHardReset(frame));
+        assertEquals("Null or zero pose", LimelightVision.invalidPoseReason(frame));
         frame.pose = new Pose2d();
-        assertFalse(LimelightVision.canHardReset(frame));
+        assertEquals("Null or zero pose", LimelightVision.invalidPoseReason(frame));
         frame.pose = new Pose2d(12, 7, Rotation2d.fromDegrees(90));
         frame.avgTagDist = 9;
         frame.timestampSeconds = 1;
-        assertTrue(LimelightVision.canHardReset(frame));
+        assertNull(LimelightVision.invalidPoseReason(frame));
     }
 }

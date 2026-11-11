@@ -21,7 +21,7 @@ public class VisionSubsystem extends SubsystemBase{
         }
     }
 
-    /** Try each camera until one supplies a fresh heading-independent pose. */
+    /** Try each camera until one supplies a valid heading-independent pose. */
     public boolean tryResetPose() {
         for (LimelightVision camera : visionList) {
             if (camera.hardUpdate()) return true;

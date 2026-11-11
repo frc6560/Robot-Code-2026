@@ -1,12 +1,12 @@
 package frc.robot.subsystems.shooter;
 
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.wpilibj.simulation.RoboRioSim;
 import edu.wpi.first.wpilibj.util.Color8Bit;
-import frc.robot.utility.telemetry.RateLimitedTelemetry;
-import org.littletonrobotics.junction.mechanism.LoggedMechanism2d;
-import org.littletonrobotics.junction.mechanism.LoggedMechanismLigament2d;
-import org.littletonrobotics.junction.mechanism.LoggedMechanismRoot2d;
+import edu.wpi.first.wpilibj.smartdashboard.Mechanism2d;
+import edu.wpi.first.wpilibj.smartdashboard.MechanismLigament2d;
+import edu.wpi.first.wpilibj.smartdashboard.MechanismRoot2d;
 
 /**
  * Drives a spinning-wheel Mechanism2d from a physical model of the tube flywheel,
@@ -90,10 +90,10 @@ public class FlywheelVisualizer {
    */
   private static final double VELOCITY_KP_AMPS_PER_RAD_PER_SEC = 8.0;
 
-  private final LoggedMechanism2d mechanism = new LoggedMechanism2d(2.0, 2.0);
-  private final LoggedMechanismLigament2d[] spokes = new LoggedMechanismLigament2d[SPOKE_COUNT];
-  private final LoggedMechanismLigament2d tachNeedle;
-  private final LoggedMechanismLigament2d targetNeedle;
+  private final Mechanism2d mechanism = new Mechanism2d(2.0, 2.0);
+  private final MechanismLigament2d[] spokes = new MechanismLigament2d[SPOKE_COUNT];
+  private final MechanismLigament2d tachNeedle;
+  private final MechanismLigament2d targetNeedle;
 
   private final double inertia;
   private final double dragCoefficient;
@@ -101,6 +101,8 @@ public class FlywheelVisualizer {
   private double velocityRadPerSec = 0.0;
   private double angleRad = 0.0;
   private double elapsed = 0.0;
+  private double nextTelemetry;
+  private double statorCurrentAmps, supplyCurrentAmps, busVoltage;
 
   private int shotIndex = 0;
   private int ballsRemaining = HOPPER_BALLS;
@@ -120,6 +122,7 @@ public class FlywheelVisualizer {
   private Phase phase = Phase.IDLING;
 
   public FlywheelVisualizer() {
+    SmartDashboard.putData("Flywheel/Mechanism", mechanism);
     double outerRadius = WHEEL_DIAMETER_M / 2.0;
     double innerRadius = Math.max(0.0, outerRadius - WALL_THICKNESS_M);
     double mass =
@@ -132,22 +135,22 @@ public class FlywheelVisualizer {
     double freeSpeedRadPerSec = DCMotor.getKrakenX60(1).freeSpeedRadPerSec / GEAR_RATIO;
     dragCoefficient = DRAG_TORQUE_AT_FREE_SPEED / freeSpeedRadPerSec;
 
-    LoggedMechanismRoot2d hub = mechanism.getRoot("hub", 0.65, 1.0);
+    MechanismRoot2d hub = mechanism.getRoot("hub", 0.65, 1.0);
     for (int i = 0; i < SPOKE_COUNT; i++) {
       spokes[i] =
           hub.append(
-              new LoggedMechanismLigament2d(
+              new MechanismLigament2d(
                   "spoke" + i, 0.45, i * (360.0 / SPOKE_COUNT), 7.0, BLUE));
     }
 
     // A gauge beside the wheel: the needle sweeps with speed, and a second
     // marker sits at the commanded speed so droop is visible as a gap.
-    LoggedMechanismRoot2d gauge = mechanism.getRoot("gauge", 1.55, 0.75);
+    MechanismRoot2d gauge = mechanism.getRoot("gauge", 1.55, 0.75);
     targetNeedle =
         gauge.append(
-            new LoggedMechanismLigament2d("target", 0.40, 0.0, 4.0, GRAY));
+            new MechanismLigament2d("target", 0.40, 0.0, 4.0, GRAY));
     tachNeedle =
-        gauge.append(new LoggedMechanismLigament2d("tach", 0.36, 0.0, 8.0, new Color8Bit(0, 186, 255)));
+        gauge.append(new MechanismLigament2d("tach", 0.36, 0.0, 8.0, new Color8Bit(0, 186, 255)));
 
     velocityRadPerSec = IDLE_RPM * Math.PI / 30.0;
   }
@@ -271,9 +274,9 @@ public class FlywheelVisualizer {
     double supply = MOTOR_COUNT * Math.abs(stator) * duty;
     RoboRioSim.setVInVoltage(OPEN_CIRCUIT_VOLTS - supply * BATTERY_RESISTANCE);
 
-    RateLimitedTelemetry.recordOutput("Flywheel/StatorCurrentAmps", Math.abs(stator));
-    RateLimitedTelemetry.recordOutput("Flywheel/SupplyCurrentAmps", supply);
-    RateLimitedTelemetry.recordOutput("Flywheel/BusVoltage", OPEN_CIRCUIT_VOLTS - supply * BATTERY_RESISTANCE);
+    statorCurrentAmps = Math.abs(stator);
+    supplyCurrentAmps = supply;
+    busVoltage = OPEN_CIRCUIT_VOLTS - supply * BATTERY_RESISTANCE;
   }
 
   private void publish(double rpm, double commandRpm) {
@@ -302,16 +305,21 @@ public class FlywheelVisualizer {
     tachNeedle.setColor(color);
     targetNeedle.setAngle(commandRpm * sweep);
 
-    RateLimitedTelemetry.recordOutput("Flywheel/RPM", rpm);
-    RateLimitedTelemetry.recordOutput("Flywheel/CommandRPM", commandRpm);
-    RateLimitedTelemetry.recordOutput("Flywheel/BandLowRPM", bandLow);
-    RateLimitedTelemetry.recordOutput("Flywheel/BandHighRPM", bandHigh);
-    RateLimitedTelemetry.recordOutput("Flywheel/InBand", inBand);
-    RateLimitedTelemetry.recordOutput("Flywheel/LastDroopRPM", lastDroopRpm);
-    RateLimitedTelemetry.recordOutput("Flywheel/BallsRemaining", ballsRemaining);
-    RateLimitedTelemetry.recordOutput("Flywheel/ShotDistanceMeters", SHOTS[shotIndex][0]);
-    RateLimitedTelemetry.recordOutput("Flywheel/Phase", phase.toString());
-    RateLimitedTelemetry.recordOutput("Flywheel/InertiaKgM2", inertia);
-    RateLimitedTelemetry.recordOutput("Flywheel/VolleysFired", volleysFired);
+    if (elapsed < nextTelemetry) return;
+    nextTelemetry = elapsed + 0.5;
+    SmartDashboard.putNumber("Flywheel/StatorCurrentAmps", statorCurrentAmps);
+    SmartDashboard.putNumber("Flywheel/SupplyCurrentAmps", supplyCurrentAmps);
+    SmartDashboard.putNumber("Flywheel/BusVoltage", busVoltage);
+    SmartDashboard.putNumber("Flywheel/RPM", rpm);
+    SmartDashboard.putNumber("Flywheel/CommandRPM", commandRpm);
+    SmartDashboard.putNumber("Flywheel/BandLowRPM", bandLow);
+    SmartDashboard.putNumber("Flywheel/BandHighRPM", bandHigh);
+    SmartDashboard.putBoolean("Flywheel/InBand", inBand);
+    SmartDashboard.putNumber("Flywheel/LastDroopRPM", lastDroopRpm);
+    SmartDashboard.putNumber("Flywheel/BallsRemaining", ballsRemaining);
+    SmartDashboard.putNumber("Flywheel/ShotDistanceMeters", SHOTS[shotIndex][0]);
+    SmartDashboard.putString("Flywheel/Phase", phase.toString());
+    SmartDashboard.putNumber("Flywheel/InertiaKgM2", inertia);
+    SmartDashboard.putNumber("Flywheel/VolleysFired", volleysFired);
   }
 }

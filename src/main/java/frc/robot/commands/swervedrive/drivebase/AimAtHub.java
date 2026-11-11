@@ -16,7 +16,6 @@ import frc.robot.Constants.FieldConstants;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import java.util.Optional;
 import java.util.function.Supplier;
-import frc.robot.utility.telemetry.RateLimitedTelemetry;
 
 /**
  * Points the front of the chassis at the alliance hub while retaining driver-controlled
@@ -28,8 +27,9 @@ public class AimAtHub extends Command {
   private final Supplier<Translation2d> releasePosition;
   private final ChassisSpeeds commandedSpeeds = new ChassisSpeeds();
   private boolean atTarget;
+  private double nextTelemetry;
 
-  /** Actual heading error and measured angular speed must both be within tolerance. */
+  /** Heading and measured turn rate must be within the acquire/hold tolerances. */
   public boolean isAtTarget() { return atTarget; }
   private final ProfiledPIDController headingController =
       new ProfiledPIDController(
@@ -60,12 +60,13 @@ public class AimAtHub extends Command {
   @Override
   public void initialize() {
     atTarget = false;
+    nextTelemetry = 0.0;
     headingController.reset(
         drivebase.getPose().getRotation().getRadians(),
         drivebase.getRobotVelocity().omegaRadiansPerSecond);
-    RateLimitedTelemetry.putBoolean("Hub Aim/Active", true);
-    RateLimitedTelemetry.recordOutput("HubAim/Active", true);
-    RateLimitedTelemetry.recordOutput("AutoTurn/Active", true);
+    SmartDashboard.putBoolean("Hub Aim/Active", true);
+    SmartDashboard.putBoolean("HubAim/Active", true);
+    SmartDashboard.putBoolean("AutoTurn/Active", true);
   }
 
   @Override
@@ -77,10 +78,13 @@ public class AimAtHub extends Command {
       atTarget = false;
       // Retain normal manual rotation if the Driver Station has not supplied an alliance.
       drivebase.driveFieldOriented(speeds);
-      RateLimitedTelemetry.putBoolean("Hub Aim/Has Alliance", false);
-      RateLimitedTelemetry.putBoolean("Hub Aim/At Target", false);
-      RateLimitedTelemetry.recordOutput("HubAim/HasAlliance", false);
-      RateLimitedTelemetry.recordOutput("HubAim/AtTarget", false);
+      double now = edu.wpi.first.wpilibj.Timer.getFPGATimestamp();
+      if (edu.wpi.first.wpilibj.RobotBase.isReal() && now < nextTelemetry) return;
+      nextTelemetry = now + 0.5;
+      SmartDashboard.putBoolean("Hub Aim/Has Alliance", false);
+      SmartDashboard.putBoolean("Hub Aim/At Target", false);
+      SmartDashboard.putBoolean("HubAim/HasAlliance", false);
+      SmartDashboard.putBoolean("HubAim/AtTarget", false);
       return;
     }
 
@@ -96,21 +100,20 @@ public class AimAtHub extends Command {
         : Math.atan2(hub.getY() - release.getY(), hub.getX() - release.getX());
     double headingError =
         MathUtil.angleModulus(targetHeading - robotPose.getRotation().getRadians());
-    atTarget = passing
-        ? Double.isFinite(headingError) && Math.abs(headingError) <= AlliancePass.ANGLE_TOLERANCE
-            && Math.abs(drivebase.getRobotVelocity().omegaRadiansPerSecond)
-                <= DrivebaseConstants.HUB_AIM_VELOCITY_TOLERANCE_RAD_PER_SEC
-        : isSettled(headingError, drivebase.getRobotVelocity().omegaRadiansPerSecond);
-    double feedbackOmega =
-        headingController.calculate(robotPose.getRotation().getRadians(), targetHeading);
-    double profileOmega = headingController.getSetpoint().velocity;
-    // ProfiledPIDController returns feedback for the profiled position setpoint, but it does not
-    // include the setpoint velocity. Add that velocity as feedforward so the chassis actually
-    // follows the requested fast trapezoidal profile instead of slowly chasing it with PID alone.
-    double omega = feedbackOmega + profileOmega;
-
-    if (atTarget) {
+    double headingTolerance = passing ? AlliancePass.ANGLE_TOLERANCE
+        : DrivebaseConstants.HUB_AIM_TOLERANCE_RADIANS;
+    double measuredOmega = drivebase.getRobotVelocity().omegaRadiansPerSecond;
+    atTarget = isSettled(headingError, measuredOmega, headingTolerance, atTarget);
+    double omega;
+    if (Double.isFinite(headingError) && Math.abs(headingError) <= headingTolerance) {
+      // Brake inside the heading deadband even while waiting for the chassis to settle.
+      // Reset the profile so a noisy turn-rate sample cannot resume an old turn trajectory.
       omega = 0.0;
+      headingController.reset(robotPose.getRotation().getRadians(), 0.0);
+    } else {
+      double feedbackOmega =
+          headingController.calculate(robotPose.getRotation().getRadians(), targetHeading);
+      omega = feedbackOmega + headingController.getSetpoint().velocity;
     }
     // Keep a final safety bound even if PID feedback briefly exceeds the profile velocity.
     omega =
@@ -124,25 +127,41 @@ public class AimAtHub extends Command {
     commandedSpeeds.omegaRadiansPerSecond = omega;
     drivebase.driveFieldOriented(commandedSpeeds);
 
-    RateLimitedTelemetry.putBoolean("Hub Aim/Has Alliance", true);
-    RateLimitedTelemetry.putNumber("Hub Aim/Target Heading Deg", Math.toDegrees(targetHeading));
-    RateLimitedTelemetry.putNumber(
+    double now = edu.wpi.first.wpilibj.Timer.getFPGATimestamp();
+    if (edu.wpi.first.wpilibj.RobotBase.isReal() && now < nextTelemetry) return;
+    nextTelemetry = now + 0.5;
+    SmartDashboard.putBoolean("Hub Aim/Has Alliance", true);
+    SmartDashboard.putNumber("Hub Aim/Target Heading Deg", Math.toDegrees(targetHeading));
+    SmartDashboard.putNumber(
         "Hub Aim/Heading Error Deg",
         Math.toDegrees(headingError));
-    RateLimitedTelemetry.putNumber(
+    SmartDashboard.putNumber(
         "Hub Aim/Profile Velocity Deg Per Sec",
         Math.toDegrees(headingController.getSetpoint().velocity));
-    RateLimitedTelemetry.putBoolean("Hub Aim/At Target", atTarget);
+    SmartDashboard.putBoolean("Hub Aim/At Target", atTarget);
 
-    RateLimitedTelemetry.recordOutput("HubAim/AtTarget", atTarget);
-    RateLimitedTelemetry.recordOutput("HubAim/HeadingErrorDeg", Math.toDegrees(headingError));
+    SmartDashboard.putBoolean("HubAim/AtTarget", atTarget);
+    SmartDashboard.putNumber("HubAim/HeadingErrorDeg", Math.toDegrees(headingError));
+    SmartDashboard.putNumber("Hub Aim/Measured Turn Rate Deg Per Sec", Math.toDegrees(measuredOmega));
+    SmartDashboard.putNumber("HubAim/MeasuredOmegaRadPerSec", measuredOmega);
+    SmartDashboard.putNumber("HubAim/CommandedOmegaRadPerSec", omega);
 
   }
 
   static boolean isSettled(double headingError, double measuredOmega) {
+    return isSettled(headingError, measuredOmega,
+        DrivebaseConstants.HUB_AIM_TOLERANCE_RADIANS, false);
+  }
+
+  /** Acquire below 5 deg/s; release above 8 deg/s. Heading limits never widen. */
+  public static boolean isSettled(double headingError, double measuredOmega,
+      double headingTolerance, boolean wasAligned) {
+    double velocityTolerance = wasAligned
+        ? DrivebaseConstants.HUB_AIM_VELOCITY_RELEASE_TOLERANCE_RAD_PER_SEC
+        : DrivebaseConstants.HUB_AIM_VELOCITY_TOLERANCE_RAD_PER_SEC;
     return Double.isFinite(headingError) && Double.isFinite(measuredOmega)
-        && Math.abs(headingError) <= DrivebaseConstants.HUB_AIM_TOLERANCE_RADIANS
-        && Math.abs(measuredOmega) <= DrivebaseConstants.HUB_AIM_VELOCITY_TOLERANCE_RAD_PER_SEC;
+        && Math.abs(headingError) <= headingTolerance
+        && Math.abs(measuredOmega) <= velocityTolerance;
   }
 
   @Override
@@ -152,12 +171,12 @@ public class AimAtHub extends Command {
     commandedSpeeds.vyMetersPerSecond = 0;
     commandedSpeeds.omegaRadiansPerSecond = 0;
     drivebase.driveFieldOriented(commandedSpeeds);
-    RateLimitedTelemetry.putBoolean("Hub Aim/Active", false);
-    RateLimitedTelemetry.putBoolean("Hub Aim/At Target", false);
-    RateLimitedTelemetry.recordOutput("HubAim/Active", false);
-    RateLimitedTelemetry.recordOutput("HubAim/AtTarget", false);
-    RateLimitedTelemetry.recordOutput("HubAim/CommandedOmegaRadPerSec", 0.0);
-    RateLimitedTelemetry.recordOutput("AutoTurn/Active", false);
-    RateLimitedTelemetry.recordOutput("AutoTurn/CommandedOmegaRadPerSec", 0.0);
+    SmartDashboard.putBoolean("Hub Aim/Active", false);
+    SmartDashboard.putBoolean("Hub Aim/At Target", false);
+    SmartDashboard.putBoolean("HubAim/Active", false);
+    SmartDashboard.putBoolean("HubAim/AtTarget", false);
+    SmartDashboard.putNumber("HubAim/CommandedOmegaRadPerSec", 0.0);
+    SmartDashboard.putBoolean("AutoTurn/Active", false);
+    SmartDashboard.putNumber("AutoTurn/CommandedOmegaRadPerSec", 0.0);
   }
 }

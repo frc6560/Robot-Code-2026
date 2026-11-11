@@ -1,6 +1,5 @@
 package frc.robot.subsystems.intake;
 
-import frc.robot.utility.telemetry.RateLimitedTelemetry;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -163,7 +162,6 @@ public class Intake extends SubsystemBase {
     @Override
     public void periodic() {
         io.updateInputs(inputs);
-        RateLimitedTelemetry.processInputs("Intake", inputs);
         boolean enabled = DriverStation.isEnabled();
         if (!enabled) {
             rackRequested = false;
@@ -186,83 +184,30 @@ public class Intake extends SubsystemBase {
         } else {
             io.stopDeploy();
         }
-        boolean extending = rackRequested && isReady()
-            && requestedDeployTarget == IntakeConstants.EXTENDED_POSITION_ROTATIONS;
-        boolean fullyExtended = extending && extensionLimitReached;
-        boolean fullyRetracted = rackRequested && isReady() && retractionLimitReached;
         if (DriverStation.isTeleopEnabled() && teleopRollerRequest != null)
             rollerRequested = teleopRollerRequest.getAsBoolean();
         boolean outtaking = DriverStation.isTeleopEnabled() && teleopOuttakeRequest.getAsBoolean();
         boolean rollerPermitted = enabled && !pitCoastMode && (rollerRequested || outtaking);
         rollerTargetRPM = rollerPermitted ? (outtaking ? -IntakeConstants.ROLLER_RPM : IntakeConstants.ROLLER_RPM) : 0.0;
         io.setRollerRPM(rollerTargetRPM);
-        String rollerBlockedReason = !enabled ? "Robot is disabled"
-            : pitCoastMode ? "Pit coast mode is on"
-            : !rollerRequested && !outtaking ? "Intake trigger not held" : "None";
-        // Outputs/interlocks above remain at control-loop frequency.
         if (edu.wpi.first.wpilibj.RobotBase.isReal() && extensionNow < nextTelemetry) return;
         nextTelemetry = extensionNow + 0.5;
-        RateLimitedTelemetry.putBoolean("Intake/RollerTriggerHeld", rollerRequested);
-        RateLimitedTelemetry.recordOutput("Intake/RollerTriggerHeld", rollerRequested);
-        RateLimitedTelemetry.recordOutput("Intake/RollerCommandedRPM", rollerTargetRPM);
-        RateLimitedTelemetry.recordOutput("Intake/RollerBlockedReason", rollerBlockedReason);
-        RateLimitedTelemetry.putNumber("Intake/RollerRequestedRPM", rollerTargetRPM);
-        RateLimitedTelemetry.putBoolean("Intake/FullyExtended", fullyExtended);
-        RateLimitedTelemetry.putBoolean("Intake/FullyRetracted", fullyRetracted);
-        RateLimitedTelemetry.putBoolean("Intake/RollerPermitted", rollerPermitted);
-        RateLimitedTelemetry.putBoolean("Intake/DeployStallFault", extensionLimitReached);
-        RateLimitedTelemetry.putNumber("Intake/DeploySpikeCount", deploySpikeCount);
-        RateLimitedTelemetry.putBoolean("Intake/ExtensionLimitReached", extensionLimitReached);
-        RateLimitedTelemetry.putBoolean("Intake/ForceRetractRequested", forceRetractRequested);
-        RateLimitedTelemetry.putBoolean("Intake/ForceExtendRequested", forceExtendRequested);
-        RateLimitedTelemetry.putBoolean("Intake/RetractionLimitReached", retractionLimitReached);
-        RateLimitedTelemetry.putNumber("Intake/DeployStatorLimitAmps", inputs.deployStatorLimitAmps);
-        RateLimitedTelemetry.putBoolean("Intake/DeployCurrentLimitOK", inputs.deployCurrentLimitOK);
-        RateLimitedTelemetry.putNumber("Intake/DeployStatorAmps", inputs.deployStatorCurrentAmps);
-        RateLimitedTelemetry.putNumber("Intake/DeploySupplyAmps", inputs.deployCurrentAmps);
-        RateLimitedTelemetry.putNumber("Intake/LeftRollerSupplyAmps", inputs.leftRollerSupplyAmps);
-        RateLimitedTelemetry.recordOutput("Intake/LeftRollerSupplyAmps", inputs.leftRollerSupplyAmps);
-        RateLimitedTelemetry.putNumber("Intake/LeftRollerStatorAmps", inputs.leftRollerStatorAmps);
-        RateLimitedTelemetry.recordOutput("Intake/LeftRollerStatorAmps", inputs.leftRollerStatorAmps);
-        RateLimitedTelemetry.putNumber("Intake/RightRollerSupplyAmps", inputs.rightRollerSupplyAmps);
-        RateLimitedTelemetry.recordOutput("Intake/RightRollerSupplyAmps", inputs.rightRollerSupplyAmps);
-        RateLimitedTelemetry.putNumber("Intake/RightRollerStatorAmps", inputs.rightRollerStatorAmps);
-        RateLimitedTelemetry.recordOutput("Intake/RightRollerStatorAmps", inputs.rightRollerStatorAmps);
-        RateLimitedTelemetry.putNumber("Intake/LeftRollerVolts", inputs.rollerAppliedVolts);
-        RateLimitedTelemetry.putNumber("Intake/RightRollerVolts", inputs.rightRollerAppliedVolts);
-        RateLimitedTelemetry.recordOutput("Intake/DeployStallFault", extensionLimitReached);
-        RateLimitedTelemetry.putNumber("Intake/RollerCommandedRPM", rollerTargetRPM);
-        RateLimitedTelemetry.putString("Intake/RollerBlockedReason", rollerBlockedReason);
-        RateLimitedTelemetry.putBoolean("Intake/RollerConnected", inputs.rollerConnected);
-        RateLimitedTelemetry.putString("Intake/RollerConfigurationStatus", inputs.rollerConfigurationStatus);
-        RateLimitedTelemetry.putString("Intake/RollerControlStatus", inputs.rollerControlStatus);
-        RateLimitedTelemetry.putNumber("Intake/LeftRollerRPM", inputs.rollerVelocityRPS * 60.0);
-        RateLimitedTelemetry.putNumber("Intake/RightRollerRPM", inputs.rightRollerVelocityRPS * 60.0);
-        RateLimitedTelemetry.putBoolean("Intake/Ready", isReady());
-        RateLimitedTelemetry.putBoolean("Intake/DeployConnected", inputs.deployConnected);
-        RateLimitedTelemetry.putString("Intake/DeployConfigurationStatus", inputs.deployConfigurationStatus);
-        RateLimitedTelemetry.putString("Intake/ZeroStatus", inputs.zeroStatus);
-        String blockedReason = !enabled ? "Robot is disabled"
-            : pitCoastMode ? "Pit coast mode is on"
-            : !inputs.deployConnected ? "No rack feedback: check " + IntakeConstants.CAN_BUS
-                + " CAN ID " + IntakeConstants.DEPLOY_MOTOR_ID + ", power and wiring"
-            : !inputs.configured ? "Motor configuration failed: see configuration status; restart after fixing"
-            : !inputs.deployHomed ? "Startup zero failed or controller reset: retract and restart code"
-            : retractionLimitReached ? "Retraction stopped: wall current spike confirmed"
-            : extensionLimitReached ? "Extension stopped: endpoint confirmed by current spike or driver"
-            : !rackRequested ? "Waiting for intake control"
-            : "None";
-        RateLimitedTelemetry.putString("Intake/BlockedReason", blockedReason);
-        RateLimitedTelemetry.putBoolean("Intake/RackRequested", rackRequested);
-        RateLimitedTelemetry.putString("Intake/DeployControlStatus", inputs.deployControlStatus);
-        RateLimitedTelemetry.putNumber("Intake/DeployCANID", IntakeConstants.DEPLOY_MOTOR_ID);
-        RateLimitedTelemetry.putString("Intake/DeployCANBus", IntakeConstants.CAN_BUS);
-        RateLimitedTelemetry.putNumber("Intake/DeployAppliedVolts", inputs.deployAppliedVolts);
-        RateLimitedTelemetry.putNumber("Intake/DeployCurrentAmps", inputs.deployCurrentAmps);
-        RateLimitedTelemetry.recordOutput("Intake/BlockedReason", blockedReason);
-        RateLimitedTelemetry.putNumber("Intake/DeployPositionRotations", inputs.deployPositionRotations);
-        RateLimitedTelemetry.putNumber("Intake/DeployTargetRotations", target);
-        RateLimitedTelemetry.recordOutput("Intake/DeployTargetRotations", target);
-        RateLimitedTelemetry.recordOutput("Intake/State", getState().toString());
+        SmartDashboard.putNumber("Intake/DeployPositionRotations", inputs.deployPositionRotations);
+        SmartDashboard.putNumber("Intake/DeployRPM", inputs.deployVelocityRPS * 60.0);
+        SmartDashboard.putNumber("Intake/DeployTargetRPM", inputs.deployTargetRPS * 60.0);
+        SmartDashboard.putNumber("Intake/DeployTargetRotations", target);
+        SmartDashboard.putNumber("Intake/DeployAppliedVolts", inputs.deployAppliedVolts);
+        SmartDashboard.putNumber("Intake/DeployCurrentAmps", inputs.deployCurrentAmps);
+        SmartDashboard.putNumber("Intake/DeployStatorAmps", inputs.deployStatorCurrentAmps);
+        SmartDashboard.putNumber("Intake/LeftRollerPositionRotations", inputs.leftRollerPositionRotations);
+        SmartDashboard.putNumber("Intake/LeftRollerMotorRPM", inputs.rollerVelocityRPS * 60.0 * IntakeConstants.ROLLER_GEARING);
+        SmartDashboard.putNumber("Intake/LeftRollerMotorTargetRPM", rollerTargetRPM * IntakeConstants.ROLLER_GEARING);
+        SmartDashboard.putNumber("Intake/LeftRollerVolts", inputs.rollerAppliedVolts);
+        SmartDashboard.putNumber("Intake/LeftRollerSupplyAmps", inputs.leftRollerSupplyAmps);
+        SmartDashboard.putNumber("Intake/RightRollerPositionRotations", inputs.rightRollerPositionRotations);
+        SmartDashboard.putNumber("Intake/RightRollerMotorRPM", inputs.rightRollerVelocityRPS * 60.0 * IntakeConstants.ROLLER_GEARING);
+        SmartDashboard.putNumber("Intake/RightRollerMotorTargetRPM", rollerTargetRPM * IntakeConstants.ROLLER_GEARING);
+        SmartDashboard.putNumber("Intake/RightRollerVolts", inputs.rightRollerAppliedVolts);
+        SmartDashboard.putNumber("Intake/RightRollerSupplyAmps", inputs.rightRollerSupplyAmps);
     }
 }

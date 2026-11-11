@@ -68,24 +68,14 @@ No full state history was retained for each integration timestep.
 1. Geometry/aiming: releasePosition constructs immutable translations; aim uses
    additional translations, chassis-speed objects and profiled-controller states.
    Temporary allocation continues even with a precomputed shot table.
-2. Diagnostics: numeric boxing and some status strings are constructed before
-   telemetry's limiter. Cached latest values keep the most recent object for each
-   key; superseded objects are eligible for collection. Fixed-key use is bounded.
-3. Logging: the latest-value caches each cap at 2,048 keys. This bounds key count,
-   not the size of an arbitrary array/string value. AdvantageKit also retains its
-   current log table and a bounded receiver backlog. Hardware frame admission now
-   runs at 2 Hz; a slow receiver can still retain up to its 500-frame queue capacity.
-   A bounded queue can exhaust a small heap without being an infinite leak.
-4. Characterization: velocitySamples and voltageSamples append for as long as the
-   optional feedforward characterization command runs. They are cleared at its next
-   initialization, but retained by the dashboard command afterward. This is the
-   clear unbounded-duration collection found in the shooter subsystem; normal shots
-   do not run it.
-5. Commands/controllers: model and command objects are retained for reuse. No
+2. Diagnostics: the live SmartDashboard publishes sampled shooter and aim
+   values directly. The custom frame queue and console monitors were removed.
+3. Characterization: the shooter tracks running sums for its feedforward fit.
+4. Commands/controllers: model and command objects are retained for reuse. No
    command creation or button-binding registration was found inside the normal shot
    execution loop. WPILib 2026.2.1 caches controller trigger objects; repeated calls
    to rightTrigger() may allocate lookup keys but do not register a new trigger each time.
-6. Hardware and vision: CTRE motor/CAN objects and NetworkTables use native memory;
+5. Hardware and vision: CTRE motor/CAN objects and NetworkTables use native memory;
    vision creates pose/tag arrays every update. Their allocations and driver state
    are outside the measured model loop. The flywheel visualizer/physics simulator
    is desktop-only and is not the real robot's shot predictor.

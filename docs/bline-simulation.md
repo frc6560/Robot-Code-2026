@@ -52,13 +52,8 @@ actual bumper envelope. Mass is also unverified: Constants.java says 62.59 kg
 (TODO), while YAGSL physicalproperties.json says 136 lb (61.69 kg). Do not treat
 either as a measurement or silently average them.
 
-Validate actual robot behavior with:
-
-```
-BLINE_HEADLESS_DIAGNOSTIC=1 ./gradlew simulateJava -Pheadless
-```
-
-Then compare real WPILOG requested/applied/measured chassis velocities and heading
-errors. Measure straight and spin acceleration on carpet, with normal battery and
-mechanism load, and tune `config.json` from those measurements. A successful desktop
-run checks robot command execution; it does not certify real traction or timing.
+Run the standard simulator with `./gradlew simulateJava`, select a path from the
+Auto Chooser, and enable autonomous in the simulated Driver Station. Watch
+`SmartDashboard/Swerve/Pose` on the field and compare drive motor RPM to the target
+for each module. Measure straight and spin acceleration on carpet before tuning
+`config.json` from hardware results.

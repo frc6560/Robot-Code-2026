@@ -20,9 +20,6 @@ import frc.robot.lib.BLine.Path;
  * not put anything functional in this class.
  */
 public final class Constants {
-  public enum Mode { REAL, SIM, REPLAY }
-
-  public static final Mode currentMode = Mode.REAL; // Change to REPLAY for log replay
 
   public static final double MAX_SPEED = Units.feetToMeters(19.5);
   // Shared with the BLine editor/optimizer via deploy/autos/config.json.
@@ -88,6 +85,10 @@ public final class Constants {
     /** Required angular speed before hub alignment reports that it has settled. */
     public static final double HUB_AIM_VELOCITY_TOLERANCE_RAD_PER_SEC =
         Units.degreesToRadians(5.0);
+
+    /** Once settled, tolerate small turn-rate noise without repeatedly closing the feed gate. */
+    public static final double HUB_AIM_VELOCITY_RELEASE_TOLERANCE_RAD_PER_SEC =
+        Units.degreesToRadians(8.0);
 
     // Pure pursuit tuning (meters, meters per second)
 

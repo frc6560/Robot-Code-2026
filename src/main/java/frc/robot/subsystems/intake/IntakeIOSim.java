@@ -54,20 +54,18 @@ public class IntakeIOSim implements IntakeIO {
         inputs.deployConnected = true;
         inputs.configured = true;
         inputs.deployHomed = true; // Starts retracted, like the hardware-test startup assumption.
-        inputs.deployConfigurationStatus = "Simulation";
-        inputs.zeroStatus = "Simulation: started retracted";
         inputs.deployPositionRotations = deploySim.getAngularPositionRotations();
+        inputs.deployTargetRPS = Double.NaN; // This simulation drives rack voltage without a velocity profile.
+        inputs.leftRollerPositionRotations = leftRollerSim.getAngularPositionRotations();
+        inputs.rightRollerPositionRotations = rightRollerSim.getAngularPositionRotations();
         inputs.deployVelocityRPS = deploySim.getAngularVelocityRPM() / 60.0;
         inputs.deployAppliedVolts = volts;
         inputs.deployCurrentAmps = Math.abs(deploySim.getCurrentDrawAmps());
         inputs.deployStatorCurrentAmps = atRetractedWall || atExtendedWall
             ? IntakeConstants.DEPLOY_STARTUP_STATOR_CURRENT_LIMIT : inputs.deployCurrentAmps;
         inputs.deployCurrentFresh = true;
-        inputs.deployTempCelsius = 25.0;
         inputs.rollerConnected = true;
         inputs.rollerConfigured = true;
-        inputs.rollerConfigurationStatus = "Simulation";
-        inputs.rollerControlStatus = "Simulation";
         // Feedback is in each motor's configured positive direction, like real IO.
         inputs.rollerAppliedVolts = updateRoller(leftRollerSim);
         inputs.rightRollerAppliedVolts = updateRoller(rightRollerSim);
@@ -75,10 +73,6 @@ public class IntakeIOSim implements IntakeIO {
         inputs.rightRollerVelocityRPS = rightRollerSim.getAngularVelocityRPM() / 60.0;
         inputs.leftRollerSupplyAmps = Math.abs(leftRollerSim.getCurrentDrawAmps());
         inputs.rightRollerSupplyAmps = Math.abs(rightRollerSim.getCurrentDrawAmps());
-        inputs.leftRollerStatorAmps = inputs.leftRollerSupplyAmps;
-        inputs.rightRollerStatorAmps = inputs.rightRollerSupplyAmps;
-        inputs.rollerCurrentAmps = inputs.leftRollerSupplyAmps + inputs.rightRollerSupplyAmps;
-        inputs.rollerTempCelsius = 25.0;
     }
 
     @Override

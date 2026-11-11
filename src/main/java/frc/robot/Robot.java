@@ -4,29 +4,17 @@
 
 package frc.robot;
 
-import org.littletonrobotics.junction.LogFileUtil;
-import org.littletonrobotics.junction.SampledLoggedRobot;
-import frc.robot.utility.telemetry.RateLimitedTelemetry;
-import org.littletonrobotics.junction.Logger;
-import frc.robot.utility.telemetry.RateLimitedReceiver;
-import org.littletonrobotics.junction.networktables.NT4Publisher;
-import org.littletonrobotics.junction.wpilog.WPILOGReader;
-import org.littletonrobotics.junction.wpilog.WPILOGWriter;
-
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.TimedRobot;
+import edu.wpi.first.wpilibj.DataLogManager;
+import com.ctre.phoenix6.SignalLogger;
 import edu.wpi.first.wpilibj.Timer;
-import edu.wpi.first.wpilibj.RobotController;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import com.ctre.phoenix6.CANBus;
-import edu.wpi.first.hal.AllianceStationID;
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.wpilibj.simulation.DriverStationSim;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import frc.robot.Constants.LimelightConstants;
-import frc.robot.simulation.CompetitionAutoDiagnostic;
-import frc.robot.autonomous.EventPathAuto;
+import frc.robot.simulation.RebuiltArena;
 import frc.robot.subsystems.shooter.FlywheelVisualizer;
+import swervelib.simulation.ironmaple.simulation.SimulatedArena;
 import frc.robot.utility.LimelightHelpers;
 
 /**
@@ -34,12 +22,10 @@ import frc.robot.utility.LimelightHelpers;
  * described in the TimedRobot documentation. If you change the name of this class or the package after creating this
  * project, you must also update the build.gradle file in the project.
  */
-public class Robot extends SampledLoggedRobot
+public class Robot extends TimedRobot
 {
 
   private static Robot   instance;
-  private final String programSession = java.util.UUID.randomUUID().toString();
-  private final double codeStartTime = Timer.getFPGATimestamp();
   private        Command m_autonomousCommand;
 
   private RobotContainer m_robotContainer;
@@ -48,67 +34,12 @@ public class Robot extends SampledLoggedRobot
   private FlywheelVisualizer flywheelVisualizer;
 
   private Timer disabledTimer;
-  // Run before the first hardware CAN bus/device is constructed.
-  private final boolean persistentRecordersDisabled = isReal()
-      && frc.robot.utility.telemetry.StreamingLogPolicy.disablePersistentRecorders();
-  private final CANBus mechanismCANBus = new CANBus(Constants.ShooterConstants.CAN_BUS);
-  private double nextCANHealthSample;
-
-  private final boolean runHeadlessAutoDiagnostic =
-      isSimulation() && "1".equals(System.getenv("BLINE_HEADLESS_DIAGNOSTIC"));
-  private double headlessDiagnosticStartSeconds;
-  private CompetitionAutoDiagnostic competitionDiagnostic;
-  private double headlessAutoFinishedSeconds = -1.0;
-  private Pose2d headlessAutoFinishedPose;
-  private double headlessMaxPostAutoDisplacementMeters;
-  private double headlessMaxPostAutoSpeedMetersPerSecond;
-  private double headlessFinalPostAutoSpeedMetersPerSecond;
-
   public Robot()
   {
-    String build = Robot.class.getPackage().getImplementationVersion();
-    if (build == null) build = "development-classes";
-    String jvmArguments = String.join(" ", java.lang.management.ManagementFactory.getRuntimeMXBean().getInputArguments());
-    Logger.recordMetadata("BuildIdentity", build);
-    Logger.recordMetadata("RuntimePolicy", "stream-only-native-oom-v2");
-    Logger.recordMetadata("JvmArguments", jvmArguments);
-    System.out.println("[Runtime] build=" + build + " policy=stream-only-native-oom-v2"
-        + " Java=" + System.getProperty("java.runtime.version") + " arch=" + System.getProperty("os.arch")
-        + " heapMaxMiB=" + Runtime.getRuntime().maxMemory() / 1048576L);
-    System.out.println("[Runtime] JVM arguments: " + jvmArguments);
-    Logger.recordMetadata("Robot", "2026 Alpha");
-    Logger.recordMetadata("ProgramSession", programSession);
-    Logger.recordMetadata("VisionConfiguration", LimelightConstants.CONFIGURATION_ID);
-    Logger.recordMetadata("VisionCameraNames", String.join(", ", LimelightConstants.LIMELIGHT_NAMES));
-    if (isReal()) {
-      // Stream only: never construct a file writer on the roboRIO.
-      Logger.recordMetadata("LoggingPolicy", "Live NT4 streaming; application file recording disabled");
-      Logger.addDataReceiver(new RateLimitedReceiver(new NT4Publisher()));
-    } else if (System.getenv("AKIT_LOG_PATH") != null || Constants.currentMode == Constants.Mode.REPLAY) {
-      // Replay: re-run a recorded log through this code. AdvantageScope sets
-      // AKIT_LOG_PATH when it launches a replay, and it can be exported by hand.
-      setUseTiming(false); // Run as fast as possible
-      String logPath = LogFileUtil.findReplayLog();
-      Logger.setReplaySource(new WPILOGReader(logPath));
-      Logger.addDataReceiver(new RateLimitedReceiver(new WPILOGWriter(LogFileUtil.addPathSuffix(logPath, "_sim"))));
-    } else {
-      // Live simulation: run at wall-clock speed and publish to NetworkTables so
-      // AdvantageScope can watch it. Without this the constructor would ask for a
-      // log to replay and block on a file chooser before the robot ever started.
-      Logger.addDataReceiver(new RateLimitedReceiver(new NT4Publisher()));
-      // Optional saved evidence for headless path comparisons; ignored on hardware.
-      String comparisonLogDir = System.getenv("BLINE_COMPARE_LOG_DIR");
-      if (runHeadlessAutoDiagnostic && comparisonLogDir != null) {
-        Logger.addDataReceiver(new RateLimitedReceiver(new WPILOGWriter(comparisonLogDir)));
-      }
-    }
-
-    Logger.start();
-    if (isReal()) {
-      RateLimitedTelemetry.putBoolean("Logging/PersistentRecordersDisabled", persistentRecordersDisabled);
-      System.out.println("[Logging] Live NT4 streaming only; application file recorders disabled="
-          + persistentRecordersDisabled + ". OS console logs are managed by the roboRIO launcher.");
-    }
+    // Disable vendor file recording before constructing hardware.
+    SignalLogger.enableAutoLogging(false);
+    SignalLogger.stop();
+    DataLogManager.stop();
     instance = this;
   }
 
@@ -123,12 +54,12 @@ public class Robot extends SampledLoggedRobot
   @Override
   public void robotInit()
   {
+    if (isSimulation()) {
+      SimulatedArena.overrideInstance(new RebuiltArena());
+    }
+
     // Instantiate our RobotContainer.  This will perform all our button bindings, and put our
     // autonomous chooser on the dashboard.
-    if (isSimulation() && CompetitionAutoDiagnostic.requested()) {
-      CompetitionAutoDiagnostic.configureArena();
-      competitionDiagnostic = new CompetitionAutoDiagnostic();
-    }
     m_robotContainer = new RobotContainer();
 
     // Create a timer to disable motor brake a few seconds after disable.  This will let the robot stop
@@ -139,36 +70,6 @@ public class Robot extends SampledLoggedRobot
     {
       DriverStation.silenceJoystickConnectionWarning(true);
     }
-
-    // Print once after initialization so this is unmistakable in the startup console.
-    System.out.println("""
-
-        ########################################################################
-        ########################################################################
-        ##                                                                    ##
-        ##                         TEAM 6560                                  ##
-        ##                      ROBOT CODE 2026                               ##
-        ##                                                                    ##
-        ########################################################################
-        ##                                                                    ##
-        ##               OUR ROBOT CODE IS RUNNING!                            ##
-        ##               OUR ROBOT CODE IS RUNNING!                            ##
-        ##               OUR ROBOT CODE IS RUNNING!                            ##
-        ##                                                                    ##
-        ##               ROBOT INITIALIZATION COMPLETED                        ##
-        ##                                                                    ##
-        ########################################################################
-        ##                                                                    ##
-        ##               FULL SUBSYSTEM CONFIGURATION                          ##
-        ##               LIMELIGHT VISION: ENABLED                              ##
-        ##               SHOOTER:          ENABLED                              ##
-        ##               INTAKE:           ENABLED                              ##
-        ##               AUTONOMOUS:       RESTORED                             ##
-        ##                                                                    ##
-        ########################################################################
-        ########################################################################
-
-        """);
   }
 
   /**
@@ -185,45 +86,9 @@ public class Robot extends SampledLoggedRobot
     // commands, running already-scheduled commands, removing finished or interrupted commands,
     // and running subsystem periodic() methods.  This must be called from the robot's periodic
     // block in order for anything in the Command-based framework to work.
-    frc.robot.utility.MemoryMonitor.update();
-    frc.robot.utility.CpuMonitor.update();
-    frc.robot.utility.StorageMonitor.update();
     frc.robot.utility.shooting.LaunchSpeedTuning.update();
     CommandScheduler.getInstance().run();
     m_robotContainer.updateShotDashboard();
-    RateLimitedTelemetry.flush();
-    frc.robot.utility.CurrentUsageMonitor.update();
-    RateLimitedTelemetry.recordOutput("Power/BatteryVoltage", RobotController.getBatteryVoltage());
-    RateLimitedTelemetry.recordOutput("Power/BrownedOut", RobotController.isBrownedOut());
-    // Logging is capped at 2 Hz; CAN/dashboard health is sampled once a second.
-    if (isReal() && Timer.getFPGATimestamp() >= nextCANHealthSample) {
-      nextCANHealthSample = Timer.getFPGATimestamp() + 1.0;
-      RateLimitedTelemetry.putString("Runtime/ProgramSession", programSession);
-      RateLimitedTelemetry.putNumber("Runtime/CodeUptimeSeconds", Timer.getFPGATimestamp() - codeStartTime);
-      RateLimitedTelemetry.putNumber("Power/BatteryVoltage", RobotController.getBatteryVoltage());
-      RateLimitedTelemetry.putBoolean("Power/BrownedOut", RobotController.isBrownedOut());
-      var rio = RobotController.getCANStatus();
-      RateLimitedTelemetry.recordOutput("CAN/rio/UtilizationPercent", rio.percentBusUtilization * 100.0);
-      RateLimitedTelemetry.recordOutput("CAN/rio/BusOffCount", rio.busOffCount);
-      RateLimitedTelemetry.recordOutput("CAN/rio/TxFullCount", rio.txFullCount);
-      RateLimitedTelemetry.recordOutput("CAN/rio/ReceiveErrorCount", rio.receiveErrorCount);
-      RateLimitedTelemetry.recordOutput("CAN/rio/TransmitErrorCount", rio.transmitErrorCount);
-      RateLimitedTelemetry.putNumber("CAN/rio/UtilizationPercent", rio.percentBusUtilization * 100.0);
-      var mechanism = mechanismCANBus.getStatus();
-      RateLimitedTelemetry.recordOutput("CAN/Canivore/Status", mechanism.Status.toString());
-      RateLimitedTelemetry.recordOutput("CAN/Canivore/UtilizationPercent", mechanism.BusUtilization * 100.0);
-      RateLimitedTelemetry.recordOutput("CAN/Canivore/BusOffCount", mechanism.BusOffCount);
-      RateLimitedTelemetry.recordOutput("CAN/Canivore/TxFullCount", mechanism.TxFullCount);
-      RateLimitedTelemetry.recordOutput("CAN/Canivore/ReceiveErrorCount", mechanism.REC);
-      RateLimitedTelemetry.recordOutput("CAN/Canivore/TransmitErrorCount", mechanism.TEC);
-      RateLimitedTelemetry.putNumber("CAN/Canivore/UtilizationPercent", mechanism.BusUtilization * 100.0);
-      RateLimitedTelemetry.putString("CAN/Canivore/Status", mechanism.Status.toString());
-    }
-    if (runHeadlessAutoDiagnostic) {
-      RateLimitedTelemetry.recordOutput("BLine/Diagnostic/AutoActive",
-          m_autonomousCommand != null
-              && CommandScheduler.getInstance().isScheduled(m_autonomousCommand));
-    }
   }
 
   /**
@@ -266,9 +131,6 @@ public class Robot extends SampledLoggedRobot
     // schedule the autonomous command (example)
     if (m_autonomousCommand != null) {
       CommandScheduler.getInstance().schedule(m_autonomousCommand);
-      if (competitionDiagnostic != null && m_autonomousCommand instanceof EventPathAuto auto) {
-        competitionDiagnostic.sample(0.0, m_robotContainer.getDrivebase(), auto.isShooting(), auto.isFeeding());
-      }
     }
   }
 
@@ -327,101 +189,11 @@ public class Robot extends SampledLoggedRobot
   public void simulationInit()
   {
     flywheelVisualizer = new FlywheelVisualizer();
-
-    if (runHeadlessAutoDiagnostic) {
-      headlessDiagnosticStartSeconds = Timer.getFPGATimestamp();
-      boolean red = competitionDiagnostic != null
-          && System.getenv("BLINE_HEADLESS_AUTO").startsWith("red-");
-      DriverStationSim.setAllianceStationId(red ? AllianceStationID.Red1 : AllianceStationID.Blue1);
-      DriverStationSim.setDsAttached(true);
-      DriverStationSim.setAutonomous(true);
-      DriverStationSim.setEnabled(true);
-      DriverStationSim.notifyNewData();
-      System.out.println("BLINE_HEADLESS: Enabled "
-          + m_robotContainer.getAutonomousCommand().getName()
-          + " autonomous on " + (red ? "Red" : "Blue") + " alliance");
-    }
   }
 
-  /**
-   * This function is called periodically whilst in simulation.
-   */
   @Override
   public void simulationPeriodic()
   {
-    if (flywheelVisualizer != null)
-    {
-      flywheelVisualizer.update(getPeriod());
-    }
-
-    if (!runHeadlessAutoDiagnostic) {
-      return;
-    }
-
-    double now = Timer.getFPGATimestamp();
-    if (competitionDiagnostic != null) {
-      double elapsed = now - headlessDiagnosticStartSeconds;
-      if (m_autonomousCommand instanceof EventPathAuto auto) {
-        competitionDiagnostic.sample(elapsed, m_robotContainer.getDrivebase(),
-            auto.isShooting(), auto.isFeeding());
-      }
-      if (elapsed >= 15.0) {
-        competitionDiagnostic.finish(System.getenv("BLINE_HEADLESS_AUTO"));
-        if (m_autonomousCommand != null) m_autonomousCommand.cancel();
-        stopHeadlessDiagnostic();
-      }
-      return;
-    }
-    if (m_autonomousCommand != null
-        && !CommandScheduler.getInstance().isScheduled(m_autonomousCommand)) {
-      if (headlessAutoFinishedPose == null) {
-        headlessAutoFinishedPose = m_robotContainer.getDrivebase().getPose();
-        headlessAutoFinishedSeconds = now;
-        System.out.printf(
-            "BLINE_HEADLESS: Auto command finished at x=%.3f y=%.3f heading=%.1fdeg%n",
-            headlessAutoFinishedPose.getX(),
-            headlessAutoFinishedPose.getY(),
-            headlessAutoFinishedPose.getRotation().getDegrees());
-      }
-
-      Pose2d currentPose = m_robotContainer.getDrivebase().getPose();
-      double displacement =
-          currentPose.getTranslation().getDistance(headlessAutoFinishedPose.getTranslation());
-      double speed = Math.hypot(
-          m_robotContainer.getDrivebase().getRobotVelocity().vxMetersPerSecond,
-          m_robotContainer.getDrivebase().getRobotVelocity().vyMetersPerSecond);
-      headlessMaxPostAutoDisplacementMeters =
-          Math.max(headlessMaxPostAutoDisplacementMeters, displacement);
-      headlessMaxPostAutoSpeedMetersPerSecond =
-          Math.max(headlessMaxPostAutoSpeedMetersPerSecond, speed);
-      headlessFinalPostAutoSpeedMetersPerSecond = speed;
-
-      if (now - headlessAutoFinishedSeconds >= 3.0) {
-        boolean stayedStopped =
-            headlessMaxPostAutoDisplacementMeters < 0.05
-                && headlessFinalPostAutoSpeedMetersPerSecond < 0.05;
-        System.out.printf(
-            "BLINE_HEADLESS_RESULT: %s postAutoDisplacement=%.4fm "
-                + "initialCoastPeak=%.4fmps finalSpeed=%.4fmps%n",
-            stayedStopped ? "PASS" : "FAIL",
-            headlessMaxPostAutoDisplacementMeters,
-            headlessMaxPostAutoSpeedMetersPerSecond,
-            headlessFinalPostAutoSpeedMetersPerSecond);
-        stopHeadlessDiagnostic();
-      }
-    } else if (now - headlessDiagnosticStartSeconds >= 30.0) {
-      System.out.printf(
-          "BLINE_HEADLESS_RESULT: TIMEOUT pose=(%.3f, %.3f, %.1fdeg)%n",
-          m_robotContainer.getDrivebase().getPose().getX(),
-          m_robotContainer.getDrivebase().getPose().getY(),
-          m_robotContainer.getDrivebase().getPose().getRotation().getDegrees());
-      stopHeadlessDiagnostic();
-    }
-  }
-
-  private void stopHeadlessDiagnostic() {
-    DriverStationSim.setEnabled(false);
-    DriverStationSim.notifyNewData();
-    endCompetition();
+    flywheelVisualizer.update(getPeriod());
   }
 }

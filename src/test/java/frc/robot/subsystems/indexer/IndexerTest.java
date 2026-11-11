@@ -32,11 +32,12 @@ class IndexerTest {
             public void updateInputs(IndexerIOInputs inputs) {
                 inputs.floorConnected = true;
                 inputs.floorRPM = 950;
+                inputs.floorPositionRotations = 12.5;
+                inputs.floorSecondaryPositionRotations = 12.4;
+                inputs.tunnelPositionRotations = 8.25;
                 inputs.floorAppliedVolts = 5;
                 inputs.floorCurrentAmps = 12;
                 inputs.appliedVolts = 0; // Tunnel stopped, floor running.
-                inputs.floorConfigurationStatus = "OK";
-                inputs.floorControlStatus = "OK";
             }
         }
         FakeIO io = new FakeIO();
@@ -49,13 +50,15 @@ class IndexerTest {
             assertEquals(1000, io.floorTarget);
             assertEquals(0, io.tunnelTarget);
             indexer.periodic();
-            assertEquals(1000, SmartDashboard.getNumber("Indexer/FloorTargetRPM", -1));
-            assertEquals(950, SmartDashboard.getNumber("Indexer/FloorRPM", -1));
+            assertEquals(1000 * frc.robot.Constants.IndexerConstants.FLOOR_GEAR_RATIO,
+                SmartDashboard.getNumber("Indexer/FloorMotorTargetRPM", -1));
+            assertEquals(12.5, SmartDashboard.getNumber("Indexer/FloorPositionRotations", -1));
+            assertEquals(12.4, SmartDashboard.getNumber("Indexer/FloorSecondaryPositionRotations", -1));
+            assertEquals(8.25, SmartDashboard.getNumber("Indexer/TunnelPositionRotations", -1));
+            assertEquals(950 * frc.robot.Constants.IndexerConstants.FLOOR_GEAR_RATIO,
+                SmartDashboard.getNumber("Indexer/FloorMotorRPM", -1));
             assertEquals(5, SmartDashboard.getNumber("Indexer/FloorVolts", -1));
             assertEquals(12, SmartDashboard.getNumber("Indexer/FloorAmps", -1));
-            assertTrue(SmartDashboard.getBoolean("Indexer/FloorConnected", false));
-            assertEquals("OK", SmartDashboard.getString("Indexer/FloorConfigurationStatus", ""));
-            assertEquals("OK", SmartDashboard.getString("Indexer/FloorControlStatus", ""));
             indexer.stop();
             assertEquals(0, io.floorTarget);
             assertEquals(0, io.tunnelTarget);
@@ -88,7 +91,6 @@ class IndexerTest {
             SimHooks.stepTiming(2.0); indexer.periodic();
             assertEquals(800, io.requested);
             assertEquals(800, indexer.getFloorTargetRPM());
-            assertFalse(SmartDashboard.getBoolean("Indexer/FloorStallFault", true));
             indexer.setFloorRPM(0); assertEquals(0, io.requested);
             indexer.setFloorRPM(800); assertEquals(800, io.requested);
         } finally {

@@ -16,7 +16,6 @@ import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Voltage;
-import frc.robot.utility.telemetry.RateLimitedTelemetry;
 import frc.robot.Constants.IndexerConstants;
 
 public class IndexerIOTalonFX implements IndexerIO {
@@ -36,8 +35,6 @@ public class IndexerIOTalonFX implements IndexerIO {
     private final NeutralOut floorFollowerStopRequest = new NeutralOut();
     private final NeutralOut tunnelStopRequest = new NeutralOut();
     private final StatusCode floorConfigurationStatus;
-    private String floorControlStatus = "No request";
-    private String tunnelControlStatus = "No request";
     private double requestedFloorRPM, requestedTunnelRPM;
 
     private final StatusSignal<Angle> floorPosition;
@@ -50,7 +47,6 @@ public class IndexerIOTalonFX implements IndexerIO {
     private final StatusSignal<Voltage> tunnelVoltage;
     private final StatusSignal<Current> tunnelCurrent;
 
-    private final String configurationSummary;
     private final BaseStatusSignal[] refreshGroup0;
     public IndexerIOTalonFX(
             int floorLeaderId,
@@ -99,6 +95,7 @@ public class IndexerIOTalonFX implements IndexerIO {
                 floorVelocity,
                 floorVoltage,
                 floorLeaderCurrent,
+                floorSecondary.getPosition(),
                 floorSecondary.getVelocity(),
                 floorSecondary.getMotorVoltage(),
                 floorSecondary.getStatorCurrent(),
@@ -110,16 +107,12 @@ public class IndexerIOTalonFX implements IndexerIO {
         floorLeader.optimizeBusUtilization();
         floorSecondary.optimizeBusUtilization();
         tunnelMotor.optimizeBusUtilization();
-        frc.robot.utility.CurrentUsageMonitor.register("Floor leader", floorLeader);
-        frc.robot.utility.CurrentUsageMonitor.register("Floor follower", floorSecondary);
-        frc.robot.utility.CurrentUsageMonitor.register("Wall tunnel", tunnelMotor);
-        configurationSummary = "ID25=" + floorConfigurationStatus
-            + "; ID0 follower=" + floorSecondaryConfigurationStatus;
         refreshGroup0 = new BaseStatusSignal[] {
                 floorPosition,
                 floorVelocity,
                 floorVoltage,
                 floorLeaderCurrent,
+                floorSecondary.getPosition(),
                 floorSecondary.getVelocity(),
                 floorSecondary.getMotorVoltage(),
                 floorSecondary.getStatorCurrent(),
@@ -169,16 +162,15 @@ public class IndexerIOTalonFX implements IndexerIO {
         inputs.tunnelCurrentLimitOK = tunnelConfigurationStatus.isOK();
         BaseStatusSignal.refreshAll(refreshGroup0);
 
+        inputs.floorPositionRotations = floorPosition.getValueAsDouble();
+        inputs.floorSecondaryPositionRotations = floorSecondary.getPosition().getValueAsDouble();
+        inputs.tunnelPositionRotations = tunnelPosition.getValueAsDouble();
         inputs.appliedVolts = tunnelVoltage.getValueAsDouble();
         inputs.floorRPM = floorVelocity.getValueAsDouble() * 60.0;
         inputs.tunnelConnected = tunnelMotor.isConnected();
         inputs.tunnelConfigured = tunnelConfigurationStatus.isOK();
         inputs.tunnelRPM = tunnelVelocity.getValueAsDouble() * 60.0;
         inputs.tunnelCurrentAmps = tunnelCurrent.getValueAsDouble();
-        inputs.tunnelConfigurationStatus = tunnelConfigurationStatus.toString();
-        inputs.tunnelControlStatus = tunnelControlStatus;
-        inputs.currentAmps = floorLeaderCurrent.getValueAsDouble()
-            + floorSecondary.getStatorCurrent().getValueAsDouble() + tunnelCurrent.getValueAsDouble();
         inputs.floorConnected = floorLeader.isConnected() && floorSecondary.isConnected();
         inputs.floorSecondaryConnected = floorSecondary.isConnected();
         inputs.floorSecondaryRPM = floorSecondary.getVelocity().getValueAsDouble() * 60;
@@ -186,12 +178,7 @@ public class IndexerIOTalonFX implements IndexerIO {
         inputs.floorSecondaryCurrentAmps = floorSecondary.getStatorCurrent().getValueAsDouble();
         inputs.floorAppliedVolts = floorVoltage.getValueAsDouble();
         inputs.floorCurrentAmps = floorLeaderCurrent.getValueAsDouble();
-        inputs.floorConfigurationStatus = configurationSummary;
-        inputs.floorControlStatus = floorControlStatus;
 
-        RateLimitedTelemetry.recordOutput("Indexer/Connected/FloorLeader", floorLeader.isConnected());
-        RateLimitedTelemetry.recordOutput("Indexer/Connected/FloorSecondary", floorSecondary.isConnected());
-        RateLimitedTelemetry.recordOutput("Indexer/Connected/TunnelMotor", tunnelMotor.isConnected());
     }
 
     @Override
@@ -201,17 +188,13 @@ public class IndexerIOTalonFX implements IndexerIO {
         rpm = requestedFloorRPM;
         if (rpm == 0.0) {
             stopFloorOutputs();
-            floorControlStatus = "Stopped: leader and follower";
         } else {
             StatusCode follower = floorSecondary.setControl(floorFollowerRequest);
             if (!follower.isOK()) {
                 stopFloorOutputs();
-                floorControlStatus = "ID0 follower request failed: " + follower;
                 return;
             }
             StatusCode leader = floorLeader.setControl(floorRequest.withVelocity(rpm / 60.0));
-            floorControlStatus = leader.isOK() && follower.isOK() ? "ID25=OK; ID0 follower=OK"
-                : "ID25=" + leader + "; ID0 follower=" + follower;
             if (!leader.isOK()) stopFloorOutputs();
         }
     }
@@ -222,9 +205,9 @@ public class IndexerIOTalonFX implements IndexerIO {
             && tunnelConfigurationStatus.isOK() ? rpm : 0;
         rpm = requestedTunnelRPM;
         if (rpm == 0.0 || !Double.isFinite(rpm) || !tunnelConfigurationStatus.isOK()) {
-            tunnelControlStatus = tunnelMotor.setControl(tunnelStopRequest).toString();
+            tunnelMotor.setControl(tunnelStopRequest);
         } else {
-            tunnelControlStatus = tunnelMotor.setControl(tunnelRequest.withVelocity(rpm / 60.0)).toString();
+            tunnelMotor.setControl(tunnelRequest.withVelocity(rpm / 60.0));
         }
     }
 

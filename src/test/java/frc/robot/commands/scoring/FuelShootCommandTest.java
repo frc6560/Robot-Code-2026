@@ -92,6 +92,32 @@ class FuelShootCommandTest {
         aimReady = true; cycles(10); command.end(false);
         assertEquals(0, indexer.getTunnelTargetRPM()); assertEquals(0, shooter.getGoalRPM());
     }
+    @Test void alignedTurnRateNoiseDoesNotInterruptAnActiveVolley() {
+        start(null);
+        double tolerance = Constants.DrivebaseConstants.HUB_AIM_TOLERANCE_RADIANS;
+        aimReady = frc.robot.commands.swervedrive.drivebase.AimAtHub.isSettled(
+            0, Math.toRadians(4), tolerance, false);
+        cycles(15);
+        assertTrue(command.isFeeding());
+        for (double speed : new double[] {5.1, 4.9, -5.5, 6, -7.9}) {
+            aimReady = frc.robot.commands.swervedrive.drivebase.AimAtHub.isSettled(
+                0, Math.toRadians(speed), tolerance, aimReady);
+            cycles(1);
+            assertTrue(command.isFeeding());
+            assertEquals(1500, indexer.getTunnelTargetRPM());
+        }
+        aimReady = frc.robot.commands.swervedrive.drivebase.AimAtHub.isSettled(
+            tolerance + 0.01, 0, tolerance, aimReady);
+        cycles(1);
+        assertFalse(command.isFeeding());
+        assertEquals(0, indexer.getTunnelTargetRPM());
+        aimReady = true;
+        cycles(2);
+        assertFalse(command.isFeeding());
+        cycles(10);
+        assertTrue(command.isFeeding());
+    }
+
     @Test void outsideZonePassUsesFixedSpeedAndSharedSixtyRpmGate() {
         pose = new Pose2d(Constants.FieldConstants.BLUE_ZONE_X + 1, 4, new Rotation2d(Math.PI));
         start(new FuelShotModel(LaunchCalibration.ideal()));
