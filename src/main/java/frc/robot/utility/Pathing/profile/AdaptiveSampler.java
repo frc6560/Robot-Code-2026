@@ -18,8 +18,6 @@ public class AdaptiveSampler {
     private final double[] ts;
     private final double[] ss;
     private final double[] ks;
-    private final double[] xs;      // cached sample positions for closest-point queries
-    private final double[] ys;
     private final double totalLength;
 
     /**
@@ -42,87 +40,20 @@ public class AdaptiveSampler {
         this.ts = new double[n];
         this.ss = new double[n];
         this.ks = new double[n];
-        this.xs = new double[n];
-        this.ys = new double[n];
 
         Translation2d prev = position.apply(tList.get(0));
         ts[0] = tList.get(0);
         ss[0] = 0.0;
         ks[0] = curvature.applyAsDouble(tList.get(0));
-        xs[0] = prev.getX();
-        ys[0] = prev.getY();
         for (int i = 1; i < n; i++) {
             double t = tList.get(i);
             Translation2d cur = position.apply(t);
             ts[i] = t;
             ss[i] = ss[i - 1] + cur.getDistance(prev);
             ks[i] = curvature.applyAsDouble(t);
-            xs[i] = cur.getX();
-            ys[i] = cur.getY();
             prev = cur;
         }
         this.totalLength = ss[n - 1];
-    }
-
-    public double[] xSamples() { return xs; }
-    public double[] ySamples() { return ys; }
-
-    /** Finds the arc length of the sample point closest to {@code (x, y)}, restricted to
-     *  sample indices in {@code [minArc, totalLength]}. Linear scan — O(n). For our
-     *  sample counts (~200) this is ~2 μs on a roboRIO and avoids the subtlety of
-     *  analytical Newton refinement converging to a local minimum. */
-    public double closestArc(double x, double y, double minArc) {
-        int startIdx = 0;
-        if (minArc > 0) {
-            startIdx = Math.max(0, Math.min(ss.length - 1,
-                    java.util.Arrays.binarySearch(ss, minArc) < 0
-                            ? -java.util.Arrays.binarySearch(ss, minArc) - 1
-                            : java.util.Arrays.binarySearch(ss, minArc)));
-        }
-        double bestDist2 = Double.POSITIVE_INFINITY;
-        int bestIdx = startIdx;
-        for (int i = startIdx; i < xs.length; i++) {
-            double dx = xs[i] - x, dy = ys[i] - y;
-            double d2 = dx * dx + dy * dy;
-            if (d2 < bestDist2) { bestDist2 = d2; bestIdx = i; }
-        }
-        // Refine between bestIdx's neighbors by projecting onto the adjacent segments.
-        double refined = ss[bestIdx];
-        if (bestIdx > 0) {
-            double cand = projectOntoSegment(bestIdx - 1, bestIdx, x, y);
-            if (cand >= minArc && cand >= 0 && distanceAtArc2(cand, x, y) < bestDist2) {
-                refined = cand;
-                bestDist2 = distanceAtArc2(cand, x, y);
-            }
-        }
-        if (bestIdx + 1 < xs.length) {
-            double cand = projectOntoSegment(bestIdx, bestIdx + 1, x, y);
-            if (cand >= minArc && distanceAtArc2(cand, x, y) < bestDist2) {
-                refined = cand;
-            }
-        }
-        return Math.max(minArc, Math.min(totalLength, refined));
-    }
-
-    private double projectOntoSegment(int a, int b, double x, double y) {
-        double ax = xs[a], ay = ys[a];
-        double bx = xs[b], by = ys[b];
-        double dx = bx - ax, dy = by - ay;
-        double lenSq = dx * dx + dy * dy;
-        if (lenSq < 1e-12) return ss[a];
-        double t = ((x - ax) * dx + (y - ay) * dy) / lenSq;
-        t = Math.max(0, Math.min(1, t));
-        return ss[a] + t * (ss[b] - ss[a]);
-    }
-
-    private double distanceAtArc2(double s, double x, double y) {
-        int idx = searchArc(s);
-        double denom = ss[idx + 1] - ss[idx];
-        double frac = denom > 1e-12 ? (s - ss[idx]) / denom : 0.0;
-        double px = xs[idx] + frac * (xs[idx + 1] - xs[idx]);
-        double py = ys[idx] + frac * (ys[idx + 1] - ys[idx]);
-        double dx = px - x, dy = py - y;
-        return dx * dx + dy * dy;
     }
 
     private void subdivide(DoubleFunction<Translation2d> pos, ArrayList<Double> out,

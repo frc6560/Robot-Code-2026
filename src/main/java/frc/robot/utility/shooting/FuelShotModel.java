@@ -1,0 +1,263 @@
+package frc.robot.utility.shooting;
+
+import frc.robot.utility.shooting.FuelShotConfig;
+import frc.robot.Constants.ShotModelConstants;
+
+/** Fresh stationary fixed-hood model driven by measured exit speeds, not motor surface speed. */
+public final class FuelShotModel {
+    public record Flight(double crossingX, double entryDegrees, double time, double risingX, boolean reached) {}
+    /** Caller-owned result. Never hand this mutable object to asynchronous logging. */
+    public static final class Shot {
+        private double rpm, minimumRPM, maximumRPM, flightSeconds;
+        private boolean valid;
+        public Shot(double rpm, double minimumRPM, double maximumRPM, double flightSeconds, boolean valid) {
+            set(rpm, minimumRPM, maximumRPM, flightSeconds, valid);
+        }
+        public static Shot invalid() { return new Shot(0, 0, 0, 0, false); }
+        public double rpm() { return rpm; }
+        public double minimumRPM() { return minimumRPM; }
+        public double maximumRPM() { return maximumRPM; }
+        public double flightSeconds() { return flightSeconds; }
+        public boolean valid() { return valid; }
+        public void clear() { set(0, 0, 0, 0, false); }
+        private void set(double rpm, double low, double high, double time, boolean valid) {
+            this.rpm = rpm; minimumRPM = low; maximumRPM = high; flightSeconds = time; this.valid = valid;
+        }
+        @Override public boolean equals(Object other) {
+            return other instanceof Shot s && Double.compare(rpm, s.rpm) == 0
+                && Double.compare(minimumRPM, s.minimumRPM) == 0 && Double.compare(maximumRPM, s.maximumRPM) == 0
+                && Double.compare(flightSeconds, s.flightSeconds) == 0 && valid == s.valid;
+        }
+        @Override public int hashCode() { return Double.hashCode(rpm); }
+    }
+    private Flight[] precomputed;
+    // Owned scratch storage: the robot model is used only on the scheduler thread.
+    private final double[] state = new double[5], a = new double[5], b = new double[5],
+        c = new double[5], d = new double[5], tmp = new double[5];
+    private long flightCalculations;
+    public long flightCalculations() { return flightCalculations; }
+    public int cachedFlightCount() { return sampledFlights.size(); }
+    /** Approximation including the full 5 RPM table and the 10 RPM solver references. */
+    public long estimatedCacheBytes() {
+        return precomputed == null ? sampledFlights.size() * 96L
+            : precomputed.length * 64L + sampledFlights.size() * 40L;
+    }
+    private final LaunchCalibration calibration;
+    /** Live diagnostic view owned by the model, updated in place on the scheduler thread. */
+    public static final class SolveDiagnostics {
+        private double rangeMeters;
+        private int sampled, reachedHeight, clearedNearRim, landedInOpening, passedEntryAngle;
+        private String reason;
+        SolveDiagnostics(double range, int sampled, int reached, int cleared, int landed, int entered, String reason) {
+            set(range, sampled, reached, cleared, landed, entered, reason);
+        }
+        void set(double range, int sampled, int reached, int cleared, int landed, int entered, String reason) {
+            rangeMeters = range; this.sampled = sampled; reachedHeight = reached; clearedNearRim = cleared;
+            landedInOpening = landed; passedEntryAngle = entered; this.reason = reason;
+        }
+        public double rangeMeters() { return rangeMeters; }
+        public int sampled() { return sampled; }
+        public int reachedHeight() { return reachedHeight; }
+        public int clearedNearRim() { return clearedNearRim; }
+        public int landedInOpening() { return landedInOpening; }
+        public int passedEntryAngle() { return passedEntryAngle; }
+        public String reason() { return reason; }
+        @Override public boolean equals(Object other) {
+            return other instanceof SolveDiagnostics d && Double.compare(rangeMeters, d.rangeMeters) == 0
+                && sampled == d.sampled && reachedHeight == d.reachedHeight && clearedNearRim == d.clearedNearRim
+                && landedInOpening == d.landedInOpening && passedEntryAngle == d.passedEntryAngle && reason.equals(d.reason);
+        }
+        @Override public int hashCode() { return Double.hashCode(rangeMeters); }
+    }
+    private SolveDiagnostics diagnostics = new SolveDiagnostics(Double.NaN, 0, 0, 0, 0, 0, "Not solved yet");
+    public SolveDiagnostics diagnostics() { return diagnostics; }
+    private double launchSpeedCoefficient = LaunchSpeedTuning.DEFAULT_COEFFICIENT;
+
+    /** Update launch-speed scale and invalidate all cached trajectory predictions. */
+    public boolean setLaunchSpeedCoefficient(double coefficient) {
+        if (!Double.isFinite(coefficient) || coefficient < 0.5 || coefficient > 1.5
+                || coefficient == launchSpeedCoefficient) return false;
+        if (precomputed != null) throw new IllegalStateException("Regenerate the shot table for a new coefficient");
+        launchSpeedCoefficient = coefficient;
+        sampledFlights.clear();
+        for (double rpm : sampledRPM) sampledFlights.add(flight(rpm));
+        return true;
+    }
+
+    private final java.util.List<Double> sampledRPM = new java.util.ArrayList<>();
+    private final java.util.List<Flight> sampledFlights = new java.util.ArrayList<>();
+    private static final double DT = 0.005;
+    private static final double RADIUS = ShotModelConstants.BALL_DIAMETER_METERS / 2;
+    private static final double PLANE = ShotModelConstants.HUB_RIM_HEIGHT_METERS + RADIUS;
+    private static final double HALF_WIDTH = ShotModelConstants.HUB_OPENING_SPAN_METERS / 2
+        - RADIUS - ShotModelConstants.HUB_RIM_MARGIN_METERS;
+    private static final double AERO = 0.5 * 1.225 * Math.PI * RADIUS * RADIUS / ShotModelConstants.BALL_MASS_KG;
+
+    public FuelShotModel(LaunchCalibration calibration) {
+        this(calibration, null);
+    }
+
+    FuelShotModel(LaunchCalibration calibration, Flight[] table) {
+        this.calibration = calibration;
+        precomputed = table;
+        for (double rpm = calibration.minRPM(); ; rpm = Math.min(calibration.maxRPM(), rpm + 10)) {
+            sampledRPM.add(rpm);
+            sampledFlights.add(flight(rpm));
+            if (rpm == calibration.maxRPM()) break;
+        }
+    }
+    public LaunchCalibration calibration() { return calibration; }
+
+    /** Bounded work: scan the calibrated RPM span, then refine the selected contiguous band. */
+    /** Allocating convenience API for offline tooling/tests. Runtime callers use solveInto. */
+    public Shot solve(double range) {
+        Shot result = Shot.invalid();
+        solveInto(range, result);
+        return result;
+    }
+
+    public void solveInto(double range, Shot result) {
+        result.clear();
+        if (!Double.isFinite(range) || range < 0.75 || range > 8.0) {
+            diagnostics.set(range, 0, 0, 0, 0, 0, "Range outside solver limits (0.75–8 m)");
+            return;
+        }
+        // A fine grid finds narrow bands; midpoint refinement below never assumes a global monotonic trajectory.
+        double step = 10.0;
+        double bestLow = 0, bestHigh = -1, start = 0, previous = calibration.minRPM();
+        boolean inBand = false;
+        int reached = 0, cleared = 0, landed = 0, entered = 0;
+        for (int index = 0; index < sampledRPM.size(); index++) {
+            double rpm = sampledRPM.get(index);
+            Flight candidate = sampledFlights.get(index);
+            boolean valid = flightScores(range, candidate);
+            // Progressive counts explain exactly where candidate trajectories are eliminated.
+            if (candidate.reached()) {
+                reached++;
+                if (candidate.risingX() <= range - ShotModelConstants.HUB_OPENING_SPAN_METERS / 2
+                        - ShotModelConstants.HUB_RIM_MARGIN_METERS) {
+                    cleared++;
+                    if (Math.abs(candidate.crossingX() - range) <= HALF_WIDTH) {
+                        landed++;
+                        if (candidate.entryDegrees() >= FuelShotConfig.MIN_ENTRY_DEGREES) entered++;
+                    }
+                }
+            }
+            if (valid && !inBand) { start = rpm; inBand = true; }
+            if (inBand && (!valid || rpm == calibration.maxRPM())) {
+                double end = valid ? rpm : previous;
+                if (end - start > bestHigh - bestLow) { bestLow = start; bestHigh = end; }
+                inBand = false;
+            }
+            if (rpm == calibration.maxRPM()) break;
+            previous = rpm;
+        }
+        String reason = reached == 0 ? "No sampled RPM reaches hub height"
+            : cleared == 0 ? "No sampled trajectory clears near rim"
+            : landed == 0 ? "No rim-clearing trajectory lands in opening"
+            : entered == 0 ? "Entry angle too shallow (requires "
+                + FuelShotConfig.MIN_ENTRY_DEGREES + " deg)" : "Reachable";
+        diagnostics.set(range, sampledRPM.size(), reached, cleared, landed, entered, reason);
+        if (bestHigh < bestLow) return;
+        // Grid endpoints are already valid; avoid dozens of full integrations to refine sub-RPM edges.
+        double low = bestLow;
+        double high = bestHigh;
+        double target = (low + high) / 2;
+        Flight flight = flight(target);
+        boolean valid = flightScores(range, flight);
+        if (!valid) diagnostics.set(range, sampledRPM.size(), reached, cleared,
+            landed, entered, "Refined RPM failed trajectory check");
+        result.set(target, low, high, flight.time(), valid);
+    }
+
+    private double refine(double range, double inside, double outside) {
+        if (scores(range, outside)) return outside;
+        for (int i = 0; i < 12; i++) {
+            double mid = (inside + outside) / 2;
+            if (scores(range, mid)) inside = mid; else outside = mid;
+        }
+        return inside;
+    }
+
+    public boolean scores(double range, double rpm) {
+        if (!Double.isFinite(range) || range < 0.75 || range > 8 || !Double.isFinite(rpm)
+                || rpm < calibration.minRPM() || rpm > calibration.maxRPM()) return false;
+        if (precomputed != null) {
+            double index = (rpm - calibration.minRPM()) / 5.0;
+            int low = (int) Math.floor(index), high = (int) Math.ceil(index);
+            // Measured RPM is continuous. Require both bounding predictions to score;
+            // this conservative check needs neither interpolation objects nor integration.
+            return flightScores(range, precomputed[low]) && flightScores(range, precomputed[high]);
+        }
+        Flight f = flight(rpm);
+        return flightScores(range, f);
+    }
+
+    private boolean flightScores(double range, Flight f) {
+        return f.reached() && f.risingX() <= range - ShotModelConstants.HUB_OPENING_SPAN_METERS / 2
+            - ShotModelConstants.HUB_RIM_MARGIN_METERS
+            && Math.abs(f.crossingX() - range) <= HALF_WIDTH
+            && f.entryDegrees() >= FuelShotConfig.MIN_ENTRY_DEGREES;
+    }
+
+    /** RK4 gravity + quadratic drag + backspin lift. Positive backspin gives upward lift. */
+    public Flight flight(double rpm) {
+        if (precomputed != null) {
+            double index = (rpm - calibration.minRPM()) / 5.0;
+            int slot = (int) Math.round(index);
+            if (!Double.isFinite(index) || Math.abs(slot - index) > 1e-7
+                    || slot < 0 || slot >= precomputed.length)
+                throw new IllegalArgumentException("RPM outside precomputed grid");
+            return precomputed[slot];
+        }
+        flightCalculations++;
+        LaunchCalibration.Launch base = calibration.at(rpm);
+        LaunchCalibration.Launch launch = new LaunchCalibration.Launch(
+            base.speed() * launchSpeedCoefficient, base.backspinRps());
+        double angle = Math.toRadians(ShotModelConstants.LAUNCH_ELEVATION_DEGREES
+            + FuelShotConfig.LAUNCH_ANGLE_OFFSET_DEGREES);
+        double spin = Double.isFinite(launch.backspinRps()) ? launch.backspinRps() * 2 * Math.PI
+            : launch.speed() / RADIUS; // Explicit rolling estimate until spin is measured.
+        double[] s = state;
+        s[0] = 0;
+        s[1] = ShotModelConstants.RELEASE_HEIGHT_METERS;
+        s[2] = launch.speed() * Math.cos(angle);
+        s[3] = launch.speed() * Math.sin(angle);
+        s[4] = spin;
+        double risingX = Double.POSITIVE_INFINITY;
+        for (int n = 0; n < 800; n++) {
+            double oldX = s[0], oldZ = s[1], oldVX = s[2], oldVZ = s[3];
+            derivative(s, a);
+            for (int i = 0; i < 5; i++) tmp[i] = s[i] + a[i] * DT / 2;
+            derivative(tmp, b);
+            for (int i = 0; i < 5; i++) tmp[i] = s[i] + b[i] * DT / 2;
+            derivative(tmp, c);
+            for (int i = 0; i < 5; i++) tmp[i] = s[i] + c[i] * DT;
+            derivative(tmp, d);
+            for (int i = 0; i < 5; i++) s[i] += DT * (a[i] + 2*b[i] + 2*c[i] + d[i]) / 6;
+            if (oldZ < PLANE && s[1] >= PLANE) {
+                risingX = oldX + (PLANE - oldZ) / (s[1] - oldZ) * (s[0] - oldX);
+            }
+            if (oldZ >= PLANE && s[1] <= PLANE && s[3] < 0) {
+                double t = (oldZ - PLANE) / (oldZ - s[1]);
+                double vx = oldVX + t * (s[2] - oldVX), vz = oldVZ + t * (s[3] - oldVZ);
+                return new Flight(oldX + t * (s[0] - oldX), Math.toDegrees(Math.atan2(-vz, vx)),
+                    (n + t) * DT, risingX, vx > 0);
+            }
+            if (s[1] < 0 || s[0] > 15) break;
+        }
+        return new Flight(Double.NaN, Double.NaN, Double.NaN, Double.NaN, false);
+    }
+
+    private static void derivative(double[] s, double[] out) {
+        double speed = Math.hypot(s[2], s[3]);
+        double drag = AERO * FuelShotConfig.DRAG_COEFFICIENT * speed;
+        double cl = speed < 1e-6 ? 0 : Math.min(0.35,
+            FuelShotConfig.LIFT_SLOPE * RADIUS * Math.abs(s[4]) / speed);
+        double lift = AERO * cl * speed * Math.signum(s[4]);
+        out[0] = s[2]; out[1] = s[3];
+        out[2] = -drag * s[2] - lift * s[3];
+        out[3] = -9.80665 - drag * s[3] + lift * s[2];
+        out[4] = -FuelShotConfig.SPIN_DECAY_PER_SECOND * s[4];
+    }
+}

@@ -1,65 +1,124 @@
 package frc.robot.subsystems.intake;
 
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.math.system.plant.LinearSystemId;
 import edu.wpi.first.wpilibj.simulation.DCMotorSim;
+import frc.robot.Constants.IntakeConstants;
 
+/** Simple rack simulation using motor-rotation units, plus separate intake rollers. */
 public class IntakeIOSim implements IntakeIO {
-    private final DCMotorSim leftSim;
-    private final DCMotorSim rightSim;
+    private final DCMotorSim deploySim = new DCMotorSim(
+        LinearSystemId.createDCMotorSystem(DCMotor.getKrakenX44(1), 0.01, 1.0),
+        DCMotor.getKrakenX44(1));
+    private final DCMotorSim leftRollerSim = createRollerSim();
+    private final DCMotorSim rightRollerSim = createRollerSim();
+    private double rollerRPM;
+    private double target;
+    private boolean closedLoop;
+    private boolean coastMode;
+    private boolean forceRetracting;
+    private boolean forceExtending;
 
-    private double appliedVolts = 0.0;
+    private static DCMotorSim createRollerSim() {
+        return new DCMotorSim(LinearSystemId.createDCMotorSystem(
+            DCMotor.getKrakenX60(1), 0.005, IntakeConstants.ROLLER_GEARING),
+            DCMotor.getKrakenX60(1));
+    }
 
-    private static final double GEARING = 1.0;
-    private static final double MOI = 0.001;
-
-    public IntakeIOSim() {
-        leftSim = new DCMotorSim(
-            LinearSystemId.createDCMotorSystem(
-                DCMotor.getKrakenX60(1),
-                MOI,
-                GEARING
-            ),
-            DCMotor.getKrakenX60(1)
-        );
-        rightSim = new DCMotorSim(
-            LinearSystemId.createDCMotorSystem(
-                DCMotor.getKrakenX60(1),
-                MOI,
-                GEARING
-            ),
-            DCMotor.getKrakenX60(1)
-        );
+    private double updateRoller(DCMotorSim sim) {
+        double rps = sim.getAngularVelocityRPM() / 60.0;
+        double volts = rollerRPM != 0.0 && !coastMode
+            ? MathUtil.clamp(IntakeConstants.ROLLER_kP * (rollerRPM / 60.0 - rps)
+                + IntakeConstants.ROLLER_kV * IntakeConstants.ROLLER_GEARING * rollerRPM / 60.0,
+                -12.0, 12.0) : 0.0;
+        sim.setInputVoltage(volts);
+        sim.update(0.02);
+        return volts;
     }
 
     @Override
     public void updateInputs(IntakeIOInputs inputs) {
-        leftSim.setInputVoltage(appliedVolts);
-        rightSim.setInputVoltage(appliedVolts);
-
-        leftSim.update(0.02);
-        rightSim.update(0.02);
-
-        inputs.leftVelocityRPS = leftSim.getAngularVelocityRPM() / 60.0;
-        inputs.leftAppliedVolts = appliedVolts;
-        inputs.leftCurrentAmps = Math.abs(leftSim.getCurrentDrawAmps());
-        inputs.leftTempCelsius = 25.0;
-
-        inputs.rightVelocityRPS = rightSim.getAngularVelocityRPM() / 60.0;
-        inputs.rightAppliedVolts = appliedVolts;
-        inputs.rightCurrentAmps = Math.abs(rightSim.getCurrentDrawAmps());
-        inputs.rightTempCelsius = 25.0;
+        double volts = forceExtending && !coastMode ? IntakeConstants.DEPLOY_FORCE_EXTEND_VOLTS
+            : forceRetracting && !coastMode ? IntakeConstants.DEPLOY_FORCE_RETRACT_VOLTS
+            : closedLoop && !coastMode
+            ? MathUtil.clamp((target - deploySim.getAngularPositionRotations()) * 4.0, -12.0, 12.0)
+            : 0.0;
+        deploySim.setInputVoltage(volts);
+        deploySim.update(0.02);
+        boolean atRetractedWall = forceRetracting && deploySim.getAngularPositionRotations() <= 0.0;
+        if (atRetractedWall) deploySim.setState(0.0, 0.0);
+        boolean atExtendedWall = forceExtending
+            && deploySim.getAngularPositionRotations() >= IntakeConstants.EXTENDED_POSITION_ROTATIONS;
+        if (atExtendedWall) deploySim.setState(IntakeConstants.EXTENDED_POSITION_ROTATIONS * 2.0 * Math.PI, 0.0);
+        inputs.deployConnected = true;
+        inputs.configured = true;
+        inputs.deployHomed = true; // Starts retracted, like the hardware-test startup assumption.
+        inputs.deployPositionRotations = deploySim.getAngularPositionRotations();
+        inputs.deployTargetRPS = Double.NaN; // This simulation drives rack voltage without a velocity profile.
+        inputs.leftRollerPositionRotations = leftRollerSim.getAngularPositionRotations();
+        inputs.rightRollerPositionRotations = rightRollerSim.getAngularPositionRotations();
+        inputs.deployVelocityRPS = deploySim.getAngularVelocityRPM() / 60.0;
+        inputs.deployAppliedVolts = volts;
+        inputs.deployCurrentAmps = Math.abs(deploySim.getCurrentDrawAmps());
+        inputs.deployStatorCurrentAmps = atRetractedWall || atExtendedWall
+            ? IntakeConstants.DEPLOY_STARTUP_STATOR_CURRENT_LIMIT : inputs.deployCurrentAmps;
+        inputs.deployCurrentFresh = true;
+        inputs.rollerConnected = true;
+        inputs.rollerConfigured = true;
+        // Feedback is in each motor's configured positive direction, like real IO.
+        inputs.rollerAppliedVolts = updateRoller(leftRollerSim);
+        inputs.rightRollerAppliedVolts = updateRoller(rightRollerSim);
+        inputs.rollerVelocityRPS = leftRollerSim.getAngularVelocityRPM() / 60.0;
+        inputs.rightRollerVelocityRPS = rightRollerSim.getAngularVelocityRPM() / 60.0;
+        inputs.leftRollerSupplyAmps = Math.abs(leftRollerSim.getCurrentDrawAmps());
+        inputs.rightRollerSupplyAmps = Math.abs(rightRollerSim.getCurrentDrawAmps());
     }
 
     @Override
-    public void setRollerRPM(double rpm) {
-        // Simple feedforward approximation for sim: target velocity -> voltage
-        double targetRPS = rpm / 60.0;
-        appliedVolts = targetRPS * 0.12 * 12.0; // kV * nominal voltage
+    public void setDeployPosition(double rotations) {
+        forceRetracting = forceExtending = false;
+        target = MathUtil.clamp(rotations, IntakeConstants.RETRACTED_POSITION_ROTATIONS,
+            IntakeConstants.EXTENDED_POSITION_ROTATIONS);
+        closedLoop = true;
+    }
+
+    @Override
+    public void setRollerRPM(double rpm) { rollerRPM = rpm; }
+
+    @Override public void stopDeploy() {
+        forceRetracting = forceExtending = false;
+        closedLoop = false;
+        deploySim.setInputVoltage(0.0);
     }
 
     @Override
     public void stop() {
-        appliedVolts = 0.0;
+        forceRetracting = forceExtending = false;
+        closedLoop = false;
+        rollerRPM = 0.0;
+        deploySim.setInputVoltage(0.0);
+        leftRollerSim.setInputVoltage(0.0);
+        rightRollerSim.setInputVoltage(0.0);
+    }
+
+    @Override
+    public void setCoastMode(boolean coast) { coastMode = coast; }
+
+    @Override public void forceRetract() {
+        forceExtending = false;
+        forceRetracting = true;
+        closedLoop = false;
+    }
+
+    @Override public void forceExtend() {
+        forceRetracting = false;
+        forceExtending = true;
+        closedLoop = false;
+    }
+
+    @Override public void finishForceRetract() {
+        stopDeploy();
+        deploySim.setState(0.0, 0.0);
     }
 }

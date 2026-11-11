@@ -1,0 +1,4 @@
+[
+  {"name":"zero-cross-repeat1","gains":{"TRANSLATION_KP":5,"TRANSLATION_KD":0.5,"ROTATION_KP":4,"ROTATION_KD":0.5,"CROSS_TRACK_KP":0,"CROSS_TRACK_KD":0}},
+  {"name":"zero-cross-repeat2","gains":{"TRANSLATION_KP":5,"TRANSLATION_KD":0.5,"ROTATION_KP":4,"ROTATION_KD":0.5,"CROSS_TRACK_KP":0,"CROSS_TRACK_KD":0}}
+]

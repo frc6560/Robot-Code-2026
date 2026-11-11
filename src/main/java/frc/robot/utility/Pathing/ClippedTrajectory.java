@@ -5,7 +5,6 @@ import frc.robot.utility.Pathing.obstacle.ObstacleField;
 import frc.robot.utility.Pathing.profile.VelocityProfile;
 
 import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.math.trajectory.TrapezoidProfile.State;
@@ -147,21 +146,15 @@ public class ClippedTrajectory {
     public double getTotalLength() { return totalLength; }
     public int sampleCount() { return points.length; }
 
-    /** Pose-based follower. Same scheme as {@link PathChain#calculate} but on a polyline
-     *  instead of Bezier segments. */
-    public Setpoint calculate(Pose2d robotPose, double dt) {
-        // Closest-point projection onto the polyline, monotone-clamped.
-        currentArc = closestArcOnPolyline(robotPose.getX(), robotPose.getY(), currentArc);
-
-        // Lookahead.
+    public Setpoint calculate(double currentRotation, double dt) {
         double vPlanned = profile.velocityAt(currentArc);
-        double targetArc = Math.min(currentArc + vPlanned * dt, totalLength);
-        double commandedVelocity = profile.velocityAt(targetArc);
+        currentArc = Math.min(currentArc + vPlanned * dt, totalLength);
+        double commandedVelocity = profile.velocityAt(currentArc);
 
-        // Interpolate position and tangent along the polyline at the lookahead.
-        int idx = searchArc(targetArc);
+        // Interpolate position and tangent along the polyline.
+        int idx = searchArc(currentArc);
         double denom = arcLengths[idx + 1] - arcLengths[idx];
-        double frac = denom > 1e-9 ? (targetArc - arcLengths[idx]) / denom : 0.0;
+        double frac = denom > 1e-9 ? (currentArc - arcLengths[idx]) / denom : 0.0;
         Translation2d a = points[idx], b = points[idx + 1];
         Translation2d target = new Translation2d(
                 a.getX() + (b.getX() - a.getX()) * frac,
@@ -170,8 +163,7 @@ public class ClippedTrajectory {
         double norm = Math.hypot(dx, dy) + 1e-6;
         Translation2d tangent = new Translation2d(dx / norm, dy / norm);
 
-        // Rotation.
-        double currentRotation = robotPose.getRotation().getRadians();
+        // Rotation — same angle-modulus trick the rest of the library uses.
         double errorToGoal = MathUtil.angleModulus(endRotation.position - currentRotation);
         double errorToSetpoint = MathUtil.angleModulus(startRotation.position - currentRotation);
         endRotation.position = currentRotation + errorToGoal;
@@ -187,35 +179,6 @@ public class ClippedTrajectory {
                 tangent.getX() * commandedVelocity,
                 tangent.getY() * commandedVelocity,
                 rotSetpoint.velocity);
-    }
-
-    public double getCurrentArc() { return currentArc; }
-    public void resetProgress() { this.currentArc = 0.0; }
-
-    /** Project {@code (x, y)} onto the polyline, restricted to arc >= minArc. Per-segment
-     *  orthogonal projection; O(n) in segment count. */
-    private double closestArcOnPolyline(double x, double y, double minArc) {
-        double bestArc = minArc;
-        double bestDist2 = Double.POSITIVE_INFINITY;
-        int startIdx = searchArc(minArc);
-        for (int i = startIdx; i < points.length - 1; i++) {
-            double ax = points[i].getX(), ay = points[i].getY();
-            double bx = points[i + 1].getX(), by = points[i + 1].getY();
-            double dx = bx - ax, dy = by - ay;
-            double lenSq = dx * dx + dy * dy;
-            double t = lenSq < 1e-12 ? 0.0 : ((x - ax) * dx + (y - ay) * dy) / lenSq;
-            t = Math.max(0, Math.min(1, t));
-            double px = ax + t * dx, py = ay + t * dy;
-            double d2 = (px - x) * (px - x) + (py - y) * (py - y);
-            if (d2 < bestDist2) {
-                double segArc = arcLengths[i] + t * (arcLengths[i + 1] - arcLengths[i]);
-                if (segArc >= minArc) {
-                    bestDist2 = d2;
-                    bestArc = segArc;
-                }
-            }
-        }
-        return Math.min(totalLength, bestArc);
     }
 
     private int searchArc(double arc) {

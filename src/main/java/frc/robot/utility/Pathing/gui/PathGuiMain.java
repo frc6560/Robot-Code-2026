@@ -448,12 +448,9 @@ public class PathGuiMain extends JFrame {
             } else {
                 if (animPath == null) { playAnim(); if (animPath == null) return; }
             }
-            // Pose-based follower: feed the simulated pose in, interpret the returned
-            // setpoint as the next simulated pose (perfect tracking).
-            Pose2d simPose = new Pose2d(animSimX, animSimY, new Rotation2d(animSimTheta));
             Setpoint next = useAStar
-                    ? animChain.calculate(simPose, DT_ANIM)
-                    : animPath.calculate(simPose, DT_ANIM);
+                    ? animChain.calculate(animSimTheta, DT_ANIM)
+                    : animPath.calculate(animSimTheta, DT_ANIM);
             // Treat returned setpoint as the commanded pose — simulate perfect tracking.
             animSimX = next.x;
             animSimY = next.y;

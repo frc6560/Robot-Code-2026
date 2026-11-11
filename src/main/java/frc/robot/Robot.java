@@ -4,18 +4,17 @@
 
 package frc.robot;
 
-import org.littletonrobotics.junction.LogFileUtil;
-import org.littletonrobotics.junction.LoggedRobot;
-import org.littletonrobotics.junction.Logger;
-import org.littletonrobotics.junction.networktables.NT4Publisher;
-import org.littletonrobotics.junction.wpilog.WPILOGReader;
-import org.littletonrobotics.junction.wpilog.WPILOGWriter;
-
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.TimedRobot;
+import edu.wpi.first.wpilibj.DataLogManager;
+import com.ctre.phoenix6.SignalLogger;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import frc.robot.Constants.LimelightConstants;
+import frc.robot.simulation.RebuiltArena;
+import frc.robot.subsystems.shooter.FlywheelVisualizer;
+import swervelib.simulation.ironmaple.simulation.SimulatedArena;
 import frc.robot.utility.LimelightHelpers;
 
 /**
@@ -23,7 +22,7 @@ import frc.robot.utility.LimelightHelpers;
  * described in the TimedRobot documentation. If you change the name of this class or the package after creating this
  * project, you must also update the build.gradle file in the project.
  */
-public class Robot extends LoggedRobot
+public class Robot extends TimedRobot
 {
 
   private static Robot   instance;
@@ -31,22 +30,16 @@ public class Robot extends LoggedRobot
 
   private RobotContainer m_robotContainer;
 
-  private Timer disabledTimer;
+  /** Simulation-only spinning-wheel view of the flywheel, for AdvantageScope. */
+  private FlywheelVisualizer flywheelVisualizer;
 
+  private Timer disabledTimer;
   public Robot()
   {
-    Logger.recordMetadata("Robot", "2026 Alpha");
-    if (isReal()) {
-      Logger.addDataReceiver(new WPILOGWriter());
-      Logger.addDataReceiver(new NT4Publisher());
-    } else {
-      setUseTiming(false); // Run as fast as possible
-      String logPath = LogFileUtil.findReplayLog(); 
-      Logger.setReplaySource(new WPILOGReader(logPath)); 
-      Logger.addDataReceiver(new WPILOGWriter(LogFileUtil.addPathSuffix(logPath, "_sim"))); 
-    }
-
-    Logger.start();
+    // Disable vendor file recording before constructing hardware.
+    SignalLogger.enableAutoLogging(false);
+    SignalLogger.stop();
+    DataLogManager.stop();
     instance = this;
   }
 
@@ -61,12 +54,16 @@ public class Robot extends LoggedRobot
   @Override
   public void robotInit()
   {
+    if (isSimulation()) {
+      SimulatedArena.overrideInstance(new RebuiltArena());
+    }
+
     // Instantiate our RobotContainer.  This will perform all our button bindings, and put our
     // autonomous chooser on the dashboard.
     m_robotContainer = new RobotContainer();
 
     // Create a timer to disable motor brake a few seconds after disable.  This will let the robot stop
-    // immediately when disabled, but then also let it be pushed more 
+    // immediately when disabled, but then also let it be pushed more
     disabledTimer = new Timer();
 
     if (isSimulation())
@@ -89,7 +86,9 @@ public class Robot extends LoggedRobot
     // commands, running already-scheduled commands, removing finished or interrupted commands,
     // and running subsystem periodic() methods.  This must be called from the robot's periodic
     // block in order for anything in the Command-based framework to work.
+    frc.robot.utility.shooting.LaunchSpeedTuning.update();
     CommandScheduler.getInstance().run();
+    m_robotContainer.updateShotDashboard();
   }
 
   /**
@@ -121,6 +120,8 @@ public class Robot extends LoggedRobot
   @Override
   public void autonomousInit()
   {
+    m_robotContainer.disablePitCoastMode();
+
     for(String limelightName : LimelightConstants.LIMELIGHT_NAMES){
       LimelightHelpers.SetIMUMode(limelightName, 4);
     }
@@ -144,6 +145,7 @@ public class Robot extends LoggedRobot
   @Override
   public void teleopInit()
   {
+    m_robotContainer.disablePitCoastMode();
     if (m_autonomousCommand != null)
     {
       m_autonomousCommand.cancel();
@@ -186,13 +188,12 @@ public class Robot extends LoggedRobot
   @Override
   public void simulationInit()
   {
+    flywheelVisualizer = new FlywheelVisualizer();
   }
 
-  /**
-   * This function is called periodically whilst in simulation.
-   */
   @Override
   public void simulationPeriodic()
   {
+    flywheelVisualizer.update(getPeriod());
   }
 }

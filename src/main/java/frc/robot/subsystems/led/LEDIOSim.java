@@ -10,12 +10,6 @@ public class LEDIOSim implements LEDIO {
     }
 
     @Override
-    public void updateInputs(LEDIOInputs inputs) {
-        inputs.connected = true;
-        inputs.ledCount = length;
-    }
-
-    @Override
     public void setRGB(int index, int r, int g, int b) {
         if (index >= 0 && index < length) {
             colors[index][0] = r;

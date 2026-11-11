@@ -2,6 +2,7 @@ package frc.robot.subsystems.shooter;
 
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusSignal;
+import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.Follower;
 import com.ctre.phoenix6.controls.NeutralOut;
@@ -27,7 +28,9 @@ public class ShooterIOTalonFX implements ShooterIO {
     private final VoltageOut voltageControl = new VoltageOut(0);
     private final NeutralOut coastControl = new NeutralOut();
 
-    private String controlMode = "Off";
+    private final Slot0Configs slot0 = new Slot0Configs();
+    private double prevkP = Double.NaN;
+    private double prevkD = Double.NaN;
 
     private final StatusSignal<Angle> leaderPosition;
     private final StatusSignal<AngularVelocity> leaderVelocity;
@@ -40,9 +43,11 @@ public class ShooterIOTalonFX implements ShooterIO {
     private final StatusSignal<Current> followerCurrent;
     private final StatusSignal<Temperature> followerTemp;
 
+    private final BaseStatusSignal[] refreshGroup0;
+    private final BaseStatusSignal[] refreshGroup1;
     public ShooterIOTalonFX() {
-        leaderMotor = new TalonFX(ShooterConstants.LEFT_FLYWHEEL_ID, "rio");
-        followerMotor = new TalonFX(ShooterConstants.RIGHT_FLYWHEEL_ID, "rio");
+        leaderMotor = new TalonFX(ShooterConstants.RIGHT_FLYWHEEL_ID, ShooterConstants.CAN_BUS);
+        followerMotor = new TalonFX(ShooterConstants.LEFT_FLYWHEEL_ID, ShooterConstants.CAN_BUS);
 
         configureLeaderMotor();
         configureFollowerMotor();
@@ -66,18 +71,26 @@ public class ShooterIOTalonFX implements ShooterIO {
 
         leaderMotor.optimizeBusUtilization();
         followerMotor.optimizeBusUtilization();
+        followerMotor.getPosition().setUpdateFrequency(2.0);
+
+
+        refreshGroup0 = new BaseStatusSignal[] {
+            leaderPosition, leaderVelocity, leaderVoltage, leaderCurrent, leaderTemp
+        };
+        refreshGroup1 = new BaseStatusSignal[] {
+            followerVelocity, followerVoltage, followerCurrent, followerTemp
+        };
     }
 
     private void configureLeaderMotor() {
         TalonFXConfiguration config = new TalonFXConfiguration();
+        // kS/kV/kA live in Java and arrive as an arbitrary feedforward; the Talon runs P/D only.
         config.Slot0.kP = ShooterConstants.kP;
         config.Slot0.kI = ShooterConstants.kI;
         config.Slot0.kD = ShooterConstants.kD;
-        config.Slot0.kV = ShooterConstants.kV;
-        config.Slot0.kS = ShooterConstants.kS;
 
         config.MotorOutput.NeutralMode = NeutralModeValue.Coast;
-        config.MotorOutput.Inverted = ShooterConstants.LEFT_FLYWHEEL_INVERTED
+        config.MotorOutput.Inverted = ShooterConstants.RIGHT_FLYWHEEL_INVERTED
             ? InvertedValue.Clockwise_Positive
             : InvertedValue.CounterClockwise_Positive;
 
@@ -89,6 +102,9 @@ public class ShooterIOTalonFX implements ShooterIO {
         config.ClosedLoopRamps.VoltageClosedLoopRampPeriod = 0.0;
 
         leaderMotor.getConfigurator().apply(config);
+        slot0.withKP(ShooterConstants.kP).withKI(ShooterConstants.kI).withKD(ShooterConstants.kD);
+        prevkP = ShooterConstants.kP;
+        prevkD = ShooterConstants.kD;
     }
 
     private void configureFollowerMotor() {
@@ -105,10 +121,8 @@ public class ShooterIOTalonFX implements ShooterIO {
 
     @Override
     public void updateInputs(ShooterIOInputs inputs) {
-        BaseStatusSignal.refreshAll(
-            leaderPosition, leaderVelocity, leaderVoltage, leaderCurrent, leaderTemp,
-            followerVelocity, followerVoltage, followerCurrent, followerTemp
-        );
+        inputs.leaderConnected = BaseStatusSignal.refreshAll(refreshGroup0).isOK();
+        inputs.followerConnected = BaseStatusSignal.refreshAll(refreshGroup1).isOK();
 
         inputs.leaderPositionRotations = leaderPosition.getValueAsDouble();
         inputs.leaderVelocityRPS = leaderVelocity.getValueAsDouble();
@@ -116,46 +130,34 @@ public class ShooterIOTalonFX implements ShooterIO {
         inputs.leaderCurrentAmps = leaderCurrent.getValueAsDouble();
         inputs.leaderTempCelsius = leaderTemp.getValueAsDouble();
 
+        inputs.followerPositionRotations = followerMotor.getPosition().getValueAsDouble();
         inputs.followerVelocityRPS = followerVelocity.getValueAsDouble();
         inputs.followerAppliedVolts = followerVoltage.getValueAsDouble();
         inputs.followerCurrentAmps = followerCurrent.getValueAsDouble();
         inputs.followerTempCelsius = followerTemp.getValueAsDouble();
 
-        inputs.controlMode = controlMode;
+        inputs.velocityRadsPerSec =
+            inputs.leaderVelocityRPS * ShooterConstants.FLYWHEEL_GEAR_RATIO * 2.0 * Math.PI;
     }
 
     @Override
-    public void setVelocityRPS(double rps) {
-        double rpsTolerance = ShooterConstants.BANGBANG_TOLERANCE / 60.0;
-        if (Math.abs(rps) < 1.0) {
-            controlMode = "Off";
-            leaderMotor.setControl(coastControl);
-            return;
+    public void applyOutputs(ShooterIOOutputs outputs) {
+        if (outputs.kP != prevkP || outputs.kD != prevkD) {
+            slot0.withKP(outputs.kP).withKD(outputs.kD);
+            leaderMotor.getConfigurator().apply(slot0);
+            prevkP = outputs.kP;
+            prevkD = outputs.kD;
         }
 
-        // Convert motor velocity to mechanism velocity for comparison
-        double currentMechanismRPS = leaderMotor.getVelocity().getValueAsDouble() * ShooterConstants.FLYWHEEL_GEAR_RATIO;
-
-        // Applies bang bang control, unless we're within tolerance.
-        if (currentMechanismRPS < rps - rpsTolerance) {
-            // Below target - full power
-            controlMode = "BangBang_FullPower";
-            leaderMotor.setControl(voltageControl.withOutput(12.0));
-        } else {
-            // Within tolerance - velocity PID
-            controlMode = "VelocityPID";
-            double motorRPS = rps / ShooterConstants.FLYWHEEL_GEAR_RATIO;
-            leaderMotor.setControl(velocityControl.withVelocity(motorRPS));
+        switch (outputs.mode) {
+            case VELOCITY -> {
+                double motorRPS =
+                    outputs.velocityRadsPerSec / (2.0 * Math.PI) / ShooterConstants.FLYWHEEL_GEAR_RATIO;
+                leaderMotor.setControl(
+                    velocityControl.withVelocity(motorRPS).withFeedForward(outputs.feedforwardVolts));
+            }
+            case VOLTAGE -> leaderMotor.setControl(voltageControl.withOutput(outputs.voltage));
+            case COAST -> leaderMotor.setControl(coastControl);
         }
-    }
-
-    @Override
-    public void setVoltage(double volts) {
-        leaderMotor.setControl(voltageControl.withOutput(volts));
-    }
-
-    @Override
-    public void stop() {
-        leaderMotor.setControl(coastControl);
     }
 }

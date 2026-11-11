@@ -4,8 +4,6 @@
 
 package frc.robot.subsystems.swervedrive;
 
-import static edu.wpi.first.units.Units.Meter;
-import choreo.trajectory.SwerveSample;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
@@ -18,7 +16,9 @@ import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.trajectory.Trajectory;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
@@ -28,11 +28,15 @@ import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Config;
 import frc.robot.Constants;
 import frc.robot.Constants.DrivebaseConstants;
 import frc.robot.Constants.FieldConstants;
-import frc.robot.Constants.TurretConstants;
-import frc.robot.utility.LimelightHelpers;
-import frc.robot.utility.LimelightHelpers.PoseEstimate;
 
 import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.StructPublisher;
+import edu.wpi.first.networktables.PubSubOption;
+import com.ctre.phoenix6.BaseStatusSignal;
+import com.ctre.phoenix6.controls.MotionMagicVoltage;
+import com.ctre.phoenix6.controls.VelocityVoltage;
+import com.ctre.phoenix6.hardware.CANcoder;
+import com.ctre.phoenix6.hardware.TalonFX;
 import edu.wpi.first.networktables.StringSubscriber;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import java.io.File;
@@ -56,21 +60,18 @@ public class SwerveSubsystem extends SubsystemBase {
   private final SwerveDrive swerveDrive;
   private final StringSubscriber autoChooserSubscriber;
   private boolean initialPoseSet = false;
+  private String initialPoseSelection = "";
+  private java.util.Optional<Alliance> initialPoseAlliance = java.util.Optional.empty();
+  private boolean pitCoastMode = false;
 
   private final SimpleMotorFeedforward driveFF = new SimpleMotorFeedforward(DrivebaseConstants.kS, 
                                                                             DrivebaseConstants.kV, 
                                                                             DrivebaseConstants.kA);
 
 
-  PIDController m_pidControllerX = new PIDController(DrivebaseConstants.kP_translation, 
-                                                          DrivebaseConstants.kI_translation, 
-                                                          DrivebaseConstants.kD_translation);
-  PIDController m_pidControllerY = new PIDController(DrivebaseConstants.kP_translation,
-                                                          DrivebaseConstants.kI_translation, 
-                                                          DrivebaseConstants.kD_translation);
-  PIDController m_pidControllerTheta = new PIDController(DrivebaseConstants.kP_rotation,
-                                                          DrivebaseConstants.kI_rotation,
-                                                          DrivebaseConstants.kD_rotation); // tune values
+  PIDController m_pidControllerTheta = new PIDController(DrivebaseConstants.ALIGN_ROTATION_KP,
+                                                          DrivebaseConstants.ALIGN_ROTATION_KI,
+                                                          DrivebaseConstants.ALIGN_ROTATION_KD);
 
   /**
    * Initialize {@link SwerveDrive} with the directory provided.
@@ -83,11 +84,10 @@ public class SwerveSubsystem extends SubsystemBase {
         .getStringTopic("/SmartDashboard/Auto Chooser/selected")
         .subscribe("Idle");
 
-    Pose2d startingPose = FieldConstants.BLUE_TESTING_START;
-    SwerveDriveTelemetry.verbosity = TelemetryVerbosity.LOW;
+    SwerveDriveTelemetry.verbosity = TelemetryVerbosity.NONE;
     try
     {
-      swerveDrive = new SwerveParser(directory).createSwerveDrive(Constants.MAX_SPEED, startingPose);
+      swerveDrive = new SwerveParser(directory).createSwerveDrive(Constants.MAX_SPEED, allianceTestingStart());
     } catch (Exception e)
     {
       throw new RuntimeException(e);
@@ -100,6 +100,7 @@ public class SwerveSubsystem extends SubsystemBase {
     swerveDrive.setModuleEncoderAutoSynchronize(false,
                                                 1); 
     swerveDrive.replaceSwerveModuleFeedforward(driveFF);
+    configureMotorTelemetry();
     setMotorBrake(true);
   }
 
@@ -116,19 +117,59 @@ public class SwerveSubsystem extends SubsystemBase {
         .getStringTopic("/SmartDashboard/Auto Chooser/selected")
         .subscribe("Idle");
 
+    SwerveDriveTelemetry.verbosity = TelemetryVerbosity.NONE;
     swerveDrive = new SwerveDrive(driveCfg,
                                   controllerCfg,
                                   Constants.MAX_SPEED,
-                                  new Pose2d(new Translation2d(Meter.of(2), Meter.of(0)),
-                                  Rotation2d.fromDegrees(0)));
+                                  allianceTestingStart());
+    configureMotorTelemetry();
     setMotorBrake(true);
   }
 
+  private void configureMotorTelemetry() {
+    if (!RobotBase.isReal()) return;
+    for (var module : swerveDrive.getModules()) {
+      if (module.getDriveMotor().getMotor() instanceof TalonFX motor) {
+        motor.getStatorCurrent().setUpdateFrequency(2.0);
+      }
+      if (module.getAngleMotor().getMotor() instanceof TalonFX motor) {
+        BaseStatusSignal.setUpdateFrequencyForAll(2.0, motor.getStatorCurrent(),
+            motor.getClosedLoopReferenceSlope());
+      }
+    }
+  }
+
+  private static Pose2d allianceTestingStart() {
+    boolean red = DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red;
+    Pose2d start = red ? FieldConstants.RED_TESTING_START : FieldConstants.BLUE_TESTING_START;
+    if (!RobotBase.isSimulation()) return start;
+    // Leave the simulated bumpers clear of the hub at the teleop test start.
+    return new Pose2d(start.getX() + (red ? 0.15 : -0.15), start.getY(), start.getRotation());
+  }
+
+  private final ChassisSpeeds alignmentSpeeds = new ChassisSpeeds();
+  private double nextTelemetry;
+  private double nextPoseTelemetry;
+  private double simRequestedFieldOmega;
+  private static final double POSE_PERIOD_SECONDS = RobotBase.isSimulation() ? 0.05 : 0.5;
+  private final StructPublisher<Pose2d> posePublisher = NetworkTableInstance.getDefault()
+      .getStructTopic("/SmartDashboard/Swerve/Pose", Pose2d.struct)
+      .publish(PubSubOption.periodic(POSE_PERIOD_SECONDS));
+  private final StructPublisher<Pose2d> fuelPosePublisher = NetworkTableInstance.getDefault()
+      .getStructTopic("/SmartDashboard/Fuel/RobotPose", Pose2d.struct)
+      .publish(PubSubOption.periodic(POSE_PERIOD_SECONDS));
+
   @Override
   public void periodic() {
-    // Set initial pose once based on auto selection (only while disabled)
+    // Re-evaluate only when DS alliance or chooser changes; never continually overwrite vision.
+    if (DriverStation.isDisabled()
+        && (!initialPoseAlliance.equals(DriverStation.getAlliance())
+            || !initialPoseSelection.equals(autoChooserSubscriber.get()))) {
+      initialPoseSet = false;
+      initialPoseAlliance = DriverStation.getAlliance();
+      initialPoseSelection = autoChooserSubscriber.get();
+    }
     if (!initialPoseSet && DriverStation.isDisabled()) {
-      System.out.println("Resetting pose!");
       updateInitialPose();
     }
 
@@ -137,60 +178,78 @@ public class SwerveSubsystem extends SubsystemBase {
       initialPoseSet = true;  // Lock in the pose once auto starts
     }
 
-    // Update distance to hub on SmartDashboard for debugging
-    Transform2d turretTransform = new Transform2d(
-            TurretConstants.ROBOT_RELATIVE_TURRET.getX(), 
-            TurretConstants.ROBOT_RELATIVE_TURRET.getY(),
-            new Rotation2d()
-        );
-    Pose2d robotRelativeTurret = getPose().transformBy( turretTransform );
-    swerveDrive.field.getObject("TurretPose").setPose(robotRelativeTurret);
-    swerveDrive.field.getObject("BlueHub").setPose(new Pose2d(FieldConstants.BLUE_HUB_CENTER, new Rotation2d()));
-    SmartDashboard.getEntry("DistToBlueHub").setDouble(
-      robotRelativeTurret.getTranslation().getDistance(FieldConstants.BLUE_HUB_CENTER));
+    double now = Timer.getFPGATimestamp();
+    if (now >= nextPoseTelemetry) {
+      nextPoseTelemetry = now + POSE_PERIOD_SECONDS;
+      Pose2d pose = getPose();
+      posePublisher.set(pose);
+      fuelPosePublisher.set(pose);
+      if (RobotBase.isSimulation()) {
+        int port = Constants.OperatorConstants.DRIVER_CONTROLLER_PORT;
+        int axis = XboxController.Axis.kRightX.value;
+        SmartDashboard.putNumber("Swerve/Sim/DriverRightX",
+            DriverStation.getStickAxisCount(port) > axis ? DriverStation.getStickAxis(port, axis) : 0.0);
+        SmartDashboard.putNumber("Swerve/Sim/RequestedFieldOmega", simRequestedFieldOmega);
+        SmartDashboard.putNumber("Swerve/Sim/MeasuredOmega", getRobotVelocity().omegaRadiansPerSecond);
+      }
+    }
+    if (now < nextTelemetry) return;
+    nextTelemetry = now + 0.5;
+    for (var module : swerveDrive.getModules()) {
+      String key = "Swerve/" + module.configuration.name;
+      var absoluteEncoder = module.getAbsoluteEncoder();
+      if (RobotBase.isSimulation()) {
+        SmartDashboard.putNumber(key + "/AbsoluteEncoderDeg", module.getAbsolutePosition());
+      } else if (absoluteEncoder != null && absoluteEncoder.getAbsoluteEncoder() instanceof CANcoder encoder) {
+        var angle = encoder.getAbsolutePosition();
+        SmartDashboard.putNumber(key + "/AbsoluteEncoderDeg",
+            angle.getStatus().isOK() ? angle.getValueAsDouble() * 360.0 : Double.NaN);
+      }
+      if (module.getDriveMotor().getMotor() instanceof TalonFX motor) {
+        double rotationsPerMeter = 1.0 / module.configuration.conversionFactors.drive.factor;
+        SmartDashboard.putNumber(key + "/Drive/PositionRotations", motor.getPosition().getValueAsDouble() * rotationsPerMeter);
+        SmartDashboard.putNumber(key + "/Drive/RPM", motor.getVelocity().getValueAsDouble() * rotationsPerMeter * 60.0);
+        // YAGSL's drive request is in m/s. Convert back to motor RPM.
+        SmartDashboard.putNumber(key + "/Drive/TargetRPM", motor.getAppliedControl() instanceof VelocityVoltage request
+            ? request.Velocity * rotationsPerMeter * 60.0 : Double.NaN);
+        SmartDashboard.putNumber(key + "/Drive/Volts", motor.getMotorVoltage().getValueAsDouble());
+        SmartDashboard.putNumber(key + "/Drive/Amps", motor.getStatorCurrent().getValueAsDouble());
+      }
+      if (module.getAngleMotor().getMotor() instanceof TalonFX motor) {
+        double motorRotationsPerModuleRotation = 360.0 / module.configuration.conversionFactors.angle.factor;
+        SmartDashboard.putNumber(key + "/Steering/PositionRotations",
+            motor.getPosition().getValueAsDouble() * motorRotationsPerModuleRotation);
+        SmartDashboard.putNumber(key + "/Steering/RPM",
+            motor.getVelocity().getValueAsDouble() * motorRotationsPerModuleRotation * 60.0);
+        // Motion Magic controls position. Its profile slope supplies the RPM reference.
+        var request = motor.getAppliedControl() instanceof MotionMagicVoltage profile ? profile : null;
+        SmartDashboard.putNumber(key + "/Steering/TargetRPM", request != null
+            ? motor.getClosedLoopReferenceSlope().getValueAsDouble() * motorRotationsPerModuleRotation * 60.0
+            : Double.NaN);
+        SmartDashboard.putNumber(key + "/Steering/TargetAngleDeg",
+            request == null ? Double.NaN : request.Position * 360.0);
+        SmartDashboard.putNumber(key + "/Steering/Volts", motor.getMotorVoltage().getValueAsDouble());
+        SmartDashboard.putNumber(key + "/Steering/Amps", motor.getStatorCurrent().getValueAsDouble());
+      }
+    }
   }
-
-  /**
-   * Path following command using SwerveSample from Choreo
-   * @param setpoint SwerveSample setpoint to follow, representing the robot state.
-   */
-  public void followSegment(SwerveSample setpoint) {
-    m_pidControllerTheta.enableContinuousInput(-Math.PI, Math.PI);
-
-    // Log some basic data to see if path following is accurate.
-    swerveDrive.field.getObject("TargetPose").setPose(setpoint.getPose());
-    SmartDashboard.getEntry("X Error").setDouble(m_pidControllerX.getError());
-    SmartDashboard.getEntry("Y Error").setDouble(m_pidControllerY.getError());
-    SmartDashboard.getEntry("Theta Error").setDouble(m_pidControllerTheta.getError());
-    SmartDashboard.getEntry("VX Error").setDouble(Math.abs(setpoint.vx - swerveDrive.getRobotVelocity().vxMetersPerSecond));
-    SmartDashboard.getEntry("VY Error").setDouble(Math.abs(setpoint.vy - swerveDrive.getRobotVelocity().vyMetersPerSecond));
-
-    Pose2d pose = getPose();
-
-    ChassisSpeeds targetSpeeds = new ChassisSpeeds(
-      setpoint.vx + m_pidControllerX.calculate(pose.getX(), setpoint.x),
-      setpoint.vy + m_pidControllerY.calculate(pose.getY(), setpoint.y),
-      setpoint.omega + m_pidControllerTheta.calculate(pose.getRotation().getRadians(), setpoint.heading)
-    );
-
-    swerveDrive.driveFieldOriented(targetSpeeds);
-  }
-
 
   /** Rotates to a specified angle while inheriting the chassis's original translational velocity */
   public void rotateToAngle(double targetInRadians){
+    if (pitCoastMode) {
+      stopAllMotors();
+      return;
+    }
     m_pidControllerTheta.enableContinuousInput(-Math.PI, Math.PI);
 
-    SmartDashboard.getEntry("Yaw error").setDouble(m_pidControllerTheta.getError());
-    SmartDashboard.getEntry("Pose in radians").setDouble(getPose().getRotation().getRadians());
+    double currentHeading = getPose().getRotation().getRadians();
+    double commandedOmega = m_pidControllerTheta.calculate(currentHeading, targetInRadians);
 
-    ChassisSpeeds targetSpeeds = new ChassisSpeeds(
-      getFieldVelocity().vxMetersPerSecond,
-      getFieldVelocity().vyMetersPerSecond,
-      m_pidControllerTheta.calculate(getPose().getRotation().getRadians(), targetInRadians)
-    );
-
-    swerveDrive.driveFieldOriented(targetSpeeds);
+    ChassisSpeeds measured = getFieldVelocity();
+    alignmentSpeeds.vxMetersPerSecond = measured.vxMetersPerSecond;
+    alignmentSpeeds.vyMetersPerSecond = measured.vyMetersPerSecond;
+    alignmentSpeeds.omegaRadiansPerSecond = commandedOmega;
+    swerveDrive.driveFieldOriented(alignmentSpeeds);
   }
 
     /** Aligns the robot to face the trench while driving */
@@ -199,7 +258,6 @@ public class SwerveSubsystem extends SubsystemBase {
 
       final double ROT_TOLERANCE = Units.degreesToRadians(2.0);
       double target = MathUtil.angleModulus(getPose().getRotation().getRadians() - (MathUtil.inputModulus(getPose().getRotation().getRadians(), - Math.PI/2 , Math.PI/2)));
-      SmartDashboard.getEntry("Target pose").setDouble(target);
 
       Command alignToTrenchCommand = new FunctionalCommand(
         () -> {},
@@ -234,6 +292,19 @@ public class SwerveSubsystem extends SubsystemBase {
 
     Pose2d startPose;
     switch (selectedAuto) {
+      case "Back Up and Shoot":
+      case "Backup - Back Up and Shoot":
+      case "Blue Left":
+      case "Blue Center":
+      case "Blue Right":
+      case "Red Left":
+      case "Red Center":
+      case "Red Right":
+      case "hub":
+      case "human":
+      case "non-human":
+        // Backup uses the measured pose; competition paths reset their own start when initialized.
+        return;
       case "HP Turkish Delight":
         startPose = isRed ? FieldConstants.RED_RIGHT_START : FieldConstants.BLUE_RIGHT_START;
         break;
@@ -242,7 +313,7 @@ public class SwerveSubsystem extends SubsystemBase {
         break;
       case "Idle":
       default:
-        startPose = isRed ? FieldConstants.RED_TESTING_START : FieldConstants.BLUE_TESTING_START;
+        startPose = allianceTestingStart();
         break;
     }
 
@@ -267,7 +338,6 @@ public class SwerveSubsystem extends SubsystemBase {
    */
   public Command sysIdDriveMotorCommand()
   {
-    System.out.println("Running SysID Command!");
     return SwerveDriveTest.generateSysIdCommand(
         SwerveDriveTest.setDriveSysIdRoutine(
             new Config(),
@@ -289,18 +359,6 @@ public class SwerveSubsystem extends SubsystemBase {
         3.0, 5.0, 3.0);
   }
 
-  // a hack method to reset the MT2 gyro
-  public void resetOdometryToLimelight() {
-    PoseEstimate poseEstimate = LimelightHelpers.getBotPoseEstimate_wpiBlue("limelight");
-    Pose2d pose = poseEstimate.pose;
-    if(pose != null){
-      resetOdometry(pose);
-      System.out.println("Resetting odometry to Limelight pose: " + pose);
-    } else {
-      System.out.println("Limelight pose is null, cannot reset odometry.");
-    }
-  }
-  
   /**
    * Returns a Command that centers the modules of the SwerveDrive subsystem.
    *
@@ -321,8 +379,9 @@ public class SwerveSubsystem extends SubsystemBase {
    */
   public Command driveToDistanceCommand(double distanceInMeters, double speedInMetersPerSecond)
   {
-    return run(() -> drive(new ChassisSpeeds(speedInMetersPerSecond, 0, 0)))
-        .until(() -> swerveDrive.getPose().getTranslation().getDistance(new Translation2d(0, 0)) >
+    ChassisSpeeds commandSpeeds = new ChassisSpeeds(speedInMetersPerSecond, 0, 0);
+    return run(() -> drive(commandSpeeds))
+        .until(() -> swerveDrive.getPose().getTranslation().getNorm() >
                      distanceInMeters);
   }
 
@@ -350,12 +409,12 @@ public class SwerveSubsystem extends SubsystemBase {
   {
     return run(() -> {
       // Make the robot move
-      swerveDrive.drive(SwerveMath.scaleTranslation(new Translation2d(
-                            translationX.getAsDouble() * swerveDrive.getMaximumChassisVelocity(),
-                            translationY.getAsDouble() * swerveDrive.getMaximumChassisVelocity()), 0.8),
-                        Math.pow(angularRotationX.getAsDouble(), 3) * -swerveDrive.getMaximumChassisAngularVelocity(),
-                        true,
-                        false);
+      drive(SwerveMath.scaleTranslation(new Translation2d(
+                translationX.getAsDouble() * swerveDrive.getMaximumChassisVelocity(),
+                translationY.getAsDouble() * swerveDrive.getMaximumChassisVelocity()), 0.8),
+            Math.pow(angularRotationX.getAsDouble(), 3)
+                * -swerveDrive.getMaximumChassisAngularVelocity(),
+            true);
     });
   }
 
@@ -402,6 +461,10 @@ public class SwerveSubsystem extends SubsystemBase {
    */
   public void drive(Translation2d translation, double rotation, boolean fieldRelative)
   {
+    if (pitCoastMode) {
+      stopAllMotors();
+      return;
+    }
     swerveDrive.drive(translation,
                       rotation,
                       fieldRelative,
@@ -415,6 +478,13 @@ public class SwerveSubsystem extends SubsystemBase {
    */
   public void driveFieldOriented(ChassisSpeeds velocity)
   {
+    if (RobotBase.isSimulation()) {
+      simRequestedFieldOmega = pitCoastMode ? 0.0 : velocity.omegaRadiansPerSecond;
+    }
+    if (pitCoastMode) {
+      stopAllMotors();
+      return;
+    }
     swerveDrive.driveFieldOriented(velocity);
   }
 
@@ -425,9 +495,7 @@ public class SwerveSubsystem extends SubsystemBase {
    */
   public Command driveFieldOriented(Supplier<ChassisSpeeds> velocity)
   {
-    return run(() -> {
-      swerveDrive.driveFieldOriented(velocity.get());
-    });
+    return run(() -> driveFieldOriented(velocity.get()));
   }
 
   /**
@@ -437,6 +505,10 @@ public class SwerveSubsystem extends SubsystemBase {
    */
   public void drive(ChassisSpeeds velocity)
   {
+    if (pitCoastMode) {
+      stopAllMotors();
+      return;
+    }
     swerveDrive.drive(velocity);
   }
 
@@ -461,12 +533,6 @@ public class SwerveSubsystem extends SubsystemBase {
   public void resetOdometry(Pose2d initialHolonomicPose)
   {
     swerveDrive.resetOdometry(initialHolonomicPose);
-    System.out.println("Resetting odometry to: " + initialHolonomicPose);
-    try {
-      throw new Exception();
-    } catch (Exception e) {
-      e.printStackTrace();
-  }
   }
 
 
@@ -487,6 +553,10 @@ public class SwerveSubsystem extends SubsystemBase {
    */
   public void setChassisSpeeds(ChassisSpeeds chassisSpeeds)
   {
+    if (pitCoastMode) {
+      stopAllMotors();
+      return;
+    }
     swerveDrive.setChassisSpeeds(chassisSpeeds);
   }
 
@@ -501,21 +571,21 @@ public class SwerveSubsystem extends SubsystemBase {
   }
 
   /**
-   * Resets the gyro angle to zero and resets odometry to the same position, but facing toward 0.
+   * Resets field heading toward the opposing alliance wall, preserving position.
    */
   public void zeroGyro()
   {
-    swerveDrive.zeroGyro();
+    zeroNoAprilTagsGyro();
   }
 
   public void zeroNoAprilTagsGyro() {
-    // 1. Zero the gyro sensor itself
-    zeroGyro();
-    Pose2d currentPose = getPose();
-    resetOdometry(new Pose2d(
-        currentPose.getTranslation(),
-        Rotation2d.fromDegrees(0)
-    ));
+    var alliance = DriverStation.getAlliance();
+    if (alliance.isEmpty()) {
+      DriverStation.reportWarning("Heading reset skipped: Driver Station alliance unknown", false);
+      return;
+    }
+    resetOdometry(new Pose2d(getPose().getTranslation(),
+        Rotation2d.fromDegrees(alliance.get() == Alliance.Red ? 180 : 0)));
   }
 
 
@@ -527,6 +597,29 @@ public class SwerveSubsystem extends SubsystemBase {
   public void setMotorBrake(boolean brake)
   {
     swerveDrive.setMotorIdleMode(brake);
+  }
+
+  /**
+   * Stops all drive and steering outputs and toggles every swerve motor between coast and its
+   * normal brake mode. Unlike disabling the robot, this mode can be toggled while teleop remains
+   * enabled so the modules and wheels can be moved by hand.
+   */
+  public void setPitCoastMode(boolean enabled)
+  {
+    pitCoastMode = enabled;
+    stopAllMotors();
+    Arrays.asList(swerveDrive.getModules()).forEach(module -> {
+      module.getDriveMotor().setMotorBrake(!enabled);
+      module.getAngleMotor().setMotorBrake(!enabled);
+    });
+  }
+
+  private void stopAllMotors()
+  {
+    Arrays.asList(swerveDrive.getModules()).forEach(module -> {
+      module.getDriveMotor().set(0.0);
+      module.getAngleMotor().set(0.0);
+    });
   }
 
   /**

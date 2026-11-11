@@ -1,0 +1,1 @@
+standard: 6-second runs; move from 1.5 to 4.5 seconds; straight-line/reversal/stop.

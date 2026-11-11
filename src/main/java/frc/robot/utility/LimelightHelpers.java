@@ -39,6 +39,9 @@ import java.util.concurrent.ConcurrentHashMap;
 public class LimelightHelpers {
 
     private static final Map<String, DoubleArrayEntry> doubleArrayEntries = new ConcurrentHashMap<>();
+    // Local safety bound, not a protocol maximum. Review if larger field maps are required.
+    static final int MAX_POSE_FIDUCIALS = 64;
+    private static final RawFiducial[] NO_POSE_FIDUCIALS = new RawFiducial[0];
 
     /**
      * Represents a Color/Retroreflective Target Result extracted from JSON Output
@@ -738,17 +741,26 @@ public class LimelightHelpers {
         DoubleArrayEntry poseEntry = LimelightHelpers.getLimelightDoubleArrayEntry(limelightName, entryName);
         
         TimestampedDoubleArray tsValue = poseEntry.getAtomic();
-        double[] poseArray = tsValue.value;
-        long timestamp = tsValue.timestamp;
-        
-        if (poseArray.length == 0) {
-            // Handle the case where no data is available
-            return null; // or some default PoseEstimate
-        }
-    
+        return parsePoseEstimate(tsValue.value, tsValue.timestamp, isMegaTag2);
+    }
+
+    /** Validate received counts and lengths before any count-derived allocation. */
+    static PoseEstimate parsePoseEstimate(double[] poseArray, long timestamp, boolean isMegaTag2) {
+        if (poseArray == null || poseArray.length < 11) return null;
+        double reportedCount = poseArray[7];
+        if (!Double.isFinite(reportedCount) || reportedCount < 0
+                || reportedCount > MAX_POSE_FIDUCIALS
+                || reportedCount != Math.rint(reportedCount)) return null;
+        int tagCount = (int) reportedCount;
+        int valsPerFiducial = 7;
+        // Arithmetic is safe after applying the small count bound.
+        int expectedTotalVals = 11 + valsPerFiducial * tagCount;
+        boolean hasRawDetails = poseArray.length == expectedTotalVals;
+        // Header-only summaries are supported; partial or excess details are malformed.
+        if (!hasRawDetails && poseArray.length != 11) return null;
+
         var pose = toPose2D(poseArray);
         double latency = extractArrayEntry(poseArray, 6);
-        int tagCount = (int)extractArrayEntry(poseArray, 7);
         double tagSpan = extractArrayEntry(poseArray, 8);
         double tagDist = extractArrayEntry(poseArray, 9);
         double tagArea = extractArrayEntry(poseArray, 10);
@@ -756,13 +768,9 @@ public class LimelightHelpers {
         // Convert server timestamp from microseconds to seconds and adjust for latency
         double adjustedTimestamp = (timestamp / 1000000.0) - (latency / 1000.0);
     
-        RawFiducial[] rawFiducials = new RawFiducial[tagCount];
-        int valsPerFiducial = 7;
-        int expectedTotalVals = 11 + valsPerFiducial * tagCount;
-    
-        if (poseArray.length != expectedTotalVals) {
-            // Don't populate fiducials
-        } else {
+        RawFiducial[] rawFiducials = hasRawDetails && tagCount > 0
+            ? new RawFiducial[tagCount] : NO_POSE_FIDUCIALS;
+        if (hasRawDetails) {
             for(int i = 0; i < tagCount; i++) {
                 int baseIndex = 11 + (i * valsPerFiducial);
                 int id = (int)poseArray[baseIndex];
@@ -848,49 +856,6 @@ public class LimelightHelpers {
         }
     
         return rawDetections;
-    }
-
-    /**
-     * Prints detailed information about a PoseEstimate to standard output.
-     * Includes timestamp, latency, tag count, tag span, average tag distance,
-     * average tag area, and detailed information about each detected fiducial.
-     *
-     * @param pose The PoseEstimate object to print. If null, prints "No PoseEstimate available."
-     */
-    public static void printPoseEstimate(PoseEstimate pose) {
-        if (pose == null) {
-            System.out.println("No PoseEstimate available.");
-            return;
-        }
-    
-        System.out.printf("Pose Estimate Information:%n");
-        System.out.printf("Timestamp (Seconds): %.3f%n", pose.timestampSeconds);
-        System.out.printf("Latency: %.3f ms%n", pose.latency);
-        System.out.printf("Tag Count: %d%n", pose.tagCount);
-        System.out.printf("Tag Span: %.2f meters%n", pose.tagSpan);
-        System.out.printf("Average Tag Distance: %.2f meters%n", pose.avgTagDist);
-        System.out.printf("Average Tag Area: %.2f%% of image%n", pose.avgTagArea);
-        System.out.printf("Is MegaTag2: %b%n", pose.isMegaTag2);
-        System.out.println();
-    
-        if (pose.rawFiducials == null || pose.rawFiducials.length == 0) {
-            System.out.println("No RawFiducials data available.");
-            return;
-        }
-    
-        System.out.println("Raw Fiducials Details:");
-        for (int i = 0; i < pose.rawFiducials.length; i++) {
-            RawFiducial fiducial = pose.rawFiducials[i];
-            System.out.printf(" Fiducial #%d:%n", i + 1);
-            System.out.printf("  ID: %d%n", fiducial.id);
-            System.out.printf("  TXNC: %.2f%n", fiducial.txnc);
-            System.out.printf("  TYNC: %.2f%n", fiducial.tync);
-            System.out.printf("  TA: %.2f%n", fiducial.ta);
-            System.out.printf("  Distance to Camera: %.2f meters%n", fiducial.distToCamera);
-            System.out.printf("  Distance to Robot: %.2f meters%n", fiducial.distToRobot);
-            System.out.printf("  Ambiguity: %.2f%n", fiducial.ambiguity);
-            System.out.println();
-        }
     }
 
     public static Boolean validPoseEstimate(PoseEstimate pose) {
@@ -1691,7 +1656,6 @@ public class LimelightHelpers {
         double millis = (end - start) * .000001;
         results.latency_jsonParse = millis;
         if (profileJSON) {
-            System.out.printf("lljson: %.2f\r\n", millis);
         }
 
         return results;

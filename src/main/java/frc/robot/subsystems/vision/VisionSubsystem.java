@@ -7,11 +7,11 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 // TODO: add disabling cameras individually
 // add disabling vision
 public class VisionSubsystem extends SubsystemBase{
-    private final List<LimelightVision> visionList;
+    private final LimelightVision[] visionList;
 
     /** Wrapper class for all limelights */
     public VisionSubsystem(List<LimelightVision> visionList){
-        this.visionList = visionList;
+        this.visionList = visionList.toArray(LimelightVision[]::new);
     }
 
     @Override
@@ -19,6 +19,14 @@ public class VisionSubsystem extends SubsystemBase{
         for(LimelightVision vision : visionList){
             vision.update();
         }
+    }
+
+    /** Try each camera until one supplies a valid heading-independent pose. */
+    public boolean tryResetPose() {
+        for (LimelightVision camera : visionList) {
+            if (camera.hardUpdate()) return true;
+        }
+        return false;
     }
 
     public void hardReset(String cameraName){

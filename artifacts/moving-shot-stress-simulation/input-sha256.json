@@ -1,0 +1,20 @@
+{
+  "src/test/java/frc/robot/simulation/MovingShotClosedLoopSimulationTest.java": "ec8898d4157285ba274ceabaaab14170f690efa21d871a30e3efcc3e7029b4a6",
+  "src/main/java/frc/robot/Constants.java": "f4386e6fe399925610feeceefb0c6adf9ef457975e21a3900a14ba05de830ee2",
+  "src/main/java/frc/robot/commands/scoring/FuelShootCommand.java": "8602f6c0122dfabb593a60186f59ba2a7c395748d663e274ddce67e8fdf8cc05",
+  "src/main/java/frc/robot/commands/swervedrive/drivebase/AimAtHub.java": "e226c36aebc163a2aa52680e15198d3dd472e8a25293507fe93964d95e4f0ce0",
+  "src/main/java/frc/robot/utility/shooting/FuelShotConfig.java": "40218133ac5bd3161ee43ef8b99d748f6f02b7b58361c1ad41ce56cbaa322918",
+  "src/main/java/frc/robot/utility/shooting/AlliancePass.java": "f82b0ca3e4853f96ff3769c864b90c23b9832cf32407f2119ea08f54b252e9c5",
+  "src/main/java/frc/robot/utility/shooting/MovingShotSolver.java": "f04728399150c2b8c74ebb1bd109aedff7a0b5dafa437c9d58e4b6e4adebe66b",
+  "src/main/java/frc/robot/utility/shooting/LaunchSpeedTuning.java": "a8d40defb75f377363bc66d7c453de55f120fe3f329f81477ad96c3678e2fae1",
+  "src/main/java/frc/robot/utility/shooting/FuelShotModel.java": "a674b5520c8a15691a22f203a56ed7545d2df2375576d542beeb56851593b6af",
+  "src/main/java/frc/robot/utility/shooting/LaunchCalibration.java": "36b9572795b8cf393f04eb6ce1d0ac4a102fd52806be3060f28076b5f476cd1e",
+  "src/main/deploy/swerve/falcon/swervedrive.json": "4d953e1cc2b56fce4a5bb31e7148d20aaf8b351d4f059ef8896d735d40c36a92",
+  "src/main/deploy/swerve/falcon/controllerproperties.json": "a8002dbb15c622b25966f6f6d8a494d804bc575c7a257a334413fb7097236ec0",
+  "src/main/deploy/swerve/falcon/modules/frontright.json": "1b02ce096787c3a922818569d9b6af01b19d8dcd5d6f66c72c4dcb30a1428b16",
+  "src/main/deploy/swerve/falcon/modules/backright.json": "429beac6f5fd838389b86a6b73d16a1d17ea01b305c158e73ee45a340f42d9ef",
+  "src/main/deploy/swerve/falcon/modules/frontleft.json": "26a4b732bad7f7c10ab4abfe4b7db408f3ed9bf6bde8755e12c8f4b6c452ca2d",
+  "src/main/deploy/swerve/falcon/modules/pidfproperties.json": "67b9e5780bdd9fceac699bfb80d2305da14c5b8a7cb9ca70ce7dfba735cfc58d",
+  "src/main/deploy/swerve/falcon/modules/backleft.json": "0dffc839a430042ffa1402ecd20df55b0b5e0a01ae95fc54ef0856e64f1ed258",
+  "src/main/deploy/swerve/falcon/modules/physicalproperties.json": "2da96044fefe6d49ae7534f7ad8072359918efa95c46c79b533458669c52ce17"
+}

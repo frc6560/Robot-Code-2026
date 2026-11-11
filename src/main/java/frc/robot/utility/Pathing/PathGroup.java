@@ -4,7 +4,6 @@ import frc.robot.utility.Setpoint;
 import frc.robot.utility.Pathing.profile.VelocityProfile;
 
 import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.math.trajectory.TrapezoidProfile.State;
@@ -76,63 +75,25 @@ public class PathGroup{
     }
 
 
-    /** Pose-based follower across the two-segment chain. See {@link PathChain#calculate}
-     *  for the full scheme — this is the same algorithm with exactly two segments. */
-    public Setpoint calculate(Pose2d robotPose, double dt) {
+    /** We don't really need any of the other functions. A modified calculation function.
+     * @param currentRotation the current rotation of the robot
+     * @param dt the timestep in seconds (typically 0.02 for 50Hz control loops)
+     * @return the next setpoint for the robot to follow
+     */
+    public Setpoint calculate(double currentRotation, double dt){
         double totalLength = firstPath.getArcLength() + secondPath.getArcLength();
 
-        // Closest-point projection across both segments, monotone-clamped.
-        double bestArc = currentArc;
-        double bestDist2 = Double.POSITIVE_INFINITY;
-
-        // First segment (only if we haven't passed it yet).
-        if (currentArc < firstPath.getArcLength() - 1e-6) {
-            double localMin = Math.max(0.0, currentArc);
-            double localArc = firstPath.getSampler().closestArc(
-                    robotPose.getX(), robotPose.getY(), localMin);
-            double t = firstPath.getTimeForArcLength(localArc);
-            Translation2d p = firstPath.calculatePosition(t);
-            double dx = p.getX() - robotPose.getX();
-            double dy = p.getY() - robotPose.getY();
-            double d2 = dx * dx + dy * dy;
-            if (d2 < bestDist2) { bestDist2 = d2; bestArc = localArc; }
-        }
-
-        // Second segment.
-        {
-            double localMin = Math.max(0.0, currentArc - firstPath.getArcLength());
-            double localArc = secondPath.getSampler().closestArc(
-                    robotPose.getX(), robotPose.getY(), localMin);
-            double t = secondPath.getTimeForArcLength(localArc);
-            Translation2d p = secondPath.calculatePosition(t);
-            double dx = p.getX() - robotPose.getX();
-            double dy = p.getY() - robotPose.getY();
-            double d2 = dx * dx + dy * dy;
-            if (d2 < bestDist2) { bestDist2 = d2; bestArc = firstPath.getArcLength() + localArc; }
-        }
-        currentArc = bestArc;
-
-        // Lookahead on joint profile.
+        // Translation: integrate forward along the planned curvature-aware v(s).
         double vPlanned = jointProfile.velocityAt(currentArc);
-        double targetArc = Math.min(currentArc + vPlanned * dt, totalLength);
-        double commandedVelocity = jointProfile.velocityAt(targetArc);
+        currentArc = Math.min(currentArc + vPlanned * dt, totalLength);
+        double commandedVelocity = jointProfile.velocityAt(currentArc);
 
         Translation2d normalizedVelocity;
         double timeParam;
         Translation2d translationalTarget;
-        if (targetArc <= firstPath.getArcLength() - 1e-6) {
-            timeParam = firstPath.getTimeForArcLength(targetArc);
-            normalizedVelocity = firstPath.getNormalizedVelocityVector(timeParam);
-            translationalTarget = firstPath.calculatePosition(timeParam);
-        } else {
-            double localArc = Math.min(targetArc - firstPath.getArcLength(), secondPath.getArcLength());
-            timeParam = secondPath.getTimeForArcLength(localArc);
-            normalizedVelocity = secondPath.getNormalizedVelocityVector(timeParam);
-            translationalTarget = secondPath.calculatePosition(timeParam);
-        }
 
-        // Rotation.
-        double rotationalPose = robotPose.getRotation().getRadians();
+        // Rotation
+        double rotationalPose = currentRotation;
         double errorToGoal = MathUtil.angleModulus(endRotation.position - rotationalPose);
         double errorToSetpoint = MathUtil.angleModulus(startRotation.position - rotationalPose);
 
@@ -143,6 +104,18 @@ public class PathGroup{
         currentRotationState.position = rotationalSetpoint.position;
         currentRotationState.velocity = rotationalSetpoint.velocity;
 
+        // Segment select + interpolate
+        if(currentArc <= firstPath.getArcLength() - 1E-6){
+            timeParam = firstPath.getTimeForArcLength(currentArc);
+            normalizedVelocity = firstPath.getNormalizedVelocityVector(timeParam);
+            translationalTarget = firstPath.calculatePosition(timeParam);
+        } else {
+            double localArc = Math.min(currentArc - firstPath.getArcLength(), secondPath.getArcLength());
+            timeParam = secondPath.getTimeForArcLength(localArc);
+            normalizedVelocity = secondPath.getNormalizedVelocityVector(timeParam);
+            translationalTarget = secondPath.calculatePosition(timeParam);
+        }
+
         return new Setpoint(translationalTarget.getX(),
                             translationalTarget.getY(),
                             rotationalSetpoint.position,
@@ -150,7 +123,4 @@ public class PathGroup{
                             normalizedVelocity.getY() * commandedVelocity,
                             rotationalSetpoint.velocity);
     }
-
-    public double getCurrentArc() { return currentArc; }
-    public void resetProgress() { this.currentArc = 0.0; }
 }

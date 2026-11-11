@@ -7,8 +7,6 @@ import frc.robot.utility.Pathing.profile.VelocityProfile;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.trajectory.TrapezoidProfile;
-import edu.wpi.first.math.trajectory.TrapezoidProfile.State;
 
 
 /** A cubic Bezier curve path object.
@@ -20,16 +18,15 @@ public class Path {
     private final Pose2d startControlHeading;
     private final Pose2d endControlHeading;
 
-    private final TrapezoidProfile.State startRotation;
-    private TrapezoidProfile.State currentRotation;
-    private final TrapezoidProfile.State endRotation;
-
-    private final TrapezoidProfile rotationProfile;
+    private final double startTheta;
+    private final double endTheta;
 
     // Curve-sampling + velocity planning
     private final AdaptiveSampler sampler;
     private final VelocityProfile velocityProfile;
     private double currentArc;
+    private double elapsedTime;
+    private final double totalTime;
 
     private double x3 = 0.0;
     private double x2 = 0.0;
@@ -87,11 +84,11 @@ public class Path {
                 endPose.getSpeed());
 
         this.currentArc = 0.0;
+        this.elapsedTime = 0.0;
+        this.totalTime = this.velocityProfile.getTotalTime();
 
-        this.startRotation = new TrapezoidProfile.State(startPose.theta, startPose.omega);
-        this.currentRotation = new TrapezoidProfile.State(startPose.theta, startPose.omega);
-        this.endRotation = new TrapezoidProfile.State(endPose.theta, endPose.omega);
-        this.rotationProfile = new TrapezoidProfile(new TrapezoidProfile.Constraints(maxOmega, maxAlpha));
+        this.startTheta = startPose.theta;
+        this.endTheta = endPose.theta;
     }
 
     /** Getter methods*/
@@ -146,9 +143,6 @@ public class Path {
     public double[] getSamplerCurvatures() {
         return sampler.kSamples();
     }
-
-    /** Exposed for {@link PathChain}'s pose-based closest-point projection. */
-    public AdaptiveSampler getSampler() { return sampler; }
 
 
     /** Calculates position of curve with time interval t
@@ -230,62 +224,38 @@ public class Path {
     }
 
 
-    /** Pose-based follower. Projects the robot's translation onto the path to find the
-     *  current arc length, then commands the point one lookahead step (v·dt) ahead —
-     *  so the commanded velocity is nonzero and the robot has somewhere to go. Rotation
-     *  tracks a time-based trapezoidal profile interpolated by arc progress; that profile
-     *  is read via the robot's reported heading to keep angle-modulus sane.
-     *
-     *  <p>The projected arc is monotone-clamped: once we've passed a point, we don't go
-     *  back. This prevents oscillation if the robot overshoots near the end.
-     *
-     *  @param robotPose current robot pose, in field coordinates
-     *  @param dt        lookahead window (typically the control loop period, 0.02 s)
+    /** Calculates the next position of the path for the robot to target. Returns as a Setpoint object.
+     * The reason we need the current rotation is because mod 360 shenanigans
+     * @param rotation the current rotation of the robot
+     * @param dt the timestep in seconds (typically 0.02 for 50Hz control loops)
+     * @return the next setpoint for the robot to follow
      */
-    public Setpoint calculate(Pose2d robotPose, double dt) {
-        // 1. Closest-point projection, clamped to not go backward.
-        double arcAtRobot = sampler.closestArc(
-                robotPose.getX(), robotPose.getY(), currentArc);
-        currentArc = arcAtRobot;
-
-        // 2. Lookahead target: where the robot should be dt seconds from now at the
-        //    planned speed at its current arc.
-        double vPlanned = velocityProfile.velocityAt(arcAtRobot);
-        double targetArc = Math.min(arcAtRobot + vPlanned * dt, getArcLength());
-        double commandedVelocity = velocityProfile.velocityAt(targetArc);
-        double timeParam = sampler.getTimeForArcLength(targetArc);
+    public Setpoint calculate(double rotation, double dt){
+        // Translation: advance along arc length using the pre-planned v(s).
+        // Use trapezoidal integration: estimate acceleration from the profile, then
+        // ds = v*dt + 0.5*a*dt^2.  This bootstraps correctly from v(0)=0.
+        double v0 = velocityProfile.velocityAt(currentArc);
+        double probe = Math.min(currentArc + Math.max(v0, 0.01) * dt, getArcLength());
+        double v1 = velocityProfile.velocityAt(probe);
+        double ds = 0.5 * (v0 + v1) * dt;
+        currentArc = Math.min(currentArc + ds, getArcLength());
+        double timeParam = sampler.getTimeForArcLength(currentArc);
         Translation2d translationalTarget = calculatePosition(timeParam);
+        double commandedVelocity = velocityProfile.velocityAt(currentArc);
+
+        // Rotation — linear interpolation by arc progress so rotation only
+        // advances when the robot is actually translating.
+        double arcFraction = getArcLength() > 1e-6 ? currentArc / getArcLength() : 1.0;
+        double totalRotationRad = MathUtil.angleModulus(endTheta - startTheta);
+        double commandedTheta = startTheta + arcFraction * totalRotationRad;
+        double commandedOmega = totalTime > 1e-6 ? totalRotationRad / totalTime : 0.0;
+
         Translation2d normalizedVel = getNormalizedVelocityVector(timeParam);
-
-        // 3. Rotation — interpolate goal heading proportional to arc progress at the
-        //    robot's current position (not the lookahead) so rotation doesn't race ahead.
-        double arcFraction = getArcLength() > 1e-6 ? arcAtRobot / getArcLength() : 1.0;
-        double totalRotation = MathUtil.angleModulus(endRotation.position - startRotation.position);
-        double intermediateGoal = startRotation.position + arcFraction * totalRotation;
-
-        double rotationalPose = robotPose.getRotation().getRadians();
-        double errorToGoal = MathUtil.angleModulus(intermediateGoal - rotationalPose);
-        double errorToCurrent = MathUtil.angleModulus(currentRotation.position - rotationalPose);
-
-        State interpGoal = new State(rotationalPose + errorToGoal, 0.0);
-        currentRotation.position = rotationalPose + errorToCurrent;
-
-        State rotationalSetpoint = rotationProfile.calculate(dt, currentRotation, interpGoal);
-        currentRotation.position = rotationalSetpoint.position;
-        currentRotation.velocity = rotationalSetpoint.velocity;
-
         return new Setpoint(translationalTarget.getX(),
                             translationalTarget.getY(),
-                            rotationalSetpoint.position,
+                            commandedTheta,
                             normalizedVel.getX() * commandedVelocity,
                             normalizedVel.getY() * commandedVelocity,
-                            rotationalSetpoint.velocity);
+                            commandedOmega);
     }
-
-    /** Current projected arc length (updated on each {@link #calculate}). */
-    public double getCurrentArc() { return currentArc; }
-
-    /** Reset the monotone arc clamp — call this if the robot is being re-seeded to a
-     *  point earlier on the path (e.g. after a pose reset). */
-    public void resetProgress() { this.currentArc = 0.0; }
 }
