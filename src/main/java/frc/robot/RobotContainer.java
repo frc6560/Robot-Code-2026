@@ -43,6 +43,7 @@ import frc.robot.subsystems.vision.LimelightVision;
 import frc.robot.subsystems.vision.VisionSubsystem;
 
 
+
 public class RobotContainer {
     // Controllers
     private final CommandXboxController driverXbox =
@@ -337,12 +338,16 @@ public class RobotContainer {
           .and(DriverStation::isTeleopEnabled).and(() -> !pitCoastMode)
           .onTrue(Commands.runOnce(intake::confirmFullyExtended, intake));
 
+        driverXbox.povUp().onTrue(intake.playSongCommand());
+
         // Driver Back/View toggles a zero-output coast mode so every mechanism can be moved by hand.
         driverXbox.back()
           .and(DriverStation::isTeleopEnabled)
           .onTrue(Commands.runOnce(
               this::togglePitCoastMode,
               drivebase, shooter, intake, indexer));
+
+        
 
         // --- SHOTS ---
         

@@ -1,8 +1,11 @@
 package frc.robot.subsystems.intake;
 
+import com.ctre.phoenix6.Orchestra;
+
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.IntakeConstants;
 
@@ -158,6 +161,10 @@ public class Intake extends SubsystemBase {
         stop();
         io.setCoastMode(enabled);
     }
+    
+    public Command playSongCommand(){
+        return runOnce(() -> io.playSong());
+    }
 
     @Override
     public void periodic() {
@@ -184,6 +191,7 @@ public class Intake extends SubsystemBase {
         } else {
             io.stopDeploy();
         }
+        
         if (DriverStation.isTeleopEnabled() && teleopRollerRequest != null)
             rollerRequested = teleopRollerRequest.getAsBoolean();
         boolean outtaking = DriverStation.isTeleopEnabled() && teleopOuttakeRequest.getAsBoolean();

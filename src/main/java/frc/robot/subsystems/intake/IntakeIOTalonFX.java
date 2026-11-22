@@ -2,6 +2,7 @@ package frc.robot.subsystems.intake;
 
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.CANBus;
+import com.ctre.phoenix6.Orchestra;
 import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
@@ -28,6 +29,7 @@ public class IntakeIOTalonFX implements IntakeIO {
         canBus);
     private final TalonFX rightRoller = new TalonFX(IntakeConstants.RIGHT_ROLLER_MOTOR_ID,
         canBus);
+    private final Orchestra m_orchestra = new Orchestra();
     private final VelocityVoltage leftRollerRequest = new VelocityVoltage(0).withSlot(0);
     private final VelocityVoltage rightRollerRequest = new VelocityVoltage(0).withSlot(0);
     private final StatusCode leftRollerConfigurationStatus;
@@ -57,7 +59,8 @@ public class IntakeIOTalonFX implements IntakeIO {
     private final BaseStatusSignal[] refreshGroup2;
     private final BaseStatusSignal[] refreshGroup3;
     public IntakeIOTalonFX() {
-
+        m_orchestra.addInstrument(leftRoller);
+        m_orchestra.loadMusic("music_stuff.chrp");
         TalonFXConfiguration config = new TalonFXConfiguration();
         config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
         config.MotorOutput.Inverted = IntakeConstants.DEPLOY_MOTOR_INVERTED
@@ -283,5 +286,10 @@ public class IntakeIOTalonFX implements IntakeIO {
     @Override
     public void setCoastMode(boolean coast) {
         motor.setNeutralMode(coast ? NeutralModeValue.Coast : NeutralModeValue.Brake);
+    }
+
+
+    @Override public void playSong(){
+        m_orchestra.play();
     }
 }

@@ -53,4 +53,6 @@ public interface IntakeIO {
 
     /** Select rack coast mode. */
     default void setCoastMode(boolean coast) {}
+
+    default void playSong() {}
 }
