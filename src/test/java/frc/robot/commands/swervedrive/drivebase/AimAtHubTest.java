@@ -1,9 +1,19 @@
 package frc.robot.commands.swervedrive.drivebase;
 
 import static org.junit.jupiter.api.Assertions.*;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import org.junit.jupiter.api.Test;
 
 class AimAtHubTest {
+    @Test void headingOffsetsOnlyMotionAcrossTheHubSightline() {
+        var movingNorth = new ChassisSpeeds(0, 1, 0);
+        assertEquals(-Math.atan2(0.5, 4), AimAtHub.hubHeading(4, 0, movingNorth, 0.5), 1e-9);
+        assertEquals(Math.PI / 2, AimAtHub.hubHeading(0, 4, movingNorth, 0.5), 1e-9);
+        assertEquals(Math.PI / 2 + Math.atan2(0.5, 4),
+            AimAtHub.hubHeading(0, 4, new ChassisSpeeds(1, 0, 0), 0.5), 1e-9);
+        assertEquals(0, AimAtHub.hubHeading(4, 0, movingNorth, Double.NaN), 1e-9);
+    }
+
     @Test void releaseAlignmentUsesActualErrorAndMeasuredTurnRate() {
         assertTrue(AimAtHub.isSettled(Math.toRadians(1), Math.toRadians(4)));
         assertTrue(AimAtHub.isSettled(Math.toRadians(-1), Math.toRadians(-4)));

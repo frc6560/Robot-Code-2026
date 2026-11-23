@@ -251,6 +251,49 @@ class FuelShootCommandTest {
             SmartDashboard.getString("Fuel/Trajectory Status", ""));
     }
 
+    @Test void movingShotCompensatesMeasuredSpeedInTheFieldFrame() {
+        var model = new FuelShotModel(LaunchCalibration.ideal());
+        double stationaryRPM = model.solve(3.5).rpm();
+        pose = new Pose2d(pose.getTranslation(), Rotation2d.fromDegrees(90));
+        SmartDashboard.putBoolean("Fuel/Calibration Mode", false);
+        start(model);
+        // Hub is field +X, which is robot -Y at this heading.
+        speeds = new ChassisSpeeds(0, -0.25, 0);
+        cycles(1);
+        double toward = shooter.getGoalRPM();
+        assertTrue(toward > 0 && toward < stationaryRPM);
+        speeds = new ChassisSpeeds(0, 0.25, 0);
+        cycles(1);
+        assertTrue(shooter.getGoalRPM() > stationaryRPM);
+        speeds = new ChassisSpeeds(0, 100, 0);
+        cycles(1);
+        assertEquals(0, shooter.getGoalRPM(), 1e-6);
+    }
+
+    @Test void aimedTeleopFeedsWhileTranslatingAndStopsWhenTurnTrackingIsLost() {
+        SmartDashboard.putBoolean("Fuel/Calibration Mode", false);
+        var model = new FuelShotModel(LaunchCalibration.ideal());
+        speeds = new ChassisSpeeds(0.25, 0, 0);
+        var drive = new frc.robot.subsystems.swervedrive.SwerveSubsystem(
+                new java.io.File(edu.wpi.first.wpilibj.Filesystem.getDeployDirectory(), "swerve/falcon")) {
+            @Override public Pose2d getPose() { return pose; }
+            @Override public ChassisSpeeds getRobotVelocity() { return speeds; }
+            @Override public ChassisSpeeds getFieldVelocity() { return speeds; }
+            @Override public void driveFieldOriented(ChassisSpeeds requested) {}
+        };
+        command = FuelShootCommand.aimedShot(drive, shooter, indexer, ChassisSpeeds::new,
+            () -> false, model, "Ideal", false);
+        command.initialize();
+        cycles(1);
+        shooter.measured = shooter.getGoalRPM();
+        cycles(10);
+        assertTrue(command.isFeeding());
+        speeds = new ChassisSpeeds(0.25, 0, 1.0);
+        cycles(1);
+        assertFalse(command.isFeeding());
+        command.end(true);
+    }
+
     @Test void stationaryAndRotationOnlyKeepOriginalRpmAndReleaseChecks() {
         var model = new FuelShotModel(LaunchCalibration.ideal());
         var baseline = model.solve(3.5);

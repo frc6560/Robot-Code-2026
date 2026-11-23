@@ -15,6 +15,7 @@ import frc.robot.utility.shooting.AlliancePass;
 import frc.robot.Constants.FieldConstants;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import java.util.Optional;
+import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
 
 /**
@@ -26,6 +27,9 @@ public class AimAtHub extends Command {
   private final Supplier<ChassisSpeeds> driverSpeeds;
   private final Supplier<Translation2d> releasePosition;
   private final ChassisSpeeds commandedSpeeds = new ChassisSpeeds();
+  private DoubleSupplier flightSeconds = () -> 0.0;
+  private double previousTargetHeading;
+  private double previousTrackingTime = Double.NaN;
   private boolean atTarget;
   private double nextTelemetry;
 
@@ -57,8 +61,25 @@ public class AimAtHub extends Command {
     addRequirements(drivebase);
   }
 
+  public void setFlightTimeSupplier(DoubleSupplier flightSeconds) {
+    this.flightSeconds = flightSeconds;
+  }
+
+  static double hubHeading(double dx, double dy, ChassisSpeeds fieldVelocity, double seconds) {
+    double bearing = Math.atan2(dy, dx);
+    double range = Math.hypot(dx, dy);
+    if (range == 0 || !Double.isFinite(seconds) || seconds <= 0) return bearing;
+
+    // Project measured field velocity onto the axis pointing left of the hub sightline.
+    double lateralSpeed = fieldVelocity.vyMetersPerSecond * (dx / range)
+        - fieldVelocity.vxMetersPerSecond * (dy / range);
+    if (!Double.isFinite(lateralSpeed)) return bearing;
+    return MathUtil.angleModulus(bearing + Math.atan2(-lateralSpeed * seconds, range));
+  }
+
   @Override
   public void initialize() {
+    previousTrackingTime = Double.NaN;
     atTarget = false;
     nextTelemetry = 0.0;
     headingController.reset(
@@ -75,6 +96,7 @@ public class AimAtHub extends Command {
     Optional<Alliance> alliance = DriverStation.getAlliance();
 
     if (alliance.isEmpty()) {
+      previousTrackingTime = Double.NaN;
       atTarget = false;
       // Retain normal manual rotation if the Driver Station has not supplied an alliance.
       drivebase.driveFieldOriented(speeds);
@@ -96,16 +118,31 @@ public class AimAtHub extends Command {
     Translation2d release = releasePosition.get();
     boolean passing = DriverStation.isTeleopEnabled()
         && AlliancePass.outsideZone(alliance.get(), robotPose.getX());
+    ChassisSpeeds fieldVelocity = drivebase.getFieldVelocity();
+    double seconds = flightSeconds.getAsDouble();
+    boolean tracking = DriverStation.isTeleopEnabled() && !passing && seconds > 0
+        && Math.hypot(fieldVelocity.vxMetersPerSecond, fieldVelocity.vyMetersPerSecond)
+            > frc.robot.utility.shooting.FuelShotConfig.MAX_TRANSLATION_MPS;
     double targetHeading = passing ? AlliancePass.heading(alliance.get())
-        : Math.atan2(hub.getY() - release.getY(), hub.getX() - release.getX());
+        : hubHeading(hub.getX() - release.getX(), hub.getY() - release.getY(),
+            fieldVelocity, seconds);
     double headingError =
         MathUtil.angleModulus(targetHeading - robotPose.getRotation().getRadians());
     double headingTolerance = passing ? AlliancePass.ANGLE_TOLERANCE
         : DrivebaseConstants.HUB_AIM_TOLERANCE_RADIANS;
     double measuredOmega = drivebase.getRobotVelocity().omegaRadiansPerSecond;
-    atTarget = isSettled(headingError, measuredOmega, headingTolerance, atTarget);
+    double now = edu.wpi.first.wpilibj.Timer.getFPGATimestamp();
+    double rateError = measuredOmega;
+    if (tracking) {
+      double dt = now - previousTrackingTime;
+      rateError = dt > 0 ? measuredOmega
+          - MathUtil.angleModulus(targetHeading - previousTargetHeading) / dt : Double.NaN;
+    }
+    previousTargetHeading = targetHeading;
+    previousTrackingTime = tracking ? now : Double.NaN;
+    atTarget = isSettled(headingError, rateError, headingTolerance, atTarget);
     double omega;
-    if (Double.isFinite(headingError) && Math.abs(headingError) <= headingTolerance) {
+    if (!tracking && Double.isFinite(headingError) && Math.abs(headingError) <= headingTolerance) {
       // Brake inside the heading deadband even while waiting for the chassis to settle.
       // Reset the profile so a noisy turn-rate sample cannot resume an old turn trajectory.
       omega = 0.0;
@@ -127,7 +164,6 @@ public class AimAtHub extends Command {
     commandedSpeeds.omegaRadiansPerSecond = omega;
     drivebase.driveFieldOriented(commandedSpeeds);
 
-    double now = edu.wpi.first.wpilibj.Timer.getFPGATimestamp();
     if (edu.wpi.first.wpilibj.RobotBase.isReal() && now < nextTelemetry) return;
     nextTelemetry = now + 0.5;
     SmartDashboard.putBoolean("Hub Aim/Has Alliance", true);

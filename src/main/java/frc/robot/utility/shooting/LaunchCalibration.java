@@ -76,6 +76,19 @@ public final class LaunchCalibration {
     public double tunnelRPM() { return tunnelRPM; }
     public boolean hasMeasuredSpin() { return Double.isFinite(points.get(0).backspinRps()); }
 
+    /** Invert the measured speed curve without extrapolating beyond the calibrated range. */
+    public double rpmForSpeed(double speed) {
+        if (!Double.isFinite(speed) || speed < points.get(0).speed()) return Double.NaN;
+        for (int i = 1; i < points.size(); i++) {
+            Point a = points.get(i - 1), b = points.get(i);
+            if (speed <= b.speed()) {
+                double fraction = (speed - a.speed()) / (b.speed() - a.speed());
+                return a.rpm() + fraction * (b.rpm() - a.rpm());
+            }
+        }
+        return Double.NaN;
+    }
+
     public Launch at(double rpm) {
         if (!Double.isFinite(rpm) || rpm < minRPM() || rpm > maxRPM()) {
             throw new IllegalArgumentException("RPM outside measured calibration");

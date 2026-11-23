@@ -33,6 +33,7 @@ public final class FuelShootCommand extends Command {
     private final String calibrationStatus;
     private final boolean autonomous;
     private final BooleanSupplier feedAllowed;
+    private boolean allowMovingHubShot;
     private boolean feeding;
 
     public boolean isFeeding() { return feeding; }
@@ -80,8 +81,11 @@ public final class FuelShootCommand extends Command {
             String calibrationStatus, boolean autonomous) {
         var aim = new AimAtHub(drive, translation,
             () -> releasePosition(drive.getPose()));
-        return new FuelShootCommand(shooter, indexer, drive::getPose, drive::getRobotVelocity,
+        var command = new FuelShootCommand(shooter, indexer, drive::getPose, drive::getRobotVelocity,
             aim, aim::isAtTarget, pitCoast, model, calibrationStatus, autonomous, () -> true);
+        command.allowMovingHubShot = !autonomous;
+        aim.setFlightTimeSupplier(() -> command.shot.valid() ? command.shot.flightSeconds() : 0.0);
+        return command;
     }
 
     public static Translation2d releasePosition(Pose2d pose) {
@@ -116,12 +120,11 @@ public final class FuelShootCommand extends Command {
             && Double.isFinite(current.getRotation().getRadians())
             && Double.isFinite(speeds.vxMetersPerSecond) && Double.isFinite(speeds.vyMetersPerSecond)
             && Double.isFinite(speeds.omegaRadiansPerSecond);
-        // Do not send NaN into the heading controller or drivetrain.
-        if (finite) aim.execute(); else aim.end(true);
         var alliance = DriverStation.getAlliance();
         Translation2d hub = alliance.orElse(DriverStation.Alliance.Blue) == DriverStation.Alliance.Blue
             ? Constants.FieldConstants.BLUE_HUB_CENTER : Constants.FieldConstants.RED_HUB_CENTER;
-        double range = releasePosition(current).getDistance(hub);
+        Translation2d toHub = hub.minus(releasePosition(current));
+        double range = toHub.getNorm();
         boolean passing = !autonomous && alliance.isPresent() && finite
             && AlliancePass.outsideZone(alliance.get(), current.getX());
         boolean stationary = finite && Math.hypot(speeds.vxMetersPerSecond, speeds.vyMetersPerSecond)
@@ -132,9 +135,23 @@ public final class FuelShootCommand extends Command {
             solvedRange = range;
             nextSolve = Timer.getFPGATimestamp() + 0.1;
         }
+        // Do not send NaN into the heading controller or drivetrain.
+        if (finite) aim.execute(); else aim.end(true);
         boolean fixedRPM = !autonomous && (calibrationMode || model == null);
         // Accelerate while approaching; only the release gate waits for aim/position readiness.
         double rpm = passing ? AlliancePass.RPM : fixedRPM || !shot.valid() ? testRPM : shot.rpm();
+        boolean movingHubShot = allowMovingHubShot && !stationary && !passing && !fixedRPM && shot.valid();
+        double minimumRPM = shot.minimumRPM();
+        double maximumRPM = shot.maximumRPM();
+        if (finite && !passing && !fixedRPM && shot.valid()
+                && (speeds.vxMetersPerSecond != 0 || speeds.vyMetersPerSecond != 0)) {
+            ChassisSpeeds fieldVelocity = ChassisSpeeds.fromRobotRelativeSpeeds(speeds, current.getRotation());
+            rpm = compensatedRPM(toHub, fieldVelocity, rpm);
+            if (movingHubShot) {
+                minimumRPM = compensatedRPM(toHub, fieldVelocity, minimumRPM);
+                maximumRPM = compensatedRPM(toHub, fieldVelocity, maximumRPM);
+            }
+        }
         boolean controlsValid = Double.isFinite(rpm) && rpm >= Constants.ShooterConstants.FLYWHEEL_IDLE_RPM
             && rpm <= Constants.ShooterConstants.MAX_RPM
             && Double.isFinite(tunnelRPM) && tunnelRPM > 0 && tunnelRPM <= 3000;
@@ -152,14 +169,16 @@ public final class FuelShootCommand extends Command {
             : !controlsValid ? "Invalid RPM settings / no reachable shot"
             : !passing && !fixedRPM && !shot.valid() ? "No reachable shot: " + (model == null ? "No model" : model.diagnostics().reason())
             : !feedAllowed.getAsBoolean() ? "Waiting for autonomous stop"
-            : !stationary ? "Stop translating to shoot"
+            : !stationary && !movingHubShot ? "Stop translating to shoot"
             : !aligned.getAsBoolean() ? "Aiming"
             : !indexer.isTunnelReady() ? "Tunnel disconnected or configuration failed"
             : !shooter.isHardwareReady() ? "Flywheel disconnected or pit coast"
             : !shooter.withinTolerance(FuelShotConfig.RPM_TOLERANCE)
                 || (!passing && !shooter.atTarget())
                 ? "Waiting for measured flywheel RPM"
-            : !passing && !fixedRPM && !model.scores(range, shooter.getCurrentRPM()) ? "Measured RPM outside scoring band"
+            : movingHubShot && !(shooter.getCurrentRPM() >= minimumRPM && shooter.getCurrentRPM() <= maximumRPM)
+                ? "Measured RPM outside compensated scoring band"
+            : !movingHubShot && !passing && !fixedRPM && !model.scores(range, shooter.getCurrentRPM()) ? "Measured RPM outside scoring band"
             : "Ready";
         boolean rawReady = reason.equals("Ready");
         double now = Timer.getFPGATimestamp();
@@ -197,8 +216,8 @@ public final class FuelShootCommand extends Command {
         SmartDashboard.putNumber("Fuel/Target RPM", rpm);
         SmartDashboard.putNumber("Fuel/Measured RPM", shooter.getCurrentRPM());
         SmartDashboard.putNumber("Fuel/Tunnel Target RPM", feeding ? tunnelRPM : 0);
-        SmartDashboard.putNumber("Fuel/Minimum Scoring RPM", shot.minimumRPM());
-        SmartDashboard.putNumber("Fuel/Maximum Scoring RPM", shot.maximumRPM());
+        SmartDashboard.putNumber("Fuel/Minimum Scoring RPM", minimumRPM);
+        SmartDashboard.putNumber("Fuel/Maximum Scoring RPM", maximumRPM);
         // Record each gate independently: Status shows the first blocker, not all blockers.
         SmartDashboard.putBoolean("Fuel/Readiness/AllianceKnown", alliance.isPresent());
         SmartDashboard.putBoolean("Fuel/Readiness/PoseAndVelocityFinite", finite);
@@ -219,6 +238,20 @@ public final class FuelShootCommand extends Command {
         SmartDashboard.putNumber("Fuel/FlightSeconds", shot.flightSeconds());
         SmartDashboard.putNumber("Fuel/TunnelMeasuredRPM", indexer.getTunnelRPM());
         SmartDashboard.putNumber("Fuel/TunnelRequestedRPM", feeding ? tunnelRPM : 0);
+    }
+
+    /** Match the stationary shot's horizontal launch velocity in the field frame. */
+    private double compensatedRPM(Translation2d toHub, ChassisSpeeds fieldVelocity, double stationaryRPM) {
+        double elevation = Math.toRadians(Constants.ShotModelConstants.LAUNCH_ELEVATION_DEGREES
+            + FuelShotConfig.LAUNCH_ANGLE_OFFSET_DEGREES);
+        double horizontalScale = launchSpeedCoefficient * Math.cos(elevation);
+        var calibration = model.calibration();
+        double horizontalSpeed = calibration.at(stationaryRPM).speed() * horizontalScale;
+        Translation2d desiredVelocity = toHub.times(horizontalSpeed / toHub.getNorm());
+        double relativeX = desiredVelocity.getX() - fieldVelocity.vxMetersPerSecond;
+        double relativeY = desiredVelocity.getY() - fieldVelocity.vyMetersPerSecond;
+        if (relativeX * toHub.getX() + relativeY * toHub.getY() <= 0) return Double.NaN;
+        return calibration.rpmForSpeed(Math.hypot(relativeX, relativeY) / horizontalScale);
     }
 
     private boolean modeEnabled() {
