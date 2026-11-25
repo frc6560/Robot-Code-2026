@@ -108,6 +108,20 @@ public final class FuelShotModel {
     }
     public LaunchCalibration calibration() { return calibration; }
 
+    /** Descending rim crossing at a continuous RPM, interpolated from cached trajectories. */
+    public double rimCrossingSeconds(double rpm) {
+        if (!Double.isFinite(rpm) || rpm < calibration.minRPM() || rpm > calibration.maxRPM()) return 0;
+        int low = (int) Math.floor((rpm - calibration.minRPM()) / 10.0);
+        int high = Math.min(low + 1, sampledRPM.size() - 1);
+        Flight lower = sampledFlights.get(low);
+        Flight upper = sampledFlights.get(high);
+        if (rpm == sampledRPM.get(low)) return lower.reached() ? lower.time() : 0;
+        if (rpm == sampledRPM.get(high)) return upper.reached() ? upper.time() : 0;
+        if (!lower.reached() || !upper.reached()) return 0;
+        double fraction = (rpm - sampledRPM.get(low)) / (sampledRPM.get(high) - sampledRPM.get(low));
+        return lower.time() + fraction * (upper.time() - lower.time());
+    }
+
     /** Bounded work: scan the calibrated RPM span, then refine the selected contiguous band. */
     /** Allocating convenience API for offline tooling/tests. Runtime callers use solveInto. */
     public Shot solve(double range) {
@@ -117,27 +131,33 @@ public final class FuelShotModel {
     }
 
     public void solveInto(double range, Shot result) {
+        solveInto(range, 0, 0, result);
+    }
+
+    /** Speeds are projections onto the hub sightline and its left perpendicular, in m/s. */
+    public void solveInto(double range, double towardSpeed, double lateralSpeed, Shot result) {
         result.clear();
         if (!Double.isFinite(range) || range < 0.75 || range > 8.0) {
             diagnostics.set(range, 0, 0, 0, 0, 0, "Range outside solver limits (0.75–8 m)");
             return;
         }
         // A fine grid finds narrow bands; midpoint refinement below never assumes a global monotonic trajectory.
-        double step = 10.0;
+
         double bestLow = 0, bestHigh = -1, start = 0, previous = calibration.minRPM();
         boolean inBand = false;
         int reached = 0, cleared = 0, landed = 0, entered = 0;
         for (int index = 0; index < sampledRPM.size(); index++) {
             double rpm = sampledRPM.get(index);
             Flight candidate = sampledFlights.get(index);
-            boolean valid = flightScores(range, candidate);
+            double effectiveRange = effectiveRange(range, towardSpeed, lateralSpeed, candidate.time());
+            boolean valid = flightScores(effectiveRange, candidate);
             // Progressive counts explain exactly where candidate trajectories are eliminated.
             if (candidate.reached()) {
                 reached++;
-                if (candidate.risingX() <= range - ShotModelConstants.HUB_OPENING_SPAN_METERS / 2
+                if (candidate.risingX() <= effectiveRange - ShotModelConstants.HUB_OPENING_SPAN_METERS / 2
                         - ShotModelConstants.HUB_RIM_MARGIN_METERS) {
                     cleared++;
-                    if (Math.abs(candidate.crossingX() - range) <= HALF_WIDTH) {
+                    if (Math.abs(candidate.crossingX() - effectiveRange) <= HALF_WIDTH) {
                         landed++;
                         if (candidate.entryDegrees() >= FuelShotConfig.MIN_ENTRY_DEGREES) entered++;
                     }
@@ -163,11 +183,26 @@ public final class FuelShotModel {
         double low = bestLow;
         double high = bestHigh;
         double target = (low + high) / 2;
-        Flight flight = flight(target);
-        boolean valid = flightScores(range, flight);
+        Flight flight;
+        if (towardSpeed != 0 || lateralSpeed != 0) {
+            int midpoint = Math.min(sampledRPM.size() - 1, (int) Math.round((target - calibration.minRPM()) / 10.0));
+            if (sampledRPM.get(midpoint) < low) midpoint++;
+            if (sampledRPM.get(midpoint) > high) midpoint--;
+            target = sampledRPM.get(midpoint);
+            flight = sampledFlights.get(midpoint);
+        } else {
+            flight = flight(target);
+        }
+        boolean valid = flightScores(effectiveRange(range, towardSpeed, lateralSpeed, flight.time()), flight);
         if (!valid) diagnostics.set(range, sampledRPM.size(), reached, cleared,
             landed, entered, "Refined RPM failed trajectory check");
         result.set(target, low, high, flight.time(), valid);
+    }
+
+    // During flight the chassis velocity inherited at release contributes v * time to displacement.
+    private static double effectiveRange(double range, double towardSpeed, double lateralSpeed, double time) {
+        if (towardSpeed == 0 && lateralSpeed == 0) return range;
+        return Math.hypot(range - towardSpeed * time, lateralSpeed * time);
     }
 
     private double refine(double range, double inside, double outside) {

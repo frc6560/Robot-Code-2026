@@ -13,6 +13,34 @@ class FuelShotModelTest {
             new LaunchCalibration.Point(3800, 10.11, Double.NaN)), 1500);
     }
 
+    @Test void movingSolutionUsesItsOwnFlightTimeForRangeAndRpm() {
+        var model = new FuelShotModel(LaunchCalibration.ideal());
+        var moving = FuelShotModel.Shot.invalid();
+        double range = 3.5;
+        double stationaryRPM = model.solve(range).rpm();
+        long integrations = model.flightCalculations();
+        model.solveInto(range, -1.0, 1.2, moving);
+        assertTrue(moving.valid());
+        assertTrue(moving.rpm() > stationaryRPM);
+        assertEquals(integrations, model.flightCalculations());
+        double time = moving.flightSeconds();
+        var trajectory = model.flight(moving.rpm());
+        assertEquals(trajectory.time(), time);
+        assertEquals(Math.hypot(range + time, 1.2 * time), trajectory.crossingX(), 0.43);
+    }
+
+    @Test void continuousTargetRpmUsesCachedDescendingCrossingTime() {
+        var model = new FuelShotModel(fixture());
+        double expected = model.flight(3027.4).time();
+        long integrations = model.flightCalculations();
+        assertEquals(expected, model.rimCrossingSeconds(3027.4), 0.0001);
+        assertTrue(model.rimCrossingSeconds(3100) > model.rimCrossingSeconds(3000));
+        assertEquals(0, model.rimCrossingSeconds(1000));
+        assertEquals(0, model.rimCrossingSeconds(Double.NaN));
+        assertEquals(0, model.rimCrossingSeconds(3801));
+        assertEquals(integrations, model.flightCalculations());
+    }
+
     @Test void liveCoefficientUpdatesFlightAndRejectsInvalidValues() {
         var model = new FuelShotModel(fixture());
         var baseline = model.flight(3000);

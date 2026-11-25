@@ -70,11 +70,15 @@ public class AimAtHub extends Command {
     double range = Math.hypot(dx, dy);
     if (range == 0 || !Double.isFinite(seconds) || seconds <= 0) return bearing;
 
-    // Project measured field velocity onto the axis pointing left of the hub sightline.
-    double lateralSpeed = fieldVelocity.vyMetersPerSecond * (dx / range)
-        - fieldVelocity.vxMetersPerSecond * (dy / range);
-    if (!Double.isFinite(lateralSpeed)) return bearing;
-    return MathUtil.angleModulus(bearing + Math.atan2(-lateralSpeed * seconds, range));
+    // Bearing is measured counterclockwise from field +X. Positive lateral speed points left.
+    double cosBearing = dx / range;
+    double sinBearing = dy / range;
+    double lateralSpeed = fieldVelocity.vyMetersPerSecond * cosBearing
+        - fieldVelocity.vxMetersPerSecond * sinBearing;
+    double towardSpeed = fieldVelocity.vxMetersPerSecond * cosBearing
+        + fieldVelocity.vyMetersPerSecond * sinBearing;
+    if (!Double.isFinite(lateralSpeed) || !Double.isFinite(towardSpeed)) return bearing;
+    return MathUtil.angleModulus(bearing + Math.atan2(-lateralSpeed * seconds, range - towardSpeed * seconds));
   }
 
   @Override
